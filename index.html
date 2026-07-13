@@ -325,6 +325,17 @@
 
   .panel.car-sky{background:#eaf3fc;border-color:#cfe1f3}
   body.dark .panel.car-sky{background:#14202c;border-color:#26384a}
+
+  .winfo{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:.8rem;color:var(--muted);font-weight:600;margin:10px 0}
+  .winfo b{color:var(--ink)}
+  .wstat.wdue{background:var(--info-bg)}
+  .wstat.wdue b{color:var(--brand)}
+
+  .alert-row{display:flex;align-items:center;gap:11px;padding:10px 0;border-bottom:1px solid var(--line);font-weight:600;font-size:.9rem}
+  .alert-row:last-child{border-bottom:none}
+  .alert-ic{width:26px;height:26px;flex:none;display:grid;place-items:center}
+  .alert-ic svg{width:22px;height:22px}
+  .alerts-card{border-inline-start:4px solid var(--wash)}
 </style>
 </head>
 <body>
@@ -374,6 +385,11 @@
       <div class="set-title">قفل التطبيق بكلمة مرور</div>
       <label class="sw"><input type="checkbox" id="lockToggle"> تفعيل القفل عند فتح التطبيق</label>
       <input type="password" id="lockPinSet" inputmode="numeric" placeholder="كلمة المرور (أرقام)" style="margin-top:9px">
+    </div>
+    <div class="set-sec">
+      <div class="set-title">كود العدّادات (تعديل القراءة والسعر)</div>
+      <input type="password" id="meterPinSet" inputmode="numeric" placeholder="كود العدّادات">
+      <div class="hint" style="margin-top:6px">مستقلّ عن كود فتح التطبيق — اجعله مختلفًا. إن تركته فارغًا يكون 720707.</div>
     </div>
     <div class="modal-actions" style="margin-top:4px">
       <button class="btn-primary" id="setSave" style="flex:1">حفظ</button>
@@ -457,7 +473,7 @@ const state = {
   expSub:"general",
   carpetFilter:"all",
   dateFrom:null, dateTo:null,
-  cpSearch:"", custSearch:"", lock:{enabled:false,pin:""},
+  cpSearch:"", custSearch:"", lock:{enabled:false,pin:""}, meterPin:"",
   orderSeq:0,
   vehiclePrices:{...VEHICLE_PRICES},
   piecePrices:{...PIECE_PRICES},
@@ -470,8 +486,8 @@ const state = {
     {id:uid(),date:iso(now),elecStart:1200,elecEnd:1246,waterStart:300,waterEnd:309}
   ],
   workers:[
-    {id:uid(),name:"محمد",monthly:30000,absent:[daysAgo(1),daysAgo(2)],payments:[{amount:20000,date:monthAgo()}]},
-    {id:uid(),name:"أحمد",monthly:24000,absent:[],payments:[{amount:26000,date:monthAgo()}]}
+    {id:uid(),name:"محمد",role:"عامل غسيل",phone:"36112233",start:monthAgo(),monthly:30000,absent:[daysAgo(1),daysAgo(2)],payments:[{amount:20000,date:monthAgo()}]},
+    {id:uid(),name:"أحمد",role:"كوّاء",phone:"22445566",start:monthAgo(),monthly:24000,absent:[],payments:[{amount:26000,date:monthAgo()}]}
   ],
   carOps:[
     {id:uid(),vehicle:"سيارة كبيرة",wash:"غسيل داخلي وخارجي",price:4000,note:"",date:iso(now)},
@@ -550,8 +566,18 @@ function dayRate(w){return w.monthly/daysInMonth;}
 function monthAbsences(w){return w.absent.filter(isMonth).length;}
 function absentToday(w){return w.absent.some(isToday);}
 function netSalary(w){return w.monthly - monthAbsences(w)*dayRate(w);}
+function accruedDue(w){
+  const today=new Date(); today.setHours(0,0,0,0);
+  const mStart=new Date(today.getFullYear(),today.getMonth(),1);
+  let start = w.start ? new Date(w.start) : mStart; start.setHours(0,0,0,0);
+  if(start<mStart) start=mStart;
+  if(start>today) return 0;
+  let cnt=0;
+  for(let d=new Date(start); d<=today; d.setDate(d.getDate()+1)){ const ds=ymd(d); if(!w.absent.some(a=>ymd(a)===ds)) cnt++; }
+  return cnt*dayRate(w);
+}
 function wPaid(w){return sum(w.payments,p=>p.amount);}
-function wBalance(w){return netSalary(w)-wPaid(w);}   /* +له  /  -عليه */
+function wBalance(w){return accruedDue(w)-wPaid(w);}   /* +له  /  -عليه (حتى اليوم) */
 function wagesToday(){return sum(state.workers.filter(w=>!absentToday(w)),w=>dayRate(w));}
 function wagesMonth(){return sum(state.workers,netSalary);}
 function wagesRange(){
@@ -729,6 +755,20 @@ function screenDashboard(){
         </div>
         <div class="sum-row" style="margin-top:14px"><span>${total.label}</span><span class="big">${money(total.val)}</span></div>
       </div>`;
+  const daysSince=(d)=>Math.floor((Date.now()-new Date(d).getTime())/86400000);
+  const alerts=[];
+  const staleReady=state.carpetOrders.filter(o=>o.status==="ready" && daysSince(o.date)>=2);
+  if(staleReady.length) alerts.push({icon:I.clock,color:"var(--wash)",text:`${staleReady.length} طلب جاهز لم يُستلم منذ يومين أو أكثر`});
+  const debts=state.carpetOrders.filter(o=>!o.paid && o.status==="done");
+  if(debts.length) alerts.push({icon:I.alert,color:"var(--unpaid)",text:`${debts.length} طلب مُسلّم غير مدفوع بقيمة ${money(sum(debts,o=>o.price))}`});
+  const nearFree=Object.values(state.customers).filter(c=>c.stamps===4);
+  if(nearFree.length) alerts.push({icon:I.gift,color:"var(--ready)",text:`${nearFree.length} زبون غسلته القادمة مجانية`});
+  const owed=state.workers.filter(w=>wBalance(w)>=10000);
+  if(owed.length) alerts.push({icon:I.worker,color:"var(--brand)",text:`${owed.length} موظف مستحقاتهم كبيرة (${money(sum(owed,w=>wBalance(w)))})`});
+  const alertsCard=alerts.length?`<div class="metric veh-card alerts-card">
+        <div class="veh-head"><span class="label" style="margin:0">🔔 تنبيهات</span></div>
+        ${alerts.map(a=>`<div class="alert-row"><span class="alert-ic" style="color:${a.color}">${svg(a.icon)}</span><span>${a.text}</span></div>`).join("")}
+      </div>`:"";
   return `
     <div class="screen-head"><h2>الصفحة الرئيسية</h2><span>${periodLabel==="اليوم"?new Date().toLocaleDateString("ar",{weekday:"long",day:"numeric",month:"long"}):`${state.dateFrom} ← ${state.dateTo}`}</span></div>
     <div class="datebar">
@@ -737,6 +777,7 @@ function screenDashboard(){
       <div class="date-presets">${preset("today","اليوم")}${preset("yesterday","أمس")}${preset("month","هذا الشهر")}${preset("all","الكل")}</div>
     </div>
     <div class="grid metrics">
+      ${alertsCard}
       ${breakdown(`دخل ${periodLabel} حسب النوع`,incItems,{label:`إجمالي دخل ${periodLabel}`,val:inc})}
       ${breakdown(`مصروف ${periodLabel} حسب النوع`,expItems,{label:`إجمالي مصروف ${periodLabel}`,val:exp})}
       ${M.map(m=>`<div class="metric"><div class="ic" style="background:${m.bg}">${svg(m.ic,m.c)}</div>
@@ -849,7 +890,7 @@ function screenCarpets(){
     <div class="cols">
       <div class="panel">
         <h3>طلب جديد</h3>
-        <div class="field"><label>اسم العميل</label><input id="cpCust" type="text" placeholder="اسم العميل"></div>
+        <div class="field"><label>اسم العميل <span style="color:var(--unpaid)">(الاسم أو الرقم مطلوب)</span></label><input id="cpCust" type="text" placeholder="اسم العميل"></div>
         <div class="field"><label>هاتف الزبون (8 أرقام)</label><input id="cpPhone" class="phone-inp" type="tel" inputmode="numeric" maxlength="8" placeholder="رقم الهاتف"></div>
         <div class="field"><label>نوع القطعة</label>
           <div class="picker" id="pPicker">${pieceBtns}</div>
@@ -913,10 +954,16 @@ function expGeneral(){
 }
 
 function expMeters(){
-  const m=meterToday();
+  const m=state.meters.slice().sort((a,b)=>(b.savedAt||new Date(b.date).getTime())-(a.savedAt||new Date(a.date).getTime()))[0]||null;
   const es=m?m.elecStart:"", ee=m?m.elecEnd:"", ws=m?m.waterStart:"", we=m?m.waterEnd:"";
   const use=m?meterUse(m):{elec:0,water:0};
   const cost=use.elec*state.tariff.elec+use.water*state.tariff.water;
+  const lockedUntil=(m&&m.savedAt)?m.savedAt+24*3600*1000:0;
+  const locked=lockedUntil>Date.now();
+  const untilStr=locked?new Date(lockedUntil).toLocaleString("ar",{weekday:"short",hour:"2-digit",minute:"2-digit"}):"";
+  const lockHint=locked
+    ? `<div class="hint" style="color:var(--unpaid)">🔒 القراءة محفوظة. لا يمكن تغييرها إلا بالكود قبل ${untilStr}. بعدها يمكنك إضافة عدّاد جديد.</div>`
+    : `<div class="hint">يمكنك حفظ قراءة عدّاد جديدة.</div>`;
   return `
     <div class="cols">
       <div class="panel">
@@ -936,6 +983,7 @@ function expMeters(){
           </div>
         </div>
         <button class="btn-primary" id="meterSave">حفظ قراءات اليوم</button>
+        ${lockHint}
       </div>
       <div class="panel">
         <h3>سعر الوحدة والتكلفة</h3>
@@ -945,9 +993,34 @@ function expMeters(){
           <div class="field"><label>سعر وحدة الماء</label><input id="tarWater" type="number" min="0" value="${state.tariff.water}"></div>
         </div>
         <button class="btn-primary" id="tarSave">حفظ الأسعار</button>
-        <div class="sum-row"><span>تكلفة استهلاك اليوم</span><span class="big">${money(cost)}</span></div>
+        <div class="sum-row"><span>تكلفة الاستهلاك</span><span class="big">${money(cost)}</span></div>
       </div>
+    </div>
+    ${(()=>{
+      const list=state.meters.slice().sort((a,b)=>new Date(a.date)-new Date(b.date));
+      let cum=0, tElec=0, tWater=0;
+      const rows=list.map(rec=>{
+        const u=meterUse(rec); const c=u.elec*state.tariff.elec+u.water*state.tariff.water;
+        cum+=c; tElec+=u.elec; tWater+=u.water;
+        return `<tr>
+          <td>${ymd(rec.date)}</td>
+          <td class="amt" style="color:var(--wash)">${fmt(u.elec)}</td>
+          <td class="amt" style="color:var(--brand)">${fmt(u.water)}</td>
+          <td class="amt">${money(c)}</td>
+          <td class="amt" style="font-weight:800">${money(cum)}</td></tr>`;
+      }).join("");
+      const body=list.length?rows:`<tr><td colspan="5"><div class="empty">${svg(I.empty)}لا توجد قراءات بعد — ابدأ من الصفر بحفظ أول قراءة.</div></td></tr>`;
+      return `
+    <div class="panel" style="margin-top:18px">
+      <h3>كشف حساب استهلاك العدّاد</h3>
+      <table class="tbl"><thead><tr><th>التاريخ</th><th>كهرباء (كيلو)</th><th>ماء (وحدة)</th><th>تكلفة اليوم</th><th>الإجمالي التراكمي</th></tr></thead>
+        <tbody>${body}</tbody>
+        ${list.length?`<tfoot><tr style="border-top:2px solid var(--line);font-weight:800">
+          <td>الإجمالي</td><td class="amt" style="color:var(--wash)">${fmt(tElec)}</td><td class="amt" style="color:var(--brand)">${fmt(tWater)}</td>
+          <td class="amt">${money(cum)}</td><td class="amt" style="color:var(--brand)">${money(cum)}</td></tr></tfoot>`:""}
+      </table>
     </div>`;
+    })()}`;
 }
 
 function expWorkers(){
@@ -956,16 +1029,22 @@ function expWorkers(){
     const bal=wBalance(w);
     const balLabel=bal>0?"له":bal<0?"عليه":"مسدّد";
     const balCls=bal>0?"bal-pos":bal<0?"bal-neg":"bal-zero";
+    const due=accruedDue(w);
     return `
     <div class="worker">
       <div class="wtop">
         <span class="wav">${svg(I.worker)}</span>
-        <div><div class="wname">${w.name}</div><div class="wwage">شهري: ${fmt(w.monthly)} • يومية: ${fmt(dayRate(w))}${absentToday(w)?" • غائب اليوم":""}</div></div>
+        <div style="min-width:0"><div class="wname">${w.name}</div><div class="wwage">${w.role||"موظف"}${w.phone?" • "+w.phone:""}${absentToday(w)?" • غائب اليوم":""}</div></div>
         <button class="icon-btn" data-del-worker="${w.id}" title="حذف" style="margin-inline-start:auto">${svg(I.trash)}</button>
       </div>
+      <div class="winfo">
+        <span>الراتب الشهري: <b>${fmt(w.monthly)}</b></span>
+        <span>اليومية: <b>${fmt(dayRate(w))}</b></span>
+        <span>المباشرة: <b>${w.start?ymd(w.start):"—"}</b></span>
+      </div>
       <div class="wstats">
-        <div class="wstat"><b>${fmt(netSalary(w))}</b><span>صافي الراتب</span></div>
-        <div class="wstat"><b>${fmt(wPaid(w))}</b><span>المدفوع</span></div>
+        <div class="wstat wdue"><b>${fmt(due)}</b><span>المستحق حتى اليوم</span></div>
+        <div class="wstat"><b>${fmt(wPaid(w))}</b><span>المدفوع/الوديعة</span></div>
         <div class="wstat ${balCls}"><b>${fmt(Math.abs(bal))}</b><span>الرصيد (${balLabel})</span></div>
       </div>
       <div class="wabsent">
@@ -973,7 +1052,7 @@ function expWorkers(){
         <button class="mini ${absentToday(w)?'abs-on':''}" data-abstoday="${w.id}">${absentToday(w)?"إلغاء غياب اليوم":"تسجيل غياب اليوم"}</button>
       </div>
       <div class="wpay">
-        <input type="number" min="0" placeholder="مبلغ الدفعة" data-payin="${w.id}">
+        <input type="number" min="0" placeholder="مبلغ الدفعة أو الوديعة" data-payin="${w.id}">
         <button class="mini" data-paybtn="${w.id}">تسجيل دفعة</button>
       </div>
     </div>`;}).join("") : `<div class="panel empty" style="grid-column:1/-1">${svg(I.empty)}لا يوجد عمّال — أضف أول عامل.</div>`;
@@ -981,11 +1060,18 @@ function expWorkers(){
   return `
     <div class="cols">
       <div class="panel">
-        <h3>إضافة عامل</h3>
-        <div class="field"><label>اسم العامل</label><input id="wName" type="text" placeholder="الاسم"></div>
-        <div class="field"><label>الراتب الشهري</label><input id="wMonthly" type="number" min="0" value="0">
-          <div class="hint">اليومية = الشهري ÷ أيام الشهر الحالي (${daysInMonth} يومًا). تُحتسب يومية كل عامل حاضر تلقائيًا ضمن مصروف اليوم والربح، والدفعات تسوية للرصيد فقط.</div></div>
-        <button class="btn-primary" id="wAdd">إضافة العامل</button>
+        <h3>إضافة موظف</h3>
+        <div class="field"><label>اسم الموظف</label><input id="wName" type="text" placeholder="الاسم الكامل"></div>
+        <div class="row2">
+          <div class="field"><label>الوظيفة</label><input id="wRole" type="text" placeholder="مثال: كوّاء"></div>
+          <div class="field"><label>الهاتف (8 أرقام)</label><input id="wPhone" class="phone-inp" type="tel" inputmode="numeric" maxlength="8" placeholder="الهاتف"></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>الراتب الشهري</label><input id="wMonthly" type="number" min="0" value="0"></div>
+          <div class="field"><label>تاريخ المباشرة</label><input id="wStart" type="date" value="${ymd(new Date())}"></div>
+        </div>
+        <div class="hint">اليومية = الشهري ÷ أيام الشهر (${daysInMonth} يومًا). «المستحق حتى اليوم» = أيام العمل من المباشرة حتى اليوم × اليومية. الدفعة/الوديعة تُخصم من رصيده فقط.</div>
+        <button class="btn-primary" id="wAdd">إضافة الموظف</button>
         <div class="sum-row"><span>إجمالي الرصيد (${totLabel})</span><span class="big">${money(Math.abs(totBal))}</span></div>
         <div style="display:flex;justify-content:space-between;margin-top:9px;font-size:.84rem;color:var(--muted);font-weight:700">
           <span>صافي الرواتب: ${fmt(totNet)}</span><span>المدفوع: ${fmt(totPaid)}</span></div>
@@ -1137,6 +1223,8 @@ function bindScreen(){
     document.getElementById("cpSave").onclick=()=>{
       const unit=+cpP.value, count=+cpC.value, type=ct.value;
       const cpph=document.getElementById("cpPhone").value.trim();
+      const cpcust=document.getElementById("cpCust").value.trim();
+      if(!cpcust && !cpph) return toast("أدخل اسم الزبون أو رقمه");
       if(!(unit>0)) return toast("أدخل سعرًا صحيحًا");
       if(!(count>0)) return toast("أدخل عددًا صحيحًا");
       if(!validPhone(cpph)) return toast("رقم الهاتف يجب أن يكون 8 أرقام");
@@ -1144,8 +1232,8 @@ function bindScreen(){
       state.orderSeq++;
       const d=iso(new Date());
       state.carpetOrders.push({id:uid(),no:orderNo(state.orderSeq,d),
-        customer:document.getElementById("cpCust").value.trim(),
-        phone:document.getElementById("cpPhone").value.trim(),
+        customer:cpcust,
+        phone:cpph,
         type,count,unit,price:unit*count,status:"wash",paid:false,photos:[...pendingCpPhotos],date:d});
       pendingCpPhotos.length=0;
       toast("تمت إضافة الطلب"); render();
@@ -1156,6 +1244,7 @@ function bindScreen(){
     if(o&&NEXT[o.status]){
       o.status=NEXT[o.status];
       if(o.status==="done"){o.deliveredDate=iso(new Date()); if(!o.paid){o.paid=true;o.paidDate=o.deliveredDate;} toast("تم التسليم واستلام المبلغ");}
+      else if(o.status==="ready"){ toast("الطلب جاهز"); if(o.phone) openWa(o); }
       else toast("تم تحديث حالة الطلب");
       render();
     }});
@@ -1196,17 +1285,21 @@ function bindScreen(){
       const rec={elecStart:g("elecStart"),elecEnd:g("elecEnd"),waterStart:g("waterStart"),waterEnd:g("waterEnd")};
       if(rec.elecEnd&&rec.elecEnd<rec.elecStart) return toast("قراءة نهاية الكهرباء أقل من البداية");
       if(rec.waterEnd&&rec.waterEnd<rec.waterStart) return toast("قراءة نهاية الماء أقل من البداية");
-      let m=meterToday();
-      if(m){Object.assign(m,rec);} else {state.meters.push({id:uid(),date:iso(new Date()),...rec});}
-      toast("تم حفظ قراءات اليوم"); render();
+      const recent=state.meters.slice().sort((a,b)=>(b.savedAt||new Date(b.date).getTime())-(a.savedAt||new Date(a.date).getTime()))[0];
+      const locked = recent && recent.savedAt && (Date.now()-recent.savedAt < 24*3600*1000);
+      const addNew=()=>{ state.meters.push({id:uid(),date:iso(new Date()),savedAt:Date.now(),...rec}); toast("تم حفظ قراءة العدّاد"); render(); };
+      if(locked){
+        requireCode(()=>{ Object.assign(recent,rec); toast("تم تعديل القراءة"); render(); }, meterCode());
+      } else {
+        addNew();
+      }
     };
   }
   const ts=document.getElementById("tarSave");
   if(ts){
     ts.onclick=()=>{
-      state.tariff.elec=+document.getElementById("tarElec").value||0;
-      state.tariff.water=+document.getElementById("tarWater").value||0;
-      toast("تم حفظ الأسعار"); render();
+      const e=+document.getElementById("tarElec").value||0, w=+document.getElementById("tarWater").value||0;
+      requireCode(()=>{ state.tariff.elec=e; state.tariff.water=w; toast("تم حفظ الأسعار"); render(); }, meterCode());
     };
   }
 
@@ -1216,10 +1309,14 @@ function bindScreen(){
     wa.onclick=()=>{
       const name=document.getElementById("wName").value.trim();
       const monthly=+document.getElementById("wMonthly").value;
-      if(!name) return toast("أدخل اسم العامل");
+      const role=document.getElementById("wRole").value.trim();
+      const phone=document.getElementById("wPhone").value.trim();
+      const startV=document.getElementById("wStart").value;
+      if(!name) return toast("أدخل اسم الموظف");
+      if(phone && !validPhone(phone)) return toast("رقم الهاتف يجب أن يكون 8 أرقام");
       if(!(monthly>0)) return toast("أدخل الراتب الشهري");
-      state.workers.push({id:uid(),name,monthly,absent:[],payments:[]});
-      toast("تمت إضافة العامل"); render();
+      state.workers.push({id:uid(),name,role,phone,start:startV?startV+"T00:00:00.000Z":iso(new Date()),monthly,absent:[],payments:[]});
+      toast("تمت إضافة الموظف"); render();
     };
   }
   document.querySelectorAll("[data-abstoday]").forEach(b=>b.onclick=()=>{
@@ -1250,17 +1347,18 @@ function bindScreen(){
 
 /* ============ code-protected actions ============ */
 const SECRET_CODE="720707";
-let _codeCb=null;
-function requireCode(cb){
-  _codeCb=cb;
+let _codeCb=null, _codeExpected=SECRET_CODE;
+function requireCode(cb, expected){
+  _codeCb=cb; _codeExpected=expected||SECRET_CODE;
   const inp=document.getElementById("codeInput"); inp.value="";
   document.getElementById("codeModal").style.display="flex";
   setTimeout(()=>inp.focus(),50);
 }
+function meterCode(){ return (state.meterPin&&state.meterPin.trim())?state.meterPin.trim():SECRET_CODE; }
 (function(){
   const submit=()=>{
     const v=document.getElementById("codeInput").value.trim();
-    if(v===SECRET_CODE){ document.getElementById("codeModal").style.display="none"; const cb=_codeCb; _codeCb=null; if(cb) cb(); }
+    if(v===_codeExpected){ document.getElementById("codeModal").style.display="none"; const cb=_codeCb; _codeCb=null; if(cb) cb(); }
     else toast("الكود غير صحيح");
   };
   document.getElementById("codeOk").onclick=submit;
@@ -1389,6 +1487,7 @@ function waLink(o){
 document.getElementById("settingsBtn").onclick=()=>{
   document.getElementById("lockToggle").checked=!!(state.lock&&state.lock.enabled);
   document.getElementById("lockPinSet").value=(state.lock&&state.lock.pin)||"";
+  document.getElementById("meterPinSet").value=state.meterPin||"";
   document.getElementById("settingsModal").style.display="flex";
 };
 document.getElementById("setClose").onclick=()=>document.getElementById("settingsModal").style.display="none";
@@ -1399,6 +1498,7 @@ document.getElementById("setSave").onclick=()=>{
   const pin=document.getElementById("lockPinSet").value.trim();
   if(en&&!pin){ toast("أدخل كلمة المرور"); return; }
   state.lock={enabled:en,pin:pin};
+  state.meterPin=document.getElementById("meterPinSet").value.trim();
   if(en) unlocked=true; // owner sets it now, stays in this session
   save(); document.getElementById("settingsModal").style.display="none"; toast("تم حفظ الإعدادات");
 };
