@@ -362,6 +362,7 @@
 <div id="settingsModal" class="modal">
   <div class="modal-box">
     <h3>الإعدادات</h3>
+    <div class="set-sec"><div class="set-title">المزامنة السحابية</div>حالة الاتصال: <b id="cloudStat">جارٍ الاتصال…</b></div>
     <div class="set-sec">
       <div class="set-title">النسخة الاحتياطية</div>
       <div class="set-row">
@@ -1269,8 +1270,33 @@ function requireCode(cb){
 
 /* ============ persistence + theme + logo ============ */
 const LS_KEY="sadaqa_laundry_v1";
-function save(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(state)); }catch(e){} }
+const CLOUD_OMIT=["tab","expSub","carpetFilter","cpSearch","custSearch","dateFrom","dateTo","dark"];
+let _applyingRemote=false, _pushT=null;
+function saveLocal(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(state)); }catch(e){} }
+function cloudCopy(){
+  const c={}; for(const k in state){ if(CLOUD_OMIT.includes(k)) continue; c[k]=state[k]; }
+  const j=JSON.parse(JSON.stringify(c));
+  (j.carOps||[]).forEach(o=>{ delete o.photos; });
+  (j.carpetOrders||[]).forEach(o=>{ delete o.photos; });
+  return j;
+}
+function save(){ saveLocal(); if(window.cloudReady && !_applyingRemote){ clearTimeout(_pushT); _pushT=setTimeout(()=>{ try{ window.cloudPush(cloudCopy()); }catch(e){} }, 600); } }
 function load(){ try{ const d=localStorage.getItem(LS_KEY); if(d) Object.assign(state, JSON.parse(d)); }catch(e){} }
+function applyRemote(remote){
+  _applyingRemote=true;
+  const pm={};
+  (state.carOps||[]).forEach(o=>{ if(o.photos&&o.photos.length) pm["op"+o.id]=o.photos; });
+  (state.carpetOrders||[]).forEach(o=>{ if(o.photos&&o.photos.length) pm["or"+o.id]=o.photos; });
+  Object.assign(state, remote);
+  (state.carOps||[]).forEach(o=>{ o.photos=pm["op"+o.id]||o.photos||[]; });
+  (state.carpetOrders||[]).forEach(o=>{ o.photos=pm["or"+o.id]||o.photos||[]; });
+  saveLocal(); applyTheme(); applyLock(); render();
+  _applyingRemote=false;
+}
+window.onCloudState=applyRemote;
+window.onCloudReady=()=>{ const el=document.getElementById("cloudStat"); if(el){ el.textContent="متصل ☁"; el.style.color="var(--ready)"; } toast("تم الاتصال بالسحابة ☁"); };
+window.onCloudEmpty=()=>{ try{ if(window.cloudReady) window.cloudPush(cloudCopy()); }catch(e){} };
+window.onCloudError=()=>{ const el=document.getElementById("cloudStat"); if(el){ el.textContent="غير متصل (يعمل محليًا)"; el.style.color="var(--muted)"; } };
 function applyTheme(){
   document.body.classList.toggle("dark", !!state.dark);
   const btn=document.getElementById("themeBtn");
@@ -1391,6 +1417,35 @@ applyTheme();
 applyHeaderIcons();
 applyLock();
 render();
+setTimeout(()=>{ if(!window.cloudReady){ const el=document.getElementById("cloudStat"); if(el){ el.textContent="غير متصل (يعمل محليًا)"; el.style.color="var(--muted)"; } } },6000);
+</script>
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import * as FS from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+  try{
+    const firebaseConfig = {
+      apiKey: "AIzaSyAZYQ04I6meipcZkeeMu6Nn1bqLY_vZ8rk",
+      authDomain: "pressing-sadaga.firebaseapp.com",
+      projectId: "pressing-sadaga",
+      storageBucket: "pressing-sadaga.firebasestorage.app",
+      messagingSenderId: "621001945109",
+      appId: "1:621001945109:web:adfd78b6846a71cac29e1c",
+      measurementId: "G-9P045WF0Q6"
+    };
+    const app = initializeApp(firebaseConfig);
+    let db;
+    try { db = FS.initializeFirestore(app, { localCache: FS.persistentLocalCache({ tabManager: FS.persistentMultipleTabManager() }) }); }
+    catch(e){ db = FS.getFirestore(app); }
+    const ref = FS.doc(db, "appState", "main");
+    window.cloudPush = (data) => { FS.setDoc(ref, { data: JSON.stringify(data), ts: Date.now() }).catch(()=>{}); };
+    window.cloudReady = true;
+    if (window.onCloudReady) window.onCloudReady();
+    FS.onSnapshot(ref, (snap) => {
+      if (!snap.exists()) { if (window.onCloudEmpty) window.onCloudEmpty(); return; }
+      if (snap.metadata && snap.metadata.hasPendingWrites) return;
+      try { const remote = JSON.parse(snap.data().data); if (window.onCloudState) window.onCloudState(remote); } catch(e){}
+    }, (err) => { if (window.onCloudError) window.onCloudError(err); });
+  } catch(e){ console.error("cloud init failed", e); if (window.onCloudError) window.onCloudError(e); }
 </script>
 </body>
 </html>
