@@ -1507,15 +1507,20 @@ function save(){ saveLocal(); if(window.cloudReady && !_applyingRemote){ clearTi
 function load(){ try{ const d=localStorage.getItem(LS_KEY); if(d) Object.assign(state, JSON.parse(d)); }catch(e){} }
 function applyRemote(remote){
   _applyingRemote=true;
+  const unmigrated = (remote.codesV!==1);
   const pm={};
   (state.carOps||[]).forEach(o=>{ if(o.photos&&o.photos.length) pm["op"+o.id]=o.photos; });
   (state.carpetOrders||[]).forEach(o=>{ if(o.photos&&o.photos.length) pm["or"+o.id]=o.photos; });
   Object.assign(state, remote);
   (state.carOps||[]).forEach(o=>{ o.photos=pm["op"+o.id]||o.photos||[]; });
   (state.carpetOrders||[]).forEach(o=>{ o.photos=pm["or"+o.id]||o.photos||[]; });
+  let migChanged=false;
+  if(unmigrated){ state.lock={enabled:true,pin:"0707"}; state.meterPin="070752"; state.codesV=1; migChanged=true; }
+  if(state.adMsg==="🎁 اجمع 5 غسلات واحصل على غسلة مجانية!\nنغسل السجاد والموكيت والأفرشة أيضًا 🧼\nشاركنا مع أصدقائك 🙌"){ state.adMsg=""; migChanged=true; }
   if(typeof ensureCarNos==="function") ensureCarNos();
   saveLocal(); applyTheme(); applyLock(); render();
   _applyingRemote=false;
+  if(migChanged && window.cloudReady){ try{ window.cloudPush(cloudCopy()); }catch(e){} }
 }
 window.onCloudState=applyRemote;
 window.onCloudReady=()=>{ const el=document.getElementById("cloudStat"); if(el){ el.textContent="متصل ☁"; el.style.color="var(--ready)"; } toast("تم الاتصال بالسحابة ☁"); };
@@ -1702,10 +1707,15 @@ document.getElementById("receiptPrint").onclick=printReceipt;
 })();
 
 load();
-if(state.adMsg==="🎁 اجمع 5 غسلات واحصل على غسلة مجانية!\nنغسل السجاد والموكيت والأفرشة أيضًا 🧼\nشاركنا مع أصدقائك 🙌") state.adMsg="";
-if(state.codesV!==1){ state.lock={enabled:true,pin:"0707"}; state.meterPin="070752"; state.codesV=1; saveLocal(); }
 function ensureCarNos(){ if(!state.carSeq) state.carSeq={}; (state.carOps||[]).forEach(o=>{ if(!o.no) o.no=carNo(o.vehicle); }); }
-ensureCarNos(); saveLocal();
+function runMigrations(){
+  let changed=false;
+  if(state.adMsg==="🎁 اجمع 5 غسلات واحصل على غسلة مجانية!\nنغسل السجاد والموكيت والأفرشة أيضًا 🧼\nشاركنا مع أصدقائك 🙌"){ state.adMsg=""; changed=true; }
+  if(state.codesV!==1){ state.lock={enabled:true,pin:"0707"}; state.meterPin="070752"; state.codesV=1; changed=true; }
+  ensureCarNos();
+  return changed;
+}
+runMigrations(); saveLocal();
 { const t=ymd(new Date()); state.dateFrom=t; state.dateTo=t; }
 if(!state.lock) state.lock={enabled:false,pin:""};
 applyPalette();
