@@ -167,7 +167,8 @@
   #lightbox{display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:100;align-items:center;justify-content:center;padding:20px;cursor:zoom-out}
   #lightbox img{max-width:100%;max-height:100%;border-radius:10px}
   .modal{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:110;display:none;align-items:center;justify-content:center;padding:20px}
-  .modal-box{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:20px;max-width:340px;width:100%;box-shadow:var(--shadow)}
+  .modal-box{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:20px;max-width:340px;width:100%;box-shadow:var(--shadow);max-height:88vh;overflow-y:auto}
+  #settingsModal .modal-actions{position:sticky;bottom:-20px;background:var(--surface);padding:12px 0 8px;margin-top:8px;border-top:1px solid var(--line);z-index:2}
   .modal-box h3{margin:0 0 6px;font-size:1.05rem;font-weight:800}
   .modal-box p{margin:0 0 14px;font-size:.85rem;color:var(--muted)}
   .modal-box input{width:100%;padding:12px;border:1px solid var(--line);border-radius:11px;background:var(--input);color:var(--ink);font-size:1.15rem;text-align:center;letter-spacing:4px;margin-bottom:14px}
@@ -363,6 +364,7 @@
   .pal-sw span{width:100%;padding:3px 2px;background:rgba(0,0,0,.22)}
   .pal-sw.on{border-color:var(--ink)}
 
+  .field input:disabled{background:var(--soft);color:var(--muted);cursor:not-allowed;font-weight:700;-webkit-text-fill-color:var(--muted)}
   .set-sec textarea{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--input);color:var(--ink);font-size:.9rem;font-family:inherit;resize:vertical;line-height:1.5}
 
   .tbl.striped tbody tr:nth-child(odd){background:rgba(15,157,143,.06)}
@@ -435,7 +437,15 @@
     <div class="set-sec">
       <div class="set-title">كود العدّادات (تعديل القراءة والسعر)</div>
       <input type="password" id="meterPinSet" inputmode="numeric" placeholder="كود العدّادات">
-      <div class="hint" style="margin-top:6px">مستقلّ عن كود فتح التطبيق — اجعله مختلفًا. إن تركته فارغًا يكون 720707.</div>
+      <div class="hint" style="margin-top:6px">مستقلّ عن كود فتح التطبيق — اجعله مختلفًا. إن تركته فارغًا يكون 070752.</div>
+    </div>
+    <div class="set-sec">
+      <div class="set-title">أسعار استهلاك العدّاد</div>
+      <div class="row2">
+        <div class="field"><label>سعر كيلو الكهرباء</label><input type="number" id="tarElecSet" min="0" placeholder="0"></div>
+        <div class="field"><label>سعر وحدة الماء</label><input type="number" id="tarWaterSet" min="0" placeholder="0"></div>
+      </div>
+      <div class="hint" style="margin-top:6px">اتركها صفرًا لتسجيل الاستهلاك بلا تكلفة.</div>
     </div>
     <div class="set-sec">
       <div class="set-title">رسالة الشكر (نهاية الرسالة)</div>
@@ -450,7 +460,7 @@
       <button class="btn-primary" id="setSave" style="flex:1">حفظ</button>
       <button class="mini" id="setClose">إغلاق</button>
     </div>
-    <div class="hint" style="text-align:center;margin-top:10px;opacity:.8">الإصدار: 2026‑07‑14 · رمز الدولة ثابت</div>
+    <div class="hint" style="text-align:center;margin-top:10px;opacity:.8">الإصدار: 2026‑07‑15 · أكواد + حذف السجاد</div>
   </div>
 </div>
 <div id="receiptModal" class="modal">
@@ -588,8 +598,12 @@ function carpetCounts(f){
 function carIncome(f){return sum(state.carOps.filter(f),o=>o.price);}
 function carpetIncome(f){return sum(state.carpetOrders.filter(o=>o.paid&&f(o.paidDate||o.deliveredDate||o.date)),o=>o.price);}
 function manualExp(f){return sum(state.expenses.filter(e=>f(e.date)),e=>e.amount);}
+function mElec(m){ return (m.elec!==undefined&&m.elec!=="")?(+m.elec||0):(+m.elecEnd||+m.elecStart||0); }
+function mWater(m){ return (m.water!==undefined&&m.water!=="")?(+m.water||0):(+m.waterEnd||+m.waterStart||0); }
+function sortedMeters(){ return state.meters.slice().sort((a,b)=>(a.savedAt||new Date(a.date).getTime())-(b.savedAt||new Date(b.date).getTime())); }
+function meterConsAt(i,list){ if(i<=0) return {elec:0,water:0}; return {elec:Math.max(0,mElec(list[i])-mElec(list[i-1])), water:Math.max(0,mWater(list[i])-mWater(list[i-1]))}; }
 function meterUse(m){return {elec:Math.max(0,(+m.elecEnd||0)-(+m.elecStart||0)), water:Math.max(0,(+m.waterEnd||0)-(+m.waterStart||0))};}
-function utilityCost(f){return sum(state.meters.filter(m=>f(m.date)),m=>{const u=meterUse(m);return u.elec*state.tariff.elec+u.water*state.tariff.water;});}
+function utilityCost(f){ const list=sortedMeters(); let t=0; for(let i=0;i<list.length;i++){ if(!f(list[i].date))continue; const u=meterConsAt(i,list); t+=u.elec*state.tariff.elec+u.water*state.tariff.water; } return t; }
 function wagesFor(f){return f===isToday?wagesToday() : f===isMonth?wagesMonth() : 0;}
 function totalExp(f){return manualExp(f)+utilityCost(f)+wagesFor(f);}
 /* kept name for backward calls -> now returns combined total */
@@ -1060,71 +1074,75 @@ function expGeneral(){
 }
 
 function expMeters(){
-  const m=state.meters.slice().sort((a,b)=>(b.savedAt||new Date(b.date).getTime())-(a.savedAt||new Date(a.date).getTime()))[0]||null;
-  const es=m?m.elecStart:"", ee=m?m.elecEnd:"", ws=m?m.waterStart:"", we=m?m.waterEnd:"";
-  const use=m?meterUse(m):{elec:0,water:0};
-  const cost=use.elec*state.tariff.elec+use.water*state.tariff.water;
-  const lockedUntil=(m&&m.savedAt)?m.savedAt+24*3600*1000:0;
+  const list=sortedMeters();
+  const recent=list[list.length-1]||null;
+  const lockedNow = recent && recent.savedAt && (Date.now()-recent.savedAt<12*3600*1000);
+  const baseline = lockedNow ? (list[list.length-2]||null) : recent;
+  const baseElec = baseline?mElec(baseline):null, baseWater = baseline?mWater(baseline):null;
+  const curElec = lockedNow?mElec(recent):"", curWater = lockedNow?mWater(recent):"";
+  const consElec=(lockedNow&&baseline)?Math.max(0,mElec(recent)-baseElec):0;
+  const consWater=(lockedNow&&baseline)?Math.max(0,mWater(recent)-baseWater):0;
+  const cost=consElec*state.tariff.elec+consWater*state.tariff.water;
+  const lockedUntil=(recent&&recent.savedAt)?recent.savedAt+12*3600*1000:0;
   const locked=lockedUntil>Date.now();
   const untilStr=locked?new Date(lockedUntil).toLocaleString("ar",{weekday:"short",hour:"2-digit",minute:"2-digit"}):"";
   const lockHint=locked
-    ? `<div class="hint" style="color:var(--unpaid)">🔒 القراءة محفوظة. لا يمكن تغييرها إلا بالكود قبل ${untilStr}. بعدها يمكنك إضافة عدّاد جديد.</div>`
-    : `<div class="hint">يمكنك حفظ قراءة عدّاد جديدة.</div>`;
+    ? `<div class="hint" style="color:var(--unpaid)">🔒 قراءة اليوم محفوظة. لتغييرها تحتاج كود العدّادات قبل ${untilStr}. غدًا تُدخل القراءة الجديدة.</div>`
+    : `<div class="hint">${baseElec!=null?"أدخل قراءة العدّاد الحالية، ويُحسب الفرق عن آخر قراءة تلقائيًا.":"أدخل أول قراءة كنقطة بداية (بلا استهلاك)."}</div>`;
   return `
     <div class="cols">
       <div class="panel">
-        <h3>قراءات عدّادات اليوم</h3>
+        <h3>قراءة العدّاد اليوم</h3>
         <div class="meter elec">
-          <div class="meter-head"><span class="mi">${svg(I.bolt)}</span>الكهرباء<span class="use-pill">${fmt(use.elec)} كيلو</span></div>
+          <div class="meter-head"><span class="mi">${svg(I.bolt)}</span>الكهرباء<span class="use-pill">استهلاك ${fmt(consElec)} كيلو</span></div>
           <div class="row2">
-            <div class="field"><label>قراءة البداية (قبل العمل)</label><input id="elecStart" type="number" value="${es}" placeholder="مثال: 1200"></div>
-            <div class="field"><label>قراءة النهاية (آخر اليوم)</label><input id="elecEnd" type="number" value="${ee}" placeholder="مثال: 1246"></div>
+            <div class="field"><label>قراءة الأمس (ثابتة)</label><input type="number" value="${baseElec!=null?baseElec:''}" placeholder="—" disabled></div>
+            <div class="field"><label>قراءة اليوم</label><input id="elecNow" type="number" value="${curElec}" placeholder="${baseElec!=null?('أكبر من '+baseElec):'مثال: 1455'}"></div>
           </div>
         </div>
         <div class="meter water">
-          <div class="meter-head"><span class="mi">${svg(I.drop)}</span>الماء<span class="use-pill">${fmt(use.water)} وحدة</span></div>
+          <div class="meter-head"><span class="mi">${svg(I.drop)}</span>الماء<span class="use-pill">استهلاك ${fmt(consWater)} وحدة</span></div>
           <div class="row2">
-            <div class="field"><label>قراءة البداية (قبل العمل)</label><input id="waterStart" type="number" value="${ws}" placeholder="مثال: 300"></div>
-            <div class="field"><label>قراءة النهاية (آخر اليوم)</label><input id="waterEnd" type="number" value="${we}" placeholder="مثال: 309"></div>
+            <div class="field"><label>قراءة الأمس (ثابتة)</label><input type="number" value="${baseWater!=null?baseWater:''}" placeholder="—" disabled></div>
+            <div class="field"><label>قراءة اليوم</label><input id="waterNow" type="number" value="${curWater}" placeholder="${baseWater!=null?('أكبر من '+baseWater):'مثال: 300'}"></div>
           </div>
         </div>
-        <button class="btn-primary" id="meterSave">حفظ قراءات اليوم</button>
+        <button class="btn-primary" id="meterSave">حفظ قراءة اليوم</button>
         ${lockHint}
       </div>
       <div class="panel">
-        <h3>سعر الوحدة والتكلفة</h3>
-        <div class="hint" style="margin-bottom:13px">أدخل سعر الوحدة فتُحسب تكلفة الاستهلاك وتُضاف تلقائيًا لمصروف اليوم والربح. اتركها صفرًا لتسجيل الاستهلاك فقط.</div>
+        <h3>تكلفة الاستهلاك</h3>
+        <div class="hint" style="margin-bottom:13px">تُحسب تكلفة الاستهلاك من أسعار الوحدة وتُضاف لمصروف اليوم والربح. لتعديل الأسعار: الإعدادات ⚙.</div>
         <div class="row2">
-          <div class="field"><label>سعر كيلو الكهرباء</label><input id="tarElec" type="number" min="0" value="${state.tariff.elec}"></div>
-          <div class="field"><label>سعر وحدة الماء</label><input id="tarWater" type="number" min="0" value="${state.tariff.water}"></div>
+          <div class="field"><label>سعر كيلو الكهرباء</label><input type="number" value="${state.tariff.elec}" disabled></div>
+          <div class="field"><label>سعر وحدة الماء</label><input type="number" value="${state.tariff.water}" disabled></div>
         </div>
-        <button class="btn-primary" id="tarSave">حفظ الأسعار</button>
-        <div class="sum-row"><span>تكلفة الاستهلاك</span><span class="big">${money(cost)}</span></div>
+        <div class="sum-row"><span>تكلفة استهلاك اليوم</span><span class="big">${money(cost)}</span></div>
       </div>
     </div>
     ${(()=>{
-      const list=state.meters.slice().sort((a,b)=>new Date(a.date)-new Date(b.date));
+      const L=sortedMeters();
       let cum=0, tElec=0, tWater=0;
-      const rows=list.map(rec=>{
-        const u=meterUse(rec); const c=u.elec*state.tariff.elec+u.water*state.tariff.water;
+      const body=L.length?L.map((rec,i)=>{
+        const u=meterConsAt(i,L); const c=u.elec*state.tariff.elec+u.water*state.tariff.water;
         cum+=c; tElec+=u.elec; tWater+=u.water;
         return `<tr>
           <td>${ymd(rec.date)}</td>
-          <td class="amt" style="color:var(--wash)">${fmt(u.elec)}</td>
-          <td class="amt" style="color:var(--brand)">${fmt(u.water)}</td>
+          <td class="amt" style="font-weight:700">${fmt(mElec(rec))}</td>
+          <td class="amt" style="color:var(--wash)">${i===0?"— بداية":fmt(u.elec)}</td>
+          <td class="amt" style="color:var(--brand)">${i===0?"—":fmt(u.water)}</td>
           <td class="amt">${money(c)}</td>
           <td class="amt" style="font-weight:800">${money(cum)}</td></tr>`;
-      }).join("");
-      const body=list.length?rows:`<tr><td colspan="5"><div class="empty">${svg(I.empty)}لا توجد قراءات بعد — ابدأ من الصفر بحفظ أول قراءة.</div></td></tr>`;
+      }).join(""):`<tr><td colspan="6"><div class="empty">${svg(I.empty)}لا توجد قراءات بعد — أدخل أول قراءة كنقطة بداية.</div></td></tr>`;
       return `
     <div class="panel" style="margin-top:18px">
       <h3>كشف حساب استهلاك العدّاد</h3>
-      <table class="tbl"><thead><tr><th>التاريخ</th><th>كهرباء (كيلو)</th><th>ماء (وحدة)</th><th>تكلفة اليوم</th><th>الإجمالي التراكمي</th></tr></thead>
+      <div class="tbl-wrap"><table class="tbl"><thead><tr><th>التاريخ</th><th>قراءة الكهرباء</th><th>استهلاك كهرباء</th><th>استهلاك ماء</th><th>تكلفة اليوم</th><th>التراكمي</th></tr></thead>
         <tbody>${body}</tbody>
-        ${list.length?`<tfoot><tr style="border-top:2px solid var(--line);font-weight:800">
-          <td>الإجمالي</td><td class="amt" style="color:var(--wash)">${fmt(tElec)}</td><td class="amt" style="color:var(--brand)">${fmt(tWater)}</td>
+        ${L.length?`<tfoot><tr style="border-top:2px solid var(--line);font-weight:800">
+          <td colspan="2">الإجمالي</td><td class="amt" style="color:var(--wash)">${fmt(tElec)}</td><td class="amt" style="color:var(--brand)">${fmt(tWater)}</td>
           <td class="amt">${money(cum)}</td><td class="amt" style="color:var(--brand)">${money(cum)}</td></tr></tfoot>`:""}
-      </table>
+      </table></div>
     </div>`;
     })()}`;
 }
@@ -1372,7 +1390,7 @@ function bindScreen(){
   document.querySelectorAll("[data-del-order]").forEach(b=>b.onclick=()=>{
     const o=state.carpetOrders.find(x=>x.id===b.dataset.delOrder);
     const doDel=()=>{ state.carpetOrders=state.carpetOrders.filter(x=>x.id!==b.dataset.delOrder); toast("تم الحذف"); render(); };
-    if(o&&o.paid) requireCode(doDel, SECRET_CODE, "كود الحذف", "أدخل كود الحذف لتأكيد العملية."); else doDel();
+    requireCode(doDel, SECRET_CODE, "كود الحذف", "حذف الطلب يتطلب كود الحذف.");
   });
 
   // expenses
@@ -1398,17 +1416,24 @@ function bindScreen(){
   const ms=document.getElementById("meterSave");
   if(ms){
     ms.onclick=()=>{
-      const g=id=>{const v=document.getElementById(id).value;return v===""?0:+v;};
-      const rec={elecStart:g("elecStart"),elecEnd:g("elecEnd"),waterStart:g("waterStart"),waterEnd:g("waterEnd")};
-      if(rec.elecEnd&&rec.elecEnd<rec.elecStart) return toast("قراءة نهاية الكهرباء أقل من البداية");
-      if(rec.waterEnd&&rec.waterEnd<rec.waterStart) return toast("قراءة نهاية الماء أقل من البداية");
-      const recent=state.meters.slice().sort((a,b)=>(b.savedAt||new Date(b.date).getTime())-(a.savedAt||new Date(a.date).getTime()))[0];
-      const locked = recent && recent.savedAt && (Date.now()-recent.savedAt < 24*3600*1000);
-      const addNew=()=>{ state.meters.push({id:uid(),date:iso(new Date()),savedAt:Date.now(),...rec}); toast("تم حفظ قراءة العدّاد"); render(); };
-      if(locked){
-        requireCode(()=>{ Object.assign(recent,rec); toast("تم تعديل القراءة"); render(); }, meterCode(), "كود العدّادات", "تعديل العدّاد يتطلب كود العدّادات.");
+      const eN=document.getElementById("elecNow").value, wN=document.getElementById("waterNow").value;
+      const elec = eN===""?null:+eN, water = wN===""?null:+wN;
+      if(elec===null && water===null) return toast("أدخل قراءة العدّاد");
+      const list=sortedMeters();
+      const recent=list[list.length-1]||null;
+      const lockedNow = recent && recent.savedAt && (Date.now()-recent.savedAt<12*3600*1000);
+      const baseline = lockedNow ? (list[list.length-2]||null) : recent;
+      if(baseline){
+        if(elec!==null && elec<mElec(baseline)) return toast("قراءة الكهرباء أقل من آخر قراءة");
+        if(water!==null && water<mWater(baseline)) return toast("قراءة الماء أقل من آخر قراءة");
+      }
+      const nElec = elec!==null?elec:(recent?mElec(recent):0);
+      const nWater = water!==null?water:(recent?mWater(recent):0);
+      if(lockedNow){
+        requireCode(()=>{ recent.elec=nElec; recent.water=nWater; delete recent.elecStart;delete recent.elecEnd;delete recent.waterStart;delete recent.waterEnd; toast("تم تعديل القراءة"); render(); }, meterCode(), "كود العدّادات", "تعديل العدّاد يتطلب كود العدّادات.");
       } else {
-        addNew();
+        state.meters.push({id:uid(),date:iso(new Date()),savedAt:Date.now(),elec:nElec,water:nWater});
+        toast("تم حفظ قراءة اليوم"); render();
       }
     };
   }
@@ -1676,6 +1701,8 @@ function openSettings(){
   document.getElementById("lockToggle").checked=!!(state.lock&&state.lock.enabled);
   document.getElementById("lockPinSet").value=(state.lock&&state.lock.pin)||"";
   document.getElementById("meterPinSet").value=state.meterPin||"";
+  document.getElementById("tarElecSet").value=state.tariff.elec||0;
+  document.getElementById("tarWaterSet").value=state.tariff.water||0;
   document.getElementById("thanksSet").value=state.thanksMsg||"";
   document.getElementById("adMsgSet").value=state.adMsg||"";
   const palRow=document.getElementById("palRow");
@@ -1695,6 +1722,8 @@ document.getElementById("setSave").onclick=()=>{
   if(en&&!pin){ toast("أدخل كلمة المرور"); return; }
   state.lock={enabled:en,pin:pin};
   state.meterPin=document.getElementById("meterPinSet").value.trim();
+  state.tariff.elec=+document.getElementById("tarElecSet").value||0;
+  state.tariff.water=+document.getElementById("tarWaterSet").value||0;
   state.thanksMsg=document.getElementById("thanksSet").value.trim();
   state.adMsg=document.getElementById("adMsgSet").value.trim();
   if(en) unlocked=true; // owner sets it now, stays in this session
