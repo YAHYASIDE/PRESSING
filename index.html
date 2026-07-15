@@ -404,8 +404,8 @@
 <div id="lightbox" onclick="this.style.display='none'"><img alt=""></div>
 <div id="codeModal" class="modal">
   <div class="modal-box">
-    <h3>تأكيد بالكود</h3>
-    <p>هذا الإجراء (إلغاء أو حذف دفعة) يتطلب إدخال كود التحقق.</p>
+    <h3 id="codeTitle">أدخل الكود</h3>
+    <p id="codeDesc">هذا الإجراء يتطلب إدخال الكود.</p>
     <input type="password" id="codeInput" inputmode="numeric" autocomplete="off" placeholder="الكود">
     <div class="modal-actions">
       <button class="btn-primary" id="codeOk" style="width:auto;flex:1">تأكيد</button>
@@ -1316,9 +1316,9 @@ function bindScreen(){
   document.querySelectorAll("[data-carwa]").forEach(b=>b.onclick=()=>{ const o=state.carOps.find(x=>x.id===b.dataset.carwa); if(o) openCarChat(o); });
   document.querySelectorAll("[data-carphotos]").forEach(b=>b.onclick=()=>{ const o=state.carOps.find(x=>x.id===b.dataset.carphotos); if(o) shareCarImages(o); });
   document.querySelectorAll("[data-del-car]").forEach(b=>b.onclick=()=>{
-    requireCode(()=>{ state.carOps=state.carOps.filter(o=>o.id!==b.dataset.delCar); toast("تم الحذف"); render(); });});
+    requireCode(()=>{ state.carOps=state.carOps.filter(o=>o.id!==b.dataset.delCar); toast("تم الحذف"); render(); }, SECRET_CODE, "كود الحذف", "أدخل كود الحذف لتأكيد العملية.");});
   document.querySelectorAll("[data-del-cust]").forEach(b=>b.onclick=()=>{
-    requireCode(()=>{ delete state.customers[b.dataset.delCust]; toast("تم حذف الزبون"); render(); });});
+    requireCode(()=>{ delete state.customers[b.dataset.delCust]; toast("تم حذف الزبون"); render(); }, SECRET_CODE, "كود الحذف", "أدخل كود الحذف لتأكيد العملية.");});
 
   // carpets
   document.querySelectorAll("[data-filter]").forEach(b=>b.onclick=()=>{state.carpetFilter=b.dataset.filter;render();});
@@ -1366,13 +1366,13 @@ function bindScreen(){
   document.querySelectorAll("[data-pay]").forEach(b=>b.onclick=()=>{
     const o=state.carpetOrders.find(x=>x.id===b.dataset.pay);
     if(!o) return;
-    if(o.paid){ requireCode(()=>{ o.paid=false; delete o.paidDate; toast("أُلغي الدفع"); render(); }); }
+    if(o.paid){ requireCode(()=>{ o.paid=false; delete o.paidDate; toast("أُلغي الدفع"); render(); }, SECRET_CODE, "كود الحذف", "إلغاء الدفع يتطلب كود الحذف."); }
     else { o.paid=true; o.paidDate=iso(new Date()); toast("تم تحصيل الدفع"); render(); }
   });
   document.querySelectorAll("[data-del-order]").forEach(b=>b.onclick=()=>{
     const o=state.carpetOrders.find(x=>x.id===b.dataset.delOrder);
     const doDel=()=>{ state.carpetOrders=state.carpetOrders.filter(x=>x.id!==b.dataset.delOrder); toast("تم الحذف"); render(); };
-    if(o&&o.paid) requireCode(doDel); else doDel();
+    if(o&&o.paid) requireCode(doDel, SECRET_CODE, "كود الحذف", "أدخل كود الحذف لتأكيد العملية."); else doDel();
   });
 
   // expenses
@@ -1406,7 +1406,7 @@ function bindScreen(){
       const locked = recent && recent.savedAt && (Date.now()-recent.savedAt < 24*3600*1000);
       const addNew=()=>{ state.meters.push({id:uid(),date:iso(new Date()),savedAt:Date.now(),...rec}); toast("تم حفظ قراءة العدّاد"); render(); };
       if(locked){
-        requireCode(()=>{ Object.assign(recent,rec); toast("تم تعديل القراءة"); render(); }, meterCode());
+        requireCode(()=>{ Object.assign(recent,rec); toast("تم تعديل القراءة"); render(); }, meterCode(), "كود العدّادات", "تعديل العدّاد يتطلب كود العدّادات.");
       } else {
         addNew();
       }
@@ -1416,7 +1416,7 @@ function bindScreen(){
   if(ts){
     ts.onclick=()=>{
       const e=+document.getElementById("tarElec").value||0, w=+document.getElementById("tarWater").value||0;
-      requireCode(()=>{ state.tariff.elec=e; state.tariff.water=w; toast("تم حفظ الأسعار"); render(); }, meterCode());
+      requireCode(()=>{ state.tariff.elec=e; state.tariff.water=w; toast("تم حفظ الأسعار"); render(); }, meterCode(), "كود العدّادات", "تعديل العدّاد يتطلب كود العدّادات.");
     };
   }
 
@@ -1473,8 +1473,10 @@ function bindScreen(){
 /* ============ code-protected actions ============ */
 const SECRET_CODE="070752";
 let _codeCb=null, _codeExpected=SECRET_CODE;
-function requireCode(cb, expected){
+function requireCode(cb, expected, title, desc){
   _codeCb=cb; _codeExpected=expected||SECRET_CODE;
+  const t=document.getElementById("codeTitle"); if(t) t.textContent=title||"أدخل الكود";
+  const d=document.getElementById("codeDesc"); if(d) d.textContent=desc||"هذا الإجراء يتطلب إدخال الكود.";
   const inp=document.getElementById("codeInput"); inp.value="";
   document.getElementById("codeModal").style.display="flex";
   setTimeout(()=>inp.focus(),50);
@@ -1507,7 +1509,7 @@ function save(){ saveLocal(); if(window.cloudReady && !_applyingRemote){ clearTi
 function load(){ try{ const d=localStorage.getItem(LS_KEY); if(d) Object.assign(state, JSON.parse(d)); }catch(e){} }
 function applyRemote(remote){
   _applyingRemote=true;
-  const unmigrated = (remote.codesV!==1);
+  const unmigrated = (remote.codesV!==2);
   const pm={};
   (state.carOps||[]).forEach(o=>{ if(o.photos&&o.photos.length) pm["op"+o.id]=o.photos; });
   (state.carpetOrders||[]).forEach(o=>{ if(o.photos&&o.photos.length) pm["or"+o.id]=o.photos; });
@@ -1515,7 +1517,7 @@ function applyRemote(remote){
   (state.carOps||[]).forEach(o=>{ o.photos=pm["op"+o.id]||o.photos||[]; });
   (state.carpetOrders||[]).forEach(o=>{ o.photos=pm["or"+o.id]||o.photos||[]; });
   let migChanged=false;
-  if(unmigrated){ state.lock={enabled:true,pin:"0707"}; state.meterPin="070752"; state.codesV=1; migChanged=true; }
+  if(unmigrated){ state.lock={enabled:true,pin:"0707"}; state.meterPin="070752"; state.codesV=2; migChanged=true; }
   if(state.adMsg==="🎁 اجمع 5 غسلات واحصل على غسلة مجانية!\nنغسل السجاد والموكيت والأفرشة أيضًا 🧼\nشاركنا مع أصدقائك 🙌"){ state.adMsg=""; migChanged=true; }
   if(typeof ensureCarNos==="function") ensureCarNos();
   saveLocal(); applyTheme(); applyLock(); render();
@@ -1669,7 +1671,7 @@ function waLink(o){
 }
 
 /* ---- wire static controls (once) ---- */
-document.getElementById("settingsBtn").onclick=()=>{ requireCode(openSettings, meterCode()); };
+document.getElementById("settingsBtn").onclick=()=>{ requireCode(openSettings, meterCode(), "كود الإعدادات", "أدخل كود الإعدادات للدخول."); };
 function openSettings(){
   document.getElementById("lockToggle").checked=!!(state.lock&&state.lock.enabled);
   document.getElementById("lockPinSet").value=(state.lock&&state.lock.pin)||"";
@@ -1711,7 +1713,7 @@ function ensureCarNos(){ if(!state.carSeq) state.carSeq={}; (state.carOps||[]).f
 function runMigrations(){
   let changed=false;
   if(state.adMsg==="🎁 اجمع 5 غسلات واحصل على غسلة مجانية!\nنغسل السجاد والموكيت والأفرشة أيضًا 🧼\nشاركنا مع أصدقائك 🙌"){ state.adMsg=""; changed=true; }
-  if(state.codesV!==1){ state.lock={enabled:true,pin:"0707"}; state.meterPin="070752"; state.codesV=1; changed=true; }
+  if(state.codesV!==2){ state.lock={enabled:true,pin:"0707"}; state.meterPin="070752"; state.codesV=2; changed=true; }
   ensureCarNos();
   return changed;
 }
