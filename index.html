@@ -18,8 +18,8 @@
     --paid:#1f9d63; --paid-bg:#e4f6ec;
     --shadow:0 1px 2px rgba(21,37,52,.06), 0 8px 24px rgba(21,37,52,.06);
     --radius:16px;
-    --soft:var(--soft); --soft-hover:var(--soft-hover); --input:var(--input); --chip:var(--chip);
-    --info-bg:var(--info-bg); --info-line:var(--info-line); --info-ink:var(--info-ink);
+    --soft:#f1f6fa; --soft-hover:#e8eff5; --input:#f7fafc; --chip:#e9f0f6;
+    --info-bg:#eaf3fb; --info-line:#cfe1f3; --info-ink:#1c6ea4;
   }
   *{box-sizing:border-box}
   html,body{margin:0;padding:0}
@@ -71,12 +71,12 @@
   .veh-card{grid-column:1 / -1}
   .veh-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:13px}
   .veh-total{font-weight:800;font-size:1.15rem;color:var(--brand)}
-  .veh-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
-  .veh-item{display:flex;align-items:center;gap:11px;background:var(--soft);border:1px solid var(--line);border-radius:12px;padding:11px 13px}
-  .veh-item .vic{width:40px;height:40px;border-radius:11px;background:var(--chip);color:var(--brand);display:grid;place-items:center;flex:none}
-  .veh-item .vic svg{width:23px;height:23px}
-  .veh-item .vc{display:block;font-size:1.35rem;font-weight:800;line-height:1.05}
-  .veh-item .vl{display:block;font-size:.78rem;color:var(--muted);font-weight:600}
+  .veh-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:9px}
+  .veh-item{display:flex;align-items:center;gap:8px;background:var(--soft);border:1px solid var(--line);border-radius:11px;padding:8px 9px}
+  .veh-item .vic{width:30px;height:30px;border-radius:9px;background:var(--chip);color:var(--brand);display:grid;place-items:center;flex:none}
+  .veh-item .vic svg{width:17px;height:17px}
+  .veh-item .vc{display:block;font-size:1.1rem;font-weight:800;line-height:1.05}
+  .veh-item .vl{display:block;font-size:.72rem;color:var(--muted);font-weight:600}
   .veh-item .vc small{font-size:.62rem;font-weight:600;color:var(--muted)}
   .exp-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
   .bd-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(104px,1fr));gap:10px}
@@ -88,7 +88,7 @@
   .bd-item .bl{font-size:.74rem;color:var(--muted);font-weight:600}
   .row-ic{display:inline-grid;place-items:center;width:26px;height:26px;border-radius:7px;background:var(--soft-hover);color:var(--brand);vertical-align:middle;margin-inline-end:5px}
   .row-ic svg{width:15px;height:15px}
-  .veh-badge{width:46px;height:46px;border-radius:50%;object-fit:cover;flex:none}
+  .veh-badge{width:34px;height:34px;border-radius:50%;object-fit:cover;flex:none}
   .pick .pick-img{width:48px;height:48px;border-radius:50%;object-fit:cover}
   .row-vimg{width:28px;height:28px;border-radius:50%;object-fit:cover;vertical-align:middle;margin-inline-end:6px;flex:none}
   .seg{display:inline-flex;background:var(--soft-hover);border:1px solid var(--line);border-radius:12px;padding:4px;gap:4px;margin-bottom:18px;flex-wrap:wrap}
@@ -134,7 +134,9 @@
   .field input,.field select{width:100%;padding:11px 13px;border:1px solid var(--line);border-radius:11px;
     background:var(--input);font-size:.95rem;color:var(--ink);transition:border .15s,box-shadow .15s}
   .field input:focus,.field select:focus{outline:none;border-color:var(--brand-2);
-    box-shadow:0 0 0 3px rgba(28,110,164,.15);background:#fff}
+    box-shadow:0 0 0 3px rgba(28,110,164,.15);background:var(--input)}
+  body.dark select,body.dark select option,body.dark .cc-select,body.dark .cc-select option{background:var(--surface);color:var(--ink)}
+  body.dark input,body.dark textarea{background:var(--input);color:var(--ink)}
   .hint{font-size:.72rem;color:var(--muted);margin-top:5px;font-weight:500}
   .picker{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
   .pick{display:flex;flex-direction:column;align-items:center;gap:6px;padding:11px 6px;border:1.5px solid var(--line);background:var(--input);border-radius:12px;color:var(--muted);font-weight:700;font-size:.76rem;transition:border .15s,background .15s,color .15s}
@@ -181,6 +183,8 @@
   .btn-primary:active{transform:translateY(1px)}
 
   .tbl{width:100%;border-collapse:collapse;font-size:.9rem}
+  .tbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  @media(max-width:520px){ .tbl{font-size:.8rem} .tbl th,.tbl td{padding-left:5px;padding-right:5px} }
   .tbl th{text-align:start;color:var(--muted);font-weight:700;font-size:.78rem;padding:8px 10px;border-bottom:1px solid var(--line)}
   .tbl td{padding:11px 10px;border-bottom:1px solid #eef3f7;vertical-align:middle}
   .tbl tr:last-child td{border-bottom:none}
@@ -241,7 +245,7 @@
   @media (max-width:820px){
     .layout{flex-direction:column}
     nav.side{width:100%;flex-direction:row;overflow-x:auto;padding:8px;gap:6px;order:2;position:sticky;bottom:0;
-      background:#fff;border-top:1px solid var(--line);border-inline-start:none;z-index:20}
+      background:var(--surface);border-top:1px solid var(--line);border-inline-start:none;z-index:20}
     .nav-btn{flex-direction:column;gap:4px;padding:8px 6px;font-size:.7rem;min-width:64px;text-align:center}
     .nav-btn svg{width:22px;height:22px}
     .nav-badge{position:absolute;margin:0;top:2px;inset-inline-start:36px}
@@ -264,6 +268,7 @@
   .theme-btn{width:40px;height:40px;border-radius:50%;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.14);color:#fff;display:grid;place-items:center;flex:none;cursor:pointer}
   .theme-btn svg{width:20px;height:20px}
   body.dark{
+    color-scheme:dark;
     --bg:#0e1620; --surface:#18222e; --ink:#e7eef5; --muted:#9db0c0; --line:#2a3947;
     --brand:#2f86c9; --brand-2:#4a9fd8; --teal:#3fae9c;
     --soft:#141e28; --soft-hover:#1e2b38; --input:#101a24; --chip:#22303e;
@@ -336,6 +341,44 @@
   .alert-ic{width:26px;height:26px;flex:none;display:grid;place-items:center}
   .alert-ic svg{width:22px;height:22px}
   .alerts-card{border-inline-start:4px solid var(--wash)}
+
+  .phone-row{display:flex;gap:8px;align-items:stretch}
+  .phone-row .cc-select{flex:0 0 auto;width:135px;padding:10px 6px;border:1px solid var(--line);border-radius:11px;background:var(--input);color:var(--ink);font-size:.8rem}
+  .phone-row .phone-inp{flex:1 1 auto;width:auto;min-width:0}
+  .ba-thumbs{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:6px}
+  .ba-lbl{font-size:.72rem;font-weight:700;color:var(--muted);flex:none}
+
+  .wpay2{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:12px}
+  .wpay-col{display:flex;flex-direction:column;gap:6px}
+  .wpay-col input{padding:9px 11px;border:1px solid var(--line);border-radius:10px;background:var(--input);color:var(--ink);font-size:.9rem;width:100%}
+  .credit-btn{background:var(--ready-bg);color:var(--ready);border-color:#cceccc}
+  .debit-btn{background:var(--unpaid-bg);color:var(--unpaid);border-color:#f0cccc}
+  @media(max-width:520px){ .wpay2{grid-template-columns:1fr} }
+
+  .cat-tot{display:flex;flex-wrap:wrap;gap:8px 16px;margin-bottom:12px;font-size:.85rem;font-weight:600;color:var(--muted)}
+  .cat-tot b{color:var(--ink)}
+
+  .pal-row{display:flex;gap:10px;flex-wrap:wrap}
+  .pal-sw{position:relative;min-width:64px;height:52px;border-radius:12px;border:3px solid transparent;cursor:pointer;padding:0;color:#fff;font-weight:800;font-size:.72rem;display:flex;align-items:flex-end;justify-content:center;overflow:hidden;box-shadow:0 2px 6px rgba(0,0,0,.15)}
+  .pal-sw span{width:100%;padding:3px 2px;background:rgba(0,0,0,.22)}
+  .pal-sw.on{border-color:var(--ink)}
+
+  .set-sec textarea{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--input);color:var(--ink);font-size:.9rem;font-family:inherit;resize:vertical;line-height:1.5}
+
+  .tbl.striped tbody tr:nth-child(odd){background:rgba(15,157,143,.06)}
+  .tbl.striped tbody tr:nth-child(even){background:rgba(15,157,143,.13)}
+  body.dark .tbl.striped tbody tr:nth-child(odd){background:rgba(255,255,255,.03)}
+  body.dark .tbl.striped tbody tr:nth-child(even){background:rgba(255,255,255,.07)}
+  .tbl.striped tbody tr td{border-bottom:2px solid var(--surface)}
+
+  .row-acts{display:inline-flex;gap:5px;align-items:center}
+  .row-acts .wa-btn{width:27px;height:27px}
+  .row-acts .wa-btn svg{width:15px;height:15px}
+  .row-acts .icon-btn{width:27px;height:27px}
+  .photo-btn{background:#0e8fa8}
+
+  .report-btns{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+  .report-btns .mini{background:var(--info-bg);color:var(--brand);border-color:var(--brand-2);font-weight:700}
 </style>
 </head>
 <body>
@@ -374,13 +417,16 @@
   <div class="modal-box">
     <h3>الإعدادات</h3>
     <div class="set-sec"><div class="set-title">المزامنة السحابية</div>حالة الاتصال: <b id="cloudStat">جارٍ الاتصال…</b></div>
+    <div class="set-sec"><div class="set-title">لون التطبيق</div><div class="pal-row" id="palRow"></div></div>
     <div class="set-sec">
       <div class="set-title">النسخة الاحتياطية</div>
       <div class="set-row">
         <button class="mini" id="btnExport">تصدير البيانات</button>
         <label class="mini" style="cursor:pointer">استيراد<input type="file" id="fileImport" accept="application/json,.json" style="display:none"></label>
       </div>
-    </div>
+      <div class="set-row" style="margin-top:9px">
+        <button class="mini" id="btnReset" style="background:var(--unpaid-bg);color:var(--unpaid);border-color:#f0cccc">مسح كل البيانات نهائيًا</button>
+      </div>
     <div class="set-sec">
       <div class="set-title">قفل التطبيق بكلمة مرور</div>
       <label class="sw"><input type="checkbox" id="lockToggle"> تفعيل القفل عند فتح التطبيق</label>
@@ -391,10 +437,20 @@
       <input type="password" id="meterPinSet" inputmode="numeric" placeholder="كود العدّادات">
       <div class="hint" style="margin-top:6px">مستقلّ عن كود فتح التطبيق — اجعله مختلفًا. إن تركته فارغًا يكون 720707.</div>
     </div>
+    <div class="set-sec">
+      <div class="set-title">رسالة الشكر (نهاية الرسالة)</div>
+      <input type="text" id="thanksSet" placeholder="مثال: شكرًا لغسلتك عندنا 🌟">
+    </div>
+    <div class="set-sec">
+      <div class="set-title">رسالة إعلانية (تُضاف لرسائل واتساب)</div>
+      <textarea id="adMsgSet" rows="3" placeholder="مثال: اجمع 5 غسلات واحصل على غسلة مجانية 🎁"></textarea>
+      <div class="hint" style="margin-top:6px">تظهر في نهاية كل رسالة واتساب لجذب الزبائن. اتركها فارغة لإخفائها.</div>
+    </div>
     <div class="modal-actions" style="margin-top:4px">
       <button class="btn-primary" id="setSave" style="flex:1">حفظ</button>
       <button class="mini" id="setClose">إغلاق</button>
     </div>
+    <div class="hint" style="text-align:center;margin-top:10px;opacity:.8">الإصدار: 2026‑07‑14 · رمز الدولة ثابت</div>
   </div>
 </div>
 <div id="receiptModal" class="modal">
@@ -473,39 +529,17 @@ const state = {
   expSub:"general",
   carpetFilter:"all",
   dateFrom:null, dateTo:null,
-  cpSearch:"", custSearch:"", lock:{enabled:false,pin:""}, meterPin:"",
+  cpSearch:"", custSearch:"", expSearch:"", carSearch:"", carSeq:{}, palette:"teal", lock:{enabled:false,pin:""}, meterPin:"", thanksMsg:"شكرًا لغسلتك عندنا 🌟", adMsg:"🎁 اجمع 5 غسلات واحصل على غسلة مجانية!\nنغسل السجاد والموكيت والأفرشة أيضًا 🧼\nشاركنا مع أصدقائك 🙌",
   orderSeq:0,
   vehiclePrices:{...VEHICLE_PRICES},
   piecePrices:{...PIECE_PRICES},
   tariff:{elec:0, water:0},   /* سعر الكيلو / سعر وحدة الماء (0 = تسجيل الاستهلاك فقط) */
-  customers:{
-    "1234":{plate:"1234",stamps:3,totalWashes:3,freeWashes:0,lastVisit:daysAgo(1)},
-    "5678":{plate:"5678",stamps:4,totalWashes:9,freeWashes:1,lastVisit:daysAgo(2)}
-  },
-  meters:[
-    {id:uid(),date:iso(now),elecStart:1200,elecEnd:1246,waterStart:300,waterEnd:309}
-  ],
-  workers:[
-    {id:uid(),name:"محمد",role:"عامل غسيل",phone:"36112233",start:monthAgo(),monthly:30000,absent:[daysAgo(1),daysAgo(2)],payments:[{amount:20000,date:monthAgo()}]},
-    {id:uid(),name:"أحمد",role:"كوّاء",phone:"22445566",start:monthAgo(),monthly:24000,absent:[],payments:[{amount:26000,date:monthAgo()}]}
-  ],
-  carOps:[
-    {id:uid(),vehicle:"سيارة كبيرة",wash:"غسيل داخلي وخارجي",price:4000,note:"",date:iso(now)},
-    {id:uid(),vehicle:"سيارة صغيرة",wash:"غسيل خارجي",price:3000,note:"",date:iso(now)},
-    {id:uid(),vehicle:"شاحنة",wash:"غسيل خارجي",price:10000,note:"",date:iso(now)},
-    {id:uid(),vehicle:"دراجة نارية",wash:"غسيل خارجي",price:1000,note:"",date:daysAgo(3)},
-    {id:uid(),vehicle:"انيل",wash:"غسيل داخلي وخارجي",price:2000,note:"",date:monthAgo()}
-  ],
-  carpetOrders:[
-    {id:uid(),no:"",customer:"أبو محمد",phone:"",type:"سجاد داكن",count:2,unit:1500,price:3000,status:"wash",paid:false,date:iso(now)},
-    {id:uid(),no:"",customer:"منزل الورود",phone:"",type:"موكيت",count:1,unit:2000,price:2000,status:"done",paid:true,paidDate:iso(now),deliveredDate:iso(now),date:iso(now)},
-    {id:uid(),no:"",customer:"سارة",phone:"",type:"لحاف",count:3,unit:2000,price:6000,status:"done",paid:true,paidDate:daysAgo(2),deliveredDate:daysAgo(2),date:daysAgo(2)},
-    {id:uid(),no:"",customer:"مكتب النور",phone:"",type:"ستارة",count:2,unit:1500,price:3000,status:"wash",paid:true,paidDate:iso(now),date:iso(now)}
-  ],
-  expenses:[
-    {id:uid(),amount:800,category:"مواد",reason:"شامبو ومنظفات",date:iso(now)},
-    {id:uid(),amount:300,category:"صيانة",reason:"إصلاح خرطوم",date:iso(now)}
-  ]
+  customers:{},
+  meters:[],
+  workers:[],
+  carOps:[],
+  carpetOrders:[],
+  expenses:[]
 };
 
 /* order numbers for seed */
@@ -577,7 +611,8 @@ function accruedDue(w){
   return cnt*dayRate(w);
 }
 function wPaid(w){return sum(w.payments,p=>p.amount);}
-function wBalance(w){return accruedDue(w)-wPaid(w);}   /* +له  /  -عليه (حتى اليوم) */
+function wCredit(w){return sum(w.credits||[],c=>c.amount);}   /* له إضافي (مكافآت/مستحقات) */
+function wBalance(w){return accruedDue(w)+wCredit(w)-wPaid(w);}   /* +له  /  -عليه (حتى اليوم) */
 function wagesToday(){return sum(state.workers.filter(w=>!absentToday(w)),w=>dayRate(w));}
 function wagesMonth(){return sum(state.workers,netSalary);}
 function wagesRange(){
@@ -650,7 +685,7 @@ function loyaltyCardHTML(plate){
 }
 
 /* ================= Photos ================= */
-let pendingCarPhotos=[], pendingCpPhotos=[];
+let pendingCarBefore=[], pendingCarAfter=[], pendingCpPhotos=[];
 function readAndCompress(file,cb){
   const r=new FileReader();
   r.onload=()=>{ const img=new Image();
@@ -705,6 +740,55 @@ function renderNav(){
 }
 
 /* ================= Screens ================= */
+function buildReportText(){
+  const F=(iso)=>inRange(iso);
+  const carsInc=carIncome(o=>F(o.date)), rugsInc=carpetIncome(F);
+  const inc=carsInc+rugsInc;
+  const gen=manualExp(F), util=utilityCost(F), wages=wagesRange();
+  const exp=gen+util+wages, profit=inc-exp;
+  const carCount=state.carOps.filter(o=>F(o.date)).length;
+  const rugCount=state.carpetOrders.filter(o=>F(o.date)).length;
+  const washing=state.carpetOrders.filter(o=>o.status==="wash"&&F(o.date)).length;
+  const today=ymd(now);
+  const period=(state.dateFrom===state.dateTo)?(state.dateFrom===today?("اليوم "+today):state.dateFrom):(state.dateFrom+" ← "+state.dateTo);
+  return `📋 تقرير مغاسيل صداقة
+📅 ${period}
+
+💰 الدخل: ${money(inc)}
+   🚗 سيارات: ${money(carsInc)}
+   🧺 سجاد: ${money(rugsInc)}
+
+💸 المصروفات: ${money(exp)}
+   👷 عمّال: ${money(wages)}
+   🧾 عامة: ${money(gen)}
+   ⚡ عدّادات: ${money(util)}
+
+📈 الربح: ${money(profit)}
+
+🚗 سيارات: ${carCount}
+🧺 طلبات سجاد: ${rugCount}
+🔄 قيد الغسيل: ${washing}`;
+}
+function sendReport(){
+  const text=buildReportText();
+  try{ if(navigator.share){ navigator.share({text}).catch(()=>{}); return; } }catch(e){}
+  window.open("https://wa.me/?text="+encodeURIComponent(text),"_blank");
+}
+function buildReportText2(){
+  const F=(iso)=>inRange(iso);
+  const carsInc=carIncome(o=>F(o.date)), rugsInc=carpetIncome(F);
+  const inc=carsInc+rugsInc;
+  const gen=manualExp(F);
+  const net=inc-gen;
+  const today=ymd(now);
+  const period=(state.dateFrom===state.dateTo)?(state.dateFrom===today?("اليوم "+today):state.dateFrom):(state.dateFrom+" ← "+state.dateTo);
+  return `📋 ${SHOP_NAME} — تقرير الدخل\n📅 ${period}\n📞 ${SHOP_PHONE}\n━━━━━━━━━━\n🚗 دخل السيارات: ${money(carsInc)}\n🧺 دخل الأفرشة: ${money(rugsInc)}\n💰 إجمالي الدخل: ${money(inc)}\n🧾 المصروفات العامة: ${money(gen)}\n📈 الصافي (بعد المصروفات العامة فقط): ${money(net)}\n━━━━━━━━━━\n(بدون خصم العدّاد ولا العمّال)`;
+}
+function sendReport2(){
+  const text=buildReportText2();
+  try{ if(navigator.share){ navigator.share({text}).catch(()=>{}); return; } }catch(e){}
+  window.open("https://wa.me/?text="+encodeURIComponent(text),"_blank");
+}
 function screenDashboard(){
   const F=(iso)=>inRange(iso);
   const carsInc=carIncome(o=>F(o.date)), rugsInc=carpetIncome(F);
@@ -738,6 +822,9 @@ function screenDashboard(){
   ];
   const rc=carpetCounts(F);
   const rugItems=Object.keys(rc).map(t=>({label:t,count:rc[t],type:t}));
+  const TINTS=["rgba(16,157,143,.16)","rgba(214,69,69,.13)","rgba(28,110,164,.14)","rgba(230,160,30,.16)","rgba(130,90,200,.14)","rgba(46,158,107,.16)","rgba(200,80,150,.13)","rgba(14,143,168,.15)"];
+  vehItems.forEach((v,i)=>{ v.bg=TINTS[i%TINTS.length]; });
+  rugItems.forEach((v,i)=>{ v.bg=TINTS[i%TINTS.length]; });
   const preset=(k,t)=>{
     let on=false; const yd=new Date(now); yd.setDate(yd.getDate()-1);
     const mS=ymd(new Date(now.getFullYear(),now.getMonth(),1));
@@ -755,20 +842,6 @@ function screenDashboard(){
         </div>
         <div class="sum-row" style="margin-top:14px"><span>${total.label}</span><span class="big">${money(total.val)}</span></div>
       </div>`;
-  const daysSince=(d)=>Math.floor((Date.now()-new Date(d).getTime())/86400000);
-  const alerts=[];
-  const staleReady=state.carpetOrders.filter(o=>o.status==="ready" && daysSince(o.date)>=2);
-  if(staleReady.length) alerts.push({icon:I.clock,color:"var(--wash)",text:`${staleReady.length} طلب جاهز لم يُستلم منذ يومين أو أكثر`});
-  const debts=state.carpetOrders.filter(o=>!o.paid && o.status==="done");
-  if(debts.length) alerts.push({icon:I.alert,color:"var(--unpaid)",text:`${debts.length} طلب مُسلّم غير مدفوع بقيمة ${money(sum(debts,o=>o.price))}`});
-  const nearFree=Object.values(state.customers).filter(c=>c.stamps===4);
-  if(nearFree.length) alerts.push({icon:I.gift,color:"var(--ready)",text:`${nearFree.length} زبون غسلته القادمة مجانية`});
-  const owed=state.workers.filter(w=>wBalance(w)>=10000);
-  if(owed.length) alerts.push({icon:I.worker,color:"var(--brand)",text:`${owed.length} موظف مستحقاتهم كبيرة (${money(sum(owed,w=>wBalance(w)))})`});
-  const alertsCard=alerts.length?`<div class="metric veh-card alerts-card">
-        <div class="veh-head"><span class="label" style="margin:0">🔔 تنبيهات</span></div>
-        ${alerts.map(a=>`<div class="alert-row"><span class="alert-ic" style="color:${a.color}">${svg(a.icon)}</span><span>${a.text}</span></div>`).join("")}
-      </div>`:"";
   return `
     <div class="screen-head"><h2>الصفحة الرئيسية</h2><span>${periodLabel==="اليوم"?new Date().toLocaleDateString("ar",{weekday:"long",day:"numeric",month:"long"}):`${state.dateFrom} ← ${state.dateTo}`}</span></div>
     <div class="datebar">
@@ -776,8 +849,11 @@ function screenDashboard(){
       <div class="date-field"><label>إلى</label><input type="date" id="dateTo" value="${state.dateTo}" max="${today}"></div>
       <div class="date-presets">${preset("today","اليوم")}${preset("yesterday","أمس")}${preset("month","هذا الشهر")}${preset("all","الكل")}</div>
     </div>
+    <div class="report-btns">
+      <button class="mini" id="sendReport">📤 التقرير الكامل</button>
+      <button class="mini" id="sendReport2">📤 تقرير الدخل (− مصروفات عامة)</button>
+    </div>
     <div class="grid metrics">
-      ${alertsCard}
       ${breakdown(`دخل ${periodLabel} حسب النوع`,incItems,{label:`إجمالي دخل ${periodLabel}`,val:inc})}
       ${breakdown(`مصروف ${periodLabel} حسب النوع`,expItems,{label:`إجمالي مصروف ${periodLabel}`,val:exp})}
       ${M.map(m=>`<div class="metric"><div class="ic" style="background:${m.bg}">${svg(m.ic,m.c)}</div>
@@ -785,27 +861,29 @@ function screenDashboard(){
       <div class="metric veh-card">
         <div class="veh-head"><span class="label" style="margin:0">سيارات ${periodLabel} حسب النوع</span></div>
         <div class="veh-grid">
-          ${vehItems.map(v=>`<div class="veh-item">${v.img?`<img class="veh-badge" src="${v.img}" alt="">`:`<span class="vic">${svg(I.other)}</span>`}<span><span class="vc">${v.count}</span><span class="vl">${v.label}</span></span></div>`).join("")}
+          ${vehItems.map(v=>`<div class="veh-item" style="background:${v.bg}">${v.img?`<img class="veh-badge" src="${v.img}" alt="">`:`<span class="vic">${svg(I.other)}</span>`}<span><span class="vc">${v.count}</span><span class="vl">${v.label}</span></span></div>`).join("")}
         </div>
       </div>
       <div class="metric veh-card">
         <div class="veh-head"><span class="label" style="margin:0">أفرشة ${periodLabel} حسب النوع</span></div>
         <div class="veh-grid">
-          ${rugItems.map(v=>`<div class="veh-item">${PIECE_IMG[v.type]?`<img class="veh-badge" src="${PIECE_IMG[v.type]}" alt="">`:`<span class="vic">${svg(pieceIcon(v.type))}</span>`}<span><span class="vc">${v.count}</span><span class="vl">${v.label}</span></span></div>`).join("")}
+          ${rugItems.map(v=>`<div class="veh-item" style="background:${v.bg}">${PIECE_IMG[v.type]?`<img class="veh-badge" src="${PIECE_IMG[v.type]}" alt="">`:`<span class="vic">${svg(pieceIcon(v.type))}</span>`}<span><span class="vc">${v.count}</span><span class="vl">${v.label}</span></span></div>`).join("")}
         </div>
       </div>
     </div>`;
 }
 
 function screenCars(){
-  const today=state.carOps.filter(o=>isToday(o.date));
+  const oq=(state.carSearch||"").trim();
+  const listSrc = oq ? state.carOps.filter(o=>((o.no||"").toLowerCase().includes(oq.toLowerCase()))||((o.plate||"").includes(oq))).slice().reverse() : state.carOps.filter(o=>isToday(o.date)).slice().reverse();
+  const today=listSrc;
   const total=carIncome(o=>isToday(o.date));
   const rows=today.length?today.map(o=>`
-    <tr><td>${timeStr(o.date)}</td>
-      <td>${VEH_IMG[o.vehicle]?`<img class="row-vimg" src="${VEH_IMG[o.vehicle]}" alt="">`:`<span class="row-ic">${svg(vehIcon(o.vehicle))}</span>`}<b>${o.vehicle}</b> <span style="color:var(--muted)">— ${o.wash}</span>${o.plate?` <span style="color:var(--muted)">• ${o.plate}</span>`:""}${o.free?' <span class="badge b-wash">مجاني 🎁</span>':""}${recThumbs(o.photos)}</td>
+    <tr><td><b style="color:var(--brand)">${o.no||"-"}</b><div style="font-size:.7rem;color:var(--muted)">${timeStr(o.date)}</div></td>
+      <td>${VEH_IMG[o.vehicle]?`<img class="row-vimg" src="${VEH_IMG[o.vehicle]}" alt="">`:`<span class="row-ic">${svg(vehIcon(o.vehicle))}</span>`}<b>${o.vehicle}</b> <span style="color:var(--muted)">— ${o.wash}</span>${o.plate?` <span style="color:var(--muted)">• ${o.plate}</span>`:""}${o.free?' <span class="badge b-wash">مجاني 🎁</span>':""}${(o.photosBefore&&o.photosBefore.length)?`<div class="ba-thumbs"><span class="ba-lbl">قبل:</span>${recThumbs(o.photosBefore)}</div>`:""}${(o.photosAfter&&o.photosAfter.length)?`<div class="ba-thumbs"><span class="ba-lbl">بعد:</span>${recThumbs(o.photosAfter)}</div>`:""}</td>
       <td class="amt">${money(o.price)}</td>
-      <td style="text-align:left"><button class="icon-btn" data-del-car="${o.id}" title="حذف">${svg(I.trash)}</button></td></tr>`).join("")
-    :`<tr><td colspan="4"><div class="empty">${svg(I.empty)}لا توجد عمليات اليوم بعد — أضف أول عملية.</div></td></tr>`;
+      <td style="text-align:left"><div class="row-acts">${((o.photosBefore&&o.photosBefore.length)||(o.photosAfter&&o.photosAfter.length))?`<button class="wa-btn photo-btn" data-carphotos="${o.id}" title="إرسال صور قبل/بعد الغسيل">${svg(I.camera)}</button>`:""}${o.phone?`<button class="wa-btn" data-carwa="${o.id}" title="فتح واتساب الزبون">${svg(I.whatsapp)}</button>`:""}<button class="icon-btn" data-del-car="${o.id}" title="حذف">${svg(I.trash)}</button></div></td></tr>`).join("")
+    :`<tr><td colspan="4"><div class="empty">${svg(I.empty)}${oq?"لا توجد نتائج لهذا الرقم/اللوحة.":"لا توجد عمليات اليوم بعد — أضف أول عملية."}</div></td></tr>`;
   const wOpts=WASH_TYPES.map(w=>`<option value="${w}">${w}</option>`).join("");
   const vehBtns=Object.keys(state.vehiclePrices).map((v,i)=>`<button type="button" class="pick ${i===0?'on':''}" data-vpick="${v}">${VEH_IMG[v]?`<img class="pick-img" src="${VEH_IMG[v]}" alt="">`:svg(vehIcon(v))}<span>${v}</span></button>`).join("");
   const firstV=Object.keys(state.vehiclePrices)[0];
@@ -815,7 +893,7 @@ function screenCars(){
   const custRows=custList.length?custList.map(c=>`
     <tr><td><b>${c.plate}</b></td>
       <td>${c.phone||"—"}</td>
-      <td><span class="mini-stamps">${loyaltyStamps(c.stamps)}</span></td>
+      <td class="amt" style="text-align:center;font-weight:800;white-space:nowrap">${c.stamps}/5${c.stamps===4?" 🎁":""}</td>
       <td class="amt" style="text-align:center">${c.totalWashes}</td>
       <td class="amt" style="text-align:center;color:var(--wash)">${c.freeWashes}</td>
       <td style="text-align:left;white-space:nowrap">${c.phone?`<button class="wa-btn" data-wacust="${c.plate}" title="واتساب" style="width:28px;height:28px;display:inline-grid;vertical-align:middle">${svg(I.whatsapp)}</button> `:""}<button class="icon-btn" data-del-cust="${c.plate}" title="حذف">${svg(I.trash)}</button></td></tr>`).join("")
@@ -827,7 +905,7 @@ function screenCars(){
         <h3>عملية جديدة</h3>
         <div class="field"><label>لوحة الأرقام (الزبون)</label><input id="carPlate" type="text" placeholder="رقم اللوحة" autocomplete="off"></div>
         <div class="loyalty" id="loyaltyBox" style="display:none"></div>
-        <div class="field"><label>هاتف الزبون (8 أرقام)</label><input id="carPhone" class="phone-inp" type="tel" inputmode="numeric" maxlength="8" placeholder="رقم الهاتف"></div>
+        <div class="field"><label>هاتف الزبون</label><div class="phone-row"><select id="carCountry" class="cc-select">${countryOpts()}</select><input id="carPhone" class="phone-inp" type="tel" inputmode="numeric" maxlength="9" placeholder="رقم الهاتف"></div></div>
         <div class="field"><label>نوع السيارة</label>
           <div class="picker" id="vPicker">${vehBtns}</div>
           <input type="hidden" id="carVehicle" value="${firstV}">
@@ -835,21 +913,23 @@ function screenCars(){
         <div class="field"><label>نوع الغسيل</label><select id="carWash">${wOpts}</select></div>
         <div class="field"><label>السعر</label><input id="carPrice" type="number" min="0" value="${state.vehiclePrices[firstV]}">
           <div class="hint">آخر سعر تُدخله يصبح السعر الافتراضي لهذا النوع.</div></div>
-        <div class="field"><label>صور السيارة (اختياري)</label><div class="photos" id="carPhotoStrip"></div></div>
+        <div class="field"><label>صور قبل الغسيل</label><div class="photos" id="carBeforeStrip"></div></div>
+        <div class="field"><label>صور بعد الغسيل</label><div class="photos" id="carAfterStrip"></div></div>
         <button class="btn-primary" id="carSave">حفظ العملية</button>
       </div>
       <div class="panel car-sky">
-        <h3>عمليات اليوم</h3>
-        <table class="tbl"><thead><tr><th>الوقت</th><th>السيارة / الغسيل</th><th>السعر</th><th></th></tr></thead>
-        <tbody>${rows}</tbody></table>
-        <div class="sum-row"><span>إجمالي دخل السيارات اليوم</span><span class="big">${money(total)}</span></div>
+        <h3>${oq?"نتائج البحث":"عمليات اليوم"}</h3>
+        <input class="search-inp" id="carSearch" type="text" placeholder="بحث برقم الغسلة (S57…) أو اللوحة" value="${oq}">
+        <div class="tbl-wrap"><table class="tbl striped"><thead><tr><th>الرقم/الوقت</th><th>السيارة / الغسيل</th><th>السعر</th><th></th></tr></thead>
+        <tbody>${rows}</tbody></table></div>
+        ${oq?"":`<div class="sum-row"><span>إجمالي دخل السيارات اليوم</span><span class="big">${money(total)}</span></div>`}
       </div>
     </div>
     <div class="panel" style="margin-top:18px">
       <h3>بطاقات الولاء</h3>
       <input class="search-inp" id="custSearch" type="text" placeholder="بحث بلوحة الزبون" value="${cq}">
-      <table class="tbl"><thead><tr><th>اللوحة</th><th>الهاتف</th><th>الأختام</th><th>الغسلات</th><th>مجانية</th><th></th></tr></thead>
-      <tbody>${custRows}</tbody></table>
+      <div class="tbl-wrap"><table class="tbl"><thead><tr><th>اللوحة</th><th>الهاتف</th><th>الأختام</th><th>الغسلات</th><th>مجانية</th><th></th></tr></thead>
+      <tbody>${custRows}</tbody></table></div>
     </div>`;
 }
 
@@ -891,7 +971,7 @@ function screenCarpets(){
       <div class="panel">
         <h3>طلب جديد</h3>
         <div class="field"><label>اسم العميل <span style="color:var(--unpaid)">(الاسم أو الرقم مطلوب)</span></label><input id="cpCust" type="text" placeholder="اسم العميل"></div>
-        <div class="field"><label>هاتف الزبون (8 أرقام)</label><input id="cpPhone" class="phone-inp" type="tel" inputmode="numeric" maxlength="8" placeholder="رقم الهاتف"></div>
+        <div class="field"><label>هاتف الزبون</label><div class="phone-row"><select id="cpCountry" class="cc-select">${countryOpts()}</select><input id="cpPhone" class="phone-inp" type="tel" inputmode="numeric" maxlength="9" placeholder="رقم الهاتف"></div></div>
         <div class="field"><label>نوع القطعة</label>
           <div class="picker" id="pPicker">${pieceBtns}</div>
           <input type="hidden" id="cpType" value="${firstP}">
@@ -935,13 +1015,14 @@ function expGeneral(){
       <td style="text-align:left"><button class="icon-btn" data-del-exp="${e.id}" title="حذف">${svg(I.trash)}</button></td></tr>`).join("")
     :`<tr><td colspan="5"><div class="empty">${svg(I.empty)}لا توجد مصروفات اليوم.</div></td></tr>`;
   const opts=EXP_CATS.map(c=>`<option value="${c}">${c}</option>`).join("");
+  const reasonOpts=[...new Set(state.expenses.map(e=>(e.reason||"").trim()).filter(Boolean))].map(r=>`<option value="${r}"></option>`).join("");
   return `
     <div class="cols">
       <div class="panel">
         <h3>مصروف جديد</h3>
         <div class="field"><label>المبلغ</label><input id="expAmount" type="number" min="0" value="0"></div>
         <div class="field"><label>الفئة</label><select id="expCat">${opts}</select></div>
-        <div class="field"><label>السبب (اختياري)</label><input id="expReason" type="text" placeholder="وصف المصروف"></div>
+        <div class="field"><label>اسم المصروف <span style="color:var(--unpaid)">*</span></label><input id="expReason" list="expReasonList" type="text" placeholder="مثال: شامبو، مكرونة…" autocomplete="off"><datalist id="expReasonList">${reasonOpts}</datalist></div>
         <button class="btn-primary" id="expSave">إضافة مصروف</button>
       </div>
       <div class="panel">
@@ -950,7 +1031,32 @@ function expGeneral(){
         <tbody>${rows}</tbody></table>
         <div class="sum-row"><span>إجمالي المصروفات العامة اليوم</span><span class="big">${money(total)}</span></div>
       </div>
+    </div>
+    ${(()=>{
+      const q=(state.expSearch||"").trim();
+      let all=state.expenses.slice();
+      if(q) all=all.filter(e=>((e.reason||"").includes(q))||((e.category||"").includes(q)));
+      const groups={};
+      all.forEach(e=>{ const key=(e.reason&&e.reason.trim())?e.reason.trim():("["+e.category+"]"); if(!groups[key])groups[key]={key,count:0,total:0,cat:e.category}; groups[key].count++; groups[key].total+=e.amount; });
+      const gl=Object.values(groups).sort((a,b)=>b.total-a.total);
+      const grand=sum(all,e=>e.amount);
+      const catTot={}; all.forEach(e=>{ catTot[e.category]=(catTot[e.category]||0)+e.amount; });
+      const body=gl.length?gl.map(g=>`<tr>
+          <td><b>${g.key}</b></td>
+          <td><span class="badge b-done">${g.cat}</span></td>
+          <td class="amt" style="text-align:center;font-weight:800">${g.count}</td>
+          <td class="amt">${money(g.total)}</td></tr>`).join(""):`<tr><td colspan="4"><div class="empty">${svg(I.empty)}لا توجد مصروفات مسجّلة${q?" مطابقة للبحث":""}.</div></td></tr>`;
+      return `
+    <div class="panel" style="margin-top:18px">
+      <h3>كشف حساب المصروفات</h3>
+      <input class="search-inp" id="expSearch" type="text" placeholder="بحث باسم الصنف (شامبو…) أو الفئة" value="${q}">
+      ${Object.keys(catTot).length?`<div class="cat-tot">${Object.entries(catTot).map(([c,t])=>`<span>${c}: <b>${money(t)}</b></span>`).join("")}</div>`:""}
+      <div class="tbl-wrap"><table class="tbl"><thead><tr><th>الصنف</th><th>الفئة</th><th>مرات</th><th>الإجمالي</th></tr></thead>
+        <tbody>${body}</tbody>
+        ${gl.length?`<tfoot><tr style="border-top:2px solid var(--line);font-weight:800"><td colspan="3">الإجمالي الكلي</td><td class="amt" style="color:var(--brand)">${money(grand)}</td></tr></tfoot>`:""}
+      </table></div>
     </div>`;
+    })()}`;
 }
 
 function expMeters(){
@@ -1043,17 +1149,17 @@ function expWorkers(){
         <span>المباشرة: <b>${w.start?ymd(w.start):"—"}</b></span>
       </div>
       <div class="wstats">
-        <div class="wstat wdue"><b>${fmt(due)}</b><span>المستحق حتى اليوم</span></div>
-        <div class="wstat"><b>${fmt(wPaid(w))}</b><span>المدفوع/الوديعة</span></div>
+        <div class="wstat wdue"><b>${fmt(due+wCredit(w))}</b><span>المستحق (له)</span></div>
+        <div class="wstat"><b>${fmt(wPaid(w))}</b><span>المأخوذ (عليه)</span></div>
         <div class="wstat ${balCls}"><b>${fmt(Math.abs(bal))}</b><span>الرصيد (${balLabel})</span></div>
       </div>
       <div class="wabsent">
         <span>غياب الشهر: <b>${monthAbsences(w)}</b> (−${fmt(monthAbsences(w)*dayRate(w))})</span>
         <button class="mini ${absentToday(w)?'abs-on':''}" data-abstoday="${w.id}">${absentToday(w)?"إلغاء غياب اليوم":"تسجيل غياب اليوم"}</button>
       </div>
-      <div class="wpay">
-        <input type="number" min="0" placeholder="مبلغ الدفعة أو الوديعة" data-payin="${w.id}">
-        <button class="mini" data-paybtn="${w.id}">تسجيل دفعة</button>
+      <div class="wpay2">
+        <div class="wpay-col"><input type="number" min="0" placeholder="مبلغ" data-creditin="${w.id}"><button class="mini credit-btn" data-creditbtn="${w.id}">➕ له (مستحق/مكافأة)</button></div>
+        <div class="wpay-col"><input type="number" min="0" placeholder="مبلغ" data-payin="${w.id}"><button class="mini debit-btn" data-paybtn="${w.id}">➖ عليه (دفعة/سلفة)</button></div>
       </div>
     </div>`;}).join("") : `<div class="panel empty" style="grid-column:1/-1">${svg(I.empty)}لا يوجد عمّال — أضف أول عامل.</div>`;
   const totLabel=totBal>0?"لهم":totBal<0?"علينا":"مسدّد";
@@ -1152,6 +1258,8 @@ function bindScreen(){
   if(df){
     df.onchange=()=>{ state.dateFrom=df.value||state.dateFrom; if(state.dateTo<state.dateFrom) state.dateTo=state.dateFrom; render(); };
     dtI.onchange=()=>{ state.dateTo=dtI.value||state.dateTo; if(state.dateTo<state.dateFrom) state.dateFrom=state.dateTo; render(); };
+    const srb=document.getElementById("sendReport"); if(srb) srb.onclick=sendReport;
+    const srb2=document.getElementById("sendReport2"); if(srb2) srb2.onclick=sendReport2;
     document.querySelectorAll("[data-preset]").forEach(bp=>bp.onclick=()=>{
       const t=new Date(), todayS=ymd(t);
       if(bp.dataset.preset==="today"){ state.dateFrom=state.dateTo=todayS; }
@@ -1172,39 +1280,45 @@ function bindScreen(){
     });
     const plateInp=document.getElementById("carPlate");
     const lbox=document.getElementById("loyaltyBox");
-    const updLoyalty=()=>{const pl=plateInp.value.trim(); const cph=document.getElementById("carPhone"); if(pl){lbox.style.display="block";lbox.innerHTML=loyaltyCardHTML(pl); const c=state.customers[pl]; if(c&&c.phone&&cph&&!cph.value) cph.value=c.phone;}else{lbox.style.display="none";}};
+    const ccoEl=document.getElementById("carCountry");
+    if(ccoEl) ccoEl.onchange=()=>{ ccoEl.dataset.touched="1"; };
+    const updLoyalty=()=>{const pl=plateInp.value.trim(); const cph=document.getElementById("carPhone"); const cco=document.getElementById("carCountry"); if(pl){lbox.style.display="block";lbox.innerHTML=loyaltyCardHTML(pl); const c=state.customers[pl]; if(c){ if(c.phone&&cph&&!cph.value) cph.value=c.phone; if(c.country&&cco&&!cco.dataset.touched) cco.value=c.country; }}else{lbox.style.display="none";}};
     plateInp.oninput=updLoyalty;
-    bindPhotoStrip("carPhotoStrip",pendingCarPhotos,"car");
+    bindPhotoStrip("carBeforeStrip",pendingCarBefore,"carB");
+    bindPhotoStrip("carAfterStrip",pendingCarAfter,"carA");
     document.getElementById("carSave").onclick=()=>{
       const vehicle=cv.value;
       const plate=plateInp.value.trim();
       const phone=document.getElementById("carPhone").value.trim();
-      if(!validPhone(phone)) return toast("رقم الهاتف يجب أن يكون 8 أرقام");
+      const country=document.getElementById("carCountry").value;
+      if(!validPhone(phone)) return toast("أدخل رقم هاتف صحيح");
       const existing=plate?state.customers[plate]:null;
       const free=!!(existing&&existing.stamps===4);
       const price=+document.getElementById("carPrice").value;
       if(!free && !(price>0)) return toast("أدخل سعرًا صحيحًا");
       if(plate){
         let c=state.customers[plate]||{plate,stamps:0,totalWashes:0,freeWashes:0};
-        if(phone) c.phone=phone;
+        if(phone){ c.phone=phone; c.country=country; }
         if(free){c.stamps=0;c.freeWashes++;} else c.stamps++;
         c.totalWashes++; c.lastVisit=iso(new Date());
         state.customers[plate]=c;
       }
       if(!free) state.vehiclePrices[vehicle]=price;
-      state.carOps.push({id:uid(),vehicle,wash:document.getElementById("carWash").value,price:free?0:price,
-        plate,free,note:"",photos:[...pendingCarPhotos],date:iso(new Date())});
-      pendingCarPhotos.length=0;
+      state.carOps.push({id:uid(),no:carNo(vehicle),vehicle,wash:document.getElementById("carWash").value,price:free?0:price,
+        plate,phone,country,free,note:"",photosBefore:[...pendingCarBefore],photosAfter:[...pendingCarAfter],date:iso(new Date())});
+      pendingCarBefore.length=0; pendingCarAfter.length=0;
       if(free) toast("🎁 غسلة مجانية — اكتملت البطاقة");
       else if(plate&&state.customers[plate].stamps===4) toast("تم الحفظ — الغسلة القادمة مجانية");
       else toast("تم حفظ العملية");
       render();
     };
   }
+  document.querySelectorAll("[data-carwa]").forEach(b=>b.onclick=()=>{ const o=state.carOps.find(x=>x.id===b.dataset.carwa); if(o) openCarChat(o); });
+  document.querySelectorAll("[data-carphotos]").forEach(b=>b.onclick=()=>{ const o=state.carOps.find(x=>x.id===b.dataset.carphotos); if(o) shareCarImages(o); });
   document.querySelectorAll("[data-del-car]").forEach(b=>b.onclick=()=>{
-    state.carOps=state.carOps.filter(o=>o.id!==b.dataset.delCar); toast("تم الحذف"); render();});
+    requireCode(()=>{ state.carOps=state.carOps.filter(o=>o.id!==b.dataset.delCar); toast("تم الحذف"); render(); });});
   document.querySelectorAll("[data-del-cust]").forEach(b=>b.onclick=()=>{
-    delete state.customers[b.dataset.delCust]; toast("تم حذف الزبون"); render();});
+    requireCode(()=>{ delete state.customers[b.dataset.delCust]; toast("تم حذف الزبون"); render(); });});
 
   // carpets
   document.querySelectorAll("[data-filter]").forEach(b=>b.onclick=()=>{state.carpetFilter=b.dataset.filter;render();});
@@ -1223,6 +1337,7 @@ function bindScreen(){
     document.getElementById("cpSave").onclick=()=>{
       const unit=+cpP.value, count=+cpC.value, type=ct.value;
       const cpph=document.getElementById("cpPhone").value.trim();
+      const cpcountry=document.getElementById("cpCountry").value;
       const cpcust=document.getElementById("cpCust").value.trim();
       if(!cpcust && !cpph) return toast("أدخل اسم الزبون أو رقمه");
       if(!(unit>0)) return toast("أدخل سعرًا صحيحًا");
@@ -1233,7 +1348,7 @@ function bindScreen(){
       const d=iso(new Date());
       state.carpetOrders.push({id:uid(),no:orderNo(state.orderSeq,d),
         customer:cpcust,
-        phone:cpph,
+        phone:cpph, country:cpcountry,
         type,count,unit,price:unit*count,status:"wash",paid:false,photos:[...pendingCpPhotos],date:d});
       pendingCpPhotos.length=0;
       toast("تمت إضافة الطلب"); render();
@@ -1265,9 +1380,11 @@ function bindScreen(){
   if(es){
     es.onclick=()=>{
       const amount=+document.getElementById("expAmount").value;
+      const reason=document.getElementById("expReason").value.trim();
+      if(!reason) return toast("اكتب اسم المصروف");
       if(!(amount>0)) return toast("أدخل مبلغًا صحيحًا");
       state.expenses.push({id:uid(),amount,category:document.getElementById("expCat").value,
-        reason:document.getElementById("expReason").value.trim(),date:iso(new Date())});
+        reason,date:iso(new Date())});
       toast("تمت إضافة المصروف"); render();
     };
   }
@@ -1315,7 +1432,7 @@ function bindScreen(){
       if(!name) return toast("أدخل اسم الموظف");
       if(phone && !validPhone(phone)) return toast("رقم الهاتف يجب أن يكون 8 أرقام");
       if(!(monthly>0)) return toast("أدخل الراتب الشهري");
-      state.workers.push({id:uid(),name,role,phone,start:startV?startV+"T00:00:00.000Z":iso(new Date()),monthly,absent:[],payments:[]});
+      state.workers.push({id:uid(),name,role,phone,start:startV?startV+"T00:00:00.000Z":iso(new Date()),monthly,absent:[],payments:[],credits:[]});
       toast("تمت إضافة الموظف"); render();
     };
   }
@@ -1328,20 +1445,28 @@ function bindScreen(){
     render();});
   document.querySelectorAll("[data-paybtn]").forEach(b=>b.onclick=()=>{
     const w=state.workers.find(x=>x.id===b.dataset.paybtn);
-    const inp=document.querySelector(`[data-payin="${b.dataset.paybtn}"]`);
-    const amt=+inp.value;
-    if(!(amt>0)) return toast("أدخل مبلغ الدفعة");
+    const amt=+document.querySelector(`[data-payin="${b.dataset.paybtn}"]`).value;
+    if(!(amt>0)) return toast("أدخل المبلغ");
     w.payments.push({amount:amt,date:iso(new Date())});
-    toast("تم تسجيل الدفعة"); render();});
+    toast("سُجّل عليه (دفعة/سلفة)"); render();});
+  document.querySelectorAll("[data-creditbtn]").forEach(b=>b.onclick=()=>{
+    const w=state.workers.find(x=>x.id===b.dataset.creditbtn);
+    if(!w.credits) w.credits=[];
+    const amt=+document.querySelector(`[data-creditin="${b.dataset.creditbtn}"]`).value;
+    if(!(amt>0)) return toast("أدخل المبلغ");
+    w.credits.push({amount:amt,date:iso(new Date())});
+    toast("سُجّل له (مستحق/مكافأة)"); render();});
   document.querySelectorAll("[data-del-worker]").forEach(b=>b.onclick=()=>{
     state.workers=state.workers.filter(w=>w.id!==b.dataset.delWorker);toast("تم الحذف");render();});
   document.querySelectorAll(".rec-thumb").forEach(t=>t.onclick=()=>openLightbox(t.src));
   document.querySelectorAll("[data-receipt]").forEach(b=>b.onclick=()=>{ const o=state.carpetOrders.find(x=>x.id===b.dataset.receipt); if(o) openReceipt(o); });
   document.querySelectorAll("[data-wa]").forEach(b=>b.onclick=()=>{ const o=state.carpetOrders.find(x=>x.id===b.dataset.wa); if(o) openWa(o); });
   document.querySelectorAll("[data-wacust]").forEach(b=>b.onclick=()=>{ const c=state.customers[b.dataset.wacust]; if(c) openWaCust(c); });
-  document.querySelectorAll(".phone-inp").forEach(el=>el.addEventListener("input",()=>{ el.value=el.value.replace(/[^0-9]/g,"").slice(0,8); }));
+  document.querySelectorAll(".phone-inp").forEach(el=>el.addEventListener("input",()=>{ el.value=el.value.replace(/[^0-9]/g,"").slice(0,9); }));
   const cpS=document.getElementById("cpSearch"); if(cpS) cpS.oninput=()=>{ state.cpSearch=cpS.value; _refocus="cpSearch"; render(); };
   const cuS=document.getElementById("custSearch"); if(cuS) cuS.oninput=()=>{ state.custSearch=cuS.value; _refocus="custSearch"; render(); };
+  const caS=document.getElementById("carSearch"); if(caS) caS.oninput=()=>{ state.carSearch=caS.value; _refocus="carSearch"; render(); };
+  const exS=document.getElementById("expSearch"); if(exS) exS.oninput=()=>{ state.expSearch=exS.value; _refocus="expSearch"; render(); };
   const rp=document.getElementById("reportPrint"); if(rp) rp.onclick=printReport;
 }
 
@@ -1368,7 +1493,7 @@ function meterCode(){ return (state.meterPin&&state.meterPin.trim())?state.meter
 
 /* ============ persistence + theme + logo ============ */
 const LS_KEY="sadaqa_laundry_v1";
-const CLOUD_OMIT=["tab","expSub","carpetFilter","cpSearch","custSearch","dateFrom","dateTo","dark"];
+const CLOUD_OMIT=["tab","expSub","carpetFilter","cpSearch","custSearch","expSearch","carSearch","dateFrom","dateTo","dark","palette"];
 let _applyingRemote=false, _pushT=null;
 function saveLocal(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(state)); }catch(e){} }
 function cloudCopy(){
@@ -1388,6 +1513,7 @@ function applyRemote(remote){
   Object.assign(state, remote);
   (state.carOps||[]).forEach(o=>{ o.photos=pm["op"+o.id]||o.photos||[]; });
   (state.carpetOrders||[]).forEach(o=>{ o.photos=pm["or"+o.id]||o.photos||[]; });
+  if(typeof ensureCarNos==="function") ensureCarNos();
   saveLocal(); applyTheme(); applyLock(); render();
   _applyingRemote=false;
 }
@@ -1395,8 +1521,22 @@ window.onCloudState=applyRemote;
 window.onCloudReady=()=>{ const el=document.getElementById("cloudStat"); if(el){ el.textContent="متصل ☁"; el.style.color="var(--ready)"; } toast("تم الاتصال بالسحابة ☁"); };
 window.onCloudEmpty=()=>{ try{ if(window.cloudReady) window.cloudPush(cloudCopy()); }catch(e){} };
 window.onCloudError=()=>{ const el=document.getElementById("cloudStat"); if(el){ el.textContent="غير متصل (يعمل محليًا)"; el.style.color="var(--muted)"; } };
+const PALETTES=[
+  {k:"teal",  name:"أخضر سماوي", b:"#0f9d8f", b2:"#16b8a6"},
+  {k:"aqua",  name:"فيروزي",     b:"#0e8fa8", b2:"#22b6cf"},
+  {k:"green", name:"أخضر",       b:"#2f9e6b", b2:"#45bd86"},
+  {k:"blue",  name:"أزرق",       b:"#1c6ea4", b2:"#2f86c9"},
+  {k:"olive", name:"زيتوني",     b:"#6b9e3f", b2:"#8bc45a"}
+];
+function applyPalette(){
+  const pal=PALETTES.find(x=>x.k===state.palette)||PALETTES[0];
+  const r=document.documentElement.style;
+  r.setProperty("--brand", pal.b);
+  r.setProperty("--brand-2", pal.b2);
+}
 function applyTheme(){
   document.body.classList.toggle("dark", !!state.dark);
+  applyPalette();
   const btn=document.getElementById("themeBtn");
   if(btn) btn.innerHTML=svg(state.dark?I.sun:I.moon);
 }
@@ -1424,6 +1564,20 @@ function importData(file){
   const r=new FileReader();
   r.onload=()=>{ try{ const d=JSON.parse(r.result); Object.assign(state,d); save(); toast("تم استيراد البيانات"); document.getElementById("settingsModal").style.display="none"; applyTheme(); render(); }catch(e){ toast("ملف غير صالح"); } };
   r.readAsText(file);
+}
+function resetAllData(){
+  const keepDark=state.dark, keepLock=state.lock, keepMeterPin=state.meterPin;
+  Object.keys(state).forEach(k=>{ delete state[k]; });
+  Object.assign(state, {
+    tab:"dashboard", expSub:"general", carpetFilter:"all", cpSearch:"", custSearch:"",
+    dateFrom:ymd(new Date()), dateTo:ymd(new Date()), dark:keepDark, lock:keepLock||{enabled:false,pin:""}, meterPin:keepMeterPin||"",
+    orderSeq:0, customers:{}, meters:[], workers:[], carOps:[], carpetOrders:[], expenses:[],
+    vehiclePrices:{...VEHICLE_PRICES}, piecePrices:{...PIECE_PRICES}, tariff:{elec:0,water:0}
+  });
+  saveLocal();
+  try{ if(window.cloudReady) window.cloudPush(cloudCopy()); }catch(e){}
+  toast("تم مسح كل البيانات");
+  render();
 }
 
 /* ---- lock ---- */
@@ -1457,25 +1611,51 @@ function orderState(o){
   if(o.paid) return {cls:"st-green"};
   return {cls:"st-orange"};
 }
-function validPhone(ph){ return ph==="" || /^[0-9]{8}$/.test(ph); }
-function waPhoneStr(phone){ let ph=(phone||"").replace(/[^0-9]/g,""); if(!ph) return null; if(ph.startsWith("222")) return ph; ph=ph.replace(/^0+/,""); return "222"+ph; }
-function waPhone(o){ return waPhoneStr(o.phone); }
+const SHOP_NAME="مغاسيل صداقة", SHOP_PHONE="22227268";
+const VEH_LETTER={"سيارة صغيرة":"S","سيارة كبيرة":"K","دراجة نارية":"D","شاحنة":"T","انيل":"A","أخرى":"X"};
+function carNo(vehicle){ const L=VEH_LETTER[vehicle]||"X"; if(!state.carSeq) state.carSeq={}; state.carSeq[L]=(state.carSeq[L]||0)+1; return L+state.carSeq[L]; }
+function waHead(){ return `🧼 *${SHOP_NAME}*\n📅 ${ymd(new Date())}\n📞 ${SHOP_PHONE}\n━━━━━━━━━━`; }
+function waFoot(){ const th=(state.thanksMsg||"شكرًا لغسلتك عندنا 🌟").trim(); const ad=(state.adMsg||"").trim(); return `━━━━━━━━━━${th?`\n${th}`:""}${ad?`\n\n${ad}`:""}`; }
+const COUNTRIES=[{n:"موريتانيا",c:"222"},{n:"مالي",c:"223"},{n:"النيجر",c:"227"},{n:"الجزائر",c:"213"}];
+function countryOpts(sel){ return COUNTRIES.map(x=>`<option value="${x.c}" ${x.c===(sel||"222")?"selected":""}>${x.n} +${x.c}</option>`).join(""); }
+function validPhone(ph){ return ph==="" || /^[0-9]{8,9}$/.test(ph); }
+function waPhoneFull(phone,country){ let ph=(phone||"").replace(/[^0-9]/g,""); if(!ph) return null; const cc=country||"222"; if(ph.startsWith(cc)) return ph; ph=ph.replace(/^0+/,""); return cc+ph; }
+function waPhoneStr(phone){ return waPhoneFull(phone,"222"); }
+function waPhone(o){ return waPhoneFull(o.phone,o.country); }
+function openCarChat(o){
+  const ph=waPhoneFull(o.phone,o.country);
+  if(!ph){ toast("لا يوجد رقم هاتف لهذا الزبون"); return; }
+  const text=`${waHead()}\n🔖 رقم الطلب: ${o.no||"-"}\n${waFoot()}`;
+  window.open(`https://wa.me/${ph}?text=${encodeURIComponent(text)}`,"_blank");
+}
+async function shareCarImages(o){
+  const list=[...(o.photosBefore||[]).map((d,i)=>({d,n:`before${i+1}.jpg`})), ...(o.photosAfter||[]).map((d,i)=>({d,n:`after${i+1}.jpg`}))];
+  if(!list.length){ toast("لا توجد صور لهذه الغسلة"); return; }
+  const text=`${waHead()}\n🔖 رقم الطلب: ${o.no||"-"}\nصور سيارتك قبل وبعد الغسيل\n${waFoot()}`;
+  try{
+    const files=[];
+    for(const it of list){ const bl=await (await fetch(it.d)).blob(); files.push(new File([bl], it.n, {type:bl.type||"image/jpeg"})); }
+    if(navigator.canShare && navigator.canShare({files})){ await navigator.share({files, text}); return; }
+    if(navigator.share){ await navigator.share({text}); return; }
+  }catch(e){}
+  toast("متصفحك لا يدعم مشاركة الصور مباشرة");
+}
 function openWaCust(c){
-  const ph=waPhoneStr(c.phone); if(!ph){ toast("لا يوجد رقم هاتف لهذا الزبون"); return; }
+  const ph=waPhoneFull(c.phone,c.country); if(!ph){ toast("لا يوجد رقم هاتف لهذا الزبون"); return; }
   const s=c.stamps||0;
   const line=s===4?"غسلتك القادمة مجانية 🎁":`بعد ${4-s} غسلات لديك غسلة مجانية`;
-  const msg=`مغاسيل صداقة%0Aبطاقة الولاء — لديك ${s} من 5 أختام%0A${line}`;
-  window.open(`https://wa.me/${ph}?text=${msg}`,"_blank");
+  const msg=`${waHead()}\n🎫 بطاقة الولاء${c.plate?` — لوحة ${c.plate}`:""}\n⭐ لديك ${s} من 5 أختام\n${line}\n${waFoot()}`;
+  window.open(`https://wa.me/${ph}?text=${encodeURIComponent(msg)}`,"_blank");
 }
 function waStatusMsg(o){
-  const s=o.status==="ready"?"طلبك جاهز للاستلام ✅":o.status==="done"?"تم تسليم طلبك، شكرًا لك":"طلبك قيد الغسيل";
-  const pay=o.paid?"مدفوع":`المبلغ المستحق: ${money(o.price)}`;
-  return `مغاسيل صداقة%0Aطلبك رقم ${o.no} (${o.type} × ${o.count})%0A${s}%0A${pay}`;
+  const st=o.status==="ready"?"طلبك جاهز للاستلام ✅":o.status==="done"?"تم تسليم طلبك ✅":"طلبك قيد الغسيل ⏳";
+  const pay=o.paid?"الحالة: مدفوع ✅":`المبلغ المستحق: ${money(o.price)}`;
+  return `${waHead()}\n🧺 ${o.type} × ${o.count}\n🔖 رقم الطلب: ${o.no}\n${st}\n${pay}\n${waFoot()}`;
 }
 function openWa(o){
   const ph=waPhone(o);
   if(!ph){ toast("لا يوجد رقم هاتف لهذا الزبون"); return; }
-  window.open(`https://wa.me/${ph}?text=${waStatusMsg(o)}`,"_blank");
+  window.open(`https://wa.me/${ph}?text=${encodeURIComponent(waStatusMsg(o))}`,"_blank");
 }
 function waLink(o){
   const phone=(o.phone||"").replace(/[^0-9]/g,"");
@@ -1488,17 +1668,27 @@ document.getElementById("settingsBtn").onclick=()=>{
   document.getElementById("lockToggle").checked=!!(state.lock&&state.lock.enabled);
   document.getElementById("lockPinSet").value=(state.lock&&state.lock.pin)||"";
   document.getElementById("meterPinSet").value=state.meterPin||"";
+  document.getElementById("thanksSet").value=state.thanksMsg||"";
+  document.getElementById("adMsgSet").value=state.adMsg||"";
+  const palRow=document.getElementById("palRow");
+  if(palRow){
+    palRow.innerHTML=PALETTES.map(pl=>`<button class="pal-sw ${state.palette===pl.k?'on':''}" data-pal="${pl.k}" style="background:linear-gradient(135deg,${pl.b},${pl.b2})" title="${pl.name}"><span>${pl.name}</span></button>`).join("");
+    palRow.querySelectorAll("[data-pal]").forEach(sw=>sw.onclick=()=>{ state.palette=sw.dataset.pal; applyPalette(); saveLocal(); palRow.querySelectorAll(".pal-sw").forEach(x=>x.classList.toggle("on",x.dataset.pal===state.palette)); });
+  }
   document.getElementById("settingsModal").style.display="flex";
 };
 document.getElementById("setClose").onclick=()=>document.getElementById("settingsModal").style.display="none";
 document.getElementById("btnExport").onclick=exportData;
 document.getElementById("fileImport").onchange=(e)=>{ if(e.target.files[0]) importData(e.target.files[0]); };
+document.getElementById("btnReset").onclick=()=>{ if(confirm("سيتم مسح كل البيانات (الطلبات، الزبائن، المصروفات، العمّال، العدّادات) من هذا الجهاز والسحابة نهائيًا. هل أنت متأكد؟")){ resetAllData(); document.getElementById("settingsModal").style.display="none"; } };
 document.getElementById("setSave").onclick=()=>{
   const en=document.getElementById("lockToggle").checked;
   const pin=document.getElementById("lockPinSet").value.trim();
   if(en&&!pin){ toast("أدخل كلمة المرور"); return; }
   state.lock={enabled:en,pin:pin};
   state.meterPin=document.getElementById("meterPinSet").value.trim();
+  state.thanksMsg=document.getElementById("thanksSet").value.trim();
+  state.adMsg=document.getElementById("adMsgSet").value.trim();
   if(en) unlocked=true; // owner sets it now, stays in this session
   save(); document.getElementById("settingsModal").style.display="none"; toast("تم حفظ الإعدادات");
 };
@@ -1511,8 +1701,11 @@ document.getElementById("receiptPrint").onclick=printReceipt;
 })();
 
 load();
+function ensureCarNos(){ if(!state.carSeq) state.carSeq={}; (state.carOps||[]).forEach(o=>{ if(!o.no) o.no=carNo(o.vehicle); }); }
+ensureCarNos(); saveLocal();
 { const t=ymd(new Date()); state.dateFrom=t; state.dateTo=t; }
 if(!state.lock) state.lock={enabled:false,pin:""};
+applyPalette();
 applyTheme();
 applyHeaderIcons();
 applyLock();
