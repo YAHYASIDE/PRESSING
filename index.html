@@ -529,7 +529,7 @@ const state = {
   expSub:"general",
   carpetFilter:"all",
   dateFrom:null, dateTo:null,
-  cpSearch:"", custSearch:"", expSearch:"", carSearch:"", carSeq:{}, palette:"teal", lock:{enabled:false,pin:""}, meterPin:"", thanksMsg:"شكرًا لغسلتك عندنا 🌟", adMsg:"🎁 اجمع 5 غسلات واحصل على غسلة مجانية!\nنغسل السجاد والموكيت والأفرشة أيضًا 🧼\nشاركنا مع أصدقائك 🙌",
+  cpSearch:"", custSearch:"", expSearch:"", carSearch:"", carSeq:{}, palette:"teal", lock:{enabled:false,pin:""}, meterPin:"", thanksMsg:"شكرًا لغسلتك عندنا 🌟", adMsg:"",
   orderSeq:0,
   vehiclePrices:{...VEHICLE_PRICES},
   piecePrices:{...PIECE_PRICES},
@@ -1471,7 +1471,7 @@ function bindScreen(){
 }
 
 /* ============ code-protected actions ============ */
-const SECRET_CODE="720707";
+const SECRET_CODE="070752";
 let _codeCb=null, _codeExpected=SECRET_CODE;
 function requireCode(cb, expected){
   _codeCb=cb; _codeExpected=expected||SECRET_CODE;
@@ -1614,7 +1614,7 @@ function orderState(o){
 const SHOP_NAME="مغاسيل صداقة", SHOP_PHONE="22227268";
 const VEH_LETTER={"سيارة صغيرة":"S","سيارة كبيرة":"K","دراجة نارية":"D","شاحنة":"T","انيل":"A","أخرى":"X"};
 function carNo(vehicle){ const L=VEH_LETTER[vehicle]||"X"; if(!state.carSeq) state.carSeq={}; state.carSeq[L]=(state.carSeq[L]||0)+1; return L+state.carSeq[L]; }
-function waHead(){ return `🧼 *${SHOP_NAME}*\n📅 ${ymd(new Date())}\n📞 ${SHOP_PHONE}\n━━━━━━━━━━`; }
+function waHead(){ return `*${SHOP_NAME}*\nالتاريخ: ${ymd(new Date())}\nالهاتف: ${SHOP_PHONE}\n━━━━━━━━━━`; }
 function waFoot(){ const th=(state.thanksMsg||"شكرًا لغسلتك عندنا 🌟").trim(); const ad=(state.adMsg||"").trim(); return `━━━━━━━━━━${th?`\n${th}`:""}${ad?`\n\n${ad}`:""}`; }
 const COUNTRIES=[{n:"موريتانيا",c:"222"},{n:"مالي",c:"223"},{n:"النيجر",c:"227"},{n:"الجزائر",c:"213"}];
 function countryOpts(sel){ return COUNTRIES.map(x=>`<option value="${x.c}" ${x.c===(sel||"222")?"selected":""}>${x.n} +${x.c}</option>`).join(""); }
@@ -1625,13 +1625,13 @@ function waPhone(o){ return waPhoneFull(o.phone,o.country); }
 function openCarChat(o){
   const ph=waPhoneFull(o.phone,o.country);
   if(!ph){ toast("لا يوجد رقم هاتف لهذا الزبون"); return; }
-  const text=`${waHead()}\n🔖 رقم الطلب: ${o.no||"-"}\n${waFoot()}`;
+  const text=`${waHead()}\nرقم الطلب: ${o.no||"-"}\n${waFoot()}`;
   window.open(`https://wa.me/${ph}?text=${encodeURIComponent(text)}`,"_blank");
 }
 async function shareCarImages(o){
   const list=[...(o.photosBefore||[]).map((d,i)=>({d,n:`before${i+1}.jpg`})), ...(o.photosAfter||[]).map((d,i)=>({d,n:`after${i+1}.jpg`}))];
   if(!list.length){ toast("لا توجد صور لهذه الغسلة"); return; }
-  const text=`${waHead()}\n🔖 رقم الطلب: ${o.no||"-"}\nصور سيارتك قبل وبعد الغسيل\n${waFoot()}`;
+  const text=`${waHead()}\nرقم الطلب: ${o.no||"-"}\nصور سيارتك قبل وبعد الغسيل\n${waFoot()}`;
   try{
     const files=[];
     for(const it of list){ const bl=await (await fetch(it.d)).blob(); files.push(new File([bl], it.n, {type:bl.type||"image/jpeg"})); }
@@ -1643,14 +1643,14 @@ async function shareCarImages(o){
 function openWaCust(c){
   const ph=waPhoneFull(c.phone,c.country); if(!ph){ toast("لا يوجد رقم هاتف لهذا الزبون"); return; }
   const s=c.stamps||0;
-  const line=s===4?"غسلتك القادمة مجانية 🎁":`بعد ${4-s} غسلات لديك غسلة مجانية`;
-  const msg=`${waHead()}\n🎫 بطاقة الولاء${c.plate?` — لوحة ${c.plate}`:""}\n⭐ لديك ${s} من 5 أختام\n${line}\n${waFoot()}`;
+  const line=s===4?"غسلتك القادمة مجانية":`بعد ${4-s} غسلات لديك غسلة مجانية`;
+  const msg=`${waHead()}\nبطاقة الولاء${c.plate?` — لوحة ${c.plate}`:""}\nلديك ${s} من 5 أختام\n${line}\n${waFoot()}`;
   window.open(`https://wa.me/${ph}?text=${encodeURIComponent(msg)}`,"_blank");
 }
 function waStatusMsg(o){
-  const st=o.status==="ready"?"طلبك جاهز للاستلام ✅":o.status==="done"?"تم تسليم طلبك ✅":"طلبك قيد الغسيل ⏳";
-  const pay=o.paid?"الحالة: مدفوع ✅":`المبلغ المستحق: ${money(o.price)}`;
-  return `${waHead()}\n🧺 ${o.type} × ${o.count}\n🔖 رقم الطلب: ${o.no}\n${st}\n${pay}\n${waFoot()}`;
+  const st=o.status==="ready"?"جاهز للاستلام":o.status==="done"?"تم التسليم":"قيد الغسيل";
+  const pay=o.paid?"مدفوع":`المبلغ المستحق: ${money(o.price)}`;
+  return `${waHead()}\n${o.type} × ${o.count}\nرقم الطلب: ${o.no}\nالحالة: ${st}\n${pay}\n${waFoot()}`;
 }
 function openWa(o){
   const ph=waPhone(o);
@@ -1664,7 +1664,8 @@ function waLink(o){
 }
 
 /* ---- wire static controls (once) ---- */
-document.getElementById("settingsBtn").onclick=()=>{
+document.getElementById("settingsBtn").onclick=()=>{ requireCode(openSettings, meterCode()); };
+function openSettings(){
   document.getElementById("lockToggle").checked=!!(state.lock&&state.lock.enabled);
   document.getElementById("lockPinSet").value=(state.lock&&state.lock.pin)||"";
   document.getElementById("meterPinSet").value=state.meterPin||"";
@@ -1701,6 +1702,8 @@ document.getElementById("receiptPrint").onclick=printReceipt;
 })();
 
 load();
+if(state.adMsg==="🎁 اجمع 5 غسلات واحصل على غسلة مجانية!\nنغسل السجاد والموكيت والأفرشة أيضًا 🧼\nشاركنا مع أصدقائك 🙌") state.adMsg="";
+if(state.codesV!==1){ state.lock={enabled:true,pin:"0707"}; state.meterPin="070752"; state.codesV=1; saveLocal(); }
 function ensureCarNos(){ if(!state.carSeq) state.carSeq={}; (state.carOps||[]).forEach(o=>{ if(!o.no) o.no=carNo(o.vehicle); }); }
 ensureCarNos(); saveLocal();
 { const t=ymd(new Date()); state.dateFrom=t; state.dateTo=t; }
