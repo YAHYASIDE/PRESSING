@@ -411,6 +411,16 @@
   .car-card.cancelled .cc-price,.car-card.cancelled .cc-veh b{text-decoration:line-through}
 
   .order-dates{font-size:.66rem;color:var(--muted);margin-top:6px;line-height:1.55}
+
+  .order-acts-main{display:flex;gap:8px;margin-top:11px}
+  .order-acts-main .mini{flex:1;padding:12px 8px;font-size:.92rem;font-weight:800}
+  .act-status{background:var(--info-bg)!important;color:var(--brand)!important;border-color:var(--brand-2)!important}
+  .act-status:disabled{opacity:.5}
+  .act-pay{background:var(--ready-bg)!important;color:var(--ready)!important;border-color:#bfe6c8!important}
+  .act-pay.paid{background:var(--unpaid-bg)!important;color:var(--unpaid)!important;border-color:#e6b8b8!important}
+  .order-acts-sub{display:flex;gap:8px;margin-top:9px;flex-wrap:wrap;align-items:center}
+  .order-acts-sub .icon-btn,.order-acts-sub .wa-btn{width:34px;height:34px}
+  .order-acts-sub .wa-btn svg{width:18px;height:18px}
 </style>
 </head>
 <body>
@@ -501,7 +511,7 @@
       <button class="btn-primary" id="setSave" style="flex:1">حفظ</button>
       <button class="mini" id="setClose">إغلاق</button>
     </div>
-    <div class="hint" style="text-align:center;margin-top:10px;opacity:.8">الإصدار: 2026‑07‑15 · أكواد + حذف السجاد</div>
+    <div class="hint" style="text-align:center;margin-top:10px;opacity:.8">الإصدار: 2026‑07‑17 · أزرار السجاد</div>
   </div>
 </div>
 <div id="receiptModal" class="modal">
@@ -1032,13 +1042,15 @@ function screenCarpets(){
       </div>
       <div class="price">${money(o.price)}</div>
       ${recThumbs(o.photos)}
-      <div class="order-actions">
-        <button class="mini" data-status="${o.id}" ${next?"":"disabled"}>${next?`→ ${STATUS[next].label}`:"مكتمل"}</button>
-        <button class="mini" data-pay="${o.id}">${o.paid?"إلغاء الدفع":"تحصيل الدفع"}</button>
+      <div class="order-acts-main">
+        <button class="mini act-status" data-status="${o.id}" ${next?"":"disabled"}>${next?`→ ${STATUS[next].label}`:"مكتمل ✓"}</button>
+        <button class="mini act-pay ${o.paid?'paid':''}" data-pay="${o.id}">${o.paid?"إلغاء الدفع":"تحصيل الدفع"}</button>
+      </div>
+      <div class="order-acts-sub">
         <button class="wa-btn" data-wa="${o.id}" title="إرسال الحالة عبر واتساب">${svg(I.whatsapp)}</button>
-        <button class="mini" data-receipt="${o.id}">إيصال</button>
-        <button class="mini" data-edit-order="${o.id}">✏️ تعديل</button>
-        <button class="mini cancel-btn ${o.cancelled?'on':''}" data-cancel-order="${o.id}" title="${o.cancelled?'إلغاء الإلغاء (مطوّل)':'إلغاء الطلب (اضغط مطوّلًا)'}">${o.cancelled?"ملغى 🚫":"🚫"}</button>
+        <button class="icon-btn" data-receipt="${o.id}" title="إيصال">🧾</button>
+        <button class="icon-btn" data-edit-order="${o.id}" title="تعديل">✏️</button>
+        <button class="icon-btn cancel-btn ${o.cancelled?'on':''}" data-cancel-order="${o.id}" title="${o.cancelled?'إلغاء الإلغاء (مطوّل)':'إلغاء الطلب (اضغط مطوّلًا)'}">🚫</button>
         <button class="icon-btn" data-del-order="${o.id}" title="حذف">${svg(I.trash)}</button>
       </div>
     </div>`;}).join("")
