@@ -446,6 +446,18 @@
 </div>
 <div id="toast"></div>
 <div id="lightbox" onclick="this.style.display='none'"><img alt=""></div>
+<div id="deliverModal" class="modal">
+  <div class="modal-box">
+    <h3>تسليم غير مدفوع</h3>
+    <p>لتسليم طلب غير مدفوع يجب إدخال اسم الزبون ورقمه (لمتابعة الدَّين):</p>
+    <div class="field"><label>اسم الزبون <span style="color:var(--unpaid)">*</span></label><input id="dvName" type="text" placeholder="الاسم" style="letter-spacing:normal;text-align:right;font-size:1rem"></div>
+    <div class="field"><label>رقم الهاتف <span style="color:var(--unpaid)">*</span></label><div class="phone-row"><select id="dvCountry" class="cc-select"></select><input id="dvPhone" class="phone-inp" type="tel" inputmode="numeric" maxlength="9" placeholder="الرقم" style="letter-spacing:normal;text-align:right;font-size:1rem"></div></div>
+    <div class="modal-actions" style="margin-top:6px">
+      <button class="btn-primary" id="dvOk" style="flex:1">تأكيد التسليم (دَين)</button>
+      <button class="mini" id="dvCancel">إلغاء</button>
+    </div>
+  </div>
+</div>
 <div id="payModal" class="modal">
   <div class="modal-box">
     <h3>تحصيل الدفع</h3>
@@ -1040,7 +1052,7 @@ function screenCarpets(){
   const q=(state.cpSearch||"").trim();
   const _t=ymd(new Date());
   const periodTxt = (state.dateFrom===state.dateTo) ? (state.dateFrom===_t?"اليوم":state.dateFrom) : `${state.dateFrom} ← ${state.dateTo}`;
-  const pending=(o)=>!o.cancelled && (o.status==="wash"||o.status==="ready");
+  const pending=(o)=>!o.cancelled && ((o.status==="wash"||o.status==="ready") || !o.paid);
   let list=state.carpetOrders.filter(o=> (pending(o)||inRange(o.date)) && (f==="all"?true : f==="unpaid"? !o.paid : o.status===f));
   if(q) list=list.filter(o=>((o.customer||"").includes(q))||((o.no||"").includes(q))||((o.phone||"").includes(q)));
   const chips=[{k:"all",t:"الكل"},{k:"wash",t:"قيد الغسيل"},{k:"ready",t:"جاهز"},{k:"done",t:"تم التسليم"},{k:"unpaid",t:"غير مدفوع"}]
@@ -1100,7 +1112,7 @@ function screenCarpets(){
       <div>
         <input class="search-inp" id="cpSearch" type="text" placeholder="بحث بالاسم أو رقم الطلب أو الهاتف" value="${q}">
         <div class="chips">${chips}</div>
-        <div class="hint" style="margin:4px 0 10px">تُعرض الطلبات المعلّقة (قيد الغسيل/جاهز) دائمًا، والمكتملة حسب التاريخ المختار في الرئيسية (${periodTxt}).</div>
+        <div class="hint" style="margin:4px 0 10px">تُعرض المعلّقة وغير المدفوعة (ديون) دائمًا، والمكتملة المدفوعة حسب التاريخ المختار في الرئيسية (${periodTxt}).</div>
         <div class="grid orders">${cards}</div>
       </div>
     </div>`;
@@ -1495,8 +1507,16 @@ function bindScreen(){
   document.querySelectorAll("[data-status]").forEach(b=>b.onclick=()=>{
     const o=state.carpetOrders.find(x=>x.id===b.dataset.status);
     if(o&&NEXT[o.status]){
-      o.status=NEXT[o.status];
-      if(o.status==="done"){o.deliveredDate=iso(new Date()); if(!o.paid){o.paid=true;o.paidDate=o.deliveredDate;} toast("تم التسليم واستلام المبلغ");}
+      const nextStatus=NEXT[o.status];
+      if(nextStatus==="done" && !o.paid){
+        requireCode(()=>{
+          if(!(o.customer&&o.customer.trim()) || !(o.phone&&o.phone.trim())) openDeliverInfo(o);
+          else completeUnpaidDelivery(o);
+        }, SECRET_CODE, "كود تسليم غير مدفوع", "تسليم طلب غير مدفوع يتطلّب الكود.");
+        return;
+      }
+      o.status=nextStatus;
+      if(o.status==="done"){ o.deliveredDate=iso(new Date()); toast("تم التسليم"); }
       else if(o.status==="ready"){ toast("الطلب جاهز"); if(o.phone) openWa(o); }
       else toast("تم تحديث حالة الطلب");
       render();
@@ -1895,6 +1915,27 @@ document.getElementById("editSave").onclick=()=>{
   document.getElementById("editModal").style.display="none"; _editCtx=null;
   toast("تم حفظ التعديل"); render();
 };
+let _dvId=null;
+function completeUnpaidDelivery(o){ o.status="done"; o.deliveredDate=iso(new Date()); toast("تم التسليم — غير مدفوع (دَين)"); render(); }
+function openDeliverInfo(o){
+  _dvId=o.id;
+  document.getElementById("dvName").value=o.customer||"";
+  document.getElementById("dvCountry").innerHTML=countryOpts(o.country);
+  document.getElementById("dvPhone").value=o.phone||"";
+  document.getElementById("deliverModal").style.display="flex";
+}
+document.getElementById("dvOk").onclick=()=>{
+  const o=state.carpetOrders.find(x=>x.id===_dvId); if(!o) return;
+  const name=document.getElementById("dvName").value.trim();
+  const phone=document.getElementById("dvPhone").value.trim();
+  if(!name) return toast("أدخل اسم الزبون");
+  if(!phone) return toast("أدخل رقم الهاتف");
+  if(!validPhone(phone)) return toast("رقم هاتف غير صحيح");
+  o.customer=name; o.phone=phone; o.country=document.getElementById("dvCountry").value;
+  document.getElementById("deliverModal").style.display="none"; _dvId=null;
+  completeUnpaidDelivery(o);
+};
+document.getElementById("dvCancel").onclick=()=>{ document.getElementById("deliverModal").style.display="none"; _dvId=null; };
 let _payCtx=null;
 document.getElementById("payOk").onclick=()=>{
   if(_payCtx){ const list=_payCtx.type==="car"?state.carOps:state.carpetOrders; const o=list.find(x=>x.id===_payCtx.id);
