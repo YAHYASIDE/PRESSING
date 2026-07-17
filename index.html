@@ -421,6 +421,8 @@
   .order-acts-sub{display:flex;gap:8px;margin-top:9px;flex-wrap:wrap;align-items:center}
   .order-acts-sub .icon-btn,.order-acts-sub .wa-btn{width:34px;height:34px}
   .order-acts-sub .wa-btn svg{width:18px;height:18px}
+
+  #payDate,#payModal input[type=date]{letter-spacing:normal;text-align:center;font-size:1rem}
 </style>
 </head>
 <body>
@@ -444,6 +446,17 @@
 </div>
 <div id="toast"></div>
 <div id="lightbox" onclick="this.style.display='none'"><img alt=""></div>
+<div id="payModal" class="modal">
+  <div class="modal-box">
+    <h3>تحصيل الدفع</h3>
+    <p>تاريخ الدفعة — يُحسب الدخل في هذا اليوم:</p>
+    <input id="payDate" type="date">
+    <div class="modal-actions" style="margin-top:6px">
+      <button class="btn-primary" id="payOk" style="flex:1">تأكيد التحصيل</button>
+      <button class="mini" id="payCancel">إلغاء</button>
+    </div>
+  </div>
+</div>
 <div id="editModal" class="modal">
   <div class="modal-box">
     <h3>تعديل</h3>
@@ -646,7 +659,7 @@ function carpetCounts(f){
   state.carpetOrders.filter(o=>!o.cancelled&&f(o.date)).forEach(o=>{ if(c[o.type]!==undefined)c[o.type]++; });
   return c;
 }
-function carIncome(f){return sum(state.carOps.filter(o=>!o.cancelled&&f(o)),o=>o.price);}
+function carIncome(f){return sum(state.carOps.filter(o=>!o.cancelled&&o.paid!==false&&f(o.paidDate||o.date)),o=>o.price);}
 function carpetIncome(f){return sum(state.carpetOrders.filter(o=>!o.cancelled&&o.paid&&f(o.paidDate||o.deliveredDate||o.date)),o=>o.price);}
 function manualExp(f){return sum(state.expenses.filter(e=>f(e.date)),e=>e.amount);}
 function mElec(m){ return (m.elec!==undefined&&m.elec!=="")?(+m.elec||0):(+m.elecEnd||+m.elecStart||0); }
@@ -688,8 +701,8 @@ function wagesRange(){
   const days=[]; for(let d=new Date(start); d<=end; d.setDate(d.getDate()+1)) days.push(ymd(d));
   return sum(state.workers, w=>{ let cnt=0; for(const ds of days){ if(!w.absent.some(a=>ymd(a)===ds)) cnt++; } return cnt*dayRate(w); });
 }
-function todayIncome(){return carIncome(o=>isToday(o.date))+carpetIncome(isToday);}
-function monthIncome(){return carIncome(o=>isMonth(o.date))+carpetIncome(isMonth);}
+function todayIncome(){return carIncome(isToday)+carpetIncome(isToday);}
+function monthIncome(){return carIncome(isMonth)+carpetIncome(isMonth);}
 
 const STATUS={wash:{label:"قيد الغسيل",cls:"wash"},ready:{label:"جاهز",cls:"ready"},done:{label:"تم التسليم",cls:"done"}};
 const NEXT={wash:"ready",ready:"done",done:null};
@@ -807,7 +820,7 @@ function renderNav(){
 /* ================= Screens ================= */
 function buildReportText(){
   const F=(iso)=>inRange(iso);
-  const carsInc=carIncome(o=>F(o.date)), rugsInc=carpetIncome(F);
+  const carsInc=carIncome(F), rugsInc=carpetIncome(F);
   const inc=carsInc+rugsInc;
   const gen=manualExp(F), util=utilityCost(F), wages=wagesRange();
   const exp=gen+util+wages, profit=inc-exp;
@@ -841,7 +854,7 @@ function sendReport(){
 }
 function buildReportText2(){
   const F=(iso)=>inRange(iso);
-  const carsInc=carIncome(o=>F(o.date)), rugsInc=carpetIncome(F);
+  const carsInc=carIncome(F), rugsInc=carpetIncome(F);
   const inc=carsInc+rugsInc;
   const gen=manualExp(F);
   const net=inc-gen;
@@ -856,7 +869,7 @@ function sendReport2(){
 }
 function screenDashboard(){
   const F=(iso)=>inRange(iso);
-  const carsInc=carIncome(o=>F(o.date)), rugsInc=carpetIncome(F);
+  const carsInc=carIncome(F), rugsInc=carpetIncome(F);
   const inc=carsInc+rugsInc;
   const genT=manualExp(F), utilT=utilityCost(F), wagesT=wagesRange();
   const exp=genT+utilT+wagesT, profit=inc-exp;
@@ -944,7 +957,7 @@ function screenCars(){
   const periodTxt = (state.dateFrom===state.dateTo) ? (state.dateFrom===_t?"اليوم":state.dateFrom) : `${state.dateFrom} ← ${state.dateTo}`;
   const listSrc = oq ? state.carOps.filter(o=>((o.no||"").toLowerCase().includes(oq.toLowerCase()))||((o.plate||"").includes(oq))).slice().reverse() : state.carOps.filter(o=>inRange(o.date)).slice().reverse();
   const today=listSrc;
-  const total=carIncome(o=>inRange(o.date));
+  const total=carIncome(inRange);
   const rows=today.length?today.map(o=>`
     <div class="car-card ${o.cancelled?'cancelled':''}">
       <div class="cc-top">
@@ -955,13 +968,14 @@ function screenCars(){
       <div class="cc-main">
         ${VEH_IMG[o.vehicle]?`<img class="cc-img" src="${VEH_IMG[o.vehicle]}" alt="">`:`<span class="cc-ic">${svg(vehIcon(o.vehicle))}</span>`}
         <div class="cc-info">
-          <div class="cc-veh"><b>${o.vehicle}</b>${o.cancelled?'<span class="badge badge-cancel">ملغى 🚫</span>':''}${o.free?'<span class="badge b-wash">مجاني 🎁</span>':''}</div>
+          <div class="cc-veh"><b>${o.vehicle}</b>${o.cancelled?'<span class="badge badge-cancel">ملغى 🚫</span>':''}${o.free?'<span class="badge b-wash">مجاني 🎁</span>':''}${o.paid===false?'<span class="badge b-unpaid">غير مدفوع</span>':''}</div>
           <div class="cc-sub">${o.wash}${o.plate?` • ${o.plate}`:""}</div>
         </div>
       </div>
       ${(o.photosBefore&&o.photosBefore.length)?`<div class="ba-thumbs"><span class="ba-lbl">قبل:</span>${recThumbs(o.photosBefore)}</div>`:""}
       ${(o.photosAfter&&o.photosAfter.length)?`<div class="ba-thumbs"><span class="ba-lbl">بعد:</span>${recThumbs(o.photosAfter)}</div>`:""}
       <div class="cc-acts">
+        ${o.paid===false?`<button class="mini" data-carpay="${o.id}" style="flex:none;background:var(--ready-bg);color:var(--ready);border-color:#bfe6c8;font-weight:800;padding:6px 12px">تحصيل الدفع</button>`:""}
         ${((o.photosBefore&&o.photosBefore.length)||(o.photosAfter&&o.photosAfter.length))?`<button class="wa-btn photo-btn" data-carphotos="${o.id}" title="إرسال صور قبل/بعد">${svg(I.camera)}</button>`:""}
         ${o.phone?`<button class="wa-btn" data-carwa="${o.id}" title="واتساب الزبون">${svg(I.whatsapp)}</button>`:""}
         <button class="icon-btn" data-edit-car="${o.id}" title="تعديل">✏️</button>
@@ -1002,6 +1016,7 @@ function screenCars(){
         <div class="field"><label>صور قبل الغسيل</label><div class="photos" id="carBeforeStrip"></div></div>
         <div class="field"><label>صور بعد الغسيل</label><div class="photos" id="carAfterStrip"></div></div>
         <div class="field"><label>التاريخ</label><input id="carDate" type="date" value="${ymd(new Date())}" max="${ymd(new Date())}"></div>
+        <label style="display:flex;align-items:center;gap:8px;font-size:.88rem;font-weight:600;margin:4px 0 12px;cursor:pointer"><input type="checkbox" id="carDeferred" style="width:18px;height:18px"> دفع مؤجّل (غير مدفوع — يُحصّل لاحقًا)</label>
         <button class="btn-primary" id="carSave">حفظ العملية</button>
       </div>
       <div class="panel car-sky">
@@ -1023,7 +1038,10 @@ function screenCars(){
 function screenCarpets(){
   const f=state.carpetFilter;
   const q=(state.cpSearch||"").trim();
-  let list=state.carpetOrders.filter(o=> f==="all"?true : f==="unpaid"? !o.paid : o.status===f);
+  const _t=ymd(new Date());
+  const periodTxt = (state.dateFrom===state.dateTo) ? (state.dateFrom===_t?"اليوم":state.dateFrom) : `${state.dateFrom} ← ${state.dateTo}`;
+  const pending=(o)=>!o.cancelled && (o.status==="wash"||o.status==="ready");
+  let list=state.carpetOrders.filter(o=> (pending(o)||inRange(o.date)) && (f==="all"?true : f==="unpaid"? !o.paid : o.status===f));
   if(q) list=list.filter(o=>((o.customer||"").includes(q))||((o.no||"").includes(q))||((o.phone||"").includes(q)));
   const chips=[{k:"all",t:"الكل"},{k:"wash",t:"قيد الغسيل"},{k:"ready",t:"جاهز"},{k:"done",t:"تم التسليم"},{k:"unpaid",t:"غير مدفوع"}]
     .map(c=>`<button class="chip ${f===c.k?'on':''}" data-filter="${c.k}">${c.t}</button>`).join("");
@@ -1082,6 +1100,7 @@ function screenCarpets(){
       <div>
         <input class="search-inp" id="cpSearch" type="text" placeholder="بحث بالاسم أو رقم الطلب أو الهاتف" value="${q}">
         <div class="chips">${chips}</div>
+        <div class="hint" style="margin:4px 0 10px">تُعرض الطلبات المعلّقة (قيد الغسيل/جاهز) دائمًا، والمكتملة حسب التاريخ المختار في الرئيسية (${periodTxt}).</div>
         <div class="grid orders">${cards}</div>
       </div>
     </div>`;
@@ -1291,7 +1310,7 @@ function expWorkers(){
 function screenReports(){
   const dInc=todayIncome(),dExp=expenseSum(isToday),dPro=dInc-dExp;
   const mInc=monthIncome(),mExp=expenseSum(isMonth),mPro=mInc-mExp;
-  const carsM=carIncome(o=>isMonth(o.date)),rugsM=carpetIncome(isMonth);
+  const carsM=carIncome(isMonth),rugsM=carpetIncome(isMonth);
   const totalOrders=state.carpetOrders.length;
   const washingList=state.carpetOrders.filter(o=>o.status==="wash");
   const washingAmt=sum(washingList,o=>o.price);
@@ -1301,9 +1320,9 @@ function screenReports(){
   const unpaidCount=unpaidList.length, unpaidAmt=sum(unpaidList,o=>o.price);
   const lm=new Date(now.getFullYear(),now.getMonth()-1,1);
   const isLM=(d)=>{const x=new Date(d);return x.getMonth()===lm.getMonth()&&x.getFullYear()===lm.getFullYear();};
-  const lmInc=carIncome(o=>isLM(o.date))+carpetIncome(isLM);
+  const lmInc=carIncome(isLM)+carpetIncome(isLM);
   const diff=mInc-lmInc, pct=lmInc>0?Math.round(diff/lmInc*100):(mInc>0?100:0);
-  const days=[]; for(let i=6;i>=0;i--){const d=new Date(now);d.setDate(d.getDate()-i);const ds=ymd(d);const F=(x)=>ymd(x)===ds;days.push({label:d.toLocaleDateString("ar",{weekday:"short"}),inc:carIncome(o=>F(o.date))+carpetIncome(F)});}
+  const days=[]; for(let i=6;i>=0;i--){const d=new Date(now);d.setDate(d.getDate()-i);const ds=ymd(d);const F=(x)=>ymd(x)===ds;days.push({label:d.toLocaleDateString("ar",{weekday:"short"}),inc:carIncome(F)+carpetIncome(F)});}
   const maxD=Math.max(...days.map(x=>x.inc),1);
   const card=(t,d,m,c)=>`
     <div class="panel"><h3>${t}</h3>
@@ -1399,6 +1418,7 @@ function bindScreen(){
       const price=+document.getElementById("carPrice").value;
       if(!free && !(price>0)) return toast("أدخل سعرًا صحيحًا");
       const carDateV=(document.getElementById("carDate")||{}).value||todayStr();
+      const deferred = !free && !!(document.getElementById("carDeferred")&&document.getElementById("carDeferred").checked);
       const commit=()=>{
         if(!free) state.vehiclePrices[vehicle]=price;
         if(plate){
@@ -1408,10 +1428,12 @@ function bindScreen(){
           c.totalWashes++; c.lastVisit=iso(new Date());
           state.customers[plate]=c;
         }
+        const opDate=chosenDateIso(carDateV);
         state.carOps.push({id:uid(),no:carNo(vehicle),vehicle,wash:document.getElementById("carWash").value,price:free?0:price,
-          plate,phone,country,free,note:"",photosBefore:[...pendingCarBefore],photosAfter:[...pendingCarAfter],date:chosenDateIso(carDateV)});
+          plate,phone,country,free,paid:!deferred,paidDate:deferred?null:opDate,note:"",photosBefore:[...pendingCarBefore],photosAfter:[...pendingCarAfter],date:opDate});
         pendingCarBefore.length=0; pendingCarAfter.length=0;
         if(free) toast("🎁 غسلة مجانية — اكتملت البطاقة");
+        else if(deferred) toast("تم الحفظ — دفع مؤجّل (غير مدفوع)");
         else if(plate&&state.customers[plate].stamps===4) toast("تم الحفظ — الغسلة القادمة مجانية");
         else toast("تم حفظ العملية");
         render();
@@ -1423,6 +1445,7 @@ function bindScreen(){
   document.querySelectorAll("[data-carwa]").forEach(b=>b.onclick=()=>{ const o=state.carOps.find(x=>x.id===b.dataset.carwa); if(o) openCarChat(o); });
   document.querySelectorAll("[data-carphotos]").forEach(b=>b.onclick=()=>{ const o=state.carOps.find(x=>x.id===b.dataset.carphotos); if(o) shareCarImages(o); });
   document.querySelectorAll("[data-edit-car]").forEach(b=>b.onclick=()=>openEditCar(b.dataset.editCar));
+  document.querySelectorAll("[data-carpay]").forEach(b=>b.onclick=()=>{ _payCtx={type:"car",id:b.dataset.carpay}; const pd=document.getElementById("payDate"); if(pd) pd.value=ymd(new Date()); document.getElementById("payModal").style.display="flex"; });
   document.querySelectorAll("[data-edit-order]").forEach(b=>b.onclick=()=>openEditOrder(b.dataset.editOrder));
   document.querySelectorAll("[data-cancel-car]").forEach(b=>bindHold(b, ()=>toggleCancelCar(b.dataset.cancelCar), 1000));
   document.querySelectorAll("[data-cancel-order]").forEach(b=>bindHold(b, ()=>toggleCancelOrder(b.dataset.cancelOrder), 1000));
@@ -1482,7 +1505,7 @@ function bindScreen(){
     const o=state.carpetOrders.find(x=>x.id===b.dataset.pay);
     if(!o) return;
     if(o.paid){ requireCode(()=>{ o.paid=false; delete o.paidDate; toast("أُلغي الدفع"); render(); }, SECRET_CODE, "كود الحذف", "إلغاء الدفع يتطلب كود الحذف."); }
-    else { o.paid=true; o.paidDate=iso(new Date()); toast("تم تحصيل الدفع"); render(); }
+    else { _payCtx={type:"order",id:o.id}; const pd=document.getElementById("payDate"); if(pd) pd.value=ymd(new Date()); document.getElementById("payModal").style.display="flex"; }
   });
   document.querySelectorAll("[data-del-order]").forEach(b=>b.onclick=()=>{
     const o=state.carpetOrders.find(x=>x.id===b.dataset.delOrder);
@@ -1872,6 +1895,13 @@ document.getElementById("editSave").onclick=()=>{
   document.getElementById("editModal").style.display="none"; _editCtx=null;
   toast("تم حفظ التعديل"); render();
 };
+let _payCtx=null;
+document.getElementById("payOk").onclick=()=>{
+  if(_payCtx){ const list=_payCtx.type==="car"?state.carOps:state.carpetOrders; const o=list.find(x=>x.id===_payCtx.id);
+    if(o){ const dv=document.getElementById("payDate").value||ymd(new Date()); o.paid=true; o.paidDate=chosenDateIso(dv); toast("تم تحصيل الدفع"); } }
+  document.getElementById("payModal").style.display="none"; _payCtx=null; render();
+};
+document.getElementById("payCancel").onclick=()=>{ document.getElementById("payModal").style.display="none"; _payCtx=null; };
 document.getElementById("btnExport").onclick=exportData;
 document.getElementById("fileImport").onchange=(e)=>{ if(e.target.files[0]) importData(e.target.files[0]); };
 document.getElementById("btnReset").onclick=()=>{ if(confirm("سيتم مسح كل البيانات (الطلبات، الزبائن، المصروفات، العمّال، العدّادات) من هذا الجهاز والسحابة نهائيًا. هل أنت متأكد؟")){ resetAllData(); document.getElementById("settingsModal").style.display="none"; } };
