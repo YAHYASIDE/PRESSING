@@ -409,6 +409,8 @@
   .cc-acts .icon-btn,.cc-acts .wa-btn{width:34px;height:34px}
   .cc-acts .wa-btn svg{width:18px;height:18px}
   .car-card.cancelled .cc-price,.car-card.cancelled .cc-veh b{text-decoration:line-through}
+
+  .order-dates{font-size:.66rem;color:var(--muted);margin-top:6px;line-height:1.55}
 </style>
 </head>
 <body>
@@ -1022,6 +1024,7 @@ function screenCarpets(){
       <div class="no">${o.no}</div>
       <div class="cust"><span class="state-dot ${os.cls}" title="${os.cls==="st-red"?"مكتمل وغير مدفوع":os.cls==="st-green"?"مدفوع":"قيد الانتظار"}"></span>${o.customer||"عميل"}</div>
       <div class="meta">${o.type} × ${o.count}</div>
+      <div class="order-dates">🗓️ سُجّل: ${ymd(o.date)} ${timeStr(o.date)}${o.editedAt?`<br>✏️ آخر تعديل: ${ymd(o.editedAt)} ${timeStr(o.editedAt)}`:""}</div>
       <div class="badges">
         ${o.cancelled?'<span class="badge badge-cancel">ملغى 🚫</span>':''}
         <span class="badge b-${st.cls}">${st.label}</span>
@@ -1844,6 +1847,7 @@ document.getElementById("editSave").onclick=()=>{
     o.wash=document.getElementById("edWash").value;
     o.plate=document.getElementById("edPlate").value.trim();
     o.price=+document.getElementById("edPrice").value||0;
+    o.editedAt=iso(new Date());
   } else {
     const o=state.carpetOrders.find(x=>x.id===_editCtx.id); if(!o) return;
     o.type=document.getElementById("edType").value;
@@ -1851,6 +1855,7 @@ document.getElementById("editSave").onclick=()=>{
     o.unit=+document.getElementById("edUnit").value||0;
     o.price=o.unit*o.count;
     o.customer=document.getElementById("edCust").value.trim();
+    o.editedAt=iso(new Date());
   }
   document.getElementById("editModal").style.display="none"; _editCtx=null;
   toast("تم حفظ التعديل"); render();
