@@ -381,6 +381,34 @@
 
   .report-btns{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
   .report-btns .mini{background:var(--info-bg);color:var(--brand);border-color:var(--brand-2);font-weight:700}
+
+  .hold-btn{position:relative;overflow:hidden;touch-action:none}
+  .hold-btn::after{content:"";position:absolute;inset:0;background:rgba(255,255,255,.4);transform:scaleX(0);transform-origin:right;pointer-events:none}
+  .hold-btn.holding::after{transform:scaleX(1);transition:transform 1s linear}
+  .cancel-btn.on{background:var(--unpaid);color:#fff;border-color:var(--unpaid)}
+  .badge-cancel{background:var(--unpaid);color:#fff;font-weight:800}
+  .cancelled-row td{opacity:.6;background:rgba(214,69,69,.10)!important}
+  .cancelled-row td b,.cancelled-row td .amt{text-decoration:line-through}
+  .order.cancelled{border:2px solid var(--unpaid)!important;background:rgba(214,69,69,.08)!important;opacity:.8}
+  .order.cancelled .price{text-decoration:line-through}
+
+  .car-list{display:flex;flex-direction:column;gap:11px}
+  .car-card{border:1px solid var(--line);border-radius:14px;padding:12px 13px;background:var(--surface);box-shadow:0 1px 3px rgba(0,0,0,.04)}
+  .car-card.cancelled{border:2px solid var(--unpaid);background:rgba(214,69,69,.07);opacity:.85}
+  .cc-top{display:flex;align-items:center;gap:9px;margin-bottom:11px}
+  .cc-no{font-weight:800;color:var(--brand);background:var(--chip);padding:2px 11px;border-radius:8px;font-size:.95rem}
+  .cc-time{font-size:.72rem;color:var(--muted)}
+  .cc-price{margin-inline-start:auto;font-weight:800;font-size:1.08rem}
+  .cc-main{display:flex;align-items:center;gap:11px}
+  .cc-img{width:46px;height:46px;border-radius:11px;object-fit:cover;flex:none}
+  .cc-ic{width:46px;height:46px;border-radius:11px;background:var(--chip);color:var(--brand);display:grid;place-items:center;flex:none}
+  .cc-info{flex:1;min-width:0}
+  .cc-veh{font-size:1rem;display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-weight:700}
+  .cc-sub{font-size:.82rem;color:var(--muted);margin-top:3px}
+  .cc-acts{display:flex;gap:8px;margin-top:12px;padding-top:11px;border-top:1px solid var(--line);flex-wrap:wrap}
+  .cc-acts .icon-btn,.cc-acts .wa-btn{width:34px;height:34px}
+  .cc-acts .wa-btn svg{width:18px;height:18px}
+  .car-card.cancelled .cc-price,.car-card.cancelled .cc-veh b{text-decoration:line-through}
 </style>
 </head>
 <body>
@@ -404,6 +432,16 @@
 </div>
 <div id="toast"></div>
 <div id="lightbox" onclick="this.style.display='none'"><img alt=""></div>
+<div id="editModal" class="modal">
+  <div class="modal-box">
+    <h3>تعديل</h3>
+    <div id="editBody"></div>
+    <div class="modal-actions" style="margin-top:6px">
+      <button class="btn-primary" id="editSave" style="flex:1">حفظ التعديل</button>
+      <button class="mini" id="editClose">إغلاق</button>
+    </div>
+  </div>
+</div>
 <div id="codeModal" class="modal">
   <div class="modal-box">
     <h3 id="codeTitle">أدخل الكود</h3>
@@ -430,14 +468,15 @@
         <button class="mini" id="btnReset" style="background:var(--unpaid-bg);color:var(--unpaid);border-color:#f0cccc">مسح كل البيانات نهائيًا</button>
       </div>
     <div class="set-sec">
-      <div class="set-title">قفل التطبيق بكلمة مرور</div>
-      <label class="sw"><input type="checkbox" id="lockToggle"> تفعيل القفل عند فتح التطبيق</label>
-      <input type="password" id="lockPinSet" inputmode="numeric" placeholder="كلمة المرور (أرقام)" style="margin-top:9px">
+      <div class="set-title">كود فتح التطبيق (دائمًا مفعّل)</div>
+      <input type="hidden" id="lockToggle" value="1">
+      <input type="password" id="lockPinSet" inputmode="numeric" placeholder="كود فتح التطبيق">
+      <div class="hint" style="margin-top:6px">يُطلب عند كل فتح للتطبيق. لا يمكن إطفاؤه — يمكنك تغيير الكود فقط.</div>
     </div>
     <div class="set-sec">
       <div class="set-title">كود العدّادات (تعديل القراءة والسعر)</div>
       <input type="password" id="meterPinSet" inputmode="numeric" placeholder="كود العدّادات">
-      <div class="hint" style="margin-top:6px">مستقلّ عن كود فتح التطبيق — اجعله مختلفًا. إن تركته فارغًا يكون 070752.</div>
+      <div class="hint" style="margin-top:6px">مستقلّ عن كود فتح التطبيق — اجعله مختلفًا. إن تركته فارغًا يعود للكود الافتراضي.</div>
     </div>
     <div class="set-sec">
       <div class="set-title">أسعار استهلاك العدّاد</div>
@@ -583,7 +622,7 @@ function pieceIcon(t){
 }
 function vehicleCounts(f){
   const c={"سيارات":0,"دراجة نارية":0,"انيل":0,"شاحنة":0,"أخرى":0};
-  state.carOps.filter(o=>f(o.date)).forEach(o=>{
+  state.carOps.filter(o=>!o.cancelled&&f(o.date)).forEach(o=>{
     if(o.vehicle==="سيارة صغيرة"||o.vehicle==="سيارة كبيرة")c["سيارات"]++;
     else if(c[o.vehicle]!==undefined)c[o.vehicle]++;
   });
@@ -592,11 +631,11 @@ function vehicleCounts(f){
 function carpetCounts(f){
   const c={};
   Object.keys(state.piecePrices).forEach(t=>c[t]=0);
-  state.carpetOrders.filter(o=>f(o.date)).forEach(o=>{ if(c[o.type]!==undefined)c[o.type]++; });
+  state.carpetOrders.filter(o=>!o.cancelled&&f(o.date)).forEach(o=>{ if(c[o.type]!==undefined)c[o.type]++; });
   return c;
 }
-function carIncome(f){return sum(state.carOps.filter(f),o=>o.price);}
-function carpetIncome(f){return sum(state.carpetOrders.filter(o=>o.paid&&f(o.paidDate||o.deliveredDate||o.date)),o=>o.price);}
+function carIncome(f){return sum(state.carOps.filter(o=>!o.cancelled&&f(o)),o=>o.price);}
+function carpetIncome(f){return sum(state.carpetOrders.filter(o=>!o.cancelled&&o.paid&&f(o.paidDate||o.deliveredDate||o.date)),o=>o.price);}
 function manualExp(f){return sum(state.expenses.filter(e=>f(e.date)),e=>e.amount);}
 function mElec(m){ return (m.elec!==undefined&&m.elec!=="")?(+m.elec||0):(+m.elecEnd||+m.elecStart||0); }
 function mWater(m){ return (m.water!==undefined&&m.water!=="")?(+m.water||0):(+m.waterEnd||+m.waterStart||0); }
@@ -889,15 +928,36 @@ function screenDashboard(){
 
 function screenCars(){
   const oq=(state.carSearch||"").trim();
-  const listSrc = oq ? state.carOps.filter(o=>((o.no||"").toLowerCase().includes(oq.toLowerCase()))||((o.plate||"").includes(oq))).slice().reverse() : state.carOps.filter(o=>isToday(o.date)).slice().reverse();
+  const _t=ymd(new Date());
+  const periodTxt = (state.dateFrom===state.dateTo) ? (state.dateFrom===_t?"اليوم":state.dateFrom) : `${state.dateFrom} ← ${state.dateTo}`;
+  const listSrc = oq ? state.carOps.filter(o=>((o.no||"").toLowerCase().includes(oq.toLowerCase()))||((o.plate||"").includes(oq))).slice().reverse() : state.carOps.filter(o=>inRange(o.date)).slice().reverse();
   const today=listSrc;
-  const total=carIncome(o=>isToday(o.date));
+  const total=carIncome(o=>inRange(o.date));
   const rows=today.length?today.map(o=>`
-    <tr><td><b style="color:var(--brand)">${o.no||"-"}</b><div style="font-size:.7rem;color:var(--muted)">${timeStr(o.date)}</div></td>
-      <td>${VEH_IMG[o.vehicle]?`<img class="row-vimg" src="${VEH_IMG[o.vehicle]}" alt="">`:`<span class="row-ic">${svg(vehIcon(o.vehicle))}</span>`}<b>${o.vehicle}</b> <span style="color:var(--muted)">— ${o.wash}</span>${o.plate?` <span style="color:var(--muted)">• ${o.plate}</span>`:""}${o.free?' <span class="badge b-wash">مجاني 🎁</span>':""}${(o.photosBefore&&o.photosBefore.length)?`<div class="ba-thumbs"><span class="ba-lbl">قبل:</span>${recThumbs(o.photosBefore)}</div>`:""}${(o.photosAfter&&o.photosAfter.length)?`<div class="ba-thumbs"><span class="ba-lbl">بعد:</span>${recThumbs(o.photosAfter)}</div>`:""}</td>
-      <td class="amt">${money(o.price)}</td>
-      <td style="text-align:left"><div class="row-acts">${((o.photosBefore&&o.photosBefore.length)||(o.photosAfter&&o.photosAfter.length))?`<button class="wa-btn photo-btn" data-carphotos="${o.id}" title="إرسال صور قبل/بعد الغسيل">${svg(I.camera)}</button>`:""}${o.phone?`<button class="wa-btn" data-carwa="${o.id}" title="فتح واتساب الزبون">${svg(I.whatsapp)}</button>`:""}<button class="icon-btn" data-del-car="${o.id}" title="حذف">${svg(I.trash)}</button></div></td></tr>`).join("")
-    :`<tr><td colspan="4"><div class="empty">${svg(I.empty)}${oq?"لا توجد نتائج لهذا الرقم/اللوحة.":"لا توجد عمليات اليوم بعد — أضف أول عملية."}</div></td></tr>`;
+    <div class="car-card ${o.cancelled?'cancelled':''}">
+      <div class="cc-top">
+        <span class="cc-no">${o.no||"-"}</span>
+        <span class="cc-time">${timeStr(o.date)}</span>
+        <span class="cc-price">${money(o.price)}</span>
+      </div>
+      <div class="cc-main">
+        ${VEH_IMG[o.vehicle]?`<img class="cc-img" src="${VEH_IMG[o.vehicle]}" alt="">`:`<span class="cc-ic">${svg(vehIcon(o.vehicle))}</span>`}
+        <div class="cc-info">
+          <div class="cc-veh"><b>${o.vehicle}</b>${o.cancelled?'<span class="badge badge-cancel">ملغى 🚫</span>':''}${o.free?'<span class="badge b-wash">مجاني 🎁</span>':''}</div>
+          <div class="cc-sub">${o.wash}${o.plate?` • ${o.plate}`:""}</div>
+        </div>
+      </div>
+      ${(o.photosBefore&&o.photosBefore.length)?`<div class="ba-thumbs"><span class="ba-lbl">قبل:</span>${recThumbs(o.photosBefore)}</div>`:""}
+      ${(o.photosAfter&&o.photosAfter.length)?`<div class="ba-thumbs"><span class="ba-lbl">بعد:</span>${recThumbs(o.photosAfter)}</div>`:""}
+      <div class="cc-acts">
+        ${((o.photosBefore&&o.photosBefore.length)||(o.photosAfter&&o.photosAfter.length))?`<button class="wa-btn photo-btn" data-carphotos="${o.id}" title="إرسال صور قبل/بعد">${svg(I.camera)}</button>`:""}
+        ${o.phone?`<button class="wa-btn" data-carwa="${o.id}" title="واتساب الزبون">${svg(I.whatsapp)}</button>`:""}
+        <button class="icon-btn" data-edit-car="${o.id}" title="تعديل">✏️</button>
+        <button class="icon-btn cancel-btn ${o.cancelled?'on':''}" data-cancel-car="${o.id}" title="${o.cancelled?'إلغاء الإلغاء (مطوّل)':'إلغاء (اضغط مطوّلًا)'}">🚫</button>
+        <button class="icon-btn" data-del-car="${o.id}" title="حذف">${svg(I.trash)}</button>
+      </div>
+    </div>`).join("")
+    :`<div class="empty">${svg(I.empty)}${oq?"لا توجد نتائج لهذا الرقم/اللوحة.":"لا توجد عمليات في هذه الفترة."}</div>`;
   const wOpts=WASH_TYPES.map(w=>`<option value="${w}">${w}</option>`).join("");
   const vehBtns=Object.keys(state.vehiclePrices).map((v,i)=>`<button type="button" class="pick ${i===0?'on':''}" data-vpick="${v}">${VEH_IMG[v]?`<img class="pick-img" src="${VEH_IMG[v]}" alt="">`:svg(vehIcon(v))}<span>${v}</span></button>`).join("");
   const firstV=Object.keys(state.vehiclePrices)[0];
@@ -929,14 +989,15 @@ function screenCars(){
           <div class="hint">آخر سعر تُدخله يصبح السعر الافتراضي لهذا النوع.</div></div>
         <div class="field"><label>صور قبل الغسيل</label><div class="photos" id="carBeforeStrip"></div></div>
         <div class="field"><label>صور بعد الغسيل</label><div class="photos" id="carAfterStrip"></div></div>
+        <div class="field"><label>التاريخ</label><input id="carDate" type="date" value="${ymd(new Date())}" max="${ymd(new Date())}"></div>
         <button class="btn-primary" id="carSave">حفظ العملية</button>
       </div>
       <div class="panel car-sky">
-        <h3>${oq?"نتائج البحث":"عمليات اليوم"}</h3>
+        <h3>${oq?"نتائج البحث":`عمليات ${periodTxt}`}</h3>
+        ${oq?"":`<div class="hint" style="margin-bottom:10px">العرض حسب التاريخ المختار في الرئيسية (${periodTxt}). غيّره من فلتر الرئيسية.</div>`}
         <input class="search-inp" id="carSearch" type="text" placeholder="بحث برقم الغسلة (S57…) أو اللوحة" value="${oq}">
-        <div class="tbl-wrap"><table class="tbl striped"><thead><tr><th>الرقم/الوقت</th><th>السيارة / الغسيل</th><th>السعر</th><th></th></tr></thead>
-        <tbody>${rows}</tbody></table></div>
-        ${oq?"":`<div class="sum-row"><span>إجمالي دخل السيارات اليوم</span><span class="big">${money(total)}</span></div>`}
+        <div class="car-list">${rows}</div>
+        ${oq?"":`<div class="sum-row"><span>إجمالي دخل السيارات (${periodTxt})</span><span class="big">${money(total)}</span></div>`}
       </div>
     </div>
     <div class="panel" style="margin-top:18px">
@@ -957,11 +1018,12 @@ function screenCarpets(){
   const cards=list.length?list.slice().reverse().map(o=>{
     const st=STATUS[o.status],next=NEXT[o.status],os=orderState(o);
     return `
-    <div class="order s-${st.cls} ${os.cls==="st-red"?"alert-red":""}">
+    <div class="order s-${st.cls} ${os.cls==="st-red"?"alert-red":""} ${o.cancelled?"cancelled":""}">
       <div class="no">${o.no}</div>
       <div class="cust"><span class="state-dot ${os.cls}" title="${os.cls==="st-red"?"مكتمل وغير مدفوع":os.cls==="st-green"?"مدفوع":"قيد الانتظار"}"></span>${o.customer||"عميل"}</div>
       <div class="meta">${o.type} × ${o.count}</div>
       <div class="badges">
+        ${o.cancelled?'<span class="badge badge-cancel">ملغى 🚫</span>':''}
         <span class="badge b-${st.cls}">${st.label}</span>
         ${o.paid?'<span class="badge b-paid">مدفوع</span>':'<span class="badge b-unpaid">غير مدفوع</span>'}
       </div>
@@ -972,6 +1034,8 @@ function screenCarpets(){
         <button class="mini" data-pay="${o.id}">${o.paid?"إلغاء الدفع":"تحصيل الدفع"}</button>
         <button class="wa-btn" data-wa="${o.id}" title="إرسال الحالة عبر واتساب">${svg(I.whatsapp)}</button>
         <button class="mini" data-receipt="${o.id}">إيصال</button>
+        <button class="mini" data-edit-order="${o.id}">✏️ تعديل</button>
+        <button class="mini cancel-btn ${o.cancelled?'on':''}" data-cancel-order="${o.id}" title="${o.cancelled?'إلغاء الإلغاء (مطوّل)':'إلغاء الطلب (اضغط مطوّلًا)'}">${o.cancelled?"ملغى 🚫":"🚫"}</button>
         <button class="icon-btn" data-del-order="${o.id}" title="حذف">${svg(I.trash)}</button>
       </div>
     </div>`;}).join("")
@@ -997,6 +1061,7 @@ function screenCarpets(){
         <div class="total-line"><span>الإجمالي</span><b><span id="cpTotal">${startUnit}</span></b></div>
         <div class="hint" style="margin:-6px 0 12px">آخر سعر تُدخله لأي نوع يصبح سعره الافتراضي تلقائيًا.</div>
         <div class="field"><label>صور الفرشة (اختياري)</label><div class="photos" id="cpPhotoStrip"></div></div>
+        <div class="field"><label>التاريخ</label><input id="cpDate" type="date" value="${ymd(new Date())}" max="${ymd(new Date())}"></div>
         <button class="btn-primary" id="cpSave">إضافة الطلب</button>
       </div>
       <div>
@@ -1021,13 +1086,15 @@ function screenExpenses(){
 }
 
 function expGeneral(){
-  const today=state.expenses.filter(e=>isToday(e.date));
-  const total=manualExp(isToday);
+  const _t=ymd(new Date());
+  const periodTxt = (state.dateFrom===state.dateTo) ? (state.dateFrom===_t?"اليوم":state.dateFrom) : `${state.dateFrom} ← ${state.dateTo}`;
+  const today=state.expenses.filter(e=>inRange(e.date)).slice().reverse();
+  const total=manualExp(e=>inRange(e));
   const rows=today.length?today.map(e=>`
-    <tr><td>${timeStr(e.date)}</td><td><span class="badge b-done">${e.category}</span></td>
+    <tr><td>${ymd(e.date)}<div style="font-size:.7rem;color:var(--muted)">${timeStr(e.date)}</div></td><td><span class="badge b-done">${e.category}</span></td>
       <td>${e.reason||"—"}</td><td class="amt">${money(e.amount)}</td>
       <td style="text-align:left"><button class="icon-btn" data-del-exp="${e.id}" title="حذف">${svg(I.trash)}</button></td></tr>`).join("")
-    :`<tr><td colspan="5"><div class="empty">${svg(I.empty)}لا توجد مصروفات اليوم.</div></td></tr>`;
+    :`<tr><td colspan="5"><div class="empty">${svg(I.empty)}لا توجد مصروفات في هذه الفترة.</div></td></tr>`;
   const opts=EXP_CATS.map(c=>`<option value="${c}">${c}</option>`).join("");
   const reasonOpts=[...new Set(state.expenses.map(e=>(e.reason||"").trim()).filter(Boolean))].map(r=>`<option value="${r}"></option>`).join("");
   return `
@@ -1037,13 +1104,15 @@ function expGeneral(){
         <div class="field"><label>المبلغ</label><input id="expAmount" type="number" min="0" value="0"></div>
         <div class="field"><label>الفئة</label><select id="expCat">${opts}</select></div>
         <div class="field"><label>اسم المصروف <span style="color:var(--unpaid)">*</span></label><input id="expReason" list="expReasonList" type="text" placeholder="مثال: شامبو، مكرونة…" autocomplete="off"><datalist id="expReasonList">${reasonOpts}</datalist></div>
+        <div class="field"><label>التاريخ</label><input id="expDate" type="date" value="${ymd(new Date())}" max="${ymd(new Date())}"></div>
         <button class="btn-primary" id="expSave">إضافة مصروف</button>
       </div>
       <div class="panel">
-        <h3>مصروفات اليوم</h3>
-        <table class="tbl"><thead><tr><th>الوقت</th><th>الفئة</th><th>السبب</th><th>المبلغ</th><th></th></tr></thead>
-        <tbody>${rows}</tbody></table>
-        <div class="sum-row"><span>إجمالي المصروفات العامة اليوم</span><span class="big">${money(total)}</span></div>
+        <h3>مصروفات ${periodTxt}</h3>
+        <div class="hint" style="margin-bottom:10px">العرض حسب التاريخ المختار في الرئيسية (${periodTxt}).</div>
+        <div class="tbl-wrap"><table class="tbl"><thead><tr><th>التاريخ</th><th>الفئة</th><th>السبب</th><th>المبلغ</th><th></th></tr></thead>
+        <tbody>${rows}</tbody></table></div>
+        <div class="sum-row"><span>إجمالي المصروفات العامة (${periodTxt})</span><span class="big">${money(total)}</span></div>
       </div>
     </div>
     ${(()=>{
@@ -1304,7 +1373,7 @@ function bindScreen(){
     plateInp.oninput=updLoyalty;
     bindPhotoStrip("carBeforeStrip",pendingCarBefore,"carB");
     bindPhotoStrip("carAfterStrip",pendingCarAfter,"carA");
-    document.getElementById("carSave").onclick=()=>{
+    const doCarSave=()=>{
       const vehicle=cv.value;
       const plate=plateInp.value.trim();
       const phone=document.getElementById("carPhone").value.trim();
@@ -1314,25 +1383,34 @@ function bindScreen(){
       const free=!!(existing&&existing.stamps===4);
       const price=+document.getElementById("carPrice").value;
       if(!free && !(price>0)) return toast("أدخل سعرًا صحيحًا");
-      if(plate){
-        let c=state.customers[plate]||{plate,stamps:0,totalWashes:0,freeWashes:0};
-        if(phone){ c.phone=phone; c.country=country; }
-        if(free){c.stamps=0;c.freeWashes++;} else c.stamps++;
-        c.totalWashes++; c.lastVisit=iso(new Date());
-        state.customers[plate]=c;
-      }
-      if(!free) state.vehiclePrices[vehicle]=price;
-      state.carOps.push({id:uid(),no:carNo(vehicle),vehicle,wash:document.getElementById("carWash").value,price:free?0:price,
-        plate,phone,country,free,note:"",photosBefore:[...pendingCarBefore],photosAfter:[...pendingCarAfter],date:iso(new Date())});
-      pendingCarBefore.length=0; pendingCarAfter.length=0;
-      if(free) toast("🎁 غسلة مجانية — اكتملت البطاقة");
-      else if(plate&&state.customers[plate].stamps===4) toast("تم الحفظ — الغسلة القادمة مجانية");
-      else toast("تم حفظ العملية");
-      render();
+      const carDateV=(document.getElementById("carDate")||{}).value||todayStr();
+      const commit=()=>{
+        if(!free) state.vehiclePrices[vehicle]=price;
+        if(plate){
+          let c=state.customers[plate]||{plate,stamps:0,totalWashes:0,freeWashes:0};
+          if(phone){ c.phone=phone; c.country=country; }
+          if(free){c.stamps=0;c.freeWashes++;} else c.stamps++;
+          c.totalWashes++; c.lastVisit=iso(new Date());
+          state.customers[plate]=c;
+        }
+        state.carOps.push({id:uid(),no:carNo(vehicle),vehicle,wash:document.getElementById("carWash").value,price:free?0:price,
+          plate,phone,country,free,note:"",photosBefore:[...pendingCarBefore],photosAfter:[...pendingCarAfter],date:chosenDateIso(carDateV)});
+        pendingCarBefore.length=0; pendingCarAfter.length=0;
+        if(free) toast("🎁 غسلة مجانية — اكتملت البطاقة");
+        else if(plate&&state.customers[plate].stamps===4) toast("تم الحفظ — الغسلة القادمة مجانية");
+        else toast("تم حفظ العملية");
+        render();
+      };
+      gateDate(carDateV, commit);
     };
+    bindHold(document.getElementById("carSave"), doCarSave, 1000);
   }
   document.querySelectorAll("[data-carwa]").forEach(b=>b.onclick=()=>{ const o=state.carOps.find(x=>x.id===b.dataset.carwa); if(o) openCarChat(o); });
   document.querySelectorAll("[data-carphotos]").forEach(b=>b.onclick=()=>{ const o=state.carOps.find(x=>x.id===b.dataset.carphotos); if(o) shareCarImages(o); });
+  document.querySelectorAll("[data-edit-car]").forEach(b=>b.onclick=()=>openEditCar(b.dataset.editCar));
+  document.querySelectorAll("[data-edit-order]").forEach(b=>b.onclick=()=>openEditOrder(b.dataset.editOrder));
+  document.querySelectorAll("[data-cancel-car]").forEach(b=>bindHold(b, ()=>toggleCancelCar(b.dataset.cancelCar), 1000));
+  document.querySelectorAll("[data-cancel-order]").forEach(b=>bindHold(b, ()=>toggleCancelOrder(b.dataset.cancelOrder), 1000));
   document.querySelectorAll("[data-del-car]").forEach(b=>b.onclick=()=>{
     requireCode(()=>{ state.carOps=state.carOps.filter(o=>o.id!==b.dataset.delCar); toast("تم الحذف"); render(); }, SECRET_CODE, "كود الحذف", "أدخل كود الحذف لتأكيد العملية.");});
   document.querySelectorAll("[data-del-cust]").forEach(b=>b.onclick=()=>{
@@ -1352,7 +1430,7 @@ function bindScreen(){
     });
     cpP.oninput=recalc; cpC.oninput=recalc;
     bindPhotoStrip("cpPhotoStrip",pendingCpPhotos,"cp");
-    document.getElementById("cpSave").onclick=()=>{
+    const doCpSave=()=>{
       const unit=+cpP.value, count=+cpC.value, type=ct.value;
       const cpph=document.getElementById("cpPhone").value.trim();
       const cpcountry=document.getElementById("cpCountry").value;
@@ -1361,16 +1439,20 @@ function bindScreen(){
       if(!(unit>0)) return toast("أدخل سعرًا صحيحًا");
       if(!(count>0)) return toast("أدخل عددًا صحيحًا");
       if(!validPhone(cpph)) return toast("رقم الهاتف يجب أن يكون 8 أرقام");
-      state.piecePrices[type]=unit;                    // learn last price
-      state.orderSeq++;
-      const d=iso(new Date());
-      state.carpetOrders.push({id:uid(),no:orderNo(state.orderSeq,d),
-        customer:cpcust,
-        phone:cpph, country:cpcountry,
-        type,count,unit,price:unit*count,status:"wash",paid:false,photos:[...pendingCpPhotos],date:d});
-      pendingCpPhotos.length=0;
-      toast("تمت إضافة الطلب"); render();
+      const cpDateV=(document.getElementById("cpDate")||{}).value||todayStr();
+      const commit=()=>{
+        state.piecePrices[type]=unit;
+        state.orderSeq++;
+        const d=chosenDateIso(cpDateV);
+        state.carpetOrders.push({id:uid(),no:orderNo(state.orderSeq,d),
+          customer:cpcust, phone:cpph, country:cpcountry,
+          type,count,unit,price:unit*count,status:"wash",paid:false,photos:[...pendingCpPhotos],date:d});
+        pendingCpPhotos.length=0;
+        toast("تمت إضافة الطلب"); render();
+      };
+      gateDate(cpDateV, commit);
     };
+    bindHold(document.getElementById("cpSave"), doCpSave, 1000);
   }
   document.querySelectorAll("[data-status]").forEach(b=>b.onclick=()=>{
     const o=state.carpetOrders.find(x=>x.id===b.dataset.status);
@@ -1401,9 +1483,12 @@ function bindScreen(){
       const reason=document.getElementById("expReason").value.trim();
       if(!reason) return toast("اكتب اسم المصروف");
       if(!(amount>0)) return toast("أدخل مبلغًا صحيحًا");
-      state.expenses.push({id:uid(),amount,category:document.getElementById("expCat").value,
-        reason,date:iso(new Date())});
-      toast("تمت إضافة المصروف"); render();
+      const expDateV=(document.getElementById("expDate")||{}).value||todayStr();
+      const commit=()=>{
+        state.expenses.push({id:uid(),amount,category:document.getElementById("expCat").value,reason,date:chosenDateIso(expDateV)});
+        toast("تمت إضافة المصروف"); render();
+      };
+      gateDate(expDateV, commit);
     };
   }
   document.querySelectorAll("[data-del-exp]").forEach(b=>b.onclick=()=>{
@@ -1498,6 +1583,21 @@ function bindScreen(){
 /* ============ code-protected actions ============ */
 const SECRET_CODE="070752";
 let _codeCb=null, _codeExpected=SECRET_CODE;
+function todayStr(){ return ymd(new Date()); }
+function chosenDateIso(dateStr){ const t=todayStr(); if(!dateStr||dateStr===t) return iso(new Date()); return new Date(dateStr+"T12:00:00").toISOString(); }
+function gateDate(dateStr, commit){ if(dateStr && dateStr!==todayStr()) requireCode(commit, SECRET_CODE, "كود التاريخ السابق", "التسجيل بتاريخ سابق يتطلّب كود التحقق."); else commit(); }
+function bindHold(el, cb, ms){
+  if(!el) return; ms=ms||1000; el.classList.add("hold-btn");
+  let t=null;
+  const clear=()=>{ if(t){clearTimeout(t);t=null;} el.classList.remove("holding"); };
+  el.addEventListener("pointerdown",(e)=>{ el.classList.add("holding"); t=setTimeout(()=>{ el.classList.remove("holding"); t=null; cb(); },ms); });
+  el.addEventListener("pointerup",clear);
+  el.addEventListener("pointerleave",clear);
+  el.addEventListener("pointercancel",clear);
+  el.addEventListener("click",(e)=>{ e.preventDefault(); e.stopPropagation(); });
+}
+function toggleCancelCar(id){ const o=state.carOps.find(x=>x.id===id); if(o){ o.cancelled=!o.cancelled; toast(o.cancelled?"تم إلغاء العملية 🚫":"أُلغي الإلغاء"); render(); } }
+function toggleCancelOrder(id){ const o=state.carpetOrders.find(x=>x.id===id); if(o){ o.cancelled=!o.cancelled; toast(o.cancelled?"تم إلغاء الطلب 🚫":"أُلغي الإلغاء"); render(); } }
 function requireCode(cb, expected, title, desc){
   _codeCb=cb; _codeExpected=expected||SECRET_CODE;
   const t=document.getElementById("codeTitle"); if(t) t.textContent=title||"أدخل الكود";
@@ -1534,7 +1634,7 @@ function save(){ saveLocal(); if(window.cloudReady && !_applyingRemote){ clearTi
 function load(){ try{ const d=localStorage.getItem(LS_KEY); if(d) Object.assign(state, JSON.parse(d)); }catch(e){} }
 function applyRemote(remote){
   _applyingRemote=true;
-  const unmigrated = (remote.codesV!==2);
+  const unmigrated = (remote.codesV!==3);
   const pm={};
   (state.carOps||[]).forEach(o=>{ if(o.photos&&o.photos.length) pm["op"+o.id]=o.photos; });
   (state.carpetOrders||[]).forEach(o=>{ if(o.photos&&o.photos.length) pm["or"+o.id]=o.photos; });
@@ -1542,7 +1642,8 @@ function applyRemote(remote){
   (state.carOps||[]).forEach(o=>{ o.photos=pm["op"+o.id]||o.photos||[]; });
   (state.carpetOrders||[]).forEach(o=>{ o.photos=pm["or"+o.id]||o.photos||[]; });
   let migChanged=false;
-  if(unmigrated){ state.lock={enabled:true,pin:"0707"}; state.meterPin="070752"; state.codesV=2; migChanged=true; }
+  if(unmigrated){ if(!state.meterPin) state.meterPin="070752"; state.codesV=3; migChanged=true; }
+  state.lock={enabled:true, pin:(state.lock&&state.lock.pin)||"0707"};
   if(state.adMsg==="🎁 اجمع 5 غسلات واحصل على غسلة مجانية!\nنغسل السجاد والموكيت والأفرشة أيضًا 🧼\nشاركنا مع أصدقائك 🙌"){ state.adMsg=""; migChanged=true; }
   if(typeof ensureCarNos==="function") ensureCarNos();
   saveLocal(); applyTheme(); applyLock(); render();
@@ -1698,8 +1799,7 @@ function waLink(o){
 /* ---- wire static controls (once) ---- */
 document.getElementById("settingsBtn").onclick=()=>{ requireCode(openSettings, meterCode(), "كود الإعدادات", "أدخل كود الإعدادات للدخول."); };
 function openSettings(){
-  document.getElementById("lockToggle").checked=!!(state.lock&&state.lock.enabled);
-  document.getElementById("lockPinSet").value=(state.lock&&state.lock.pin)||"";
+  document.getElementById("lockPinSet").value=(state.lock&&state.lock.pin)||"0707";
   document.getElementById("meterPinSet").value=state.meterPin||"";
   document.getElementById("tarElecSet").value=state.tariff.elec||0;
   document.getElementById("tarWaterSet").value=state.tariff.water||0;
@@ -1713,20 +1813,60 @@ function openSettings(){
   document.getElementById("settingsModal").style.display="flex";
 };
 document.getElementById("setClose").onclick=()=>document.getElementById("settingsModal").style.display="none";
+let _editCtx=null;
+function openEditCar(id){
+  const o=state.carOps.find(x=>x.id===id); if(!o) return; _editCtx={type:"car",id};
+  const vehOpts=Object.keys(VEH_LETTER).map(v=>`<option value="${v}" ${v===o.vehicle?"selected":""}>${v}</option>`).join("");
+  const washOpts=WASH_TYPES.map(w=>`<option value="${w}" ${w===o.wash?"selected":""}>${w}</option>`).join("");
+  document.getElementById("editBody").innerHTML=`
+    <div class="field"><label>نوع السيارة</label><select id="edVehicle">${vehOpts}</select></div>
+    <div class="field"><label>نوع الغسيل</label><select id="edWash">${washOpts}</select></div>
+    <div class="field"><label>اللوحة</label><input id="edPlate" type="text" value="${(o.plate||"").replace(/"/g,"&quot;")}"></div>
+    <div class="field"><label>السعر</label><input id="edPrice" type="number" value="${o.price}"></div>`;
+  document.getElementById("editModal").style.display="flex";
+}
+function openEditOrder(id){
+  const o=state.carpetOrders.find(x=>x.id===id); if(!o) return; _editCtx={type:"order",id};
+  const typeOpts=Object.keys(state.piecePrices).map(t=>`<option value="${t}" ${t===o.type?"selected":""}>${t}</option>`).join("");
+  document.getElementById("editBody").innerHTML=`
+    <div class="field"><label>النوع</label><select id="edType">${typeOpts}</select></div>
+    <div class="field"><label>العدد</label><input id="edCount" type="number" min="1" value="${o.count}"></div>
+    <div class="field"><label>سعر الوحدة</label><input id="edUnit" type="number" min="0" value="${o.unit}"></div>
+    <div class="field"><label>اسم الزبون</label><input id="edCust" type="text" value="${(o.customer||"").replace(/"/g,"&quot;")}"></div>`;
+  document.getElementById("editModal").style.display="flex";
+}
+document.getElementById("editClose").onclick=()=>{ document.getElementById("editModal").style.display="none"; _editCtx=null; };
+document.getElementById("editSave").onclick=()=>{
+  if(!_editCtx) return;
+  if(_editCtx.type==="car"){
+    const o=state.carOps.find(x=>x.id===_editCtx.id); if(!o) return;
+    o.vehicle=document.getElementById("edVehicle").value;
+    o.wash=document.getElementById("edWash").value;
+    o.plate=document.getElementById("edPlate").value.trim();
+    o.price=+document.getElementById("edPrice").value||0;
+  } else {
+    const o=state.carpetOrders.find(x=>x.id===_editCtx.id); if(!o) return;
+    o.type=document.getElementById("edType").value;
+    o.count=Math.max(1,+document.getElementById("edCount").value||1);
+    o.unit=+document.getElementById("edUnit").value||0;
+    o.price=o.unit*o.count;
+    o.customer=document.getElementById("edCust").value.trim();
+  }
+  document.getElementById("editModal").style.display="none"; _editCtx=null;
+  toast("تم حفظ التعديل"); render();
+};
 document.getElementById("btnExport").onclick=exportData;
 document.getElementById("fileImport").onchange=(e)=>{ if(e.target.files[0]) importData(e.target.files[0]); };
 document.getElementById("btnReset").onclick=()=>{ if(confirm("سيتم مسح كل البيانات (الطلبات، الزبائن، المصروفات، العمّال، العدّادات) من هذا الجهاز والسحابة نهائيًا. هل أنت متأكد؟")){ resetAllData(); document.getElementById("settingsModal").style.display="none"; } };
 document.getElementById("setSave").onclick=()=>{
-  const en=document.getElementById("lockToggle").checked;
-  const pin=document.getElementById("lockPinSet").value.trim();
-  if(en&&!pin){ toast("أدخل كلمة المرور"); return; }
-  state.lock={enabled:en,pin:pin};
+  const pin=document.getElementById("lockPinSet").value.trim()||"0707";
+  state.lock={enabled:true,pin:pin};
   state.meterPin=document.getElementById("meterPinSet").value.trim();
   state.tariff.elec=+document.getElementById("tarElecSet").value||0;
   state.tariff.water=+document.getElementById("tarWaterSet").value||0;
   state.thanksMsg=document.getElementById("thanksSet").value.trim();
   state.adMsg=document.getElementById("adMsgSet").value.trim();
-  if(en) unlocked=true; // owner sets it now, stays in this session
+  unlocked=true; // owner just set it, stays unlocked this session
   save(); document.getElementById("settingsModal").style.display="none"; toast("تم حفظ الإعدادات");
 };
 document.getElementById("receiptClose").onclick=()=>document.getElementById("receiptModal").style.display="none";
@@ -1742,13 +1882,13 @@ function ensureCarNos(){ if(!state.carSeq) state.carSeq={}; (state.carOps||[]).f
 function runMigrations(){
   let changed=false;
   if(state.adMsg==="🎁 اجمع 5 غسلات واحصل على غسلة مجانية!\nنغسل السجاد والموكيت والأفرشة أيضًا 🧼\nشاركنا مع أصدقائك 🙌"){ state.adMsg=""; changed=true; }
-  if(state.codesV!==2){ state.lock={enabled:true,pin:"0707"}; state.meterPin="070752"; state.codesV=2; changed=true; }
+  if(state.codesV!==3){ state.lock={enabled:true,pin:"0707"}; if(!state.meterPin) state.meterPin="070752"; state.codesV=3; changed=true; }
   ensureCarNos();
   return changed;
 }
 runMigrations(); saveLocal();
 { const t=ymd(new Date()); state.dateFrom=t; state.dateTo=t; }
-if(!state.lock) state.lock={enabled:false,pin:""};
+state.lock={enabled:true, pin:(state.lock&&state.lock.pin)||"0707"};
 applyPalette();
 applyTheme();
 applyHeaderIcons();
