@@ -1057,8 +1057,8 @@ function screenCarpets(){
   if(q) list=list.filter(o=>((o.customer||"").includes(q))||((o.no||"").includes(q))||((o.phone||"").includes(q)));
   const chips=[{k:"all",t:"الكل"},{k:"wash",t:"قيد الغسيل"},{k:"ready",t:"جاهز"},{k:"done",t:"تم التسليم"},{k:"unpaid",t:"غير مدفوع"}]
     .map(c=>`<button class="chip ${f===c.k?'on':''}" data-filter="${c.k}">${c.t}</button>`).join("");
-  const cards=list.length?list.slice().reverse().map(o=>{
-    const st=STATUS[o.status],next=NEXT[o.status],os=orderState(o);
+  const cards=list.length?list.slice().reverse().map(o=>{ try{
+    const st=STATUS[o.status]||STATUS.wash,next=NEXT[o.status],os=orderState(o);
     return `
     <div class="order s-${st.cls} ${os.cls==="st-red"?"alert-red":""} ${o.cancelled?"cancelled":""}">
       <div class="no">${o.no}</div>
@@ -1083,7 +1083,7 @@ function screenCarpets(){
         <button class="icon-btn cancel-btn ${o.cancelled?'on':''}" data-cancel-order="${o.id}" title="${o.cancelled?'إلغاء الإلغاء (مطوّل)':'إلغاء الطلب (اضغط مطوّلًا)'}">🚫</button>
         <button class="icon-btn" data-del-order="${o.id}" title="حذف">${svg(I.trash)}</button>
       </div>
-    </div>`;}).join("")
+    </div>`;}catch(e){ return `<div class="order"><div class="no">${o.no||"?"}</div><div class="meta" style="color:var(--unpaid)">طلب ببيانات غير مكتملة</div></div>`; } }).join("")
     :`<div class="panel empty" style="grid-column:1/-1">${svg(I.empty)}لا توجد طلبات ضمن هذا التصنيف.</div>`;
   const pieceBtns=Object.keys(state.piecePrices).map((p,i)=>`<button type="button" class="pick ${i===0?'on':''}" data-ppick="${p}">${PIECE_IMG[p]?`<img class="pick-img" src="${PIECE_IMG[p]}" alt="">`:svg(pieceIcon(p))}<span>${p}</span></button>`).join("");
   const firstP=Object.keys(state.piecePrices)[0];
@@ -1516,10 +1516,12 @@ function bindScreen(){
         return;
       }
       o.status=nextStatus;
+      let notify=false;
       if(o.status==="done"){ o.deliveredDate=iso(new Date()); toast("تم التسليم"); }
-      else if(o.status==="ready"){ toast("الطلب جاهز"); if(o.phone) openWa(o); }
+      else if(o.status==="ready"){ toast("الطلب جاهز"); notify=!!o.phone; }
       else toast("تم تحديث حالة الطلب");
       render();
+      if(notify){ try{ openWa(o); }catch(e){} }
     }});
   document.querySelectorAll("[data-pay]").forEach(b=>b.onclick=()=>{
     const o=state.carpetOrders.find(x=>x.id===b.dataset.pay);
