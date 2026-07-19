@@ -536,7 +536,7 @@
       <button class="btn-primary" id="setSave" style="flex:1">حفظ</button>
       <button class="mini" id="setClose">إغلاق</button>
     </div>
-    <div class="hint" style="text-align:center;margin-top:10px;opacity:.8">الإصدار: 2026‑07‑17 · أزرار السجاد</div>
+    <div class="hint" style="text-align:center;margin-top:10px;opacity:.8">الإصدار: 2026‑07‑19 · مزامنة مشتركة</div>
   </div>
 </div>
 <div id="receiptModal" class="modal">
@@ -1462,9 +1462,9 @@ function bindScreen(){
   document.querySelectorAll("[data-cancel-car]").forEach(b=>bindHold(b, ()=>toggleCancelCar(b.dataset.cancelCar), 1000));
   document.querySelectorAll("[data-cancel-order]").forEach(b=>bindHold(b, ()=>toggleCancelOrder(b.dataset.cancelOrder), 1000));
   document.querySelectorAll("[data-del-car]").forEach(b=>b.onclick=()=>{
-    requireCode(()=>{ state.carOps=state.carOps.filter(o=>o.id!==b.dataset.delCar); toast("تم الحذف"); render(); }, SECRET_CODE, "كود الحذف", "أدخل كود الحذف لتأكيد العملية.");});
+    requireCode(()=>{ tomb(b.dataset.delCar); state.carOps=state.carOps.filter(o=>o.id!==b.dataset.delCar); toast("تم الحذف"); render(); }, SECRET_CODE, "كود الحذف", "أدخل كود الحذف لتأكيد العملية.");});
   document.querySelectorAll("[data-del-cust]").forEach(b=>b.onclick=()=>{
-    requireCode(()=>{ delete state.customers[b.dataset.delCust]; toast("تم حذف الزبون"); render(); }, SECRET_CODE, "كود الحذف", "أدخل كود الحذف لتأكيد العملية.");});
+    requireCode(()=>{ tombCust(b.dataset.delCust); delete state.customers[b.dataset.delCust]; toast("تم حذف الزبون"); render(); }, SECRET_CODE, "كود الحذف", "أدخل كود الحذف لتأكيد العملية.");});
 
   // carpets
   document.querySelectorAll("[data-filter]").forEach(b=>b.onclick=()=>{state.carpetFilter=b.dataset.filter;render();});
@@ -1531,7 +1531,7 @@ function bindScreen(){
   });
   document.querySelectorAll("[data-del-order]").forEach(b=>b.onclick=()=>{
     const o=state.carpetOrders.find(x=>x.id===b.dataset.delOrder);
-    const doDel=()=>{ state.carpetOrders=state.carpetOrders.filter(x=>x.id!==b.dataset.delOrder); toast("تم الحذف"); render(); };
+    const doDel=()=>{ tomb(b.dataset.delOrder); state.carpetOrders=state.carpetOrders.filter(x=>x.id!==b.dataset.delOrder); toast("تم الحذف"); render(); };
     requireCode(doDel, SECRET_CODE, "كود الحذف", "حذف الطلب يتطلب كود الحذف.");
   });
 
@@ -1552,7 +1552,7 @@ function bindScreen(){
     };
   }
   document.querySelectorAll("[data-del-exp]").forEach(b=>b.onclick=()=>{
-    state.expenses=state.expenses.filter(e=>e.id!==b.dataset.delExp);toast("تم الحذف");render();});
+    tomb(b.dataset.delExp);state.expenses=state.expenses.filter(e=>e.id!==b.dataset.delExp);toast("تم الحذف");render();});
 
   // expenses sub-tabs
   document.querySelectorAll("[data-sub]").forEach(b=>b.onclick=()=>{state.expSub=b.dataset.sub;render();});
@@ -1627,7 +1627,7 @@ function bindScreen(){
     w.credits.push({amount:amt,date:iso(new Date())});
     toast("سُجّل له (مستحق/مكافأة)"); render();});
   document.querySelectorAll("[data-del-worker]").forEach(b=>b.onclick=()=>{
-    state.workers=state.workers.filter(w=>w.id!==b.dataset.delWorker);toast("تم الحذف");render();});
+    tomb(b.dataset.delWorker);state.workers=state.workers.filter(w=>w.id!==b.dataset.delWorker);toast("تم الحذف");render();});
   document.querySelectorAll(".rec-thumb").forEach(t=>t.onclick=()=>openLightbox(t.src));
   document.querySelectorAll("[data-receipt]").forEach(b=>b.onclick=()=>{ const o=state.carpetOrders.find(x=>x.id===b.dataset.receipt); if(o) openReceipt(o); });
   document.querySelectorAll("[data-wa]").forEach(b=>b.onclick=()=>{ const o=state.carpetOrders.find(x=>x.id===b.dataset.wa); if(o) openWa(o); });
@@ -1692,16 +1692,47 @@ function cloudCopy(){
 }
 function save(){ saveLocal(); if(window.cloudReady && !_applyingRemote){ clearTimeout(_pushT); _pushT=setTimeout(()=>{ try{ window.cloudPush(cloudCopy()); }catch(e){} }, 600); } }
 function load(){ try{ const d=localStorage.getItem(LS_KEY); if(d) Object.assign(state, JSON.parse(d)); }catch(e){} }
+function tomb(id){ if(!state.deleted) state.deleted={}; state.deleted["rec:"+id]=Date.now(); }
+function tombCust(k){ if(!state.deleted) state.deleted={}; state.deleted["cust:"+k]=Date.now(); }
+function mergeById(localArr, remoteArr, del){
+  const out=new Map();
+  (remoteArr||[]).forEach(r=>{ if(r&&r.id && !del["rec:"+r.id]) out.set(r.id,r); });
+  (localArr||[]).forEach(l=>{
+    if(!l||!l.id||del["rec:"+l.id]) return;
+    if(!out.has(l.id)){ out.set(l.id,l); return; }
+    const r=out.get(l.id);
+    if(+new Date(l.editedAt||0) > +new Date(r.editedAt||0)) out.set(l.id,l);
+  });
+  return [...out.values()];
+}
 function applyRemote(remote){
   _applyingRemote=true;
   const unmigrated = (remote.codesV!==3);
+  const L={ carOps:state.carOps||[], carpetOrders:state.carpetOrders||[], expenses:state.expenses||[],
+            workers:state.workers||[], meters:state.meters||[], customers:state.customers||{} };
+  const localDel=state.deleted||{};
   const pm={};
-  (state.carOps||[]).forEach(o=>{ if(o.photos&&o.photos.length) pm["op"+o.id]=o.photos; });
-  (state.carpetOrders||[]).forEach(o=>{ if(o.photos&&o.photos.length) pm["or"+o.id]=o.photos; });
+  L.carOps.forEach(o=>{ if(o.photos&&o.photos.length) pm["op"+o.id]=o.photos; });
+  L.carpetOrders.forEach(o=>{ if(o.photos&&o.photos.length) pm["or"+o.id]=o.photos; });
   Object.assign(state, remote);
+  state.deleted=Object.assign({}, remote.deleted||{}, localDel);
+  state.carOps=mergeById(L.carOps, remote.carOps, state.deleted);
+  state.carpetOrders=mergeById(L.carpetOrders, remote.carpetOrders, state.deleted);
+  state.expenses=mergeById(L.expenses, remote.expenses, state.deleted);
+  state.workers=mergeById(L.workers, remote.workers, state.deleted);
+  state.meters=mergeById(L.meters, remote.meters, state.deleted);
+  const cs=Object.assign({}, remote.customers||{});
+  Object.keys(L.customers).forEach(k=>{ if(!cs[k]) cs[k]=L.customers[k]; });
+  Object.keys(state.deleted).forEach(k=>{ if(k.slice(0,5)==="cust:") delete cs[k.slice(5)]; });
+  state.customers=cs;
   (state.carOps||[]).forEach(o=>{ o.photos=pm["op"+o.id]||o.photos||[]; });
   (state.carpetOrders||[]).forEach(o=>{ o.photos=pm["or"+o.id]||o.photos||[]; });
-  let migChanged=false;
+  const grew = state.carOps.length!==(remote.carOps||[]).length
+    || state.carpetOrders.length!==(remote.carpetOrders||[]).length
+    || state.expenses.length!==(remote.expenses||[]).length
+    || state.workers.length!==(remote.workers||[]).length
+    || state.meters.length!==(remote.meters||[]).length;
+  let migChanged=grew;
   if(unmigrated){ if(!state.meterPin) state.meterPin="070752"; state.codesV=3; migChanged=true; }
   state.lock={enabled:true, pin:(state.lock&&state.lock.pin)||"0707"};
   if(state.adMsg==="🎁 اجمع 5 غسلات واحصل على غسلة مجانية!\nنغسل السجاد والموكيت والأفرشة أيضًا 🧼\nشاركنا مع أصدقائك 🙌"){ state.adMsg=""; migChanged=true; }
@@ -1714,6 +1745,8 @@ window.onCloudState=applyRemote;
 window.onCloudReady=()=>{ const el=document.getElementById("cloudStat"); if(el){ el.textContent="متصل ☁"; el.style.color="var(--ready)"; } toast("تم الاتصال بالسحابة ☁"); };
 window.onCloudEmpty=()=>{ try{ if(window.cloudReady) window.cloudPush(cloudCopy()); }catch(e){} };
 window.onCloudError=()=>{ const el=document.getElementById("cloudStat"); if(el){ el.textContent="غير متصل (يعمل محليًا)"; el.style.color="var(--muted)"; } };
+window.onCloudPushOk=()=>{ const el=document.getElementById("cloudStat"); if(el){ el.textContent="متصل ☁ — آخر مزامنة "+timeStr(new Date()); el.style.color="var(--ready)"; } };
+window.onCloudPushErr=(e)=>{ const el=document.getElementById("cloudStat"); if(el){ el.textContent="⚠️ فشل رفع البيانات للسحابة — راجع إعدادات Firebase"; el.style.color="var(--unpaid)"; } };
 const PALETTES=[
   {k:"teal",  name:"أخضر سماوي", b:"#0f9d8f", b2:"#16b8a6"},
   {k:"aqua",  name:"فيروزي",     b:"#0e8fa8", b2:"#22b6cf"},
@@ -1973,6 +2006,7 @@ function runMigrations(){
   let changed=false;
   if(state.adMsg==="🎁 اجمع 5 غسلات واحصل على غسلة مجانية!\nنغسل السجاد والموكيت والأفرشة أيضًا 🧼\nشاركنا مع أصدقائك 🙌"){ state.adMsg=""; changed=true; }
   if(state.codesV!==3){ state.lock={enabled:true,pin:"0707"}; if(!state.meterPin) state.meterPin="070752"; state.codesV=3; changed=true; }
+  if(!state.deleted) state.deleted={};
   ensureCarNos();
   return changed;
 }
@@ -2004,7 +2038,7 @@ setTimeout(()=>{ if(!window.cloudReady){ const el=document.getElementById("cloud
     try { db = FS.initializeFirestore(app, { localCache: FS.persistentLocalCache({ tabManager: FS.persistentMultipleTabManager() }) }); }
     catch(e){ db = FS.getFirestore(app); }
     const ref = FS.doc(db, "appState", "main");
-    window.cloudPush = (data) => { FS.setDoc(ref, { data: JSON.stringify(data), ts: Date.now() }).catch(()=>{}); };
+    window.cloudPush = (data) => { FS.setDoc(ref, { data: JSON.stringify(data), ts: Date.now() }).then(()=>{ if(window.onCloudPushOk) window.onCloudPushOk(); }).catch((e)=>{ if(window.onCloudPushErr) window.onCloudPushErr(e); }); };
     window.cloudReady = true;
     if (window.onCloudReady) window.onCloudReady();
     FS.onSnapshot(ref, (snap) => {
