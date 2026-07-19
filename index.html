@@ -1710,7 +1710,8 @@ function meterCode(){ return (state.meterPin&&state.meterPin.trim())?state.meter
 const LS_KEY="sadaqa_laundry_v1";
 const CLOUD_OMIT=["tab","expSub","carpetFilter","cpSearch","custSearch","expSearch","carSearch","dateFrom","dateTo","dark","palette"];
 let _applyingRemote=false, _pushT=null;
-function saveLocal(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(state)); }catch(e){} }
+let L_pending_push=false;
+function saveLocal(){ try{ state._savedAt=Date.now(); localStorage.setItem(LS_KEY, JSON.stringify(state)); }catch(e){} }
 function cloudCopy(){
   const c={}; for(const k in state){ if(CLOUD_OMIT.includes(k)) continue; c[k]=state[k]; }
   const j=JSON.parse(JSON.stringify(c));
@@ -1718,7 +1719,7 @@ function cloudCopy(){
   (j.carpetOrders||[]).forEach(o=>{ delete o.photos; });
   return j;
 }
-function save(){ saveLocal(); if(window.cloudReady && !_applyingRemote){ clearTimeout(_pushT); _pushT=setTimeout(()=>{ try{ window.cloudPush(cloudCopy()); }catch(e){} }, 600); } }
+function save(){ saveLocal(); L_pending_push=true; if(window.cloudReady && !_applyingRemote){ clearTimeout(_pushT); _pushT=setTimeout(()=>{ try{ window.cloudPush(cloudCopy()); L_pending_push=false; }catch(e){} }, 600); } }
 function load(){ try{ const d=localStorage.getItem(LS_KEY); if(d) Object.assign(state, JSON.parse(d)); }catch(e){} }
 function tomb(id){ if(!state.deleted) state.deleted={}; state.deleted["rec:"+id]=Date.now(); }
 function tombCust(k){ if(!state.deleted) state.deleted={}; state.deleted["cust:"+k]=Date.now(); }
@@ -1735,6 +1736,15 @@ function mergeById(localArr, remoteArr, del){
 }
 function applyRemote(remote){
   _applyingRemote=true;
+  // Reject cloud state older than our last local save (prevents overwrite after quick add+exit)
+  const localTs=state._savedAt||0;
+  const remoteTs=remote._savedAt||remote.ts||0;
+  if(remoteTs && localTs && remoteTs<localTs && L_pending_push){
+    // cloud is older — just push our local state back
+    _applyingRemote=false;
+    try{ if(window.cloudReady) window.cloudPush(cloudCopy()); }catch(e){}
+    return;
+  }
   const unmigrated = (remote.codesV!==3);
   const L={ carOps:state.carOps||[], carpetOrders:state.carpetOrders||[], expenses:state.expenses||[],
             workers:state.workers||[], meters:state.meters||[], logins:state.logins||[], customers:state.customers||{} };
@@ -1772,7 +1782,8 @@ function applyRemote(remote){
   if(typeof ensureCarNos==="function") ensureCarNos();
   saveLocal(); applyTheme(); applyLock(); render();
   _applyingRemote=false;
-  if(migChanged && window.cloudReady){ try{ window.cloudPush(cloudCopy()); }catch(e){} }
+  // Always push merged result back so cloud stays current
+  try{ if(window.cloudReady) window.cloudPush(cloudCopy()); }catch(e){}
 }
 function openWorkerStatement(id){
   const w=state.workers.find(x=>x.id===id); if(!w) return;
