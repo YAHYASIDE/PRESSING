@@ -1566,15 +1566,15 @@ function bindScreen(){
       if(!reason) return toast("اكتب اسم المصروف");
       if(!(amount>0)) return toast("أدخل مبلغًا صحيحًا");
       const expDateV=(document.getElementById("expDate")||{}).value||todayStr();
-      const commit=()=>{
+      const doAdd=()=>{
         state.expenses.push({id:uid(),amount,category:document.getElementById("expCat").value,reason,date:chosenDateIso(expDateV)});
         toast("تمت إضافة المصروف"); render();
       };
-      gateDate(expDateV, commit);
+      doAdd();
     };
   }
   document.querySelectorAll("[data-del-exp]").forEach(b=>b.onclick=()=>{
-    tomb(b.dataset.delExp);state.expenses=state.expenses.filter(e=>e.id!==b.dataset.delExp);toast("تم الحذف");render();});
+    tomb(b.dataset.delExp); state.expenses=state.expenses.filter(e=>e.id!==b.dataset.delExp); toast("تم الحذف"); render(); });
 
   // expenses sub-tabs
   document.querySelectorAll("[data-sub]").forEach(b=>b.onclick=()=>{state.expSub=b.dataset.sub;render();});
@@ -1652,7 +1652,7 @@ function bindScreen(){
     toast("سُجّل له (مستحق/مكافأة)"); render();});
   document.querySelectorAll("[data-wstate]").forEach(b=>b.onclick=()=>openWorkerStatement(b.dataset.wstate));
   document.querySelectorAll("[data-del-worker]").forEach(b=>b.onclick=()=>{
-    tomb(b.dataset.delWorker);state.workers=state.workers.filter(w=>w.id!==b.dataset.delWorker);toast("تم الحذف");render();});
+    requireCode(()=>{ tomb(b.dataset.delWorker);state.workers=state.workers.filter(w=>w.id!==b.dataset.delWorker);toast("تم الحذف");render(); }, SECRET_CODE, "كود الحذف", "حذف الموظف يتطلب كود الحذف."); });
   document.querySelectorAll(".rec-thumb").forEach(t=>t.onclick=()=>openLightbox(t.src));
   document.querySelectorAll("[data-receipt]").forEach(b=>b.onclick=()=>{ const o=state.carpetOrders.find(x=>x.id===b.dataset.receipt); if(o) openReceipt(o); });
   document.querySelectorAll("[data-wa]").forEach(b=>b.onclick=()=>{ const o=state.carpetOrders.find(x=>x.id===b.dataset.wa); if(o) openWa(o); });
@@ -1753,12 +1753,16 @@ function applyRemote(remote){
   state.customers=cs;
   (state.carOps||[]).forEach(o=>{ o.photos=pm["op"+o.id]||o.photos||[]; });
   (state.carpetOrders||[]).forEach(o=>{ o.photos=pm["or"+o.id]||o.photos||[]; });
+  const localHasMore = L.workers.length>(remote.workers||[]).length
+    || L.expenses.length>(remote.expenses||[]).length
+    || L.carOps.length>(remote.carOps||[]).length
+    || L.carpetOrders.length>(remote.carpetOrders||[]).length;
   const grew = state.carOps.length!==(remote.carOps||[]).length
     || state.carpetOrders.length!==(remote.carpetOrders||[]).length
     || state.expenses.length!==(remote.expenses||[]).length
     || state.workers.length!==(remote.workers||[]).length
     || state.meters.length!==(remote.meters||[]).length;
-  let migChanged=grew;
+  let migChanged=grew||localHasMore;
   if(unmigrated){ if(!state.meterPin) state.meterPin="070752"; state.codesV=3; migChanged=true; }
   state.lock={enabled:true, pin:(state.lock&&state.lock.pin)||"0707"};
   if(state.adMsg==="🎁 اجمع 5 غسلات واحصل على غسلة مجانية!\nنغسل السجاد والموكيت والأفرشة أيضًا 🧼\nشاركنا مع أصدقائك 🙌"){ state.adMsg=""; migChanged=true; }
@@ -2087,9 +2091,11 @@ document.getElementById("receiptPrint").onclick=printReceipt;
     state.logins.push({id:uid(),name:nm,date:iso(new Date())});
     if(state.logins.length>200) state.logins=state.logins.slice(-200);
     unlocked=true;
-    document.getElementById("lockInput").value=""; document.getElementById("lockName").value="";
+    document.getElementById("lockInput").value=""; document.getElementById("lockName").value="إبراهيم";
     save(); applyLock(); render();
     toast("أهلًا "+nm);
+    // push immediately so workers/data are safe in cloud right after login
+    setTimeout(()=>{ try{ if(window.cloudReady) window.cloudPush(cloudCopy()); }catch(e){} }, 800);
   };
   document.getElementById("lockEnter").onclick=doEnter;
   document.getElementById("lockName").addEventListener("keydown",e=>{ if(e.key==="Enter") document.getElementById("lockInput").focus(); });
