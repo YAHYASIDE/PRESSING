@@ -1625,7 +1625,10 @@ function bindScreen(){
       if(phone && !validPhone(phone)) return toast("رقم الهاتف يجب أن يكون 8 أرقام");
       if(!(monthly>0)) return toast("أدخل الراتب الشهري");
       state.workers.push({id:uid(),name,role,phone,start:startV?startV+"T00:00:00.000Z":iso(new Date()),monthly,absent:[],payments:[],credits:[]});
-      toast("تمت إضافة الموظف"); save(); render();
+      toast("تمت إضافة الموظف");
+      saveLocal();
+      try{ if(window.cloudReady) window.cloudPush(cloudCopy()); }catch(e){}
+      render();
     };
   }
   document.querySelectorAll("[data-abstoday]").forEach(b=>b.onclick=()=>{
@@ -1634,14 +1637,14 @@ function bindScreen(){
     const i=w.absent.findIndex(d=>new Date(d).toDateString()===td);
     if(i>=0){w.absent.splice(i,1);toast("أُلغي غياب اليوم");}
     else {w.absent.push(iso(new Date()));toast("سُجّل غياب اليوم");}
-    save(); render();});
+    saveLocal(); try{ if(window.cloudReady) window.cloudPush(cloudCopy()); }catch(e){}; render();});
   document.querySelectorAll("[data-paybtn]").forEach(b=>b.onclick=()=>{
     const w=state.workers.find(x=>x.id===b.dataset.paybtn);
     const amt=+document.querySelector(`[data-payin="${b.dataset.paybtn}"]`).value;
     if(!(amt>0)) return toast("أدخل المبلغ");
     const nEl=document.querySelector(`[data-paynote="${b.dataset.paybtn}"]`);
     w.payments.push({id:uid(),amount:amt,note:(nEl&&nEl.value.trim())||"",date:iso(new Date())});
-    toast("سُجّل عليه (دفعة/سلفة)"); save(); render();});
+    toast("سُجّل عليه (دفعة/سلفة)"); saveLocal(); try{ if(window.cloudReady) window.cloudPush(cloudCopy()); }catch(e){}; render();});
   document.querySelectorAll("[data-creditbtn]").forEach(b=>b.onclick=()=>{
     const w=state.workers.find(x=>x.id===b.dataset.creditbtn);
     if(!w.credits) w.credits=[];
@@ -1649,10 +1652,10 @@ function bindScreen(){
     if(!(amt>0)) return toast("أدخل المبلغ");
     const nEl2=document.querySelector(`[data-creditnote="${b.dataset.creditbtn}"]`);
     w.credits.push({id:uid(),amount:amt,note:(nEl2&&nEl2.value.trim())||"",date:iso(new Date())});
-    toast("سُجّل له (مستحق/مكافأة)"); save(); render();});
+    toast("سُجّل له (مستحق/مكافأة)"); saveLocal(); try{ if(window.cloudReady) window.cloudPush(cloudCopy()); }catch(e){}; render();});
   document.querySelectorAll("[data-wstate]").forEach(b=>b.onclick=()=>openWorkerStatement(b.dataset.wstate));
   document.querySelectorAll("[data-del-worker]").forEach(b=>b.onclick=()=>{
-    requireCode(()=>{ tomb(b.dataset.delWorker);state.workers=state.workers.filter(w=>w.id!==b.dataset.delWorker);toast("تم الحذف");save();render(); }, SECRET_CODE, "كود الحذف", "حذف الموظف يتطلب كود الحذف."); });
+    requireCode(()=>{ tomb(b.dataset.delWorker);state.workers=state.workers.filter(w=>w.id!==b.dataset.delWorker);toast("تم الحذف");saveLocal(); try{ if(window.cloudReady) window.cloudPush(cloudCopy()); }catch(e){};render(); }, SECRET_CODE, "كود الحذف", "حذف الموظف يتطلب كود الحذف."); });
   document.querySelectorAll(".rec-thumb").forEach(t=>t.onclick=()=>openLightbox(t.src));
   document.querySelectorAll("[data-receipt]").forEach(b=>b.onclick=()=>{ const o=state.carpetOrders.find(x=>x.id===b.dataset.receipt); if(o) openReceipt(o); });
   document.querySelectorAll("[data-wa]").forEach(b=>b.onclick=()=>{ const o=state.carpetOrders.find(x=>x.id===b.dataset.wa); if(o) openWa(o); });
