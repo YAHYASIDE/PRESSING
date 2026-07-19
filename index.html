@@ -423,6 +423,10 @@
   .order-acts-sub .wa-btn svg{width:18px;height:18px}
 
   #payDate,#payModal input[type=date]{letter-spacing:normal;text-align:center;font-size:1rem}
+
+  .wnote{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:9px;background:var(--input);color:var(--ink);font-size:.8rem;margin-top:6px}
+  #wsBody .tbl-wrap{max-height:46vh;overflow-y:auto}
+  #wsBody td{font-size:.8rem}
 </style>
 </head>
 <body>
@@ -446,6 +450,15 @@
 </div>
 <div id="toast"></div>
 <div id="lightbox" onclick="this.style.display='none'"><img alt=""></div>
+<div id="wsModal" class="modal">
+  <div class="modal-box" style="max-width:420px">
+    <h3 id="wsTitle">كشف حساب الموظف</h3>
+    <div id="wsBody"></div>
+    <div class="modal-actions" style="margin-top:6px">
+      <button class="mini" id="wsClose" style="flex:1">إغلاق</button>
+    </div>
+  </div>
+</div>
 <div id="deliverModal" class="modal">
   <div class="modal-box">
     <h3>تسليم غير مدفوع</h3>
@@ -1291,9 +1304,10 @@ function expWorkers(){
         <button class="mini ${absentToday(w)?'abs-on':''}" data-abstoday="${w.id}">${absentToday(w)?"إلغاء غياب اليوم":"تسجيل غياب اليوم"}</button>
       </div>
       <div class="wpay2">
-        <div class="wpay-col"><input type="number" min="0" placeholder="مبلغ" data-creditin="${w.id}"><button class="mini credit-btn" data-creditbtn="${w.id}">➕ له (مستحق/مكافأة)</button></div>
-        <div class="wpay-col"><input type="number" min="0" placeholder="مبلغ" data-payin="${w.id}"><button class="mini debit-btn" data-paybtn="${w.id}">➖ عليه (دفعة/سلفة)</button></div>
+        <div class="wpay-col"><input type="number" min="0" placeholder="مبلغ" data-creditin="${w.id}"><input type="text" class="wnote" placeholder="الوصف (مكافأة، ساعات إضافية…)" data-creditnote="${w.id}"><button class="mini credit-btn" data-creditbtn="${w.id}">➕ له (مستحق/مكافأة)</button></div>
+        <div class="wpay-col"><input type="number" min="0" placeholder="مبلغ" data-payin="${w.id}"><input type="text" class="wnote" placeholder="الوصف (سلفة، دفعة راتب…)" data-paynote="${w.id}"><button class="mini debit-btn" data-paybtn="${w.id}">➖ عليه (دفعة/سلفة)</button></div>
       </div>
+      <button class="mini" data-wstate="${w.id}" style="margin-top:9px;width:100%;font-weight:800">🧾 كشف حساب ${w.name}</button>
     </div>`;}).join("") : `<div class="panel empty" style="grid-column:1/-1">${svg(I.empty)}لا يوجد عمّال — أضف أول عامل.</div>`;
   const totLabel=totBal>0?"لهم":totBal<0?"علينا":"مسدّد";
   return `
@@ -1617,15 +1631,18 @@ function bindScreen(){
     const w=state.workers.find(x=>x.id===b.dataset.paybtn);
     const amt=+document.querySelector(`[data-payin="${b.dataset.paybtn}"]`).value;
     if(!(amt>0)) return toast("أدخل المبلغ");
-    w.payments.push({amount:amt,date:iso(new Date())});
+    const nEl=document.querySelector(`[data-paynote="${b.dataset.paybtn}"]`);
+    w.payments.push({id:uid(),amount:amt,note:(nEl&&nEl.value.trim())||"",date:iso(new Date())});
     toast("سُجّل عليه (دفعة/سلفة)"); render();});
   document.querySelectorAll("[data-creditbtn]").forEach(b=>b.onclick=()=>{
     const w=state.workers.find(x=>x.id===b.dataset.creditbtn);
     if(!w.credits) w.credits=[];
     const amt=+document.querySelector(`[data-creditin="${b.dataset.creditbtn}"]`).value;
     if(!(amt>0)) return toast("أدخل المبلغ");
-    w.credits.push({amount:amt,date:iso(new Date())});
+    const nEl2=document.querySelector(`[data-creditnote="${b.dataset.creditbtn}"]`);
+    w.credits.push({id:uid(),amount:amt,note:(nEl2&&nEl2.value.trim())||"",date:iso(new Date())});
     toast("سُجّل له (مستحق/مكافأة)"); render();});
+  document.querySelectorAll("[data-wstate]").forEach(b=>b.onclick=()=>openWorkerStatement(b.dataset.wstate));
   document.querySelectorAll("[data-del-worker]").forEach(b=>b.onclick=()=>{
     tomb(b.dataset.delWorker);state.workers=state.workers.filter(w=>w.id!==b.dataset.delWorker);toast("تم الحذف");render();});
   document.querySelectorAll(".rec-thumb").forEach(t=>t.onclick=()=>openLightbox(t.src));
@@ -1741,6 +1758,41 @@ function applyRemote(remote){
   _applyingRemote=false;
   if(migChanged && window.cloudReady){ try{ window.cloudPush(cloudCopy()); }catch(e){} }
 }
+function openWorkerStatement(id){
+  const w=state.workers.find(x=>x.id===id); if(!w) return;
+  const tx=[]
+    .concat((w.credits||[]).map(c=>({t:"credit",amount:c.amount,note:c.note||"",date:c.date})))
+    .concat((w.payments||[]).map(pp=>({t:"pay",amount:pp.amount,note:pp.note||"",date:pp.date})))
+    .sort((a,b)=>new Date(a.date)-new Date(b.date));
+  let run=0;
+  const rows=tx.length?tx.map(x=>{
+    run += (x.t==="credit"? x.amount : -x.amount);
+    return `<tr>
+      <td>${ymd(x.date)}</td>
+      <td><span class="badge ${x.t==="credit"?"b-paid":"b-unpaid"}">${x.t==="credit"?"له":"عليه"}</span></td>
+      <td>${x.note||"—"}</td>
+      <td class="amt" style="color:${x.t==="credit"?"var(--ready)":"var(--unpaid)"}">${x.t==="credit"?"+":"−"}${fmt(x.amount)}</td>
+      <td class="amt" style="font-weight:800">${fmt(run)}</td></tr>`;
+  }).join("") : `<tr><td colspan="5"><div class="empty">${svg(I.empty)}لا توجد عمليات بعد.</div></td></tr>`;
+  const due=accruedDue(w), bal=wBalance(w);
+  const balLabel=bal>0?"له":bal<0?"عليه":"مسدّد";
+  document.getElementById("wsTitle").textContent="كشف حساب — "+w.name;
+  document.getElementById("wsBody").innerHTML=`
+    <div class="winfo" style="margin-bottom:10px">
+      <span>الراتب الشهري: <b>${fmt(w.monthly)}</b></span>
+      <span>اليومية: <b>${fmt(dayRate(w))}</b></span>
+      <span>المباشرة: <b>${w.start?ymd(w.start):"—"}</b></span>
+    </div>
+    <div class="wstats" style="margin-bottom:12px">
+      <div class="wstat wdue"><b>${fmt(due)}</b><span>مستحق الراتب</span></div>
+      <div class="wstat"><b>${fmt(wCredit(w))}</b><span>إضافات (له)</span></div>
+      <div class="wstat"><b>${fmt(wPaid(w))}</b><span>المأخوذ (عليه)</span></div>
+    </div>
+    <div class="tbl-wrap"><table class="tbl"><thead><tr><th>التاريخ</th><th>النوع</th><th>الوصف</th><th>المبلغ</th><th>الجاري</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <div class="sum-row"><span>الرصيد النهائي (${balLabel})</span><span class="big">${money(Math.abs(bal))}</span></div>`;
+  document.getElementById("wsModal").style.display="flex";
+}
+document.getElementById("wsClose").onclick=()=>{ document.getElementById("wsModal").style.display="none"; };
 window.onCloudState=applyRemote;
 window.onCloudReady=()=>{ const el=document.getElementById("cloudStat"); if(el){ el.textContent="متصل ☁"; el.style.color="var(--ready)"; } toast("تم الاتصال بالسحابة ☁"); };
 window.onCloudEmpty=()=>{ try{ if(window.cloudReady) window.cloudPush(cloudCopy()); }catch(e){} };
