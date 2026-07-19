@@ -299,7 +299,7 @@
   .search-inp:focus{outline:none;border-color:var(--brand-2);box-shadow:0 0 0 3px rgba(28,110,164,.15)}
   .order-actions{flex-wrap:wrap}
   a.mini{text-decoration:none;display:inline-flex;align-items:center;justify-content:center}
-  #lockScreen{display:none;position:fixed;inset:0;background:linear-gradient(160deg,var(--brand),var(--brand-2));z-index:130;align-items:center;justify-content:center;padding:24px}
+  #lockScreen{display:flex;position:fixed;inset:0;background:linear-gradient(160deg,var(--brand),var(--brand-2));z-index:130;align-items:center;justify-content:center;padding:24px}
   .lock-box{background:var(--surface);border-radius:18px;padding:26px 22px;max-width:320px;width:100%;text-align:center;box-shadow:0 20px 50px rgba(0,0,0,.3)}
   .lock-box img{width:76px;height:76px;border-radius:50%;margin-bottom:12px}
   .lock-box h3{margin:0 0 4px;font-size:1.2rem;font-weight:800;color:var(--brand)}
@@ -427,6 +427,8 @@
   .wnote{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:9px;background:var(--input);color:var(--ink);font-size:.8rem;margin-top:6px}
   #wsBody .tbl-wrap{max-height:46vh;overflow-y:auto}
   #wsBody td{font-size:.8rem}
+
+  #lockName{width:100%;padding:12px;border:1px solid var(--line);border-radius:11px;background:var(--input);color:var(--ink);font-size:1rem;margin-bottom:10px}
 </style>
 </head>
 <body>
@@ -517,6 +519,7 @@
       <div class="set-row" style="margin-top:9px">
         <button class="mini" id="btnReset" style="background:var(--unpaid-bg);color:var(--unpaid);border-color:#f0cccc">مسح كل البيانات نهائيًا</button>
       </div>
+    </div>
     <div class="set-sec">
       <div class="set-title">كود فتح التطبيق (دائمًا مفعّل)</div>
       <input type="hidden" id="lockToggle" value="1">
@@ -527,6 +530,10 @@
       <div class="set-title">كود العدّادات (تعديل القراءة والسعر)</div>
       <input type="password" id="meterPinSet" inputmode="numeric" placeholder="كود العدّادات">
       <div class="hint" style="margin-top:6px">مستقلّ عن كود فتح التطبيق — اجعله مختلفًا. إن تركته فارغًا يعود للكود الافتراضي.</div>
+    </div>
+    <div class="set-sec">
+      <div class="set-title">سجلّ الدخول (آخر 20)</div>
+      <div id="loginLog" class="hint" style="max-height:150px;overflow-y:auto;line-height:1.9"></div>
     </div>
     <div class="set-sec">
       <div class="set-title">أسعار استهلاك العدّاد</div>
@@ -549,7 +556,7 @@
       <button class="btn-primary" id="setSave" style="flex:1">حفظ</button>
       <button class="mini" id="setClose">إغلاق</button>
     </div>
-    <div class="hint" style="text-align:center;margin-top:10px;opacity:.8">الإصدار: 2026‑07‑19 · مزامنة مشتركة</div>
+    <div class="hint" style="text-align:center;margin-top:10px;opacity:.8">الإصدار: 2026‑07‑19 · إصلاح ظهور القفل</div>
   </div>
 </div>
 <div id="receiptModal" class="modal">
@@ -565,8 +572,9 @@
   <div class="lock-box">
     <img id="lockLogo" src="" alt="">
     <h3>مغاسيل صداقة</h3>
-    <p>أدخل كلمة المرور للدخول</p>
-    <input type="password" id="lockInput" inputmode="numeric" placeholder="كلمة المرور">
+    <p>أدخل اسمك وكود الدخول</p>
+    <input type="text" id="lockName" placeholder="اسمك" value="إبراهيم" autocomplete="off" style="letter-spacing:normal;text-align:center">
+    <input type="password" id="lockInput" inputmode="numeric" placeholder="كود الدخول">
     <button class="btn-primary" id="lockEnter" style="width:100%">دخول</button>
   </div>
 </div>
@@ -994,7 +1002,7 @@ function screenCars(){
         ${VEH_IMG[o.vehicle]?`<img class="cc-img" src="${VEH_IMG[o.vehicle]}" alt="">`:`<span class="cc-ic">${svg(vehIcon(o.vehicle))}</span>`}
         <div class="cc-info">
           <div class="cc-veh"><b>${o.vehicle}</b>${o.cancelled?'<span class="badge badge-cancel">ملغى 🚫</span>':''}${o.free?'<span class="badge b-wash">مجاني 🎁</span>':''}${o.paid===false?'<span class="badge b-unpaid">غير مدفوع</span>':''}</div>
-          <div class="cc-sub">${o.wash}${o.plate?` • ${o.plate}`:""}</div>
+          <div class="cc-sub">${o.wash}${o.plate?` • ${o.plate}`:""}${o.by?` • بواسطة ${o.by}`:""}</div>
         </div>
       </div>
       ${(o.photosBefore&&o.photosBefore.length)?`<div class="ba-thumbs"><span class="ba-lbl">قبل:</span>${recThumbs(o.photosBefore)}</div>`:""}
@@ -1077,7 +1085,7 @@ function screenCarpets(){
       <div class="no">${o.no}</div>
       <div class="cust"><span class="state-dot ${os.cls}" title="${os.cls==="st-red"?"مكتمل وغير مدفوع":os.cls==="st-green"?"مدفوع":"قيد الانتظار"}"></span>${o.customer||"عميل"}</div>
       <div class="meta">${o.type} × ${o.count}</div>
-      <div class="order-dates">🗓️ سُجّل: ${ymd(o.date)} ${timeStr(o.date)}${o.editedAt?`<br>✏️ آخر تعديل: ${ymd(o.editedAt)} ${timeStr(o.editedAt)}`:""}</div>
+      <div class="order-dates">🗓️ سُجّل: ${ymd(o.date)} ${timeStr(o.date)}${o.by?` — بواسطة ${o.by}`:""}${o.editedAt?`<br>✏️ آخر تعديل: ${ymd(o.editedAt)} ${timeStr(o.editedAt)}`:""}</div>
       <div class="badges">
         ${o.cancelled?'<span class="badge badge-cancel">ملغى 🚫</span>':''}
         <span class="badge b-${st.cls}">${st.label}</span>
@@ -1456,7 +1464,7 @@ function bindScreen(){
         }
         const opDate=chosenDateIso(carDateV);
         state.carOps.push({id:uid(),no:carNo(vehicle),vehicle,wash:document.getElementById("carWash").value,price:free?0:price,
-          plate,phone,country,free,paid:!deferred,paidDate:deferred?null:opDate,note:"",photosBefore:[...pendingCarBefore],photosAfter:[...pendingCarAfter],date:opDate});
+          plate,phone,country,free,by:currentUser,paid:!deferred,paidDate:deferred?null:opDate,note:"",photosBefore:[...pendingCarBefore],photosAfter:[...pendingCarAfter],date:opDate});
         pendingCarBefore.length=0; pendingCarAfter.length=0;
         if(free) toast("🎁 غسلة مجانية — اكتملت البطاقة");
         else if(deferred) toast("تم الحفظ — دفع مؤجّل (غير مدفوع)");
@@ -1509,7 +1517,7 @@ function bindScreen(){
         state.orderSeq++;
         const d=chosenDateIso(cpDateV);
         state.carpetOrders.push({id:uid(),no:orderNo(state.orderSeq,d),
-          customer:cpcust, phone:cpph, country:cpcountry,
+          customer:cpcust, phone:cpph, country:cpcountry, by:currentUser,
           type,count,unit,price:unit*count,status:"wash",paid:false,photos:[...pendingCpPhotos],date:d});
         pendingCpPhotos.length=0;
         toast("تمت إضافة الطلب"); render();
@@ -1726,7 +1734,7 @@ function applyRemote(remote){
   _applyingRemote=true;
   const unmigrated = (remote.codesV!==3);
   const L={ carOps:state.carOps||[], carpetOrders:state.carpetOrders||[], expenses:state.expenses||[],
-            workers:state.workers||[], meters:state.meters||[], customers:state.customers||{} };
+            workers:state.workers||[], meters:state.meters||[], logins:state.logins||[], customers:state.customers||{} };
   const localDel=state.deleted||{};
   const pm={};
   L.carOps.forEach(o=>{ if(o.photos&&o.photos.length) pm["op"+o.id]=o.photos; });
@@ -1738,6 +1746,7 @@ function applyRemote(remote){
   state.expenses=mergeById(L.expenses, remote.expenses, state.deleted);
   state.workers=mergeById(L.workers, remote.workers, state.deleted);
   state.meters=mergeById(L.meters, remote.meters, state.deleted);
+  state.logins=mergeById(L.logins, remote.logins, state.deleted).sort((a,b)=>new Date(a.date)-new Date(b.date)).slice(-200);
   const cs=Object.assign({}, remote.customers||{});
   Object.keys(L.customers).forEach(k=>{ if(!cs[k]) cs[k]=L.customers[k]; });
   Object.keys(state.deleted).forEach(k=>{ if(k.slice(0,5)==="cust:") delete cs[k.slice(5)]; });
@@ -1859,10 +1868,10 @@ function resetAllData(){
 }
 
 /* ---- lock ---- */
-let unlocked=false;
+let unlocked=false, currentUser="";
 function applyLock(){
   const ls=document.getElementById("lockScreen");
-  if(state.lock&&state.lock.enabled&&!unlocked){ document.getElementById("lockLogo").src=LOGO; ls.style.display="flex"; setTimeout(()=>{const i=document.getElementById("lockInput"); if(i)i.focus();},60); }
+  if(state.lock&&state.lock.enabled&&!unlocked){ document.getElementById("lockLogo").src=LOGO; ls.style.display="flex"; setTimeout(()=>{const i=document.getElementById("lockName"); if(i)i.focus();},60); }
   else ls.style.display="none";
 }
 
@@ -1946,6 +1955,11 @@ document.getElementById("settingsBtn").onclick=()=>{ requireCode(openSettings, m
 function openSettings(){
   document.getElementById("lockPinSet").value=(state.lock&&state.lock.pin)||"0707";
   document.getElementById("meterPinSet").value=state.meterPin||"";
+  {
+    const lg=document.getElementById("loginLog");
+    if(lg){ const L=(state.logins||[]).slice(-20).reverse();
+      lg.innerHTML=L.length?L.map(x=>`👤 <b>${x.name}</b> — ${ymd(x.date)} ${timeStr(x.date)}`).join("<br>"):"لا يوجد سجلّ بعد."; }
+  }
   document.getElementById("tarElecSet").value=state.tariff.elec||0;
   document.getElementById("tarWaterSet").value=state.tariff.water||0;
   document.getElementById("thanksSet").value=state.thanksMsg||"";
@@ -2047,8 +2061,38 @@ document.getElementById("setSave").onclick=()=>{
 document.getElementById("receiptClose").onclick=()=>document.getElementById("receiptModal").style.display="none";
 document.getElementById("receiptPrint").onclick=printReceipt;
 (function(){
-  const doEnter=()=>{ const v=document.getElementById("lockInput").value.trim(); if(v===(state.lock&&state.lock.pin)){ unlocked=true; document.getElementById("lockInput").value=""; applyLock(); } else toast("كلمة المرور غير صحيحة"); };
+  // نعرف متى فتح التطبيق نفسه واتساب/المشاركة، حتى لا يُقفل عند العودة القريبة منها
+  const _open=window.open;
+  window.open=function(){ window._extNav=Date.now(); return _open.apply(window,arguments); };
+  const _share=navigator.share?navigator.share.bind(navigator):null;
+  if(_share) navigator.share=function(){ window._extNav=Date.now(); return _share.apply(navigator,arguments); };
+  window._hiddenAt=0;
+  const relock=()=>{ unlocked=false; currentUser=""; applyLock(); };
+  document.addEventListener("visibilitychange",()=>{
+    if(document.hidden){ window._hiddenAt=Date.now(); return; }
+    const away = window._hiddenAt ? (Date.now()-window._hiddenAt) : 0;
+    const leftForApp = window._extNav && (window._hiddenAt - window._extNav < 5000);
+    const limit = leftForApp ? 5*60*1000 : 30*1000;
+    window._hiddenAt=0;
+    if(away>limit) relock();
+  });
+  window.addEventListener("pageshow",(e)=>{ if(e.persisted) relock(); });
+  const doEnter=()=>{
+    const nm=document.getElementById("lockName").value.trim();
+    const v=document.getElementById("lockInput").value.trim();
+    if(nm.length<2) return toast("أدخل اسمك أولًا");
+    if(v!==(state.lock&&state.lock.pin)) return toast("كود الدخول غير صحيح");
+    currentUser=nm;
+    if(!state.logins) state.logins=[];
+    state.logins.push({id:uid(),name:nm,date:iso(new Date())});
+    if(state.logins.length>200) state.logins=state.logins.slice(-200);
+    unlocked=true;
+    document.getElementById("lockInput").value=""; document.getElementById("lockName").value="";
+    save(); applyLock(); render();
+    toast("أهلًا "+nm);
+  };
   document.getElementById("lockEnter").onclick=doEnter;
+  document.getElementById("lockName").addEventListener("keydown",e=>{ if(e.key==="Enter") document.getElementById("lockInput").focus(); });
   document.getElementById("lockInput").addEventListener("keydown",e=>{ if(e.key==="Enter") doEnter(); });
 })();
 
@@ -2059,6 +2103,7 @@ function runMigrations(){
   if(state.adMsg==="🎁 اجمع 5 غسلات واحصل على غسلة مجانية!\nنغسل السجاد والموكيت والأفرشة أيضًا 🧼\nشاركنا مع أصدقائك 🙌"){ state.adMsg=""; changed=true; }
   if(state.codesV!==3){ state.lock={enabled:true,pin:"0707"}; if(!state.meterPin) state.meterPin="070752"; state.codesV=3; changed=true; }
   if(!state.deleted) state.deleted={};
+  if(!state.logins) state.logins=[];
   ensureCarNos();
   return changed;
 }
