@@ -1478,11 +1478,11 @@ function bindScreen(){
   }
   document.querySelectorAll("[data-carwa]").forEach(b=>b.onclick=()=>{ const o=state.carOps.find(x=>x.id===b.dataset.carwa); if(o) openCarChat(o); });
   document.querySelectorAll("[data-carphotos]").forEach(b=>b.onclick=()=>{ const o=state.carOps.find(x=>x.id===b.dataset.carphotos); if(o) shareCarImages(o); });
-  document.querySelectorAll("[data-edit-car]").forEach(b=>b.onclick=()=>openEditCar(b.dataset.editCar));
+  document.querySelectorAll("[data-edit-car]").forEach(b=>b.onclick=()=>{ const o=state.carOps.find(x=>x.id===b.dataset.editCar); if(!o)return; gateDay(o.date,()=>openEditCar(b.dataset.editCar)); });
   document.querySelectorAll("[data-carpay]").forEach(b=>b.onclick=()=>{ _payCtx={type:"car",id:b.dataset.carpay}; const pd=document.getElementById("payDate"); if(pd) pd.value=ymd(new Date()); document.getElementById("payModal").style.display="flex"; });
-  document.querySelectorAll("[data-edit-order]").forEach(b=>b.onclick=()=>openEditOrder(b.dataset.editOrder));
-  document.querySelectorAll("[data-cancel-car]").forEach(b=>bindHold(b, ()=>toggleCancelCar(b.dataset.cancelCar), 1000));
-  document.querySelectorAll("[data-cancel-order]").forEach(b=>bindHold(b, ()=>toggleCancelOrder(b.dataset.cancelOrder), 1000));
+  document.querySelectorAll("[data-edit-order]").forEach(b=>b.onclick=()=>{ const o=state.carpetOrders.find(x=>x.id===b.dataset.editOrder); if(!o)return; gateDay(o.date,()=>openEditOrder(b.dataset.editOrder)); });
+  document.querySelectorAll("[data-cancel-car]").forEach(b=>bindHold(b, ()=>{ const o=state.carOps.find(x=>x.id===b.dataset.cancelCar); if(!o)return; gateDay(o.date,()=>toggleCancelCar(b.dataset.cancelCar)); }, 1000));
+  document.querySelectorAll("[data-cancel-order]").forEach(b=>bindHold(b, ()=>{ const o=state.carpetOrders.find(x=>x.id===b.dataset.cancelOrder); if(!o)return; gateDay(o.date,()=>toggleCancelOrder(b.dataset.cancelOrder)); }, 1000));
   document.querySelectorAll("[data-del-car]").forEach(b=>b.onclick=()=>{
     requireCode(()=>{ tomb(b.dataset.delCar); state.carOps=state.carOps.filter(o=>o.id!==b.dataset.delCar); toast("تم الحذف"); render(); }, SECRET_CODE, "كود الحذف", "أدخل كود الحذف لتأكيد العملية.");});
   document.querySelectorAll("[data-del-cust]").forEach(b=>b.onclick=()=>{
@@ -1548,7 +1548,7 @@ function bindScreen(){
   document.querySelectorAll("[data-pay]").forEach(b=>b.onclick=()=>{
     const o=state.carpetOrders.find(x=>x.id===b.dataset.pay);
     if(!o) return;
-    if(o.paid){ requireCode(()=>{ o.paid=false; delete o.paidDate; toast("أُلغي الدفع"); render(); }, SECRET_CODE, "كود الحذف", "إلغاء الدفع يتطلب كود الحذف."); }
+    if(o.paid){ gateDay(o.date,()=>requireCode(()=>{ o.paid=false; delete o.paidDate; toast("أُلغي الدفع"); render(); }, SECRET_CODE, "كود الحذف", "إلغاء الدفع يتطلب كود الحذف.")); }
     else { _payCtx={type:"order",id:o.id}; const pd=document.getElementById("payDate"); if(pd) pd.value=ymd(new Date()); document.getElementById("payModal").style.display="flex"; }
   });
   document.querySelectorAll("[data-del-order]").forEach(b=>b.onclick=()=>{
@@ -1672,6 +1672,8 @@ function bindScreen(){
 const SECRET_CODE="070752";
 let _codeCb=null, _codeExpected=SECRET_CODE;
 function todayStr(){ return ymd(new Date()); }
+function isPastDay(dateIso){ return ymd(dateIso)<todayStr(); }
+function gateDay(dateIso, cb){ if(isPastDay(dateIso)) requireCode(cb, SECRET_CODE, "كود تعديل يوم سابق", "تعديل بيانات يوم سابق يتطلب كود التحقق."); else cb(); }
 function chosenDateIso(dateStr){ const t=todayStr(); if(!dateStr||dateStr===t) return iso(new Date()); return new Date(dateStr+"T12:00:00").toISOString(); }
 function gateDate(dateStr, commit){ if(dateStr && dateStr!==todayStr()) requireCode(commit, SECRET_CODE, "كود التاريخ السابق", "التسجيل بتاريخ سابق يتطلّب كود التحقق."); else commit(); }
 function bindHold(el, cb, ms){
