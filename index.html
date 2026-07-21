@@ -429,6 +429,12 @@
   #wsBody td{font-size:.8rem}
 
   #lockName{width:100%;padding:12px;border:1px solid var(--line);border-radius:11px;background:var(--input);color:var(--ink);font-size:1rem;margin-bottom:10px}
+
+  #cloudBtn{position:fixed;top:14px;left:14px;z-index:120;width:40px;height:40px;border-radius:50%;border:none;font-size:1.1rem;cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,.25);transition:background .3s;background:var(--muted);color:#fff;display:flex;align-items:center;justify-content:center;padding:0;line-height:1}
+  #cloudBtn.synced{background:var(--ready)}
+  #cloudBtn.pending{background:var(--unpaid);animation:cpulse .9s infinite}
+  #cloudBtn.offline{background:#888}
+  @keyframes cpulse{0%,100%{opacity:1}50%{opacity:.5}}
 </style>
 </head>
 <body>
@@ -451,6 +457,7 @@
   </div>
 </div>
 <div id="toast"></div>
+<button id="cloudBtn" onclick="cloudBtnTap()" title="حالة المزامنة — اضغط للتحديث">☁</button>
 <div id="lightbox" onclick="this.style.display='none'"><img alt=""></div>
 <div id="wsModal" class="modal">
   <div class="modal-box" style="max-width:420px">
@@ -1721,7 +1728,7 @@ function cloudCopy(){
   (j.carpetOrders||[]).forEach(o=>{ delete o.photos; });
   return j;
 }
-function save(){ saveLocal(); L_pending_push=true; if(window.cloudReady && !_applyingRemote){ clearTimeout(_pushT); _pushT=setTimeout(()=>{ try{ window.cloudPush(cloudCopy()); L_pending_push=false; }catch(e){} }, 600); } }
+function save(){ saveLocal(); updateCloudBtn("pending"); L_pending_push=true; if(window.cloudReady && !_applyingRemote){ clearTimeout(_pushT); _pushT=setTimeout(()=>{ try{ window.cloudPush(cloudCopy()); L_pending_push=false; }catch(e){ updateCloudBtn("offline"); } }, 600); } }
 function load(){ try{ const d=localStorage.getItem(LS_KEY); if(d) Object.assign(state, JSON.parse(d)); }catch(e){} }
 function tomb(id){ if(!state.deleted) state.deleted={}; state.deleted["rec:"+id]=Date.now(); }
 function tombCust(k){ if(!state.deleted) state.deleted={}; state.deleted["cust:"+k]=Date.now(); }
@@ -1738,15 +1745,6 @@ function mergeById(localArr, remoteArr, del){
 }
 function applyRemote(remote){
   _applyingRemote=true;
-  // Reject cloud state older than our last local save (prevents overwrite after quick add+exit)
-  const localTs=state._savedAt||0;
-  const remoteTs=remote._savedAt||remote.ts||0;
-  if(remoteTs && localTs && remoteTs<localTs && L_pending_push){
-    // cloud is older — just push our local state back
-    _applyingRemote=false;
-    try{ if(window.cloudReady) window.cloudPush(cloudCopy()); }catch(e){}
-    return;
-  }
   const unmigrated = (remote.codesV!==3);
   const L={ carOps:state.carOps||[], carpetOrders:state.carpetOrders||[], expenses:state.expenses||[],
             workers:state.workers||[], meters:state.meters||[], logins:state.logins||[], customers:state.customers||{} };
@@ -1823,11 +1821,22 @@ function openWorkerStatement(id){
 }
 document.getElementById("wsClose").onclick=()=>{ document.getElementById("wsModal").style.display="none"; };
 window.onCloudState=applyRemote;
-window.onCloudReady=()=>{ const el=document.getElementById("cloudStat"); if(el){ el.textContent="متصل ☁"; el.style.color="var(--ready)"; } toast("تم الاتصال بالسحابة ☁"); };
+function updateCloudBtn(st){
+  const btn=document.getElementById("cloudBtn"); if(!btn)return;
+  btn.classList.remove("synced","pending","offline");
+  if(st==="synced"){ btn.classList.add("synced"); btn.title="متزامن ✅ — اضغط للتحديث"; btn.textContent="☁"; }
+  else if(st==="pending"){ btn.classList.add("pending"); btn.title="انتظار المزامنة — اضغط للتحديث"; btn.textContent="🔄"; }
+  else { btn.classList.add("offline"); btn.title="غير متصل — اضغط للمحاولة"; btn.textContent="⚠️"; }
+}
+function cloudBtnTap(){
+  if(window.cloudReady){ updateCloudBtn("pending"); try{ window.cloudPush(cloudCopy()); }catch(e){ updateCloudBtn("offline"); } }
+  else{ updateCloudBtn("offline"); toast("لا يوجد اتصال بالسحابة"); }
+}
+window.onCloudReady=()=>{ const el=document.getElementById("cloudStat"); if(el){ el.textContent="متصل ☁"; el.style.color="var(--ready)"; } updateCloudBtn("synced"); toast("تم الاتصال بالسحابة ☁"); };
 window.onCloudEmpty=()=>{ try{ if(window.cloudReady) window.cloudPush(cloudCopy()); }catch(e){} };
-window.onCloudError=()=>{ const el=document.getElementById("cloudStat"); if(el){ el.textContent="غير متصل (يعمل محليًا)"; el.style.color="var(--muted)"; } };
-window.onCloudPushOk=()=>{ const el=document.getElementById("cloudStat"); if(el){ el.textContent="متصل ☁ — آخر مزامنة "+timeStr(new Date()); el.style.color="var(--ready)"; } };
-window.onCloudPushErr=(e)=>{ const el=document.getElementById("cloudStat"); if(el){ el.textContent="⚠️ فشل رفع البيانات للسحابة — راجع إعدادات Firebase"; el.style.color="var(--unpaid)"; } };
+window.onCloudError=()=>{ const el=document.getElementById("cloudStat"); if(el){ el.textContent="غير متصل (يعمل محليًا)"; el.style.color="var(--muted)"; } updateCloudBtn("offline"); };
+window.onCloudPushOk=()=>{ const el=document.getElementById("cloudStat"); if(el){ el.textContent="متصل ☁ — آخر مزامنة "+timeStr(new Date()); el.style.color="var(--ready)"; } updateCloudBtn("synced"); };
+window.onCloudPushErr=(e)=>{ const el=document.getElementById("cloudStat"); if(el){ el.textContent="⚠️ فشل رفع البيانات للسحابة — راجع إعدادات Firebase"; el.style.color="var(--unpaid)"; } updateCloudBtn("pending"); };
 const PALETTES=[
   {k:"teal",  name:"أخضر سماوي", b:"#0f9d8f", b2:"#16b8a6"},
   {k:"aqua",  name:"فيروزي",     b:"#0e8fa8", b2:"#22b6cf"},
@@ -2137,7 +2146,7 @@ applyTheme();
 applyHeaderIcons();
 applyLock();
 render();
-setTimeout(()=>{ if(!window.cloudReady){ const el=document.getElementById("cloudStat"); if(el){ el.textContent="غير متصل (يعمل محليًا)"; el.style.color="var(--muted)"; } } },6000);
+setTimeout(()=>{ if(!window.cloudReady){ const el=document.getElementById("cloudStat"); if(el){ el.textContent="غير متصل (يعمل محليًا)"; el.style.color="var(--muted)"; } updateCloudBtn("offline"); } },6000);
 </script>
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
