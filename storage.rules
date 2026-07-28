@@ -1,0 +1,26 @@
+rules_version = '2';
+
+// Tenant-scoped Storage. All assets for a laundry live under
+// laundries/{laundryId}/... and are reachable only by that laundry's members
+// (or the platform owner). Branding logos are written by managers only.
+service firebase.storage {
+  match /b/{bucket}/o {
+    function claim()      { return request.auth.token; }
+    function signedIn()   { return request.auth != null; }
+    function superAdmin() { return signedIn() && claim().superAdmin == true; }
+    function member(lid)  { return signedIn() && claim().laundryId == lid; }
+    function manager(lid) { return member(lid) && claim().role == 'manager'; }
+
+    match /laundries/{lid}/branding/{file=**} {
+      allow read:  if member(lid) || superAdmin();
+      allow write: if manager(lid) || superAdmin();
+    }
+
+    match /laundries/{lid}/photos/{file=**} {
+      allow read:  if member(lid) || superAdmin();
+      allow write: if member(lid) || superAdmin();
+    }
+
+    match /{allPaths=**} { allow read, write: if false; }
+  }
+}

@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>لوحة مالك المنصة — Pressing SaaS</title>
+<style>
+  :root{ --bg:#eef3f7; --surface:#fff; --ink:#152534; --muted:#5c6f7e; --line:#dbe4ec;
+    --brand:#12507c; --brand-2:#1c6ea4; --ok:#1f9d63; --bad:#d64545; --radius:14px;
+    --shadow:0 1px 2px rgba(21,37,52,.06),0 8px 24px rgba(21,37,52,.06); }
+  *{box-sizing:border-box} body{margin:0;font-family:"Segoe UI",Tahoma,Arial,sans-serif;background:var(--bg);color:var(--ink)}
+  .wrap{max-width:960px;margin:0 auto;padding:20px}
+  header{display:flex;align-items:center;gap:12px;margin-bottom:20px}
+  header h1{font-size:1.25rem;margin:0} header .sp{margin-inline-start:auto}
+  button{font-family:inherit;cursor:pointer;border:none;border-radius:10px;padding:10px 16px;font-weight:700}
+  .primary{background:var(--brand);color:#fff} .ghost{background:#e8eff5;color:var(--ink)}
+  .danger{background:var(--bad);color:#fff} .ok{background:var(--ok);color:#fff}
+  input,select{font-family:inherit;width:100%;padding:10px;border:1px solid var(--line);border-radius:10px;background:#f7fafc;margin-top:4px}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px;margin-bottom:16px}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px} label{font-size:.82rem;color:var(--muted);font-weight:600}
+  table{width:100%;border-collapse:collapse} th,td{text-align:start;padding:10px;border-bottom:1px solid var(--line);font-size:.9rem}
+  .badge{border-radius:999px;padding:3px 10px;font-size:.72rem;font-weight:700}
+  .b-on{background:#e4f6ec;color:var(--ok)} .b-off{background:#fbeaea;color:var(--bad)}
+  #login{max-width:360px;margin:12vh auto} .err{color:var(--bad);font-size:.82rem;min-height:1em;margin-top:8px}
+  .muted{color:var(--muted);font-size:.85rem}
+  @media(max-width:640px){ .grid{grid-template-columns:1fr} }
+</style>
+</head>
+<body>
+<div id="login" class="card" style="display:none">
+  <h2>لوحة مالك المنصة</h2>
+  <p class="muted">تسجيل الدخول كمالك للمنصة (Super Admin)</p>
+  <label>البريد الإلكتروني</label><input id="email" type="email" autocomplete="username">
+  <label>كلمة المرور</label><input id="pass" type="password" autocomplete="current-password">
+  <button class="primary" id="loginBtn" style="width:100%;margin-top:14px">دخول</button>
+  <div class="err" id="loginErr"></div>
+</div>
+
+<div class="wrap" id="app" style="display:none">
+  <header>
+    <h1>🧺 لوحة إدارة المغاسل</h1>
+    <span class="sp"></span>
+    <span class="muted" id="who"></span>
+    <button class="ghost" id="signout">خروج</button>
+  </header>
+
+  <div class="card">
+    <h3>إضافة مغسلة جديدة</h3>
+    <p class="muted">تُنشئ المغسلة مع حساب المدير الأول لها. تُعزل بياناتها تمامًا عن بقية المغاسل.</p>
+    <div class="grid">
+      <div><label>اسم المغسلة</label><input id="lName"></div>
+      <div><label>الهاتف</label><input id="lPhone"></div>
+      <div><label>العنوان</label><input id="lAddr"></div>
+      <div><label>اللغة الافتراضية</label><select id="lLang"><option value="ar">العربية</option><option value="fr">Français</option></select></div>
+      <div><label>بريد المدير</label><input id="mEmail" type="email"></div>
+      <div><label>كلمة مرور المدير</label><input id="mPass" type="text"></div>
+      <div><label>اسم المدير</label><input id="mName"></div>
+    </div>
+    <button class="primary" id="createBtn" style="margin-top:14px">إنشاء المغسلة والمدير</button>
+    <div class="err" id="createErr"></div>
+  </div>
+
+  <div class="card">
+    <h3>المغاسل (<span id="count">0</span>)</h3>
+    <table><thead><tr><th>الاسم</th><th>الهاتف</th><th>اللغة</th><th>الحالة</th><th></th></tr></thead>
+    <tbody id="rows"><tr><td colspan="5" class="muted">جارٍ التحميل…</td></tr></tbody></table>
+  </div>
+</div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+  import { getFirestore, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+  import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-functions.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyAZYQ04I6meipcZkeeMu6Nn1bqLY_vZ8rk",
+    authDomain: "pressing-sadaga.firebaseapp.com",
+    projectId: "pressing-sadaga",
+    storageBucket: "pressing-sadaga.firebasestorage.app",
+    messagingSenderId: "621001945109",
+    appId: "1:621001945109:web:adfd78b6846a71cac29e1c"
+  };
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app), db = getFirestore(app), fns = getFunctions(app);
+  const call = (n, d) => httpsCallable(fns, n)(d).then(r => r.data);
+  const $ = (id) => document.getElementById(id);
+  const show = (id, on) => { $(id).style.display = on ? (id==="login"||id==="app" ? "block":"") : "none"; };
+
+  $("loginBtn").onclick = async () => {
+    $("loginErr").textContent = "";
+    try { await signInWithEmailAndPassword(auth, $("email").value.trim(), $("pass").value); }
+    catch (e) { $("loginErr").textContent = "تعذّر تسجيل الدخول"; }
+  };
+  $("pass").addEventListener("keydown", e => { if (e.key === "Enter") $("loginBtn").click(); });
+  $("signout").onclick = () => signOut(auth);
+
+  let unsub = null;
+  onAuthStateChanged(auth, async (user) => {
+    if (unsub) { unsub(); unsub = null; }
+    if (!user) { show("app", false); show("login", true); return; }
+    let claims = {};
+    try { claims = (await user.getIdTokenResult(true)).claims || {}; } catch (e) {}
+    if (claims.superAdmin !== true) { $("loginErr").textContent = "هذا الحساب ليس مالكًا للمنصة"; await signOut(auth); return; }
+    show("login", false); show("app", true);
+    $("who").textContent = user.email;
+    unsub = onSnapshot(collection(db, "laundries"), (snap) => {
+      $("count").textContent = snap.size;
+      const rows = snap.docs.map(d => { const x = d.data(); return `<tr>
+        <td><b>${esc(x.name||"—")}</b></td><td>${esc(x.phone||"—")}</td><td>${x.lang==="fr"?"FR":"AR"}</td>
+        <td><span class="badge ${x.active!==false?"b-on":"b-off"}">${x.active!==false?"مُفعّلة":"موقوفة"}</span></td>
+        <td><button class="${x.active!==false?"danger":"ok"}" data-toggle="${d.id}" data-active="${x.active!==false?"0":"1"}">${x.active!==false?"إيقاف":"تفعيل"}</button></td>
+      </tr>`; }).join("");
+      $("rows").innerHTML = rows || `<tr><td colspan="5" class="muted">لا توجد مغاسل بعد.</td></tr>`;
+      document.querySelectorAll("[data-toggle]").forEach(b => b.onclick = async () => {
+        b.disabled = true;
+        try { await call("setLaundryActive", { laundryId: b.dataset.toggle, active: b.dataset.active === "1" }); }
+        catch (e) { alert("تعذّر تحديث الحالة"); b.disabled = false; }
+      });
+    }, (err) => { $("rows").innerHTML = `<tr><td colspan="5" class="err">تعذّر تحميل المغاسل: ${esc(err.message)}</td></tr>`; });
+  });
+
+  $("createBtn").onclick = async () => {
+    $("createErr").textContent = "";
+    const payload = {
+      name: $("lName").value.trim(), phone: $("lPhone").value.trim(), address: $("lAddr").value.trim(),
+      lang: $("lLang").value, managerEmail: $("mEmail").value.trim(), managerPassword: $("mPass").value,
+      managerName: $("mName").value.trim() || "المدير",
+    };
+    if (!payload.name || !payload.managerEmail || !payload.managerPassword) { $("createErr").textContent = "الاسم وبريد/كلمة مرور المدير مطلوبة"; return; }
+    $("createBtn").disabled = true;
+    try {
+      await call("createLaundry", payload);
+      ["lName","lPhone","lAddr","mEmail","mPass","mName"].forEach(id => $(id).value = "");
+    } catch (e) { $("createErr").textContent = "تعذّر الإنشاء: " + (e.message || e); }
+    finally { $("createBtn").disabled = false; }
+  };
+
+  function esc(s){ return String(s==null?"":s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+  show("login", true);
+</script>
+</body>
+</html>

@@ -1,0 +1,49 @@
+rules_version = '2';
+
+// Multi-tenant isolation for the Pressing SaaS platform.
+// Every laundry's data lives under laundries/{laundryId}/... and is readable/
+// writable ONLY by authenticated users whose custom claims bind them to that
+// laundry. The platform owner (superAdmin claim) may access every tenant.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function auth()        { return request.auth; }
+    function claim()       { return request.auth.token; }
+    function signedIn()    { return request.auth != null; }
+    function superAdmin()  { return signedIn() && claim().superAdmin == true; }
+    function member(lid)   { return signedIn() && claim().laundryId == lid; }
+    function manager(lid)  { return member(lid) && claim().role == 'manager'; }
+
+    // Per-user profile mirror of the claims (read your own; only the backend writes).
+    match /users/{uid} {
+      allow read:  if (signedIn() && request.auth.uid == uid) || superAdmin();
+      allow write: if false; // written only by Cloud Functions (Admin SDK)
+    }
+
+    // Tenant root document: profile + branding.
+    match /laundries/{lid} {
+      allow read:   if member(lid) || superAdmin();
+      allow create: if superAdmin();                 // tenants are provisioned by the platform owner
+      allow update: if manager(lid) || superAdmin(); // managers edit their own branding/settings
+      allow delete: if superAdmin();
+
+      // Operational data written by any member; manager-only areas gated below.
+      match /carOps/{doc}        { allow read, write: if member(lid) || superAdmin(); }
+      match /laundryOrders/{doc} { allow read, write: if member(lid) || superAdmin(); }
+      match /expenses/{doc}      { allow read, write: if member(lid) || superAdmin(); }
+      match /meters/{doc}        { allow read, write: if member(lid) || superAdmin(); }
+      match /customers/{doc}     { allow read, write: if member(lid) || superAdmin(); }
+      match /logins/{doc}        { allow read, write: if member(lid) || superAdmin(); }
+      match /tombstones/{doc}    { allow read, write: if member(lid) || superAdmin(); }
+
+      // Workers (salaries) and business settings: read by members, written by managers only.
+      match /workers/{doc}       { allow read: if member(lid) || superAdmin();
+                                    allow write: if manager(lid) || superAdmin(); }
+      match /meta/{doc}          { allow read: if member(lid) || superAdmin();
+                                    allow write: if manager(lid) || superAdmin(); }
+    }
+
+    // Deny everything else by default (no legacy top-level appState/main anymore).
+    match /{document=**} { allow read, write: if false; }
+  }
+}
