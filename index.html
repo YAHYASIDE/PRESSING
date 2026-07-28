@@ -1718,17 +1718,45 @@ function meterCode(){ return (state.meterPin&&state.meterPin.trim())?state.meter
 /* ============ persistence + theme + logo ============ */
 const LS_KEY="sadaqa_laundry_v1";
 const CLOUD_OMIT=["tab","expSub","carpetFilter","cpSearch","custSearch","expSearch","carSearch","dateFrom","dateTo","dark","palette"];
-let _applyingRemote=false, _pushT=null;
-let L_pending_push=false;
+/* ---- per-document sync schema ----
+   Each entity array is mirrored to its own Firestore COLLECTION (one doc per record).
+   Settings scalars live in a single meta/settings document.
+   Deletions are propagated via a tombstones collection so removed records are never resurrected. */
+const SETTINGS_KEYS=["vehiclePrices","piecePrices","tariff","palette","lock","meterPin","thanksMsg","adMsg","orderSeq","carSeq","codesV"];
+const COLLS=[
+  {coll:"carOps",        key:"carOps",       photos:["photosBefore","photosAfter"]},
+  {coll:"laundryOrders", key:"carpetOrders", photos:["photos"]},
+  {coll:"expenses",      key:"expenses",     photos:[]},
+  {coll:"workers",       key:"workers",      photos:[]},
+  {coll:"meters",        key:"meters",       photos:[]},
+  {coll:"logins",        key:"logins",       photos:[]}
+];
+const CUST_COLL="customers";
+const nowMs=()=>Date.now();
+const custKey=(p)=>encodeURIComponent(String(p||"")).replace(/\//g,"%2F");
+const tombId=(k)=>String(k).replace(/[\/:]/g,"_");
+const collByName=(name)=>COLLS.find(c=>c.coll===name);
+
+let _applyingRemote=false, _reconT=null, _syncReady=false, _cloudStarted=false;
+/* _shadow = last state we know is on the server; the reconciler diffs against it so we only
+   write documents that actually changed and never echo remote updates back. */
+const _shadow={ settings:null, tombs:{} };
+COLLS.forEach(c=>{ _shadow[c.coll]={}; }); _shadow[CUST_COLL]={};
+
 function saveLocal(){ try{ state._savedAt=Date.now(); localStorage.setItem(LS_KEY, JSON.stringify(state)); }catch(e){} }
-function cloudCopy(){
-  const c={}; for(const k in state){ if(CLOUD_OMIT.includes(k)) continue; c[k]=state[k]; }
-  const j=JSON.parse(JSON.stringify(c));
-  (j.carOps||[]).forEach(o=>{ delete o.photos; });
-  (j.carpetOrders||[]).forEach(o=>{ delete o.photos; });
-  return j;
+/* legacy no-op kept so existing handlers that call cloudCopy() keep working; the reconciler
+   reads live state directly, so this return value is unused. */
+function cloudCopy(){ return null; }
+function save(){ saveLocal(); updateCloudBtn("pending"); scheduleReconcile(); }
+function scheduleReconcile(){ if(!window.cloudReady || _applyingRemote || !_syncReady) return; clearTimeout(_reconT); _reconT=setTimeout(reconcile, 400); }
+/* build the Firestore document for an entity: never emit photo base64 (only uploaded URLs),
+   always stamp updatedAt for last-write-wins on same-document edits. */
+function entityDoc(entity, c){
+  const d=Object.assign({}, entity);
+  ((c&&c.photos)||[]).forEach(f=>{ if(Array.isArray(d[f])) d[f]=d[f].filter(v=>typeof v==="string" && v.slice(0,5)!=="data:"); });
+  if(!d.updatedAt) d.updatedAt=nowMs();
+  return d;
 }
-function save(){ saveLocal(); updateCloudBtn("pending"); L_pending_push=true; if(window.cloudReady && !_applyingRemote){ clearTimeout(_pushT); _pushT=setTimeout(()=>{ try{ window.cloudPush(cloudCopy()); L_pending_push=false; }catch(e){ updateCloudBtn("offline"); } }, 600); } }
 function load(){ try{ const d=localStorage.getItem(LS_KEY); if(d) Object.assign(state, JSON.parse(d)); }catch(e){} }
 function tomb(id){ if(!state.deleted) state.deleted={}; state.deleted["rec:"+id]=Date.now(); }
 function tombCust(k){ if(!state.deleted) state.deleted={}; state.deleted["cust:"+k]=Date.now(); }
@@ -1743,47 +1771,192 @@ function mergeById(localArr, remoteArr, del){
   });
   return [...out.values()];
 }
-function applyRemote(remote){
-  _applyingRemote=true;
-  const unmigrated = (remote.codesV!==3);
-  const L={ carOps:state.carOps||[], carpetOrders:state.carpetOrders||[], expenses:state.expenses||[],
-            workers:state.workers||[], meters:state.meters||[], logins:state.logins||[], customers:state.customers||{} };
-  const localDel=state.deleted||{};
-  const pm={};
-  L.carOps.forEach(o=>{ if(o.photos&&o.photos.length) pm["op"+o.id]=o.photos; });
-  L.carpetOrders.forEach(o=>{ if(o.photos&&o.photos.length) pm["or"+o.id]=o.photos; });
-  Object.assign(state, remote);
-  state.deleted=Object.assign({}, remote.deleted||{}, localDel);
-  state.carOps=mergeById(L.carOps, remote.carOps, state.deleted);
-  state.carpetOrders=mergeById(L.carpetOrders, remote.carpetOrders, state.deleted);
-  state.expenses=mergeById(L.expenses, remote.expenses, state.deleted);
-  state.workers=mergeById(L.workers, remote.workers, state.deleted);
-  state.meters=mergeById(L.meters, remote.meters, state.deleted);
-  state.logins=mergeById(L.logins, remote.logins, state.deleted).sort((a,b)=>new Date(a.date)-new Date(b.date)).slice(-200);
-  const cs=Object.assign({}, remote.customers||{});
-  Object.keys(L.customers).forEach(k=>{ if(!cs[k]) cs[k]=L.customers[k]; });
-  Object.keys(state.deleted).forEach(k=>{ if(k.slice(0,5)==="cust:") delete cs[k.slice(5)]; });
-  state.customers=cs;
-  (state.carOps||[]).forEach(o=>{ o.photos=pm["op"+o.id]||o.photos||[]; });
-  (state.carpetOrders||[]).forEach(o=>{ o.photos=pm["or"+o.id]||o.photos||[]; });
-  const localHasMore = L.workers.length>(remote.workers||[]).length
-    || L.expenses.length>(remote.expenses||[]).length
-    || L.carOps.length>(remote.carOps||[]).length
-    || L.carpetOrders.length>(remote.carpetOrders||[]).length;
-  const grew = state.carOps.length!==(remote.carOps||[]).length
-    || state.carpetOrders.length!==(remote.carpetOrders||[]).length
-    || state.expenses.length!==(remote.expenses||[]).length
-    || state.workers.length!==(remote.workers||[]).length
-    || state.meters.length!==(remote.meters||[]).length;
-  let migChanged=grew||localHasMore;
-  if(unmigrated){ if(!state.meterPin) state.meterPin="070752"; state.codesV=3; migChanged=true; }
-  state.lock={enabled:true, pin:(state.lock&&state.lock.pin)||"0707"};
-  if(state.adMsg==="🎁 اجمع 5 غسلات واحصل على غسلة مجانية!\nنغسل السجاد والموكيت والأفرشة أيضًا 🧼\nشاركنا مع أصدقائك 🙌"){ state.adMsg=""; migChanged=true; }
-  if(typeof ensureCarNos==="function") ensureCarNos();
-  saveLocal(); applyTheme(); applyLock(); render();
+/* ============ write path: diff live state -> per-document writes ============ */
+async function uploadPhoto(path, dataUrl){
+  const F=window._fs; const r=F.sref(F.storage, path);
+  await F.uploadString(r, dataUrl, "data_url");
+  return await F.getDownloadURL(r);
+}
+async function ensurePhotosUploaded(entity, c){
+  for(const f of ((c&&c.photos)||[])){
+    const arr=entity[f]; if(!Array.isArray(arr)||!arr.length) continue;
+    for(let i=0;i<arr.length;i++){
+      const v=arr[i];
+      if(typeof v==="string" && v.slice(0,5)==="data:"){
+        try{ arr[i]=await uploadPhoto("photos/"+c.coll+"/"+entity.id+"/"+f+"_"+i+"_"+nowMs(), v); }
+        catch(e){ /* keep base64 locally; entityDoc() strips it so no oversized doc is ever written */ }
+      }
+    }
+  }
+}
+async function reconcile(){
+  if(!window.cloudReady || _applyingRemote || !_syncReady) return;
+  const F=window._fs, db=F.db;
+  try{
+    for(const c of COLLS){
+      for(const e of (state[c.key]||[])){
+        if(!e||!e.id) continue;
+        if(state.deleted && state.deleted["rec:"+e.id]) continue;
+        await ensurePhotosUploaded(e, c);
+        const d=entityDoc(e, c), js=JSON.stringify(d);
+        if(_shadow[c.coll][e.id]!==js){ await F.setDoc(F.doc(db,c.coll,e.id), d); _shadow[c.coll][e.id]=js; }
+      }
+    }
+    const cust=state.customers||{};
+    for(const plate in cust){
+      if(state.deleted && state.deleted["cust:"+plate]) continue;
+      const d=Object.assign({plate}, cust[plate]); if(!d.updatedAt) d.updatedAt=nowMs();
+      const id=custKey(plate), js=JSON.stringify(d);
+      if(_shadow[CUST_COLL][id]!==js){ await F.setDoc(F.doc(db,CUST_COLL,id), d); _shadow[CUST_COLL][id]=js; }
+    }
+    const del=state.deleted||{};
+    for(const k in del){
+      if(_shadow.tombs[k]) continue;
+      if(k.slice(0,4)==="rec:"){ const id=k.slice(4); for(const c of COLLS){ try{ await F.deleteDoc(F.doc(db,c.coll,id)); }catch(e){} delete _shadow[c.coll][id]; } }
+      else if(k.slice(0,5)==="cust:"){ const id=custKey(k.slice(5)); try{ await F.deleteDoc(F.doc(db,CUST_COLL,id)); }catch(e){} delete _shadow[CUST_COLL][id]; }
+      try{ await F.setDoc(F.doc(db,"tombstones",tombId(k)), {key:k, ts:del[k]||nowMs()}); }catch(e){}
+      _shadow.tombs[k]=true;
+    }
+    const st={}; SETTINGS_KEYS.forEach(k=> st[k]=state[k]);
+    const sjs=JSON.stringify(st);
+    if(_shadow.settings!==sjs){ await F.setDoc(F.doc(db,"meta","settings"), Object.assign({updatedAt:nowMs()}, st), {merge:true}); _shadow.settings=sjs; }
+    if(window.onCloudPushOk) window.onCloudPushOk();
+  }catch(e){ if(window.onCloudPushErr) window.onCloudPushErr(e); }
+}
+window.cloudPush=function(){ scheduleReconcile(); };
+
+/* ============ read path: one realtime listener per collection, merged by id ============ */
+function onCollChanges(coll, changes){
+  const c=collByName(coll); if(!c) return;
+  _applyingRemote=true; let dirty=false;
+  let arr=state[c.key]; if(!Array.isArray(arr)) arr=state[c.key]=[];
+  for(const ch of changes){
+    const id=ch.id, inc=ch.data;
+    if(ch.type==="removed"){
+      const i=arr.findIndex(x=>x&&x.id===id);
+      if(i>=0){ arr.splice(i,1); dirty=true; }
+      delete _shadow[coll][id];
+      continue;
+    }
+    if(inc) _shadow[coll][id]=JSON.stringify(entityDoc(inc, c));
+    if(ch.pending || !inc) continue;                        // our own local echo
+    if(state.deleted && state.deleted["rec:"+id]) continue; // locally deleted, ignore resurrection
+    const i=arr.findIndex(x=>x&&x.id===id);
+    if(i>=0){ if((+inc.updatedAt||0) >= (+arr[i].updatedAt||0)){ arr[i]=inc; dirty=true; } }
+    else { arr.push(inc); dirty=true; }
+  }
+  if(dirty){ saveLocal(); render(); }
   _applyingRemote=false;
-  // Always push merged result back so cloud stays current
-  try{ if(window.cloudReady) window.cloudPush(cloudCopy()); }catch(e){}
+}
+function onCustChanges(changes){
+  _applyingRemote=true; let dirty=false;
+  if(!state.customers) state.customers={};
+  for(const ch of changes){
+    const inc=ch.data, plate=inc?inc.plate:null;
+    if(ch.type==="removed"){
+      if(plate && state.customers[plate]){ delete state.customers[plate]; dirty=true; }
+      delete _shadow[CUST_COLL][ch.id];
+      continue;
+    }
+    if(!inc||!plate) continue;
+    _shadow[CUST_COLL][ch.id]=JSON.stringify(Object.assign({plate}, inc));
+    if(ch.pending) continue;
+    if(state.deleted && state.deleted["cust:"+plate]) continue;
+    const cur=state.customers[plate];
+    if(!cur || (+inc.updatedAt||0) >= (+cur.updatedAt||0)){ state.customers[plate]=inc; dirty=true; }
+  }
+  if(dirty){ saveLocal(); render(); }
+  _applyingRemote=false;
+}
+function onSettingsDoc(data, pending){
+  if(!data) return;
+  _applyingRemote=true;
+  SETTINGS_KEYS.forEach(k=>{ if(data[k]!==undefined) state[k]=data[k]; });
+  const st={}; SETTINGS_KEYS.forEach(k=> st[k]=state[k]); _shadow.settings=JSON.stringify(st);
+  if(!pending){
+    state.lock={enabled:true, pin:(state.lock&&state.lock.pin)||"0707"};
+    if(typeof ensureCarNos==="function") ensureCarNos();
+    saveLocal(); if(typeof applyPalette==="function") applyPalette(); if(typeof applyTheme==="function") applyTheme(); if(typeof applyLock==="function") applyLock(); render();
+  }
+  _applyingRemote=false;
+}
+function onTombChanges(changes){
+  _applyingRemote=true; let dirty=false;
+  if(!state.deleted) state.deleted={};
+  for(const ch of changes){
+    if(ch.type==="removed") continue;
+    const k=ch.data&&ch.data.key; if(!k) continue;
+    _shadow.tombs[k]=true;
+    if(!state.deleted[k]){ state.deleted[k]=ch.data.ts||nowMs(); dirty=true; }
+    if(k.slice(0,4)==="rec:"){ const id=k.slice(4); for(const c of COLLS){ const i=(state[c.key]||[]).findIndex(x=>x&&x.id===id); if(i>=0){ state[c.key].splice(i,1); dirty=true; } } }
+    else if(k.slice(0,5)==="cust:"){ const plate=k.slice(5); if(state.customers&&state.customers[plate]){ delete state.customers[plate]; dirty=true; } }
+  }
+  if(dirty){ saveLocal(); render(); }
+  _applyingRemote=false;
+}
+
+/* ============ one-time migration: local + legacy appState/main -> per-doc collections ============ */
+function mergeLegacyIntoState(remote){
+  const del=Object.assign({}, remote.deleted||{}, state.deleted||{}); state.deleted=del;
+  state.carOps=mergeById(state.carOps||[], remote.carOps||[], del);
+  state.carpetOrders=mergeById(state.carpetOrders||[], remote.carpetOrders||[], del);
+  state.expenses=mergeById(state.expenses||[], remote.expenses||[], del);
+  state.workers=mergeById(state.workers||[], remote.workers||[], del);
+  state.meters=mergeById(state.meters||[], remote.meters||[], del);
+  state.logins=mergeById(state.logins||[], remote.logins||[], del).sort((a,b)=>new Date(a.date)-new Date(b.date)).slice(-200);
+  const cs=Object.assign({}, remote.customers||{}, state.customers||{});
+  Object.keys(del).forEach(k=>{ if(k.slice(0,5)==="cust:") delete cs[k.slice(5)]; });
+  state.customers=cs;
+  SETTINGS_KEYS.forEach(k=>{ if(state[k]===undefined && remote[k]!==undefined) state[k]=remote[k]; });
+}
+async function commitBatched(writes){
+  const F=window._fs, db=F.db;
+  for(let i=0;i<writes.length;i+=400){
+    const b=F.writeBatch(db);
+    writes.slice(i,i+400).forEach(w=> b.set(F.doc(db,w.coll,w.id), w.data));
+    await b.commit();
+  }
+}
+async function runCloudMigration(){
+  const F=window._fs, db=F.db;
+  let role="run";
+  try{
+    role=await F.runTransaction(db, async(tx)=>{
+      const ref=F.doc(db,"meta","migration"); const s=await tx.get(ref);
+      if(s.exists() && s.data().done) return "done";
+      if(s.exists() && s.data().claimed && (nowMs()-s.data().claimed<120000)) return "wait";
+      tx.set(ref, {claimed:nowMs()}, {merge:true}); return "run";
+    });
+  }catch(e){ role="run"; }
+  if(role==="done" || role==="wait") return;
+  try{
+    const legacy=await F.getDoc(F.doc(db,"appState","main"));
+    if(legacy.exists()){ const remote=JSON.parse(legacy.data().data); mergeLegacyIntoState(remote); saveLocal(); }
+  }catch(e){}
+  const writes=[];
+  for(const c of COLLS){ for(const e of (state[c.key]||[])){ if(!e||!e.id) continue; if(state.deleted&&state.deleted["rec:"+e.id]) continue; await ensurePhotosUploaded(e,c); writes.push({coll:c.coll, id:e.id, data:entityDoc(e,c)}); } }
+  const cust=state.customers||{}; for(const plate in cust){ if(state.deleted&&state.deleted["cust:"+plate]) continue; const d=Object.assign({plate}, cust[plate]); if(!d.updatedAt) d.updatedAt=nowMs(); writes.push({coll:CUST_COLL, id:custKey(plate), data:d}); }
+  for(const k in (state.deleted||{})){ writes.push({coll:"tombstones", id:tombId(k), data:{key:k, ts:state.deleted[k]||nowMs()}}); }
+  await commitBatched(writes);
+  const st={}; SETTINGS_KEYS.forEach(k=> st[k]=state[k]);
+  await F.setDoc(F.doc(db,"meta","settings"), Object.assign({updatedAt:nowMs()}, st), {merge:true});
+  writes.forEach(w=>{ if(_shadow[w.coll]) _shadow[w.coll][w.id]=JSON.stringify(w.data); });
+  _shadow.settings=JSON.stringify(st);
+  Object.keys(state.deleted||{}).forEach(k=> _shadow.tombs[k]=true);
+  await F.setDoc(F.doc(db,"meta","migration"), {done:true, ts:nowMs()}, {merge:true});
+  try{ await F.deleteDoc(F.doc(db,"appState","main")); }catch(e){}   // remove the old single-document design
+}
+async function startCloudSync(){
+  if(_cloudStarted) return; _cloudStarted=true;
+  const F=window._fs, db=F.db;
+  try{ await runCloudMigration(); }catch(e){ console.error("cloud migration failed", e); }
+  const mapChanges=(snap)=>snap.docChanges().map(x=>({type:x.type, id:x.doc.id, data:x.doc.data(), pending:x.doc.metadata.hasPendingWrites}));
+  const onErr=(err)=>{ if(window.onCloudError) window.onCloudError(err); };
+  COLLS.forEach(c=>{ F.onSnapshot(F.collection(db,c.coll), s=>onCollChanges(c.coll, mapChanges(s)), onErr); });
+  F.onSnapshot(F.collection(db,CUST_COLL), s=>onCustChanges(mapChanges(s)), onErr);
+  F.onSnapshot(F.collection(db,"tombstones"), s=>onTombChanges(mapChanges(s)), onErr);
+  F.onSnapshot(F.doc(db,"meta","settings"), s=>onSettingsDoc(s.exists()?s.data():null, s.metadata.hasPendingWrites), onErr);
+  setTimeout(()=>{ _syncReady=true; scheduleReconcile(); }, 1500);  // let initial snapshots seed the shadow first
 }
 function openWorkerStatement(id){
   const w=state.workers.find(x=>x.id===id); if(!w) return;
@@ -1820,7 +1993,6 @@ function openWorkerStatement(id){
   document.getElementById("wsModal").style.display="flex";
 }
 document.getElementById("wsClose").onclick=()=>{ document.getElementById("wsModal").style.display="none"; };
-window.onCloudState=applyRemote;
 function updateCloudBtn(st){
   const btn=document.getElementById("cloudBtn"); if(!btn)return;
   btn.classList.remove("synced","pending","offline");
@@ -1832,8 +2004,7 @@ function cloudBtnTap(){
   if(window.cloudReady){ updateCloudBtn("pending"); try{ window.cloudPush(cloudCopy()); }catch(e){ updateCloudBtn("offline"); } }
   else{ updateCloudBtn("offline"); toast("لا يوجد اتصال بالسحابة"); }
 }
-window.onCloudReady=()=>{ const el=document.getElementById("cloudStat"); if(el){ el.textContent="متصل ☁"; el.style.color="var(--ready)"; } updateCloudBtn("synced"); toast("تم الاتصال بالسحابة ☁"); };
-window.onCloudEmpty=()=>{ try{ if(window.cloudReady) window.cloudPush(cloudCopy()); }catch(e){} };
+window.onCloudReady=()=>{ const el=document.getElementById("cloudStat"); if(el){ el.textContent="متصل ☁"; el.style.color="var(--ready)"; } updateCloudBtn("synced"); toast("تم الاتصال بالسحابة ☁"); try{ startCloudSync(); }catch(e){ console.error(e); } };
 window.onCloudError=()=>{ const el=document.getElementById("cloudStat"); if(el){ el.textContent="غير متصل (يعمل محليًا)"; el.style.color="var(--muted)"; } updateCloudBtn("offline"); };
 window.onCloudPushOk=()=>{ const el=document.getElementById("cloudStat"); if(el){ el.textContent="متصل ☁ — آخر مزامنة "+timeStr(new Date()); el.style.color="var(--ready)"; } updateCloudBtn("synced"); };
 window.onCloudPushErr=(e)=>{ const el=document.getElementById("cloudStat"); if(el){ el.textContent="⚠️ فشل رفع البيانات للسحابة — راجع إعدادات Firebase"; el.style.color="var(--unpaid)"; } updateCloudBtn("pending"); };
@@ -2150,7 +2321,11 @@ setTimeout(()=>{ if(!window.cloudReady){ const el=document.getElementById("cloud
 </script>
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-  import * as FS from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+  import { initializeFirestore, getFirestore, persistentLocalCache, persistentMultipleTabManager,
+           doc, collection, setDoc, deleteDoc, getDoc, onSnapshot, writeBatch, runTransaction }
+    from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+  import { getStorage, ref as sref, uploadString, getDownloadURL }
+    from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
   try{
     const firebaseConfig = {
       apiKey: "AIzaSyAZYQ04I6meipcZkeeMu6Nn1bqLY_vZ8rk",
@@ -2163,17 +2338,13 @@ setTimeout(()=>{ if(!window.cloudReady){ const el=document.getElementById("cloud
     };
     const app = initializeApp(firebaseConfig);
     let db;
-    try { db = FS.initializeFirestore(app, { localCache: FS.persistentLocalCache({ tabManager: FS.persistentMultipleTabManager() }) }); }
-    catch(e){ db = FS.getFirestore(app); }
-    const ref = FS.doc(db, "appState", "main");
-    window.cloudPush = (data) => { FS.setDoc(ref, { data: JSON.stringify(data), ts: Date.now() }).then(()=>{ if(window.onCloudPushOk) window.onCloudPushOk(); }).catch((e)=>{ if(window.onCloudPushErr) window.onCloudPushErr(e); }); };
+    try { db = initializeFirestore(app, { localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }) }); }
+    catch(e){ db = getFirestore(app); }
+    const storage = getStorage(app);
+    // Firestore/Storage primitives the app-layer sync engine uses (offline persistence is enabled above).
+    window._fs = { db, storage, doc, collection, setDoc, deleteDoc, getDoc, onSnapshot, writeBatch, runTransaction, sref, uploadString, getDownloadURL };
     window.cloudReady = true;
-    if (window.onCloudReady) window.onCloudReady();
-    FS.onSnapshot(ref, (snap) => {
-      if (!snap.exists()) { if (window.onCloudEmpty) window.onCloudEmpty(); return; }
-      if (snap.metadata && snap.metadata.hasPendingWrites) return;
-      try { const remote = JSON.parse(snap.data().data); if (window.onCloudState) window.onCloudState(remote); } catch(e){}
-    }, (err) => { if (window.onCloudError) window.onCloudError(err); });
+    if (window.onCloudReady) window.onCloudReady();   // starts migration + per-collection realtime listeners
   } catch(e){ console.error("cloud init failed", e); if (window.onCloudError) window.onCloudError(e); }
 </script>
 </body>
