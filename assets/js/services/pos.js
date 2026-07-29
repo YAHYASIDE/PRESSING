@@ -54,6 +54,7 @@
       if(!c.id) c.id="cust"+(c.plate||cust.plate); c.lastVisit=date; if(cust.name && !c.name) c.name=cust.name; if(!c.registeredAt) c.registeredAt=date;
     }
     state.invoices=state.invoices||[]; state.invoices.push(inv);
+    if(App.services.audit) App.services.audit("بيع", inv.no+" · "+money(inv.total));
     return { ok:true, invoice:inv };
   };
 
@@ -112,6 +113,7 @@
     }
     inv.refunds=inv.refunds||[]; inv.refunds.push({ id:uid(), amount:amount, date:iso(new Date()), je:(je&&je.entry&&je.entry.id)||null, full:full });
     inv.status = (already+amount>=inv.total-0.01) ? "refunded" : "partial-refund";
+    if(App.services.audit) App.services.audit("مرتجع", inv.no+" · "+money(amount));
     return { ok:true, amount:amount, full:full };
   };
 })(window.App);

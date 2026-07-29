@@ -14,6 +14,7 @@ function render(){
   const sb=document.getElementById("settingsBtn"); if(sb) sb.style.display=can('settings')?"":"none";
   const rb=document.getElementById("roleBadge"); if(rb){ rb.textContent=roleDef().label; rb.style.display=unlocked?"":"none"; }
   const lob=document.getElementById("logoutBtn"); if(lob) lob.style.display=unlocked?"":"none";
+  const sbtn=document.getElementById("searchBtn"); if(sbtn) sbtn.style.display=unlocked?"":"none";
   applySetup();   // Release 5 — first launch (unconfigured business) opens the Setup Wizard
   applyBusiness();   // Release 5.2 — keep header name/logo/subtitle in sync with the config
   if(App.services.crmSync) App.services.crmSync();   // CRM: ensure customer ids + vehicle records
@@ -717,6 +718,31 @@ function openWa(o){
 
 /* ---- wire static controls (once) ---- */
 document.getElementById("settingsBtn").onclick=()=>{ requireCode(openSettings, meterCode(), "كود الإعدادات", "أدخل كود الإعدادات للدخول."); };
+/* ===== Global search overlay (bound once) ===== */
+(function(){
+  const modal=document.getElementById("searchModal"); if(!modal) return;
+  const inp=document.getElementById("gsInput"), res=document.getElementById("gsResults");
+  const open=()=>{ modal.classList.add("open"); inp.value=""; res.innerHTML=searchResultsHTML(""); setTimeout(()=>inp.focus(),60); };
+  const close=()=>{ modal.classList.remove("open"); };
+  const sb=document.getElementById("searchBtn"); if(sb) sb.onclick=open;
+  document.querySelectorAll("[data-gs-close]").forEach(b=>b.onclick=close);
+  inp.addEventListener("input",()=>{ res.innerHTML=searchResultsHTML(inp.value); wireResults(); });
+  function wireResults(){
+    res.querySelectorAll("[data-gs]").forEach(b=>b.onclick=()=>{
+      let go={}; try{ go=JSON.parse(decodeURIComponent(b.dataset.gs)); }catch(e){}
+      close();
+      if(go.receipt){ openReceipt2(go.receipt); return; }
+      if(go.tab) state.tab=go.tab;
+      state.opDetail=go.opDetail||null;
+      if(go.crmSel!=null){ state.crmSel=go.crmSel; state.crmTab="timeline"; }
+      if(go.invSearch!=null) state.invSearch=go.invSearch;
+      if(go.invTab) state.invTab=go.invTab;
+      if(go.acctTab) state.acctTab=go.acctTab;
+      render(); window.scrollTo(0,0);
+    });
+  }
+  document.addEventListener("keydown",e=>{ if(e.key==="Escape") close(); });
+})();
 function openSettings(){
   document.getElementById("lockPinSet").value=(state.lock&&state.lock.pin)||"0707";
   document.getElementById("meterPinSet").value=state.meterPin||"";
@@ -924,6 +950,7 @@ document.getElementById("receiptPrint").onclick=printReceipt;
     state.logins.push({id:uid(),name:nm,role:state.role,date:iso(new Date())});
     if(state.logins.length>200) state.logins=state.logins.slice(-200);
     unlocked=true;
+    if(App.services.audit) App.services.audit("تسجيل دخول", nm+" · "+(App.config.ROLES[state.role]||{label:state.role}).label);
     document.getElementById("lockInput").value=""; document.getElementById("lockName").value="إبراهيم";
     save(); applyLock(); render();
     toast("أهلًا "+nm);
@@ -932,7 +959,7 @@ document.getElementById("receiptPrint").onclick=printReceipt;
   document.getElementById("lockName").addEventListener("keydown",e=>{ if(e.key==="Enter") document.getElementById("lockInput").focus(); });
   document.getElementById("lockInput").addEventListener("keydown",e=>{ if(e.key==="Enter") doEnter(); });
   const lob=document.getElementById("logoutBtn");
-  if(lob) lob.onclick=()=>{ unlocked=false; currentUser=""; state.opDetail=null; applyLock(); toast("تم تسجيل الخروج"); };
+  if(lob) lob.onclick=()=>{ if(App.services.audit) App.services.audit("تسجيل خروج", currentUser); unlocked=false; currentUser=""; state.opDetail=null; applyLock(); toast("تم تسجيل الخروج"); };
 })();
 
 /* ================= Business Setup Wizard (Release 5) ================= */

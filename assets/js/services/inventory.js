@@ -51,6 +51,7 @@
     p.cost = newQty>0 ? (oldQty*oldCost + qty*recvCost)/newQty : recvCost;   // weighted average
     logMove({ productId:p.id, type:"in", qty:qty, cost:recvCost, ref:dto.supplier||"استلام" });
     post("استلام مخزون — "+p.name, p.sku, ACCT.INVENTORY, PAY_ACCOUNT.cash, qty*recvCost, dto.date);
+    if(App.services.audit) App.services.audit("استلام مخزون", p.name+" +"+qty);
     return { ok:true, product:p };
   };
   /* physical count adjustment (sets a new quantity) */
@@ -63,6 +64,7 @@
     var val=Math.abs(diff)*(+p.cost||0);
     if(diff<0) post("جرد نقص — "+p.name, p.sku, ACCT.EXP, ACCT.INVENTORY, val);
     else if(diff>0) post("جرد زيادة — "+p.name, p.sku, ACCT.INVENTORY, ACCT.EQUITY, val);
+    if(App.services.audit) App.services.audit("جرد مخزون", p.name+" → "+newQty);
     return { ok:true, product:p, diff:diff };
   };
   /* stock OUT (consumed by a sale/POS) — posts COGS. Returns ok even if module off (silent) */

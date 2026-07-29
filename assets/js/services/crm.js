@@ -74,6 +74,7 @@
     // reminder
     state.reminders=state.reminders||[];
     state.reminders.push({ id:uid(), type:"oil", vehicleId:v.id, plate:v.plate, customerId:cust.id, atMileage:meta.oil.nextMileage, date:res.invoice.date, done:false, msg:"تغيير الزيت القادم عند "+meta.oil.nextMileage+" كم" });
+    if(App.services.audit) App.services.audit("تغيير زيت", v.plate);
     return { ok:true, invoice:res.invoice, vehicle:v };
   };
 })(window.App);

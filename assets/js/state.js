@@ -75,6 +75,7 @@ const state = {
   vehicles: [],                  /* Vehicle registry (customer-owned) */
   reminders: [],                 /* generated reminders (oil change, etc.) */
   crmSel: null, crmSearch: "", crmTab: "timeline",  /* CRM screen state */
+  audit: [],                     /* audit trail (append-only) */
   features: defaultFeatures(),   /* Release: optional feature modules (loyalty, …) */
   customers:{},
   meters:[],

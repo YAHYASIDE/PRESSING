@@ -20,6 +20,7 @@
 <link rel="stylesheet" href="assets/css/inventory.css">
 <link rel="stylesheet" href="assets/css/pos.css">
 <link rel="stylesheet" href="assets/css/crm.css">
+<link rel="stylesheet" href="assets/css/ops.css">
 <link rel="stylesheet" href="assets/css/entry.css">
 </head>
 <body>
@@ -33,6 +34,7 @@
       </div>
     </div>
     <span class="role-badge" id="roleBadge" style="display:none"></span>
+    <button class="theme-btn" id="searchBtn" title="بحث شامل" aria-label="بحث شامل" style="display:none">🔍</button>
     <button class="theme-btn" id="logoutBtn" title="تسجيل الخروج" aria-label="تسجيل الخروج" style="display:none">⎋</button>
     <button class="theme-btn" id="settingsBtn" title="الإعدادات" aria-label="الإعدادات"></button>
     <button class="theme-btn" id="themeBtn" title="الوضع الليلي" aria-label="الوضع الليلي"></button>
@@ -41,6 +43,13 @@
   <div class="layout">
     <nav class="side" id="nav"></nav>
     <main id="main"></main>
+  </div>
+</div>
+<div id="searchModal" class="gs-modal">
+  <div class="gs-backdrop" data-gs-close></div>
+  <div class="gs-panel">
+    <div class="gs-top"><input id="gsInput" type="text" placeholder="🔍 بحث شامل — زبون، مركبة، فاتورة، منتج…" autocomplete="off"><button class="mini" data-gs-close>إغلاق</button></div>
+    <div id="gsResults" class="gs-results"></div>
   </div>
 </div>
 <div id="toast"></div>
@@ -221,6 +230,8 @@
 <script src="assets/js/core/inventory.js"></script>
 <script src="assets/js/core/pos.js"></script>
 <script src="assets/js/core/crm.js"></script>
+<script src="assets/js/core/ops.js"></script>
+<script src="assets/js/core/search.js"></script>
 <!-- repositories (persistence ports + adapters) -->
 <script src="assets/js/repositories/persistence.js"></script>
 <script src="assets/js/repositories/state-facade.js"></script>
@@ -231,6 +242,7 @@
 <script src="assets/js/services/inventory.js"></script>
 <script src="assets/js/services/pos.js"></script>
 <script src="assets/js/services/crm.js"></script>
+<script src="assets/js/services/audit.js"></script>
 <!-- ui (presentation primitives) -->
 <script src="assets/js/ui/theme.js"></script>
 <script src="assets/js/ui/nav.js"></script>
@@ -249,6 +261,7 @@
 <script src="assets/js/pages/inventory.js"></script>
 <script src="assets/js/pages/pos.js"></script>
 <script src="assets/js/pages/crm.js"></script>
+<script src="assets/js/pages/ops.js"></script>
 <script src="assets/js/pages/business-settings.js"></script>
 <!-- composition root (must load last) -->
 <script src="assets/js/app.js"></script>

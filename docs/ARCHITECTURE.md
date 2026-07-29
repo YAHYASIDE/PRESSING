@@ -173,6 +173,21 @@ A layer may use the layers below it and never the layers above it.
     refunds), vehicles tab (full registry + oil-change action), and contact info.
 - The oil change is a normal invoice (`meta.oil`) in the one invoice store, so it
   shows in POS history, the ledger, and the customer timeline at once.
+
+#### Operations intelligence (SaaS v1.0) — ops center, search, audit
+- **Operations Center** (`core/ops.js` → `pages/ops.js` `opsCenterHTML`, on the
+  dashboard): live "today" tiles derived from every store — revenue/profit/
+  expenses (from `plStatement(isToday)`), order counts, car/carpet/oil queues,
+  ready-for-pickup, cash/bank/receivable balances (ledger), low-stock and trial
+  status. `opsReminders()` surfaces oil-due, low-stock, outstanding-balance and
+  trial-expiry alerts. Pure derivation — no new data.
+- **Global Search** (`core/search.js` `globalSearch`, overlay in `pages/ops.js`):
+  one query across customers, vehicles, invoices, car ops, carpet orders,
+  products, suppliers and journal entries; each result carries a `go` target the
+  header overlay uses to navigate (tab / crmSel / opDetail / receipt / …).
+- **Audit log** (`services/audit.js` `App.services.audit`): append-only trail
+  (capped) written from the money services (sale, refund, stock receive/adjust,
+  oil change) and login/logout; viewed in the Operations Center. Single writer.
 - **Nothing about the business is hardcoded anymore.** Modules read via core
   accessors: `bizServices()` (the service catalog → the wash `<select>`),
   `bizPayMethods()` (the payment selector everywhere), `bizCurrency()` (via

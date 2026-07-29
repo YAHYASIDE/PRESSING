@@ -353,6 +353,7 @@ function runMigrations(){
   // CRM / vehicles — ensure stores exist
   if(!state.vehicles){ state.vehicles=[]; changed=true; }
   if(!state.reminders){ state.reminders=[]; changed=true; }
+  if(!state.audit){ state.audit=[]; changed=true; }
   // subscription / trial — start a trial for configured installs that don't have one yet
   if(!state.subscription){
     state.subscription = { trialStart: (state.business&&state.business.configured)?iso(new Date()):null, plan:null, active:false };
