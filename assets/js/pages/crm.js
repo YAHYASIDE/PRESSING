@@ -70,12 +70,31 @@ function crmInfo(c){
     ${loy}
     <button class="btn-primary" data-crm-edit="${c.id}">✏️ تعديل البيانات</button>`;
 }
+function crmMembership(c){
+  const m=App.core.customerMembership(c), active=App.core.membershipActive(c);
+  const cur = m?`<div class="mem-current ${active?'active':'expired'}">
+      <div class="mem-cur-plan">${m.label}${m.unlimited?" · غير محدود":""}</div>
+      <div class="mem-cur-meta">${active?`${App.core.membershipDaysLeft(c)} يوم متبقٍ`:"منتهية"}${m.unlimited?"":` · ${m.remaining} خدمة متبقية`}${m.discount?` · خصم ${m.discount}%`:""}</div>
+      <label class="mem-auto"><input type="checkbox" ${m.autoRenew?"checked":""} data-mem-autorenew="${c.id}"> تجديد تلقائي</label>
+      ${active&&App.core.redeemAvailable(c)?`<button type="button" class="mini" data-mem-redeem="${c.id}">استخدام خدمة</button>`:""}
+    </div>`:`<div class="acc-empty">لا توجد عضوية نشطة</div>`;
+  const plans=MEMBERSHIP_PLANS.map(pl=>`<button type="button" class="mem-plan tier-${pl.k}" data-mem-buy="${c.id}|${pl.k}">
+      <span class="mem-plan-n">${pl.label}</span><span class="mem-plan-p">${money(pl.price)}</span>
+      <span class="mem-plan-d">${pl.unlimited?"غسيل غير محدود":pl.services+" خدمة"} · ${pl.days} يوم${pl.discount?` · خصم ${pl.discount}%`:""}${pl.priority?" · أولوية":""}</span></button>`).join("");
+  const pkgs=App.core.activePackages(c);
+  const pkgList=pkgs.length?pkgs.map(p=>`<div class="acc-row"><span>${p.label}</span><b>${p.remaining}/${p.total} متبقٍ</b></div>`).join(""):`<div class="acc-empty">لا توجد باقات نشطة</div>`;
+  const buyPkgs=SERVICE_PACKAGES.map(pk=>`<button type="button" class="mini" data-pkg-buy="${c.id}|${pk.k}">${pk.label} · ${money(pk.price)}</button>`).join("");
+  return `
+    <div class="acc-card"><div class="acc-card-t">العضوية الحالية</div>${cur}</div>
+    <div class="acc-card"><div class="acc-card-t">اشترك في خطة</div><div class="mem-plans">${plans}</div></div>
+    <div class="acc-card"><div class="acc-card-t">باقات الخدمات (${App.core.packageRemaining(c)} متبقٍ)</div>${pkgList}<div class="mem-buy-pkgs">${buyPkgs}</div></div>`;
+}
 function crmProfile(c){
   const cur=state.crmTab||"timeline";
   const pref=App.core.custPreferredServices(c);
-  const seg=[{k:"timeline",t:"الجدول الزمني"},{k:"vehicles",t:`المركبات (${App.core.custVehicles(c).length})`},{k:"info",t:"المعلومات"}]
+  const seg=[{k:"timeline",t:"الجدول الزمني"},{k:"vehicles",t:`المركبات (${App.core.custVehicles(c).length})`},{k:"membership",t:"العضوية"},{k:"info",t:"المعلومات"}]
     .map(x=>`<button data-crm-tab="${x.k}" class="${cur===x.k?'on':''}">${x.t}</button>`).join("");
-  const body = cur==="vehicles"?crmVehicles(c) : cur==="info"?crmInfo(c) : crmTimeline(c);
+  const body = cur==="vehicles"?crmVehicles(c) : cur==="membership"?crmMembership(c) : cur==="info"?crmInfo(c) : crmTimeline(c);
   return `
     <div class="od-head"><button type="button" class="od-back" data-crm-back aria-label="رجوع">→</button><div class="od-htitle">${c.name||c.plate||"زبون"}</div><button class="icon-btn" data-crm-edit="${c.id}">✏️</button></div>
     <div class="crm-profile">

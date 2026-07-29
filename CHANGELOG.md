@@ -6,6 +6,30 @@ platform for car wash, laundry, carpet cleaning, oil change and retail.
 
 ## SaaS v1.0 — Enterprise Edition (incremental)
 
+### Part 8 — Membership Platform & Queue Display
+- **Membership System** — seven configurable plans (Basic, Silver, Gold, Diamond,
+  Unlimited, Family, Fleet) with price, duration, included services, discount %,
+  priority-queue flag and auto-renewal. Each plan carries an expiry and a remaining
+  service balance; a reminder is auto-created for the expiry date.
+- **Service Packages** — prepaid bundles (5 washes, 10 washes, monthly, quarterly,
+  yearly) with a live remaining balance and expiry per package.
+- **Redeem** — one-tap "use a service" draws from the active membership first,
+  then from a package; unlimited plans never decrement.
+- **Recurring-revenue accounting** — memberships and packages are sold through the
+  **existing `finalizeInvoice` path** (source `membership`/`package`), so every
+  sale posts to the ledger with no duplicated posting logic. A receipt prints via
+  the shared document modal.
+- **Membership tab** on the customer profile: current-plan card, plan grid,
+  package balance and buy buttons, auto-renew toggle.
+- **Dashboard membership KPIs** — Active Members, Expiring Soon (≤7 days),
+  Monthly Recurring Revenue (MRR), Package balance, Loyalty Redemptions and
+  Average Customer Value — all derived, none stored twice.
+- **Queue Display (TV mode)** — a fullscreen, customer-facing board opened from the
+  Operations Center: three live columns (waiting / in-progress / ready-for-pickup)
+  with queue number, plate/vehicle and service, a live clock, completed-today
+  counter, large fonts, dark theme, auto-refresh every 4s, native fullscreen and a
+  **sound alert** when a car turns ready.
+
 ### Part 7 — Car-wash industry features
 - **Digital Vehicle Inspection** — a checklist (body, glass, lights, tyres,
   interior, engine) with a good/fair/damaged scale, fuel level, damage notes and

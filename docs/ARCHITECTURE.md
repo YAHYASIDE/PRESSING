@@ -214,6 +214,28 @@ A layer may use the layers below it and never the layers above it.
 - **Pickup code** is generated in `setCarStage` when an op reaches *ready*; the
   Operation Details screen shows the code + QR and a verify action.
 - Loyalty tiers are derived from `custRevenue` — no stored tier field.
+
+#### Membership Platform & Queue Display (SaaS v1.0)
+- `config/membership.js` — `MEMBERSHIP_PLANS` (7 configurable plans) and
+  `SERVICE_PACKAGES` (5 prepaid bundles). Prices/durations/discounts live here,
+  nothing hardcoded in logic.
+- `core/membership.js` — pure derivations: `membershipPlan`, `membershipActive`
+  (expiry vs now), `membershipDaysLeft`, `activePackages`, `packageRemaining`,
+  `redeemAvailable`, and `membershipStats` (active / expiring / MRR / packages /
+  redemptions / avg value) — all derived, none stored twice. Redemption counts
+  come from the audit log, MRR sums active plan prices.
+- `services/membership.js` — `buyMembership` / `buyPackage` **reuse
+  `finalizeInvoice`** (source `membership`/`package`) so the sale posts to the
+  ledger through the one posting path; they set `c.memberPlan` / `c.packages` and
+  push an expiry reminder. `redeemService` decrements membership-then-package;
+  `toggleAutoRenew` flips the renewal flag. No duplicated posting.
+- `pages/crm.js` `crmMembership(c)` — the profile's العضوية tab; dashboard KPIs
+  are rendered by `pages/ops.js` from `membershipStats()`.
+- **Queue Display** (`pages/queue.js` `queueDisplayHTML` + `app.js`
+  `openQueueDisplay`/`renderQueue`/`queueBeep`) — a fullscreen `#queueScreen`
+  board derived purely from `state.carOps` via `carStageKey`/`opActive`; three
+  columns, 4s auto-refresh, native fullscreen, WebAudio beep when the ready count
+  rises. No new data — a read-only projection of the operations already tracked.
 - **Nothing about the business is hardcoded anymore.** Modules read via core
   accessors: `bizServices()` (the service catalog → the wash `<select>`),
   `bizPayMethods()` (the payment selector everywhere), `bizCurrency()` (via

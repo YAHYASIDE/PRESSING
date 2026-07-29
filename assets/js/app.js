@@ -373,6 +373,13 @@ function bindScreen(){
   document.querySelectorAll("[data-crm-veh-del]").forEach(b=>b.onclick=()=>{ requireCode(()=>{ App.services.deleteVehicle(b.dataset.crmVehDel); toast("حُذفت المركبة"); render(); }, SECRET_CODE, "كود الحذف", "حذف مركبة يتطلب الكود."); });
   document.querySelectorAll("[data-crm-oil]").forEach(b=>b.onclick=()=>openCrmSheet("oil",b.dataset.crmOil));
   document.querySelectorAll("[data-crm-sheet-close]").forEach(b=>b.onclick=()=>{ const s=document.getElementById("crmSheet"); if(s) s.classList.remove("open"); });
+  // membership + packages
+  document.querySelectorAll("[data-mem-buy]").forEach(b=>b.onclick=()=>{ const [cid,plan]=b.dataset.memBuy.split("|"); const r=App.services.buyMembership(cid,plan); if(r.ok){ toast("تم تفعيل العضوية 🎉"); openReceipt2(r.invoice.id); render(); } else toast("تعذّر الشراء"); });
+  document.querySelectorAll("[data-pkg-buy]").forEach(b=>b.onclick=()=>{ const [cid,pk]=b.dataset.pkgBuy.split("|"); const r=App.services.buyPackage(cid,pk); if(r.ok){ toast("تمت إضافة الباقة"); openReceipt2(r.invoice.id); render(); } else toast("تعذّر الشراء"); });
+  document.querySelectorAll("[data-mem-redeem]").forEach(b=>b.onclick=()=>{ const r=App.services.redeemService(b.dataset.memRedeem); if(r.ok){ toast(r.type==="unlimited"?"خدمة غير محدودة ✓":"تم الاستخدام — متبقٍ "+r.remaining); render(); } else toast("لا يوجد رصيد خدمات"); });
+  document.querySelectorAll("[data-mem-autorenew]").forEach(cb=>cb.onchange=()=>{ App.services.toggleAutoRenew(cb.dataset.memAutorenew); saveLocal(); });
+  // fullscreen queue board (TV mode)
+  document.querySelectorAll("[data-open-queue]").forEach(b=>b.onclick=openQueueDisplay);
 
   // meters
   const ms=document.getElementById("meterSave");
@@ -724,9 +731,45 @@ function applyLock(){
 /* POS receipt (Release: SaaS v1.0 POS) — render an invoice's receipt with QR. */
 function openReceipt2(invId){
   const inv=(state.invoices||[]).find(x=>x.id===invId); if(!inv) return;
-  const body=document.getElementById("receiptBody"); if(!body) return;
-  body.innerHTML=posReceiptHTML(inv);
-  document.getElementById("receiptModal").style.display="flex";
+  const html=posReceiptHTML(inv);
+  const rb=document.getElementById("receiptBody");
+  if(rb){ rb.innerHTML=html; document.getElementById("receiptModal").style.display="flex"; return; }
+  // fallback: persistent doc modal (when off the POS screen, e.g. CRM/oil/membership)
+  const db=document.getElementById("docBody"); if(db){ db.innerHTML=html; document.getElementById("docModal").style.display="flex"; }
+}
+/* ---- fullscreen customer-facing queue board (TV mode) ---- */
+let _queueTimer=null, _queueReady=0;
+function openQueueDisplay(){
+  const scr=document.getElementById("queueScreen"); if(!scr) return;
+  _queueReady=-1;                         // force first paint to skip the beep
+  scr.classList.add("on"); renderQueue();
+  if(_queueTimer) clearInterval(_queueTimer);
+  _queueTimer=setInterval(renderQueue,4000);
+  try{ if(scr.requestFullscreen) scr.requestFullscreen(); }catch(e){}
+}
+function closeQueueDisplay(){
+  const scr=document.getElementById("queueScreen"); if(scr) scr.classList.remove("on");
+  if(_queueTimer){ clearInterval(_queueTimer); _queueTimer=null; }
+  try{ if(document.fullscreenElement) document.exitFullscreen(); }catch(e){}
+}
+function renderQueue(){
+  const body=document.getElementById("queueBody"); if(!body) return;
+  body.innerHTML=App.pages.queueDisplayHTML();
+  const closeBtn=body.querySelector("[data-queue-close]"); if(closeBtn) closeBtn.onclick=closeQueueDisplay;
+  const ready=(state.carOps||[]).filter(o=>!o.cancelled && carStageKey(o)==="ready").length;
+  if(_queueReady>=0 && ready>_queueReady) queueBeep();   // a car just became ready
+  _queueReady=ready;
+}
+function queueBeep(){
+  try{
+    const AC=window.AudioContext||window.webkitAudioContext; if(!AC) return;
+    const ctx=new AC(), o=ctx.createOscillator(), g=ctx.createGain();
+    o.type="sine"; o.frequency.value=880; o.connect(g); g.connect(ctx.destination);
+    g.gain.setValueAtTime(0.001,ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.3,ctx.currentTime+0.02);
+    g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+0.5);
+    o.start(); o.stop(ctx.currentTime+0.52);
+  }catch(e){}
 }
 function openReceipt(o){
   document.getElementById("receiptContent").innerHTML=`

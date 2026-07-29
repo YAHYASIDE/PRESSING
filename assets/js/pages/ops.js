@@ -11,8 +11,20 @@ function opsCenterHTML(){
   const inv=App.core.featureEnabled("inventory");
   const remRow=(r)=>`<div class="ops-rem-row sev-${r.sev}"><b>${r.title}</b><span>${r.sub}</span></div>`;
   const audit=(state.audit||[]).slice(-20).reverse();
+  const m=App.core.membershipStats();
+  const memBlock=(m.active||m.packages||m.mrr)?`
+    <div class="ops-sec-h sub">العضوية والإيراد المتكرر</div>
+    <div class="ops-grid membership">
+      ${opsTile(m.active,"أعضاء نشطون","t-mem")}
+      ${opsTile(m.expiring,"تنتهي قريبًا",m.expiring?"t-alert":"")}
+      ${opsTile(money(m.mrr),"إيراد شهري متكرر","t-mrr")}
+      ${opsTile(m.packages,"رصيد الباقات")}
+      ${opsTile(m.redemptions,"استخدامات الولاء")}
+      ${opsTile(money(m.avgValue),"متوسط قيمة الزبون","t-net")}
+    </div>`:"";
   return `<div class="ops-center">
-    <div class="ops-sec-h">مركز العمليات المباشر <span>اليوم · ${new Date().toLocaleDateString("ar",{weekday:"long"})}</span></div>
+    <div class="ops-sec-h">مركز العمليات المباشر <span>اليوم · ${new Date().toLocaleDateString("ar",{weekday:"long"})}</span>
+      <button type="button" class="ops-tv" data-open-queue>📺 شاشة العرض</button></div>
     <div class="ops-grid money">
       ${opsTile(money(s.revenueToday),"إيرادات اليوم","t-rev")}
       ${opsTile(money(s.profitToday),"ربح اليوم",s.profitToday>=0?"t-net":"t-loss")}
@@ -33,6 +45,7 @@ function opsCenterHTML(){
       ${opsTile(money(s.receivable),"ذمم العملاء","t-ar")}
       ${inv?opsTile(s.lowStock,"تنبيهات مخزون",s.lowStock?"t-alert":""):opsTile(s.employees,"الموظفون")}
     </div>
+    ${memBlock}
     ${rem.length?`<details class="ops-rem" open><summary>🔔 التذكيرات (${rem.length})</summary><div class="ops-rem-list">${rem.slice(0,12).map(remRow).join("")}</div></details>`:""}
     ${audit.length?`<details class="ops-rem"><summary>📋 سجل التدقيق (${(state.audit||[]).length})</summary><div class="audit-list">${audit.map(a=>`<div class="audit-row"><span class="audit-act">${a.action}</span><span class="audit-det">${a.detail||""}</span><span class="audit-meta">${a.user||"—"} · ${ymd(a.date)} ${timeStr(a.date)}</span></div>`).join("")}</div></details>`:""}
   </div>`;
