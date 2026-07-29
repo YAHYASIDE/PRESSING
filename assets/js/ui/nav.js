@@ -9,9 +9,10 @@ function renderNav(){
     {id:"expenses",label:"المصروفات",icon:I.wallet},
     {id:"reports",label:"التقارير",icon:I.chart}
   ];
-  // Release 4 — only show tabs the current role is allowed to see (Worker sees Operations only)
+  // Release 4/5 — show tabs allowed by role AND by the business configuration
+  // (business type gates cars/carpets; accounting feature gates reports).
   const allowed=App.core.roleTabs();
-  const items=allItems.filter(it=>allowed.indexOf(it.id)>=0);
+  const items=allItems.filter(it=>allowed.indexOf(it.id)>=0 && App.core.tabVisible(it.id));
   const nav=document.getElementById("nav");
   nav.classList.toggle("solo", items.length<=1);
   nav.innerHTML=items.map(it=>`

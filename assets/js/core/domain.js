@@ -1,7 +1,8 @@
 /* core/domain.js — pure domain: formatting, dates, math, financial calcs (+ icons/toast, to move to ui/ later) */
 /* ================= Helpers ================= */
 const fmt=(n)=>(Math.round(n*100)/100).toLocaleString("en-US");
-const money=(n)=>fmt(n);
+/* money() appends the configured business currency (Release 5); fmt() stays a bare number. */
+const money=(n)=>{ const s=fmt(n); try{ const b=App.store&&App.store.state&&App.store.state.business; const c=b&&b.currency; return c?(s+" "+c):s; }catch(e){ return s; } };
 const isToday=(d)=>{const x=new Date(d);return x.toDateString()===now.toDateString();};
 const isMonth=(d)=>{const x=new Date(d);return x.getMonth()===now.getMonth()&&x.getFullYear()===now.getFullYear();};
 const ymd=(d)=>{const x=new Date(d);return x.getFullYear()+"-"+String(x.getMonth()+1).padStart(2,"0")+"-"+String(x.getDate()).padStart(2,"0");};
@@ -172,7 +173,7 @@ function orderState(o){
   return {cls:"st-orange"};
 }
 function carNo(vehicle){ const L=VEH_LETTER[vehicle]||"X"; if(!state.carSeq) state.carSeq={}; state.carSeq[L]=(state.carSeq[L]||0)+1; return L+state.carSeq[L]; }
-function waHead(){ return `*${SHOP_NAME}*\nالتاريخ: ${ymd(new Date())}\nالهاتف: ${SHOP_PHONE}\n━━━━━━━━━━`; }
+function waHead(){ return `*${bizName()}*\nالتاريخ: ${ymd(new Date())}\nالهاتف: ${bizPhone()}\n━━━━━━━━━━`; }
 function waFoot(){ const th=(state.thanksMsg||"شكرًا لغسلتك عندنا 🌟").trim(); const ad=(state.adMsg||"").trim(); return `━━━━━━━━━━${th?`\n${th}`:""}${ad?`\n\n${ad}`:""}`; }
 function countryOpts(sel){ return COUNTRIES.map(x=>`<option value="${x.c}" ${x.c===(sel||"222")?"selected":""}>${x.n} +${x.c}</option>`).join(""); }
 function validPhone(ph){ return ph==="" || /^[0-9]{8,9}$/.test(ph); }
@@ -190,6 +191,31 @@ function waLink(o){
   return `https://wa.me/${phone}?text=${msg}`;
 }
 function ensureCarNos(){ if(!state.carSeq) state.carSeq={}; (state.carOps||[]).forEach(o=>{ if(!o.no) o.no=carNo(o.vehicle); }); }
+
+/* ================= Business Configuration layer (Release 5) ================= */
+/* Every module reads its behavior from state.business — never from hardcoded values. */
+function biz(){ return state.business||{}; }
+function businessConfigured(){ return !!biz().configured; }
+function bizName(){ return (biz().name||"").trim()||SHOP_NAME; }
+function bizPhone(){ return (biz().phone||"").trim()||SHOP_PHONE; }
+function bizCurrency(){ return biz().currency||CUR; }
+function bizTypeOn(k){ return !!(biz().types&&biz().types[k]); }
+/* the enabled service catalog, as label strings for the wash <select> (falls back to WASH_TYPES) */
+function bizServices(){
+  const s=biz().services; if(!s) return WASH_TYPES.slice();
+  const on=SERVICE_CATALOG.filter(x=>s[x.k]).map(x=>x.label);
+  return on.length?on:WASH_TYPES.slice();
+}
+/* the enabled payment methods (falls back to the built-in PAY_METHODS) */
+function bizPayMethods(){ const p=biz().paymentMethods; return (p&&p.length)?p:PAY_METHODS; }
+/* whether a nav tab is allowed by business type / feature config (role is applied separately) */
+function tabVisible(id){
+  if(!businessConfigured()) return true;                 // before setup, show everything
+  if(id==="cars")    return bizTypeOn("carwash");
+  if(id==="carpets") return bizTypeOn("carpet")||bizTypeOn("laundry");
+  if(id==="reports") return featureEnabled("accounting");
+  return true;
+}
 
 /* ================= Feature Modules (optional business features) ================= */
 /* Generic toggle API — every optional module (loyalty, inventory, …) is gated by these. */
@@ -268,8 +294,26 @@ function runMigrations(){
     const L=state.features.loyalty, dl=dflt.loyalty;
     if(L){ Object.keys(dl).forEach(k=>{ if(L[k]===undefined){ L[k]=dl[k]; changed=true; } }); }
   }
+  // Business Configuration — ensure it exists. An install that already has data
+  // (returning user) is marked configured with sensible values so it is NOT sent
+  // through the wizard and loses nothing; a truly fresh install stays unconfigured
+  // so first launch opens the Setup Wizard.
+  if(!state.business){
+    state.business=defaultBusiness();
+    const hadData = state._savedAt || (state.carOps&&state.carOps.length) || (state.carpetOrders&&state.carpetOrders.length) ||
+      (state.customers&&Object.keys(state.customers).length) || (state.expenses&&state.expenses.length) || (state.workers&&state.workers.length);
+    if(hadData){
+      state.business.configured=true;
+      state.business.name=SHOP_NAME; state.business.phone=SHOP_PHONE; state.business.currency=CUR;
+      state.business.types={ carwash:true, carpet:true, laundry:false };   // existing app had both boards
+      Object.keys(state.business.features).forEach(k=>{ state.business.features[k]=!!(state.features[k]&&state.features[k].enabled); });
+      state.business.features.accounting=true; state.business.features.employees=true;
+    }
+    changed=true;
+  }
   ensureCarNos();
   return changed;
 }
 Object.assign(App.core, { todayStr, isPastDay, chosenDateIso, meterCode, orderState, carNo, waHead, waFoot, countryOpts, validPhone, waPhoneFull, waPhoneStr, waPhone, waStatusMsg, waLink, ensureCarNos, runMigrations,
-  featureEnabled, featureCfg, loyaltyEnabled, loyaltyStrategy, loyaltyThreshold, loyaltyReward, loyaltyOnWash, loyaltyStatus });
+  featureEnabled, featureCfg, loyaltyEnabled, loyaltyStrategy, loyaltyThreshold, loyaltyReward, loyaltyOnWash, loyaltyStatus,
+  biz, businessConfigured, bizName, bizPhone, bizCurrency, bizTypeOn, bizServices, bizPayMethods, tabVisible });

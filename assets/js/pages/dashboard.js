@@ -11,7 +11,7 @@ function buildReportText(){
   const washing=state.carpetOrders.filter(o=>o.status==="wash"&&F(o.date)).length;
   const today=ymd(now);
   const period=(state.dateFrom===state.dateTo)?(state.dateFrom===today?("اليوم "+today):state.dateFrom):(state.dateFrom+" ← "+state.dateTo);
-  return `📋 تقرير مغاسيل صداقة
+  return `📋 تقرير ${bizName()}
 📅 ${period}
 
 💰 الدخل: ${money(inc)}

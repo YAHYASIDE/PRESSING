@@ -14,6 +14,7 @@
 <link rel="stylesheet" href="assets/css/dashboard.css">
 <link rel="stylesheet" href="assets/css/mobile.css">
 <link rel="stylesheet" href="assets/css/cars.css">
+<link rel="stylesheet" href="assets/css/setup.css">
 <link rel="stylesheet" href="assets/css/entry.css">
 </head>
 <body>
@@ -178,11 +179,27 @@
   </div>
 </div>
 
+<!-- Business Setup Wizard (Release 5) -->
+<div id="setupScreen">
+  <div class="su-shell">
+    <div class="su-top">
+      <div class="su-progress"><div class="su-bar" id="suBar"></div></div>
+      <div class="su-step-lbl" id="suStepLbl"></div>
+    </div>
+    <div class="su-body" id="setupBody"></div>
+    <div class="su-nav">
+      <button type="button" class="mini" id="suBack">رجوع</button>
+      <button type="button" class="btn-primary" id="suNext">التالي</button>
+    </div>
+  </div>
+</div>
+
 <!-- root -->
 <script src="assets/js/app.namespace.js"></script>
 <!-- config + store -->
 <script src="assets/js/config/constants.js"></script>
 <script src="assets/js/config/features.js"></script>
+<script src="assets/js/config/business.js"></script>
 <script src="assets/js/state.js"></script>
 <!-- core (pure domain) -->
 <script src="assets/js/core/domain.js"></script>
@@ -203,6 +220,7 @@
 <script src="assets/js/pages/reports.js"></script>
 <script src="assets/js/pages/settings.js"></script>
 <script src="assets/js/pages/features.js"></script>
+<script src="assets/js/pages/setup.js"></script>
 <!-- composition root (must load last) -->
 <script src="assets/js/app.js"></script>
 </body>

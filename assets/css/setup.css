@@ -1,0 +1,86 @@
+/* setup.css — Business Setup Wizard (Release 5). Mobile-first full-screen flow. */
+#setupScreen{
+  display:none; position:fixed; inset:0; z-index:150;
+  background:var(--bg); align-items:stretch; justify-content:center;
+}
+.su-shell{
+  display:flex; flex-direction:column; width:100%; max-width:560px;
+  background:var(--bg); position:relative;
+}
+.su-top{ padding:16px 18px 10px; }
+.su-progress{ height:7px; border-radius:999px; background:var(--soft); overflow:hidden; }
+.su-bar{ height:100%; width:0; border-radius:999px; background:linear-gradient(90deg,var(--brand),var(--brand-2,var(--brand))); transition:width .35s cubic-bezier(.22,.61,.36,1); }
+.su-step-lbl{ margin-top:8px; font-size:.76rem; font-weight:800; color:var(--muted); text-align:center; }
+
+.su-body{ flex:1; overflow-y:auto; padding:8px 18px 18px; -webkit-overflow-scrolling:touch; }
+.su-h{ font-size:1.3rem; font-weight:800; margin:6px 0 4px; }
+.su-sub{ font-size:.85rem; color:var(--muted); font-weight:600; margin:0 0 16px; line-height:1.5; }
+
+.su-nav{ display:flex; gap:10px; padding:12px 18px calc(12px + env(safe-area-inset-bottom)); border-top:1px solid var(--line); background:var(--surface); }
+.su-nav .mini{ flex:0 0 auto; min-width:88px; }
+.su-nav .btn-primary{ flex:1; padding:15px; font-size:1.02rem; font-weight:800; }
+
+/* welcome */
+.su-welcome{ text-align:center; padding-top:14px; animation:dashUp .4s ease both; }
+.su-logo{ width:96px; height:96px; border-radius:24px; object-fit:cover; box-shadow:var(--shadow); margin-bottom:16px; }
+.su-welcome h2{ font-size:1.6rem; font-weight:800; margin:0 0 10px; }
+.su-lead{ font-size:.92rem; color:var(--muted); font-weight:600; line-height:1.7; margin:0 auto 18px; max-width:420px; }
+.su-points{ list-style:none; padding:0; margin:0 auto; max-width:340px; text-align:start; display:flex; flex-direction:column; gap:10px; }
+.su-points li{ position:relative; padding:12px 44px 12px 14px; background:var(--surface); border:1px solid var(--line); border-radius:12px; font-weight:700; font-size:.88rem; }
+.su-points li::before{ content:"✓"; position:absolute; inset-inline-end:14px; top:50%; transform:translateY(-50%); width:24px; height:24px; border-radius:50%; background:var(--chip); color:var(--brand); font-weight:800; display:grid; place-items:center; font-size:.8rem; }
+
+/* selectable business-type cards */
+.su-cards{ display:flex; flex-direction:column; gap:12px; }
+.su-card{ position:relative; display:flex; align-items:center; gap:14px; text-align:start; width:100%; cursor:pointer;
+  background:var(--surface); border:2px solid var(--line); border-radius:16px; padding:16px; font:inherit; color:inherit; transition:border-color .16s, background .16s; }
+.su-card.on{ border-color:var(--brand); background:var(--chip); }
+.su-card-ic{ flex:none; width:48px; height:48px; border-radius:13px; display:grid; place-items:center; background:var(--soft); }
+.su-card.on .su-card-ic{ background:var(--surface); }
+.su-card-ic svg{ width:26px; height:26px; }
+.su-card-body{ flex:1; min-width:0; display:flex; flex-direction:column; gap:3px; }
+.su-card-body b{ font-size:1rem; font-weight:800; }
+.su-card-body small{ font-size:.76rem; color:var(--muted); font-weight:600; }
+.su-check{ flex:none; width:26px; height:26px; border-radius:50%; border:2px solid var(--line); color:#fff; display:grid; place-items:center; font-style:normal; font-size:.85rem; transition:.16s; }
+.su-card.on .su-check{ background:var(--brand); border-color:var(--brand); }
+.su-card:not(.on) .su-check{ color:transparent; }
+
+/* toggle rows (services / payments / features) */
+.su-toggles{ display:flex; flex-direction:column; gap:10px; }
+.su-toggle{ display:flex; align-items:center; justify-content:space-between; gap:12px;
+  background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:13px 14px; font-weight:700; font-size:.9rem; cursor:pointer; }
+.su-toggle > span:first-child{ min-width:0; }
+.su-feat{ display:flex; align-items:center; gap:11px; }
+.su-feat-ic{ flex:none; width:34px; height:34px; border-radius:9px; display:grid; place-items:center; background:var(--soft); }
+.su-feat-ic svg{ width:18px; height:18px; }
+.su-feat b{ font-size:.9rem; font-weight:800; display:block; }
+.su-feat small{ font-size:.72rem; color:var(--muted); font-weight:600; }
+.su-tag{ font-size:.64rem; font-weight:800; color:var(--muted); background:var(--soft); border-radius:999px; padding:1px 7px; font-style:normal; }
+.su-del{ flex:none; width:30px; height:30px; border-radius:8px; border:1px solid var(--line); background:var(--soft); color:var(--unpaid); cursor:pointer; font-weight:800; }
+.su-add{ display:flex; gap:8px; margin-top:12px; }
+.su-add input{ flex:1; padding:12px; border:1px solid var(--line); border-radius:11px; background:var(--input); color:var(--ink); font-size:.9rem; }
+.su-add .mini{ flex:none; }
+
+/* info step */
+.su-logo-row{ display:flex; align-items:center; gap:14px; }
+.su-logo-prev{ width:60px; height:60px; border-radius:14px; object-fit:cover; border:1px solid var(--line); }
+.su-logo-btn{ cursor:pointer; }
+
+/* working days */
+.su-days{ display:flex; flex-wrap:wrap; gap:8px; }
+.su-day{ padding:10px 14px; border-radius:999px; border:1.5px solid var(--line); background:var(--surface); font-weight:800; font-size:.82rem; cursor:pointer; transition:.15s; }
+.su-day.on{ border-color:var(--brand); background:var(--chip); color:var(--brand); }
+
+/* finish */
+.su-done{ text-align:center; padding-top:22px; animation:dashUp .4s ease both; }
+.su-done-ic{ width:84px; height:84px; margin:0 auto 18px; border-radius:50%; background:linear-gradient(135deg,var(--ready),#26b06e); color:#fff; display:grid; place-items:center; font-size:2.4rem; font-weight:800; box-shadow:0 10px 28px rgba(38,176,110,.35); }
+.su-done h2{ font-size:1.7rem; font-weight:800; margin:0 0 10px; }
+.su-summary{ margin-top:20px; text-align:start; background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:6px 14px; }
+.su-sum-row{ display:flex; justify-content:space-between; gap:12px; padding:11px 0; border-bottom:1px dashed var(--line); font-size:.88rem; }
+.su-sum-row:last-child{ border-bottom:none; }
+.su-sum-row span{ color:var(--muted); font-weight:600; flex:none; }
+.su-sum-row b{ font-weight:800; text-align:end; }
+
+@media (min-width:600px){
+  #setupScreen{ align-items:center; padding:24px; }
+  .su-shell{ max-height:92vh; border-radius:24px; border:1px solid var(--line); box-shadow:0 20px 60px rgba(21,37,52,.25); overflow:hidden; }
+}

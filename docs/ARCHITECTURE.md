@@ -63,6 +63,23 @@ A layer may use the layers below it and never the layers above it.
   flag in `defaultFeatures`), (2) wrap its UI/logic in `featureEnabled('key')`.
   The toggle UI, persistence, and migration need no changes.
 
+#### Business Configuration layer (Release 5)
+- `state.business` is the single source of truth for *what this business is*:
+  `name`, `logo`, `country`, `currency`, `language`, `timezone`, `types`
+  (car-wash / carpet / laundry), `services`, `paymentMethods`, `features`, and
+  `workingHours`. Catalogs + `defaultBusiness()` live in `config/business.js`.
+- The **Setup Wizard** (`pages/setup.js` render + `app.js` orchestration) writes
+  this object once. First launch — an unconfigured business — opens the wizard
+  instead of the dashboard (`applySetup` in `render`); a migration marks
+  pre-existing installs configured so they are never sent through it.
+- **Nothing about the business is hardcoded anymore.** Modules read via core
+  accessors: `bizServices()` (the service catalog → the wash `<select>`),
+  `bizPayMethods()` (the payment selector everywhere), `bizCurrency()` (via
+  `money()`), `bizName()`/`bizPhone()` (header, receipts, WhatsApp), `bizTypeOn()`
+  + `tabVisible()` (which screens/tabs appear). The wizard's feature choices are
+  applied into the Feature Modules engine, and the loyalty step reuses the same
+  loyalty engine — no duplication.
+
 ### `App.store`
 - **Responsibilities:** hold the single in-memory application state object
   (`state`) and load-time temporal reference (`now`). Pure data container.

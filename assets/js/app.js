@@ -7,13 +7,14 @@ Object.assign(App.core, { roleDef, can, roleTabs });
 
 /* ================= Render + events ================= */
 function render(){
-  // role guard: if the current tab isn't allowed for this role, fall back to the first allowed tab
-  const allowed=roleTabs();
+  // role + business guard: fall back to the first tab allowed by BOTH role and business config
+  const allowed=roleTabs().filter(t=>tabVisible(t));
   if(!state.opDetail && allowed.indexOf(state.tab)<0) state.tab=allowed[0]||"cars";
   // Release 4 — hide admin-only chrome (settings) from roles without the capability
   const sb=document.getElementById("settingsBtn"); if(sb) sb.style.display=can('settings')?"":"none";
   const rb=document.getElementById("roleBadge"); if(rb){ rb.textContent=roleDef().label; rb.style.display=unlocked?"":"none"; }
   const lob=document.getElementById("logoutBtn"); if(lob) lob.style.display=unlocked?"":"none";
+  applySetup();   // Release 5 — first launch (unconfigured business) opens the Setup Wizard
   renderNav();
   // Release 4 — the Operation Details screen replaces the main screen when an op is open
   if(state.opDetail){
@@ -146,7 +147,7 @@ function bindScreen(){
   document.querySelectorAll("[data-paymethod]").forEach(b=>b.onclick=()=>{
     const ds=document.getElementById("deliverSheet"); if(ds) ds.classList.remove("open");
     if(_deliverId){ const res=App.services.deliverOperation({id:_deliverId, method:b.dataset.paymethod});
-      if(res.ok){ const m=(PAY_METHODS.find(x=>x.k===res.method)||{}).label||""; toast("تم التسليم — "+m); } }
+      if(res.ok){ const m=(bizPayMethods().find(x=>x.k===res.method)||{}).label||""; toast("تم التسليم — "+m); } }
     _deliverId=null; render();
   });
 
@@ -461,7 +462,7 @@ function applyLock(){
 function openReceipt(o){
   document.getElementById("receiptContent").innerHTML=`
     <div class="rcpt">
-      <div class="rcpt-head"><b>مغاسيل صداقة</b><div>إيصال طلب — سجاد وأفرشة</div></div>
+      <div class="rcpt-head"><b>${bizName()}</b><div>إيصال طلب — سجاد وأفرشة</div></div>
       <div class="rcpt-row"><span>رقم الطلب</span><b>${o.no}</b></div>
       <div class="rcpt-row"><span>العميل</span><b>${o.customer||"-"}</b></div>
       ${o.phone?`<div class="rcpt-row"><span>الهاتف</span><b>${o.phone}</b></div>`:""}
@@ -532,6 +533,7 @@ function bindFeatureModules(){
       const k=cb.dataset.feat;
       if(!state.features[k]) state.features[k]={};
       state.features[k].enabled=cb.checked;
+      if(state.business&&state.business.features) state.business.features[k]=cb.checked;  // keep business config in sync
       saveLocal(); paint(); render();     // re-render main so gated UI appears/disappears immediately
       toast(cb.checked?"تم تفعيل الميزة":"تم إيقاف الميزة");
     });
@@ -554,7 +556,8 @@ let _editCtx=null;
 function openEditCar(id){
   const o=state.carOps.find(x=>x.id===id); if(!o) return; _editCtx={type:"car",id};
   const vehOpts=Object.keys(VEH_LETTER).map(v=>`<option value="${v}" ${v===o.vehicle?"selected":""}>${v}</option>`).join("");
-  const washOpts=WASH_TYPES.map(w=>`<option value="${w}" ${w===o.wash?"selected":""}>${w}</option>`).join("");
+  const washList=bizServices().slice(); if(o.wash && washList.indexOf(o.wash)<0) washList.unshift(o.wash);
+  const washOpts=washList.map(w=>`<option value="${w}" ${w===o.wash?"selected":""}>${w}</option>`).join("");
   document.getElementById("editBody").innerHTML=`
     <div class="field"><label>نوع السيارة</label><select id="edVehicle">${vehOpts}</select></div>
     <div class="field"><label>نوع الغسيل</label><select id="edWash">${washOpts}</select></div>
@@ -685,6 +688,99 @@ document.getElementById("receiptPrint").onclick=printReceipt;
   if(lob) lob.onclick=()=>{ unlocked=false; currentUser=""; state.opDetail=null; applyLock(); toast("تم تسجيل الخروج"); };
 })();
 
+/* ================= Business Setup Wizard (Release 5) ================= */
+let _setup=null;
+function applyBusiness(){
+  const b=state.business||{};
+  const h=document.querySelector(".brand h1"); if(h && b.name) h.textContent=b.name;
+  const lg=document.getElementById("brandLogo"); if(lg && b.logo) lg.src=b.logo;
+}
+/* show the wizard only once the app is unlocked and the business is not yet configured */
+function applySetup(){
+  const el=document.getElementById("setupScreen"); if(!el) return;
+  if(unlocked && !businessConfigured()){ if(!_setup) startSetup(); el.style.display="flex"; }
+  else el.style.display="none";
+}
+function startSetup(){
+  const draft=JSON.parse(JSON.stringify(defaultBusiness()));
+  draft.loyalty=Object.assign(defaultLoyaltyCfg(), (state.features&&state.features.loyalty)||{});
+  draft.loyalty.enabled=true;
+  _setup={ i:0, draft };
+  renderSetupStep();
+}
+function renderSetupStep(){
+  if(!_setup) return;
+  const steps=setupSteps(_setup.draft);
+  if(_setup.i>steps.length-1) _setup.i=steps.length-1;
+  const key=steps[_setup.i];
+  document.getElementById("setupBody").innerHTML=setupStepView(key,_setup.draft);
+  const total=steps.length, pct=Math.round((_setup.i/(total-1))*100);
+  document.getElementById("suBar").style.width=pct+"%";
+  document.getElementById("suStepLbl").textContent=`الخطوة ${_setup.i+1} من ${total}`;
+  const back=document.getElementById("suBack"), next=document.getElementById("suNext");
+  back.style.visibility=_setup.i===0?"hidden":"visible";
+  next.textContent = key==="welcome" ? "ابدأ" : key==="finish" ? "الذهاب إلى لوحة التحكم" : "التالي";
+  const body=document.getElementById("setupBody"); body.scrollTop=0;
+  wireSetupStep(key);
+}
+/* wire the interactive controls of the current step; most update the draft immediately */
+function wireSetupStep(key){
+  const d=_setup.draft, host=document.getElementById("setupBody");
+  host.querySelectorAll("[data-su-type]").forEach(b=>b.onclick=()=>{ const k=b.dataset.suType; d.types[k]=!d.types[k]; renderSetupStep(); });
+  host.querySelectorAll("[data-su-svc]").forEach(cb=>cb.onchange=()=>{ d.services[cb.dataset.suSvc]=cb.checked; });
+  host.querySelectorAll("[data-su-feat]").forEach(cb=>cb.onchange=()=>{ d.features[cb.dataset.suFeat]=cb.checked; });
+  host.querySelectorAll("[data-su-pay]").forEach(cb=>cb.onchange=()=>{
+    const k=cb.dataset.suPay, base=PAYMENT_CATALOG.find(p=>p.k===k);
+    if(cb.checked){ if(!d.paymentMethods.some(x=>x.k===k)) d.paymentMethods.push({k:k,label:(base||{}).label||k}); }
+    else d.paymentMethods=d.paymentMethods.filter(x=>x.k!==k);
+  });
+  const addBtn=host.querySelector("[data-su-pay-add]");
+  if(addBtn) addBtn.onclick=()=>{ const inp=document.getElementById("suPayCustom"); const v=(inp.value||"").trim(); if(!v) return;
+    d.paymentMethods.push({k:"custom_"+uid(), label:v, custom:true}); renderSetupStep(); };
+  host.querySelectorAll("[data-su-pay-del]").forEach(b=>b.onclick=()=>{ d.paymentMethods=d.paymentMethods.filter(x=>x.k!==b.dataset.suPayDel); renderSetupStep(); });
+  host.querySelectorAll("[data-su-day]").forEach(b=>b.onclick=()=>{ const k=+b.dataset.suDay; const i=d.workingHours.days.indexOf(k); if(i>=0) d.workingHours.days.splice(i,1); else d.workingHours.days.push(k); renderSetupStep(); });
+  // loyalty config (reuses the loyalty engine's schema-driven panel, bound to the draft)
+  host.querySelectorAll("[data-loy-strat]").forEach(b=>b.onclick=()=>{ d.loyalty.strategy=b.dataset.loyStrat; renderSetupStep(); });
+  host.querySelectorAll("[data-loy-field]").forEach(inp=>inp.onchange=()=>{ const f=inp.dataset.loyField; d.loyalty[f]=(inp.type==="number")?(+inp.value||0):inp.value.trim(); });
+  // business info inputs
+  const bind=(id,fn)=>{ const el=document.getElementById(id); if(el) el.onchange=()=>fn(el); };
+  bind("suName",el=>d.name=el.value.trim());
+  bind("suCountry",el=>d.country=el.value);
+  bind("suCurrency",el=>d.currency=el.value);
+  bind("suLang",el=>d.language=el.value);
+  bind("suTz",el=>d.timezone=el.value);
+  bind("suOpen",el=>d.workingHours.open=el.value);
+  bind("suClose",el=>d.workingHours.close=el.value);
+  const logo=document.getElementById("suLogo");
+  if(logo) logo.onchange=()=>{ const f=logo.files&&logo.files[0]; if(!f) return; const r=new FileReader(); r.onload=()=>{ d.logo=r.result; const pv=document.getElementById("suLogoPrev"); if(pv) pv.src=r.result; }; r.readAsDataURL(f); };
+}
+function finishSetup(){
+  const d=_setup.draft;
+  // apply the chosen feature flags into the Feature Modules engine
+  Object.keys(d.features).forEach(k=>{ if(!state.features[k]) state.features[k]={}; state.features[k].enabled=!!d.features[k]; });
+  // merge loyalty rules into the loyalty engine (reused, not duplicated)
+  state.features.loyalty=Object.assign({}, state.features.loyalty, d.loyalty, { enabled:!!d.features.loyalty });
+  d.configured=true;
+  state.business=d;
+  _setup=null;
+  save(); applyBusiness();
+  document.getElementById("setupScreen").style.display="none";
+  state.tab="dashboard"; state.opDetail=null;
+  render(); toast("تم إعداد نشاطك 🎉");
+}
+(function(){
+  const next=document.getElementById("suNext"), back=document.getElementById("suBack");
+  if(next) next.onclick=()=>{
+    if(!_setup) return;
+    const steps=setupSteps(_setup.draft), key=steps[_setup.i];
+    if(key==="types" && !Object.keys(_setup.draft.types).some(k=>_setup.draft.types[k])) return toast("اختر نوع النشاط أولًا");
+    if(key==="info"){ const nm=(document.getElementById("suName")||{}).value||""; if(!nm.trim()) return toast("أدخل اسم النشاط"); _setup.draft.name=nm.trim(); }
+    if(key==="finish"){ finishSetup(); return; }
+    _setup.i=Math.min(steps.length-1,_setup.i+1); renderSetupStep();
+  };
+  if(back) back.onclick=()=>{ if(_setup && _setup.i>0){ _setup.i--; renderSetupStep(); } };
+})();
+
 
 load();
 runMigrations(); saveLocal();
@@ -693,6 +789,7 @@ state.lock={enabled:true, pin:(state.lock&&state.lock.pin)||"0707"};
 applyPalette();
 applyTheme();
 applyHeaderIcons();
+applyBusiness();   // Release 5 — apply saved business name/logo to the header
 applyLock();
 render();
 setInterval(tickOpTimers, 30000);   // Release 3 — keep live operation timers ticking
@@ -701,4 +798,4 @@ setInterval(tickOpTimers, 30000);   // Release 3 — keep live operation timers 
 Object.assign(App.ui,     { render, bindScreen, bindFeatureModules, gateDay, gateDate, bindHold, requireCode, toggleCancelCar,
   toggleCancelOrder, openWorkerStatement, applyHeaderIcons, applyLock, openReceipt, printReceipt, printReport,
   openCarChat, shareCarImages, openWa, openSettings, openEditCar, openEditOrder, completeUnpaidDelivery,
-  openDeliverInfo });
+  openDeliverInfo, applySetup, applyBusiness, startSetup, renderSetupStep, finishSetup });

@@ -47,7 +47,7 @@ function screenOpDetail(){
   const isActive=active && cur!=="delivered" && !o.cancelled;
   const timer=isActive?`<span class="op-timer big" data-op-since="${active.since}" data-op-exp="${st.exp||0}"></span>`:"";
   const cust=o.plate?state.customers[o.plate]:null;
-  const pm=o.paymentMethod?((PAY_METHODS.find(m=>m.k===o.paymentMethod)||{}).label||""):"";
+  const pm=o.paymentMethod?((bizPayMethods().find(m=>m.k===o.paymentMethod)||{}).label||""):"";
   const hasPhotos=(o.photosBefore&&o.photosBefore.length)||(o.photosAfter&&o.photosAfter.length);
   const sec=(t,body)=>`<div class="od-sec"><div class="od-sec-t">${t}</div>${body}</div>`;
   const row=(k,v)=>`<div class="od-row"><span>${k}</span><b>${v}</b></div>`;
@@ -86,7 +86,7 @@ function screenOpDetail(){
         <div class="sheet-handle"></div>
         <h3>تسليم العملية</h3>
         <p class="sheet-sub">اختر طريقة الدفع لإغلاق العملية</p>
-        <div class="pay-methods">${PAY_METHODS.map(m=>`<button type="button" class="pay-method pm-${m.k}" data-paymethod="${m.k}">${m.label}</button>`).join("")}</div>
+        <div class="pay-methods">${bizPayMethods().map(m=>`<button type="button" class="pay-method pm-${m.k}" data-paymethod="${m.k}">${m.label}</button>`).join("")}</div>
         <button type="button" class="mini sheet-cancel" data-close-deliver>إلغاء</button>
       </div>
     </div>`;
@@ -107,7 +107,7 @@ function screenCars(){
   const cards=list.length?list.map(carOpCard).join("")
     :`<div class="empty" style="grid-column:1/-1">${svg(I.empty)}${oq?"لا توجد نتائج لهذا الرقم/اللوحة.":"لا توجد عمليات ضمن هذا التصنيف."}</div>`;
   const total=carIncome(inRange);
-  const wOpts=WASH_TYPES.map(w=>`<option value="${w}">${w}</option>`).join("");
+  const wOpts=bizServices().map(w=>`<option value="${w}">${w}</option>`).join("");
   const vehBtns=Object.keys(state.vehiclePrices).map((v,i)=>`<button type="button" class="pick ${i===0?'on':''}" data-vpick="${v}">${VEH_IMG[v]?`<img class="pick-img" src="${VEH_IMG[v]}" alt="">`:svg(vehIcon(v))}<span>${v}</span></button>`).join("");
   const firstV=Object.keys(state.vehiclePrices)[0];
   const cq=(state.custSearch||"").trim();
@@ -206,7 +206,7 @@ function screenCars(){
         <div class="sheet-handle"></div>
         <h3>تسليم العملية</h3>
         <p class="sheet-sub">اختر طريقة الدفع لإغلاق العملية</p>
-        <div class="pay-methods">${PAY_METHODS.map(m=>`<button type="button" class="pay-method pm-${m.k}" data-paymethod="${m.k}">${m.label}</button>`).join("")}</div>
+        <div class="pay-methods">${bizPayMethods().map(m=>`<button type="button" class="pay-method pm-${m.k}" data-paymethod="${m.k}">${m.label}</button>`).join("")}</div>
         <button type="button" class="mini sheet-cancel" data-close-deliver>إلغاء</button>
       </div>
     </div>`;
