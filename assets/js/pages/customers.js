@@ -23,3 +23,6 @@ function openWaCust(c){
   const msg=`${waHead()}\nبطاقة الولاء${c.plate?` — لوحة ${c.plate}`:""}\nلديك ${s} من 5 أختام\n${line}\n${waFoot()}`;
   window.open(`https://wa.me/${ph}?text=${encodeURIComponent(msg)}`,"_blank");
 }
+
+/* ---- Commit 4: namespace registration ---- */
+Object.assign(App.pages, { loyaltyStamps, loyaltyCardHTML, openWaCust });

@@ -17,6 +17,7 @@
   root.App = root.App || {};
   var App = root.App;
   App.config       = App.config       || {};   // constants (currency, prices, icons)
+  App.store        = App.store        || {};   // in-memory app state object (to be dissolved later)
   App.core         = App.core         || {};   // pure domain rules: no DOM, no I/O
   App.repositories = App.repositories || {};   // persistence ports + adapters
   App.services     = App.services     || {};   // use-cases: orchestrate core + repositories

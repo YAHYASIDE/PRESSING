@@ -595,3 +595,12 @@ applyTheme();
 applyHeaderIcons();
 applyLock();
 render();
+
+/* ---- Commit 4: namespace registration (aliases; globals retained) ---- */
+Object.assign(App.config, { SECRET_CODE, SHOP_NAME, SHOP_PHONE, VEH_LETTER, COUNTRIES });
+Object.assign(App.core,   { todayStr, isPastDay, chosenDateIso, meterCode, carNo, waHead, waFoot, countryOpts,
+  validPhone, waPhoneFull, waPhoneStr, waPhone, orderState, waStatusMsg, waLink, ensureCarNos, runMigrations });
+Object.assign(App.ui,     { render, bindScreen, gateDay, gateDate, bindHold, requireCode, toggleCancelCar,
+  toggleCancelOrder, openWorkerStatement, applyHeaderIcons, applyLock, openReceipt, printReceipt, printReport,
+  openCarChat, shareCarImages, openWa, openSettings, openEditCar, openEditOrder, completeUnpaidDelivery,
+  openDeliverInfo });

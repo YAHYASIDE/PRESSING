@@ -37,3 +37,6 @@ function recThumbs(photos){
   return `<div class="rec-thumbs">${photos.map(src=>`<img class="rec-thumb" src="${src}">`).join("")}</div>`;
 }
 
+
+/* ---- Commit 4: namespace registration ---- */
+Object.assign(App.ui, { pendingCarBefore, pendingCarAfter, pendingCpPhotos, readAndCompress, photoStripHTML, openLightbox, bindPhotoStrip, recThumbs });

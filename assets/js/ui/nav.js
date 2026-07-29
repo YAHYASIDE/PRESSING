@@ -16,3 +16,6 @@ function renderNav(){
   document.querySelectorAll(".nav-btn").forEach(b=>b.onclick=()=>{state.tab=b.dataset.tab;render();});
 }
 
+
+/* ---- Commit 4: namespace registration ---- */
+Object.assign(App.ui, { renderNav });

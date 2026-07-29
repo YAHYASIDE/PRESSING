@@ -133,3 +133,6 @@ function screenDashboard(){
     </div>`;
 }
 
+
+/* ---- Commit 4: namespace registration ---- */
+Object.assign(App.pages, { buildReportText, sendReport, buildReportText2, sendReport2, screenDashboard });

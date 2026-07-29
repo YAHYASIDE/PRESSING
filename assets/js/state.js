@@ -76,3 +76,8 @@ function orderNo(seq,dateISO){
   return `${y}-${m}-${String(seq).padStart(3,"0")}`;
 }
 
+
+/* ---- Commit 4: namespace registration (aliases; globals retained) ---- */
+Object.assign(App.config, { CUR, LOGO, VEH_IMG, PIECE_IMG, VEHICLE_PRICES, PIECE_PRICES, WASH_TYPES, EXP_CATS });
+Object.assign(App.store,  { state, now });
+Object.assign(App.core,   { iso, daysAgo, monthAgo, daysInMonth, uid, orderNo });

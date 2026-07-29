@@ -120,3 +120,11 @@ const I={
 };
 const svg=(p,color="currentColor")=>`<svg viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
 
+
+/* ---- Commit 4: namespace registration (aliases; globals retained) ---- */
+Object.assign(App.core, { fmt, money, isToday, isMonth, ymd, inRange, timeStr, sum, vehIcon, pieceIcon,
+  vehicleCounts, carpetCounts, carIncome, carpetIncome, manualExp, mElec, mWater, sortedMeters, meterConsAt,
+  meterUse, utilityCost, wagesFor, totalExp, expenseSum, meterToday, dayRate, monthAbsences, absentToday,
+  netSalary, accruedDue, wPaid, wCredit, wBalance, wagesToday, wagesMonth, wagesRange, todayIncome, monthIncome,
+  STATUS, NEXT });
+Object.assign(App.ui, { toast, svg, I });

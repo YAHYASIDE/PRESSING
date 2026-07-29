@@ -36,3 +36,6 @@ function resetAllData(){
 }
 
 /* ---- lock ---- */
+
+/* ---- Commit 4: namespace registration (aliases; globals retained) ---- */
+Object.assign(App.repositories, { LS_KEY, save, saveLocal, load, tomb, tombCust, exportData, importData, resetAllData });

@@ -201,3 +201,6 @@ function expWorkers(){
     </div>`;
 }
 
+
+/* ---- Commit 4: namespace registration ---- */
+Object.assign(App.pages, { screenExpenses, expGeneral, expMeters, expWorkers });

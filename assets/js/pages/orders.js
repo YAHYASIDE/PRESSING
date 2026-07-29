@@ -154,3 +154,6 @@ function screenCarpets(){
     </div>`;
 }
 
+
+/* ---- Commit 4: namespace registration ---- */
+Object.assign(App.pages, { screenCars, screenCarpets });

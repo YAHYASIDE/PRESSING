@@ -18,3 +18,6 @@ function applyTheme(){
   const btn=document.getElementById("themeBtn");
   if(btn) btn.innerHTML=svg(state.dark?I.sun:I.moon);
 }
+
+/* ---- Commit 4: namespace registration ---- */
+Object.assign(App.ui, { PALETTES, applyPalette, applyTheme });

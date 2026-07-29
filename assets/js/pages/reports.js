@@ -57,3 +57,6 @@ function screenReports(){
     </div>`;
 }
 
+
+/* ---- Commit 4: namespace registration ---- */
+Object.assign(App.pages, { screenReports });
