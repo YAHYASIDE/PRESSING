@@ -176,7 +176,7 @@ function expWorkers(){
         <div class="wpay-col"><input type="number" min="0" placeholder="مبلغ" data-payin="${w.id}"><input type="text" class="wnote" placeholder="الوصف (سلفة، دفعة راتب…)" data-paynote="${w.id}"><button class="mini debit-btn" data-paybtn="${w.id}">➖ عليه (دفعة/سلفة)</button></div>
       </div>
       <button class="mini" data-wstate="${w.id}" style="margin-top:9px;width:100%;font-weight:800">🧾 كشف حساب ${w.name}</button>
-    </div>`;}).join("") : `<div class="panel empty" style="grid-column:1/-1">${svg(I.empty)}لا يوجد عمّال — أضف أول عامل.</div>`;
+    </div>`;}).join("") : `<div style="grid-column:1/-1">${emptyState({icon:I.worker, title:"لا يوجد موظفون بعد", sub:"أضف أول موظف من النموذج بالأعلى لتتبّع الرواتب والحضور."})}</div>`;
   const totLabel=totBal>0?"لهم":totBal<0?"علينا":"مسدّد";
   return `
     <div class="cols">

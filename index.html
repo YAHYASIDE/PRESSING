@@ -24,8 +24,8 @@
     <div class="brand">
       <img class="logo-img" src="" id="brandLogo" alt="مغاسيل صداقة">
       <div>
-        <h1>مغاسيل صداقة</h1>
-        <p>سيارات • أفرشة — نموذج تجريبي</p>
+        <h1>Washly</h1>
+        <p class="brand-sub"></p>
       </div>
     </div>
     <span class="role-badge" id="roleBadge" style="display:none"></span>
@@ -170,8 +170,8 @@
 <div id="lockScreen">
   <div class="lock-box">
     <div class="lk-logo-ring"><img id="lockLogo" src="" alt=""></div>
-    <h3>مغاسيل صداقة</h3>
-    <p>نظام إدارة المغسلة — سجّل دخولك للمتابعة</p>
+    <h3 id="lockTitle">Washly</h3>
+    <p>سجّل دخولك للمتابعة</p>
     <div class="lk-field"><input type="text" id="lockName" placeholder="اسمك" value="إبراهيم" autocomplete="off" style="letter-spacing:normal;text-align:center"></div>
     <div class="lk-rolelbl">اختر دورك</div>
     <div class="lk-roles" id="lockRoles">
@@ -188,7 +188,7 @@
 <!-- Business Setup Wizard (Release 5) -->
 <div id="setupScreen">
   <div class="su-shell">
-    <div class="su-top">
+    <div class="su-top" id="suTop">
       <div class="su-progress"><div class="su-bar" id="suBar"></div></div>
       <div class="su-step-lbl" id="suStepLbl"></div>
     </div>
@@ -203,6 +203,7 @@
 <!-- root -->
 <script src="assets/js/app.namespace.js"></script>
 <!-- config + store -->
+<script src="assets/js/config/app.js"></script>
 <script src="assets/js/config/constants.js"></script>
 <script src="assets/js/config/features.js"></script>
 <script src="assets/js/config/business.js"></script>

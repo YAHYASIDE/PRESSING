@@ -47,6 +47,11 @@ A layer may use the layers below it and never the layers above it.
 - **Allowed dependencies:** none. `config` is a leaf.
 - **Forbidden dependencies:** everything (no `store`, `core`, `services`, `ui`,
   `pages`, `repositories`, no DOM, no functions with side effects).
+- **Product branding (Release 5.2)** lives in `config/app.js`: `APP_NAME`,
+  `APP_NAME_AR`, `APP_TAGLINE`, `APP_VERSION`, `APP_COPYRIGHT`. Branding is never
+  hardcoded in markup — `applyBusiness()` fills the header/lock/title from the
+  business name (falling back to `APP_NAME_AR`), and the welcome landing +
+  copyright read these constants.
 
 #### Feature Modules (optional business features)
 - Optional features (loyalty today; inventory, reservations, branches, … next)

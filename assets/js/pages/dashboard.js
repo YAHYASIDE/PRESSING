@@ -42,7 +42,7 @@ function buildReportText2(){
   const net=inc-gen;
   const today=ymd(now);
   const period=(state.dateFrom===state.dateTo)?(state.dateFrom===today?("اليوم "+today):state.dateFrom):(state.dateFrom+" ← "+state.dateTo);
-  return `📋 ${SHOP_NAME} — تقرير الدخل\n📅 ${period}\n📞 ${SHOP_PHONE}\n━━━━━━━━━━\n🚗 دخل السيارات: ${money(carsInc)}\n🧺 دخل الأفرشة: ${money(rugsInc)}\n💰 إجمالي الدخل: ${money(inc)}\n🧾 المصروفات العامة: ${money(gen)}\n📈 الصافي (بعد المصروفات العامة فقط): ${money(net)}\n━━━━━━━━━━\n(بدون خصم العدّاد ولا العمّال)`;
+  return `📋 ${bizName()} — تقرير الدخل\n📅 ${period}\n📞 ${bizPhone()}\n━━━━━━━━━━\n🚗 دخل السيارات: ${money(carsInc)}\n🧺 دخل الأفرشة: ${money(rugsInc)}\n💰 إجمالي الدخل: ${money(inc)}\n🧾 المصروفات العامة: ${money(gen)}\n📈 الصافي (بعد المصروفات العامة فقط): ${money(net)}\n━━━━━━━━━━\n(بدون خصم العدّاد ولا العمّال)`;
 }
 function sendReport2(){
   const text=buildReportText2();

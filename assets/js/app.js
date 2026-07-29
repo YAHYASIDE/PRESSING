@@ -15,6 +15,7 @@ function render(){
   const rb=document.getElementById("roleBadge"); if(rb){ rb.textContent=roleDef().label; rb.style.display=unlocked?"":"none"; }
   const lob=document.getElementById("logoutBtn"); if(lob) lob.style.display=unlocked?"":"none";
   applySetup();   // Release 5 — first launch (unconfigured business) opens the Setup Wizard
+  applyBusiness();   // Release 5.2 — keep header name/logo/subtitle in sync with the config
   renderNav();
   // Release 4 — the Operation Details screen replaces the main screen when an op is open
   if(state.opDetail){
@@ -557,6 +558,9 @@ function bindBusinessSettings(){
     sel("bsCurrency",v=>b.currency=v); sel("bsCountry",v=>b.country=v); sel("bsLang",v=>b.language=v); sel("bsTz",v=>b.timezone=v);
     const tm=(id,fn)=>{ const el=document.getElementById(id); if(el) el.onchange=()=>{ fn(el.value); saveLocal(); }; };
     tm("bsOpen",v=>b.workingHours.open=v); tm("bsClose",v=>b.workingHours.close=v);
+    // business identity — name + logo
+    const nm=document.getElementById("bsName"); if(nm) nm.onchange=()=>{ b.name=nm.value.trim(); saveLocal(); applyBusiness(); render(); };
+    const lg=document.getElementById("bsLogo"); if(lg) lg.onchange=()=>{ const f=lg.files&&lg.files[0]; if(!f) return; const r=new FileReader(); r.onload=()=>{ b.logo=r.result; const pv=document.getElementById("bsLogoPrev"); if(pv) pv.src=r.result; saveLocal(); applyBusiness(); }; r.readAsDataURL(f); };
   };
   paint();
 }
@@ -730,8 +734,15 @@ document.getElementById("receiptPrint").onclick=printReceipt;
 let _setup=null;
 function applyBusiness(){
   const b=state.business||{};
-  const h=document.querySelector(".brand h1"); if(h && b.name) h.textContent=b.name;
+  const name=(b.name&&b.name.trim())||APP_NAME_AR;
+  const h=document.querySelector(".brand h1"); if(h) h.textContent=name;
+  const lt=document.getElementById("lockTitle"); if(lt) lt.textContent=name;
   const lg=document.getElementById("brandLogo"); if(lg && b.logo) lg.src=b.logo;
+  const ll=document.getElementById("lockLogo"); if(ll && b.logo) ll.src=b.logo;
+  // header subtitle = the enabled business activities (falls back to the app tagline)
+  const sub=document.querySelector(".brand-sub");
+  if(sub){ const on=BUSINESS_TYPES.filter(t=>b.types&&b.types[t.k]).map(t=>t.label); sub.textContent = on.length?on.join(" • "):APP_NAME; }
+  document.title = name;
 }
 /* Release 5.1 — the wizard now runs BEFORE login (it creates the first user).
    Show it whenever the business is not yet configured. */
@@ -750,23 +761,33 @@ function startSetup(){
 }
 function renderSetupStep(){
   if(!_setup) return;
-  const steps=setupSteps();
+  const steps=setupSteps(), form=setupFormSteps();
   if(_setup.i>steps.length-1) _setup.i=steps.length-1;
   const key=steps[_setup.i];
-  document.getElementById("setupBody").innerHTML=setupStepView(key,_setup.draft);
-  const total=steps.length, pct=Math.round((_setup.i/(total-1))*100);
-  document.getElementById("suBar").style.width=pct+"%";
-  document.getElementById("suStepLbl").textContent=`الخطوة ${_setup.i+1} من ${total}`;
-  const nav=document.getElementById("suNav"), back=document.getElementById("suBack"), next=document.getElementById("suNext");
-  if(nav) nav.style.display = key==="success" ? "none" : "flex";   // success has its own buttons
-  if(back) back.style.visibility=_setup.i===0?"hidden":"visible";
-  if(next) next.textContent = key==="info" ? "إنشاء النشاط" : "التالي";
-  const body=document.getElementById("setupBody"); if(body) body.scrollTop=0;
+  const bare = (key==="welcome" || key==="success");   // full-bleed screens, no chrome
+  const body=document.getElementById("setupBody");
+  body.classList.remove("su-anim"); void body.offsetWidth;   // restart the step transition
+  body.innerHTML=setupStepView(key,_setup.draft);
+  body.classList.add("su-anim");
+  const top=document.getElementById("suTop"), nav=document.getElementById("suNav");
+  if(top) top.style.display = bare ? "none" : "block";
+  if(nav) nav.style.display = bare ? "none" : "flex";
+  if(!bare){
+    const fi=form.indexOf(key), pct=Math.round(((fi+1)/form.length)*100);
+    document.getElementById("suBar").style.width=pct+"%";
+    document.getElementById("suStepLbl").textContent=`الخطوة ${fi+1} من ${form.length}`;
+    const back=document.getElementById("suBack"), next=document.getElementById("suNext");
+    if(back) back.style.visibility="visible";
+    if(next) next.textContent = key==="info" ? "إنشاء النشاط" : "التالي";
+  }
+  if(body) body.scrollTop=0;
   wireSetupStep(key);
 }
 /* wire the interactive controls of the current step */
 function wireSetupStep(key){
   const d=_setup.draft, host=document.getElementById("setupBody");
+  // Landing — Get Started
+  host.querySelectorAll("[data-su-go]").forEach(b=>b.onclick=()=>{ _setup.i=Math.min(setupSteps().length-1,_setup.i+1); renderSetupStep(); });
   // Step 1 — business activities (multi-select)
   host.querySelectorAll("[data-su-type]").forEach(b=>b.onclick=()=>{ const k=b.dataset.suType; d.types[k]=!d.types[k]; renderSetupStep(); });
   // Step 2 — manager info (live-bind to draft)

@@ -105,7 +105,9 @@ function screenCars(){
     .map(q=>`<button class="queue q-${q.k} ${sf===q.k?'on':''}" data-carfilter="${q.k}"><span class="q-n">${counts[q.k]||0}</span><span class="q-l">${q.label}</span></button>`).join("");
   const list=(sf==="all"?base:base.filter(o=>carStageKey(o)===sf)).slice().reverse();
   const cards=list.length?list.map(carOpCard).join("")
-    :`<div class="empty" style="grid-column:1/-1">${svg(I.empty)}${oq?"لا توجد نتائج لهذا الرقم/اللوحة.":"لا توجد عمليات ضمن هذا التصنيف."}</div>`;
+    : (state.carOps.length===0
+        ? emptyState({icon:I.car, title:"لا توجد عمليات بعد", sub:"ابدأ بإنشاء أول عملية استقبال لسيارة — سيستغرق الأمر ثوانٍ.", btn: can('receive')?"➕ إنشاء أول عملية":"", btnAttr:'data-open-reception', btnClass:'big'})
+        : emptyState({icon:I.empty, title: oq?"لا توجد نتائج":"لا توجد عمليات ضمن هذا التصنيف", sub: oq?"جرّب رقمًا أو لوحة مختلفة.":""}));
   const total=carIncome(inRange);
   const wOpts=bizServices().map(w=>`<option value="${w}">${w}</option>`).join("");
   const vehBtns=Object.keys(state.vehiclePrices).map((v,i)=>`<button type="button" class="pick ${i===0?'on':''}" data-vpick="${v}">${VEH_IMG[v]?`<img class="pick-img" src="${VEH_IMG[v]}" alt="">`:svg(vehIcon(v))}<span>${v}</span></button>`).join("");
@@ -141,7 +143,7 @@ function screenCars(){
       ${loyOn?`<td class="amt" style="text-align:center;font-weight:800;white-space:nowrap">${loyaltyStatus(c)}${(c.stamps||0)>=loyaltyThreshold()-1&&loyaltyStrategy()==="stamp"?" 🎁":""}</td>`:""}
       <td class="amt" style="text-align:center">${c.totalWashes||0}</td>
       <td style="text-align:left;white-space:nowrap">${c.phone?`<button class="wa-btn" data-wacust="${c.plate}" title="واتساب" style="width:28px;height:28px;display:inline-grid;vertical-align:middle">${svg(I.whatsapp)}</button> `:""}<button class="icon-btn" data-del-cust="${c.plate}" title="حذف">${svg(I.trash)}</button></td></tr>`).join("")
-    :`<tr><td colspan="${custCols}"><div class="empty">${svg(I.empty)}لا يوجد زبائن محفوظون بعد — أضف لوحة عند حفظ عملية.</div></td></tr>`;
+    :`<tr><td colspan="${custCols}">${emptyState({icon:I.profit, title:"لا يوجد زبائن بعد", sub:"يُضاف الزبون تلقائيًا عند حفظ عملية بلوحة سيارة."})}</td></tr>`;
   return `
     <div class="screen-head cars-head"><h2>مركز العمليات</h2><span>${counts.all} عملية · ${periodTxt}</span></div>
     ${taskBanner}
@@ -249,7 +251,7 @@ function screenCarpets(){
         <button class="icon-btn" data-del-order="${o.id}" title="حذف">${svg(I.trash)}</button>
       </div>
     </div>`;}catch(e){ return `<div class="order"><div class="no">${o.no||"?"}</div><div class="meta" style="color:var(--unpaid)">طلب ببيانات غير مكتملة</div></div>`; } }).join("")
-    :`<div class="panel empty" style="grid-column:1/-1">${svg(I.empty)}لا توجد طلبات ضمن هذا التصنيف.</div>`;
+    :`<div style="grid-column:1/-1">${emptyState({icon:I.rug, title: q?"لا توجد نتائج":"لا توجد طلبات بعد", sub: q?"جرّب اسمًا أو رقمًا مختلفًا.":"أضف أول طلب سجاد من النموذج على اليمين."})}</div>`;
   const pieceBtns=Object.keys(state.piecePrices).map((p,i)=>`<button type="button" class="pick ${i===0?'on':''}" data-ppick="${p}">${PIECE_IMG[p]?`<img class="pick-img" src="${PIECE_IMG[p]}" alt="">`:svg(pieceIcon(p))}<span>${p}</span></button>`).join("");
   const firstP=Object.keys(state.piecePrices)[0];
   const startUnit=state.piecePrices[firstP];

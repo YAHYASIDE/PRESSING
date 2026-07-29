@@ -1,13 +1,32 @@
-/* pages/setup.js — Business Setup Wizard step views (pure render from the draft).
-   Release 5.1: reduced to FOUR fast steps. Everything not asked here uses the
-   sensible defaults in defaultBusiness() and is editable later in Settings.
-   Navigation / commit live in app.js (startSetup / renderSetupStep / finishSetup). */
+/* pages/setup.js — Business Setup Wizard step views (Release 5.2 commercial polish).
+   Flow: welcome (landing) → activities → manager → info → success. The three middle
+   steps are the "form" steps counted in the progress bar; welcome & success are
+   full-bleed screens with their own buttons. Everything not asked uses the sensible
+   defaults in defaultBusiness(), editable later in Settings. */
 
-function setupSteps(){ return ["activities","manager","info","success"]; }
+function setupSteps(){ return ["welcome","activities","manager","info","success"]; }
+function setupFormSteps(){ return ["activities","manager","info"]; }
 
 function suSwitch(attr,val,on){ return `<span class="switch"><input type="checkbox" data-su-${attr}="${val}" ${on?"checked":""}><span class="slider"></span></span>`; }
 
 function setupStepView(key,d){
+  if(key==="welcome"){
+    return `<div class="su-landing">
+      <div class="su-landing-top">
+        <div class="su-landing-logo-wrap"><img class="su-landing-logo" src="${LOGO}" alt=""></div>
+        <div class="su-landing-name">${APP_NAME}</div>
+        <div class="su-landing-name-ar">${APP_NAME_AR}</div>
+        <p class="su-landing-tag">${APP_TAGLINE}</p>
+        <div class="su-landing-chips">
+          ${BUSINESS_TYPES.map((t,i)=>`<span class="su-lc" style="animation-delay:${0.05*i+0.1}s">${svg(I[t.icon]||I.car)}<span>${t.label}</span></span>`).join("")}
+        </div>
+      </div>
+      <div class="su-landing-foot">
+        <button type="button" class="btn-primary su-cta" data-su-go>ابدأ الآن</button>
+        <div class="su-landing-cr">${APP_COPYRIGHT} · v${APP_VERSION}</div>
+      </div>
+    </div>`;
+  }
   if(key==="activities"){
     return `<h2 class="su-h">اختر أنشطة عملك</h2><p class="su-sub">يمكنك اختيار واحد أو أكثر — تُحدِّد الشاشات التي تظهر لك. يمكنك تغييرها لاحقًا.</p>
       <div class="su-cards">${BUSINESS_TYPES.map(t=>`
@@ -37,22 +56,31 @@ function setupStepView(key,d){
   }
   if(key==="success"){
     return `<div class="su-success">
-      <div class="su-congrats">🎉</div>
-      <h2>تهانينا!</h2>
-      <p class="su-lead">تم إنشاء نشاطك بنجاح.</p>
+      <div class="su-success-illus">
+        <svg viewBox="0 0 120 120" class="su-check-svg" aria-hidden="true">
+          <circle class="su-check-ring" cx="60" cy="60" r="52"></circle>
+          <path class="su-check-mark" d="M37 61 L53 77 L84 43"></path>
+        </svg>
+        <span class="su-spark s1">✦</span><span class="su-spark s2">✦</span><span class="su-spark s3">✦</span>
+      </div>
+      <h2>🎉 تهانينا!</h2>
+      <p class="su-lead">نشاطك جاهز للعمل.</p>
       <div class="su-trial-box">
-        <div class="su-gift">🎁</div>
-        <div class="su-trial-t">حصلت على تجربة مجانية لمدة 3 أيام</div>
-        <div class="su-trial-s">استخدم كل الميزات المدفوعة خلال فترة التجربة.</div>
+        <div class="su-trial-badge">🎁 تم تفعيل التجربة المجانية</div>
         <div class="su-trial-count"><span class="su-trial-days">${TRIAL_DAYS}</span><span>أيام متبقية</span></div>
+        <ul class="su-trial-list">
+          <li>كل الميزات المدفوعة مفعّلة</li>
+          <li>بدون بطاقة دفع</li>
+          <li>يمكنك الترقية في أي وقت</li>
+        </ul>
       </div>
       <div class="su-success-actions">
-        <button type="button" class="btn-primary su-start" data-su-finish="dashboard">ابدأ استخدام النظام</button>
-        <button type="button" class="mini su-plans-btn" data-su-finish="plans">عرض خطط الاشتراك</button>
+        <button type="button" class="btn-primary su-start" data-su-finish="dashboard">ابدأ العمل</button>
+        <button type="button" class="mini su-plans-btn" data-su-finish="plans">خطط الاشتراك</button>
       </div>
     </div>`;
   }
   return "";
 }
 
-Object.assign(App.pages, { setupSteps, setupStepView });
+Object.assign(App.pages, { setupSteps, setupFormSteps, setupStepView });

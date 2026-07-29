@@ -15,7 +15,11 @@ function businessSettingsHTML(){
   const customs=(b.paymentMethods||[]).filter(p=>p.custom).map(p=>`<label class="su-toggle"><span>${p.label} <em class="su-tag">مخصّص</em></span><button type="button" class="su-del" data-bs-pay-del="${p.k}">✕</button></label>`).join("");
   const days=WEEK_DAYS.map(dd=>`<button type="button" class="su-day ${wh.days.indexOf(dd.k)>=0?'on':''}" data-bs-day="${dd.k}">${dd.label}</button>`).join("");
   return `
-    <div class="bs-sub"><div class="bs-sub-t">أنواع النشاط</div><div class="bs-chips">${typeChips}</div></div>
+    <div class="bs-sub bs-identity">
+      <div class="bs-logo-wrap"><img id="bsLogoPrev" class="bs-logo-prev" src="${b.logo||LOGO}" alt=""><label class="bs-logo-btn">تغيير<input type="file" id="bsLogo" accept="image/*" hidden></label></div>
+      <div class="bs-id-fields"><div class="field"><label>اسم النشاط</label><input id="bsName" type="text" value="${(b.name||'').replace(/"/g,'&quot;')}" placeholder="اسم النشاط"></div></div>
+    </div>
+    <div class="bs-sub"><div class="bs-sub-t">أنشطة العمل</div><div class="bs-chips">${typeChips}</div></div>
     <div class="bs-sub"><div class="bs-sub-t">العملة والموقع</div>
       <div class="row2">
         <div class="field"><label>العملة</label><select id="bsCurrency">${CURRENCIES.map(c=>`<option ${c===b.currency?'selected':''}>${c}</option>`).join("")}</select></div>

@@ -192,6 +192,17 @@ function waLink(o){
 }
 function ensureCarNos(){ if(!state.carSeq) state.carSeq={}; (state.carOps||[]).forEach(o=>{ if(!o.no) o.no=carNo(o.vehicle); }); }
 
+/* Release 5.2 — reusable illustrated empty state (replaces blank lists). */
+function emptyState(o){
+  o=o||{};
+  return `<div class="empty-state">
+    <div class="empty-illus">${svg(o.icon||I.empty)}</div>
+    <div class="empty-title">${o.title||"لا توجد بيانات"}</div>
+    ${o.sub?`<div class="empty-sub">${o.sub}</div>`:""}
+    ${o.btn?`<button type="button" class="empty-btn ${o.btnClass||''}" ${o.btnAttr||''}>${o.btn}</button>`:""}
+  </div>`;
+}
+
 /* ================= Business Configuration layer (Release 5) ================= */
 /* Every module reads its behavior from state.business — never from hardcoded values. */
 function biz(){ return state.business||{}; }
@@ -337,4 +348,4 @@ function runMigrations(){
 }
 Object.assign(App.core, { todayStr, isPastDay, chosenDateIso, meterCode, orderState, carNo, waHead, waFoot, countryOpts, validPhone, waPhoneFull, waPhoneStr, waPhone, waStatusMsg, waLink, ensureCarNos, runMigrations,
   featureEnabled, featureCfg, loyaltyEnabled, loyaltyStrategy, loyaltyThreshold, loyaltyReward, loyaltyOnWash, loyaltyStatus,
-  biz, businessConfigured, bizName, bizPhone, bizCurrency, bizTypeOn, bizServices, bizPayMethods, tabVisible, subscribed, trialInfo });
+  biz, businessConfigured, bizName, bizPhone, bizCurrency, bizTypeOn, bizServices, bizPayMethods, tabVisible, subscribed, trialInfo, emptyState });
