@@ -1,0 +1,27 @@
+/* reports.css — executive reports & analytics (charts, horizontal bars, export). */
+
+.rep-export{ width: 100%; margin-top: 6px; }
+
+/* horizontal bar list (top products/services/customers) */
+.rep-hbars{ display: flex; flex-direction: column; gap: 9px; }
+.rep-hbar{ display: grid; grid-template-columns: 90px 1fr auto; align-items: center; gap: 9px; font-size: .82rem; }
+.rep-hbar-l{ font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rep-hbar-t{ height: 12px; border-radius: 999px; background: var(--soft); overflow: hidden; }
+.rep-hbar-f{ display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--brand), var(--teal)); animation: repGrow .5s ease both; }
+@keyframes repGrow{ from{ width: 0!important; } }
+.rep-hbar-v{ font-weight: 800; white-space: nowrap; font-size: .76rem; color: var(--muted); }
+
+/* monthly analytics bar chart */
+.rep-chart{ display: flex; align-items: flex-end; justify-content: space-around; gap: 8px; height: 150px; padding: 8px 0; }
+.rep-col{ flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; height: 100%; }
+.rep-col-bars{ flex: 1; display: flex; align-items: flex-end; gap: 3px; width: 100%; justify-content: center; }
+.rep-b{ width: 30%; min-height: 2px; border-radius: 5px 5px 0 0; animation: repRise .5s cubic-bezier(.22,.61,.36,1) both; }
+.rep-b.rev{ background: linear-gradient(180deg, var(--brand), var(--brand-2, var(--brand))); }
+.rep-b.pro{ background: linear-gradient(180deg, var(--ready), #26b06e); }
+@keyframes repRise{ from{ height: 0!important; } }
+.rep-col-l{ font-size: .7rem; font-weight: 700; color: var(--muted); }
+.rep-legend{ display: flex; justify-content: center; gap: 18px; margin-top: 8px; }
+.rep-legend .lg{ font-size: .74rem; font-weight: 700; color: var(--muted); display: inline-flex; align-items: center; gap: 5px; }
+.rep-legend .lg::before{ content: ""; width: 11px; height: 11px; border-radius: 3px; }
+.rep-legend .lg.rev::before{ background: var(--brand); }
+.rep-legend .lg.pro::before{ background: var(--ready); }

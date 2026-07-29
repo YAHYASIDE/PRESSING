@@ -188,6 +188,20 @@ A layer may use the layers below it and never the layers above it.
 - **Audit log** (`services/audit.js` `App.services.audit`): append-only trail
   (capped) written from the money services (sale, refund, stock receive/adjust,
   oil change) and login/logout; viewed in the Operations Center. Single writer.
+
+#### Reports & Analytics (SaaS v1.0)
+- `core/reports.js` — pure executive aggregations over the single source:
+  `repSales`, `repTopProducts`, `repTopServices`, `repTopCustomers`,
+  `repCustomerSegments` (repeat/inactive/lost), `repInventory`,
+  `repMonthlySeries` (revenue/profit per month for charts). Financial reports
+  reuse the accounting core (`plStatement`/`balanceSheet`/`cashSummary`).
+- `pages/reports.js` — Financial · Sales · Customers · Inventory · Analytics
+  sub-tabs with KPI strips, horizontal top-lists and a monthly bar chart, over
+  the selected date range.
+- `ui/export.js` — `App.core.toCSV(header, rows)` (pure) + `App.ui.exportCSV`
+  (UTF-8 BOM download); per-report CSV export and print.
+- Docs: `CHANGELOG.md`, `docs/USER_GUIDE.md`, `docs/ADMIN_GUIDE.md`,
+  `docs/API_GUIDE.md`.
 - **Nothing about the business is hardcoded anymore.** Modules read via core
   accessors: `bizServices()` (the service catalog → the wash `<select>`),
   `bizPayMethods()` (the payment selector everywhere), `bizCurrency()` (via

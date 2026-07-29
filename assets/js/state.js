@@ -76,6 +76,7 @@ const state = {
   reminders: [],                 /* generated reminders (oil change, etc.) */
   crmSel: null, crmSearch: "", crmTab: "timeline",  /* CRM screen state */
   audit: [],                     /* audit trail (append-only) */
+  repTab: "financial",           /* Reports screen sub-tab */
   features: defaultFeatures(),   /* Release: optional feature modules (loyalty, …) */
   customers:{},
   meters:[],

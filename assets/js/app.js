@@ -292,6 +292,9 @@ function bindScreen(){
   document.querySelectorAll("[data-sub]").forEach(b=>b.onclick=()=>{state.expSub=b.dataset.sub;render();});
   // accounting sub-tabs
   document.querySelectorAll("[data-acct-tab]").forEach(b=>b.onclick=()=>{state.acctTab=b.dataset.acctTab;render();});
+  // reports sub-tabs + CSV export
+  document.querySelectorAll("[data-rep-tab]").forEach(b=>b.onclick=()=>{state.repTab=b.dataset.repTab;render();});
+  document.querySelectorAll("[data-rep-export]").forEach(b=>b.onclick=()=>{ const d=repExportData(b.dataset.repExport); if(App.ui.exportCSV){ App.ui.exportCSV((bizName()+"-"+d.name+"-"+ymd(new Date())), d.header, d.rows); toast("تم تصدير CSV"); if(App.services.audit) App.services.audit("تصدير تقرير", d.name); } });
   // inventory
   document.querySelectorAll("[data-inv-tab]").forEach(b=>b.onclick=()=>{state.invTab=b.dataset.invTab;render();});
   { const s=document.getElementById("invSearch"); if(s) s.oninput=()=>{ state.invSearch=s.value; _refocus="invSearch"; render(); }; }
