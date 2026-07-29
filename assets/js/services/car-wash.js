@@ -58,7 +58,8 @@
       id: uid(), no: carNo(vehicle), vehicle: vehicle, wash: wash,
       price: free ? 0 : price, plate: plate, phone: phone, country: country,
       free: free, by: by, paid: !deferred, paidDate: deferred ? null : opDate,
-      note: note, stage: "received", photosBefore: photosBefore, photosAfter: photosAfter, date: opDate
+      note: note, stage: "received", timeline: [{ stage: "received", at: Date.now() }],
+      photosBefore: photosBefore, photosAfter: photosAfter, date: opDate
     };
     state.carOps.push(op);
 
@@ -80,8 +81,28 @@
       stage = keys[Math.min(i + 1, keys.length - 1)];
     }
     if (keys.indexOf(stage) < 0) return { ok: false, error: "invalid_stage" };
+    var prev = o.stage || "received";
     o.stage = stage;
+    // every stage transition appends a timeline event (auto-recorded)
+    if (!Array.isArray(o.timeline)) o.timeline = [];
+    if (o.timeline.length === 0) o.timeline.push({ stage: prev, at: Date.now() });
+    if (stage !== prev) o.timeline.push({ stage: stage, at: Date.now() });
     if (stage === "delivered" && !o.deliveredDate) o.deliveredDate = iso(new Date());
     return { ok: true, op: o, stage: stage };
+  };
+
+  /* Release 3 — deliver an operation: record payment method, close it, stamp the timeline.
+     DTO: { id, method }  where method ∈ cash|bank|mobile|credit.
+     Pure: updates the store, returns a typed Result. */
+  App.services.deliverOperation = function (input) {
+    input = input || {};
+    var o = (state.carOps || []).find(function (x) { return x.id === input.id; });
+    if (!o) return { ok: false, error: "not_found" };
+    var method = input.method || "cash";
+    App.services.setCarStage({ id: o.id, stage: "delivered" });   // stage + timeline
+    o.paymentMethod = method;
+    if (method === "credit") { o.paid = false; o.paidDate = null; }
+    else { o.paid = true; if (!o.paidDate) o.paidDate = iso(new Date()); }
+    return { ok: true, op: o, method: method };
   };
 })(window.App);

@@ -129,6 +129,23 @@ Object.assign(App.core, { fmt, money, isToday, isMonth, ymd, inRange, timeStr, s
   STATUS, NEXT });
 Object.assign(App.ui, { toast, svg, I });
 
+/* ---- Release 3: operation timeline & durations (pure) ---- */
+function opTimeline(o){ return (o && Array.isArray(o.timeline)) ? o.timeline : []; }
+function opSpans(o){                 // [{stage, start, end|null, dur|null}] in order
+  const tl=opTimeline(o), out=[];
+  for(let i=0;i<tl.length;i++){ const end=(i+1<tl.length)?tl[i+1].at:null; out.push({stage:tl[i].stage, start:tl[i].at, end:end, dur:(end!=null?end-tl[i].at:null)}); }
+  return out;
+}
+function opActive(o){ const tl=opTimeline(o); if(!tl.length) return null; const l=tl[tl.length-1]; return {stage:l.stage, since:l.at}; }
+function opStageDur(o, stage){ return opSpans(o).filter(s=>s.stage===stage && s.dur!=null).reduce((a,s)=>a+s.dur,0); }
+function avgStageMin(ops, stage){
+  const ds=(ops||[]).map(o=>opStageDur(o,stage)).filter(d=>d>0);
+  if(!ds.length) return 0;
+  return Math.round((ds.reduce((a,d)=>a+d,0)/ds.length)/60000);
+}
+function fmtDur(ms){ if(ms==null) return ""; const m=Math.max(0,Math.floor(ms/60000)); return m<60 ? (m+" د") : (Math.floor(m/60)+"س "+(m%60)+"د"); }
+Object.assign(App.core, { opTimeline, opSpans, opActive, opStageDur, avgStageMin, fmtDur });
+
 /* ---- moved from app.js (dependency cleanup): pure domain / message helpers ---- */
 function todayStr(){ return ymd(new Date()); }
 function isPastDay(dateIso){ return ymd(dateIso)<todayStr(); }

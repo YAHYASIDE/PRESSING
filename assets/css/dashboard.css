@@ -118,3 +118,14 @@
   .stat-card, .chart-card { animation: none; }
   .ac-line { animation: none; stroke-dashoffset: 0; }
 }
+
+/* ---- Release 3: live operational KPIs on the dashboard ---- */
+.ops-kpis { margin-bottom: 16px; }
+.ops-kpi-head { font-size: .85rem; font-weight: 800; color: var(--muted); margin: 2px 0 10px; }
+.kpi-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.kpi { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); padding: 13px 10px; text-align: center; animation: dashUp .4s ease both; }
+.kpi-v { font-size: 1.3rem; font-weight: 800; line-height: 1.05; }
+.kpi-l { font-size: .68rem; font-weight: 700; color: var(--muted); margin-top: 5px; }
+.kpi.k-prog .kpi-v { color: var(--brand); } .kpi.k-ready .kpi-v { color: var(--ready); }
+.kpi.k-done .kpi-v { color: var(--done); } .kpi.k-wash .kpi-v { color: var(--wash); } .kpi.k-wait .kpi-v { color: var(--teal); }
+@media (min-width: 560px) { .kpi-grid { grid-template-columns: repeat(5, 1fr); } }

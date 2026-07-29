@@ -129,6 +129,24 @@ function screenDashboard(){
         ${sub?`<div class="sc-sub">${sub}</div>`:""}
       </div>
     </div>`;
+  // Release 3 — operational KPIs (consume the live operations data)
+  const cops=state.carOps.filter(o=>!o.cancelled);
+  const opInProg=cops.filter(o=>carStageKey(o)!=="delivered").length;
+  const opReady=cops.filter(o=>carStageKey(o)==="ready").length;
+  const opDelToday=cops.filter(o=>carStageKey(o)==="delivered" && o.deliveredDate && isToday(o.deliveredDate)).length;
+  const avgWash=avgStageMin(cops,"washing"), avgWait=avgStageMin(cops,"waiting");
+  const kpi=(v,l,cls)=>`<div class="kpi ${cls||""}"><div class="kpi-v">${v}</div><div class="kpi-l">${l}</div></div>`;
+  const opsKpis=`
+    <div class="ops-kpis">
+      <div class="ops-kpi-head">مركز العمليات المباشر</div>
+      <div class="kpi-grid">
+        ${kpi(opInProg,"قيد التنفيذ","k-prog")}
+        ${kpi(opReady,"جاهزة للتسليم","k-ready")}
+        ${kpi(opDelToday,"سُلّمت اليوم","k-done")}
+        ${kpi(avgWash+" د","م. الغسيل","k-wash")}
+        ${kpi(avgWait+" د","م. الانتظار","k-wait")}
+      </div>
+    </div>`;
   return `
     <div class="screen-head"><h2>الصفحة الرئيسية</h2><span>${periodLabel==="اليوم"?new Date().toLocaleDateString("ar",{weekday:"long",day:"numeric",month:"long"}):`${state.dateFrom} ← ${state.dateTo}`}</span></div>
     <div class="datebar">
@@ -146,6 +164,7 @@ function screenDashboard(){
       ${stat("sc-profit", I.profit,"var(--brand)", `ربح ${periodLabel}`, money(profit), inc>0?`هامش الربح ${Math.round(profit/inc*100)}%`:"—")}
       ${stat("sc-wash",   I.clock,"var(--wash)",   "قيد الغسيل", washing, `بقيمة ${money(washingAmt)}`)}
     </div>
+    ${opsKpis}
     <div class="chart-grid">
       <div class="chart-card">
         <div class="chart-head"><h3>الدخل — آخر ٧ أيام</h3><span class="chart-total">${money(inc7)}</span></div>

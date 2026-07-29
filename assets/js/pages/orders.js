@@ -8,32 +8,52 @@ function carStepper(o){
       <span class="op-step-dot">${i<idx?'✓':i+1}</span><span class="op-step-lbl">${s.label}</span>
     </button>`).join("")}</div>`;
 }
+function opTimelineHtml(o){
+  const sp=opSpans(o); if(!sp.length) return "";
+  return `<div class="op-timeline"><div class="tl-title">الخط الزمني</div>${sp.map(s=>{
+    const lbl=(CAR_STAGES.find(x=>x.k===s.stage)||{}).label||s.stage;
+    const t=new Date(s.start).toLocaleTimeString("ar",{hour:"2-digit",minute:"2-digit"});
+    const d=(s.dur!=null)?`<span class="tl-dur">${fmtDur(s.dur)}</span>`:`<span class="tl-dur live">جارٍ</span>`;
+    return `<div class="tl-row"><span class="tl-time">${t}</span><span class="tl-dot"></span><span class="tl-stage">${lbl}</span>${d}</div>`;
+  }).join("")}</div>`;
+}
 function carOpCard(o){
   const cur=carStageKey(o);
   const st=CAR_STAGES.find(s=>s.k===cur)||CAR_STAGES[0];
   const idx=CAR_STAGES.findIndex(s=>s.k===cur);
   const next=(idx<CAR_STAGES.length-1)?CAR_STAGES[idx+1]:null;
   const hasPhotos=(o.photosBefore&&o.photosBefore.length)||(o.photosAfter&&o.photosAfter.length);
+  const active=opActive(o);
+  const isActive=active && cur!=="delivered" && !o.cancelled;
+  const timer=isActive?`<span class="op-timer" data-op-since="${active.since}" data-op-exp="${st.exp||0}"></span>`:"";
+  const ph=o.phone?waPhoneFull(o.phone,o.country):null;
   return `
-    <div class="op-card st-${cur} ${o.cancelled?'cancelled':''}">
+    <div class="op-card st-${cur} ${o.cancelled?'cancelled':''} ${isActive?'live':''}">
       <button type="button" class="op-summary" data-op-toggle>
         <span class="op-veh-ic-sm">${VEH_IMG[o.vehicle]?`<img src="${VEH_IMG[o.vehicle]}" alt="">`:svg(vehIcon(o.vehicle))}</span>
         <span class="op-sum-main">
           <span class="op-sum-l1">${o.no||"-"} · ${o.vehicle}${o.plate?` · ${o.plate}`:""}</span>
-          <span class="op-sum-l2"><span class="op-badge b-${cur}">${st.label}</span>${o.paid===false?' <span class="op-unpaid">دَين</span>':""}${o.free?' <span class="op-unpaid" style="color:var(--ready)">مجاني</span>':""}${o.cancelled?' <span class="op-unpaid" style="color:var(--muted)">ملغى</span>':""}</span>
+          <span class="op-sum-l2"><span class="op-badge b-${cur}">${st.label}</span>${timer}${o.paid===false?' <span class="op-unpaid">دَين</span>':""}${o.free?' <span class="op-unpaid" style="color:var(--ready)">مجاني</span>':""}${o.cancelled?' <span class="op-unpaid" style="color:var(--muted)">ملغى</span>':""}</span>
         </span>
         <span class="op-sum-price">${money(o.price)}<i class="op-chev">▾</i></span>
       </button>
       <div class="op-detail">
-        <div class="op-sub">${o.wash}${o.phone?` • ${o.phone}`:""}${o.by?` • ${o.by}`:""} • ${timeStr(o.date)}</div>
+        <div class="op-sub">${o.wash}${o.phone?` • ${o.phone}`:""}${o.by?` • ${o.by}`:""}${o.paymentMethod?` • ${(PAY_METHODS.find(m=>m.k===o.paymentMethod)||{}).label||""}`:""}</div>
         ${o.note?`<div class="op-note">📝 ${o.note}</div>`:""}
         ${hasPhotos?`<div class="op-photos">${(o.photosBefore&&o.photosBefore.length)?`<div class="ba"><span class="ba-lbl">قبل</span>${recThumbs(o.photosBefore)}</div>`:""}${(o.photosAfter&&o.photosAfter.length)?`<div class="ba"><span class="ba-lbl">بعد</span>${recThumbs(o.photosAfter)}</div>`:""}</div>`:""}
         ${carStepper(o)}
+        ${opTimelineHtml(o)}
         <div class="op-acts">
-          ${(next&&!o.cancelled)?`<button class="btn-advance" data-car-advance="${o.id}">${next.label} →</button>`:""}
-          ${o.paid===false?`<button class="mini op-pay" data-carpay="${o.id}">تحصيل الدفع</button>`:""}
-          ${hasPhotos?`<button class="wa-btn" data-carphotos="${o.id}" title="إرسال صور قبل/بعد">${svg(I.camera)}</button>`:""}
-          ${o.phone?`<button class="wa-btn" data-carwa="${o.id}" title="واتساب الزبون">${svg(I.whatsapp)}</button>`:""}
+          ${cur==="ready"?`
+            ${ph?`<button class="wa-btn" data-carwa="${o.id}" title="واتساب الزبون">${svg(I.whatsapp)}</button>`:""}
+            ${ph?`<a class="wa-btn call-btn" href="tel:${ph}" title="اتصال بالزبون">📞</a>`:""}
+            <button class="btn-advance btn-deliver" data-open-deliver="${o.id}">تسليم ✅</button>
+          `:`
+            ${(next&&!o.cancelled)?`<button class="btn-advance" data-car-advance="${o.id}">${next.label} →</button>`:""}
+            ${(o.paid===false&&cur==="delivered")?`<button class="mini op-pay" data-carpay="${o.id}">تحصيل الدفع</button>`:""}
+            ${hasPhotos?`<button class="wa-btn" data-carphotos="${o.id}" title="إرسال صور قبل/بعد">${svg(I.camera)}</button>`:""}
+            ${ph?`<button class="wa-btn" data-carwa="${o.id}" title="واتساب الزبون">${svg(I.whatsapp)}</button>`:""}
+          `}
           <button class="icon-btn" data-edit-car="${o.id}" title="تعديل">✏️</button>
           <button class="icon-btn cancel-btn ${o.cancelled?'on':''}" data-cancel-car="${o.id}" title="${o.cancelled?'إلغاء الإلغاء (مطوّل)':'إلغاء (اضغط مطوّلًا)'}">🚫</button>
           <button class="icon-btn" data-del-car="${o.id}" title="حذف">${svg(I.trash)}</button>
@@ -50,8 +70,9 @@ function screenCars(){
     ? state.carOps.filter(o=>((o.no||"").toLowerCase().includes(oq.toLowerCase()))||((o.plate||"").includes(oq)))
     : state.carOps.filter(o=>inRange(o.date));
   const counts={all:base.length}; CAR_STAGES.forEach(s=>counts[s.k]=base.filter(o=>carStageKey(o)===s.k).length);
-  const chips=[{k:"all",t:"الكل"}].concat(CAR_STAGES.map(s=>({k:s.k,t:s.label})))
-    .map(c=>`<button class="chip ${sf===c.k?'on':''}" data-carfilter="${c.k}">${c.t}${counts[c.k]?`<span class="chip-n">${counts[c.k]}</span>`:""}</button>`).join("");
+  // operational queues (with live counts) double as the filter control
+  const queues=[{k:"all",label:"الكل"}].concat(CAR_STAGES)
+    .map(q=>`<button class="queue q-${q.k} ${sf===q.k?'on':''}" data-carfilter="${q.k}"><span class="q-n">${counts[q.k]||0}</span><span class="q-l">${q.label}</span></button>`).join("");
   const list=(sf==="all"?base:base.filter(o=>carStageKey(o)===sf)).slice().reverse();
   const cards=list.length?list.map(carOpCard).join("")
     :`<div class="empty" style="grid-column:1/-1">${svg(I.empty)}${oq?"لا توجد نتائج لهذا الرقم/اللوحة.":"لا توجد عمليات ضمن هذا التصنيف."}</div>`;
@@ -71,9 +92,9 @@ function screenCars(){
       <td style="text-align:left;white-space:nowrap">${c.phone?`<button class="wa-btn" data-wacust="${c.plate}" title="واتساب" style="width:28px;height:28px;display:inline-grid;vertical-align:middle">${svg(I.whatsapp)}</button> `:""}<button class="icon-btn" data-del-cust="${c.plate}" title="حذف">${svg(I.trash)}</button></td></tr>`).join("")
     :`<tr><td colspan="6"><div class="empty">${svg(I.empty)}لا يوجد زبائن محفوظون بعد — أضف لوحة عند حفظ عملية.</div></td></tr>`;
   return `
-    <div class="screen-head cars-head"><h2>السيارات</h2><span>${counts.all} عملية · ${periodTxt}</span></div>
+    <div class="screen-head cars-head"><h2>مركز العمليات</h2><span>${counts.all} عملية · ${periodTxt}</span></div>
     <input class="search-inp ops-search" id="carSearch" type="text" placeholder="بحث برقم العملية أو اللوحة" value="${oq}">
-    <div class="ops-filters scroll-x">${chips}</div>
+    <div class="queues scroll-x">${queues}</div>
     <div class="ops-list">${cards}</div>
     ${oq?"":`<div class="ops-foot" style="text-align:center;color:var(--muted);font-size:.82rem;margin-top:14px">دخل السيارات (${periodTxt}): <b style="color:var(--brand)">${money(total)}</b></div>`}
     <details class="loyalty-collapse" ${state.loyaltyOpen?"open":""}>
@@ -124,6 +145,17 @@ function screenCars(){
           <button type="button" class="btn-primary" data-wiz-next>التالي</button>
           <button class="btn-primary btn-receive" id="carSave">استلام السيارة</button>
         </div>
+      </div>
+    </div>
+
+    <div id="deliverSheet" class="sheet">
+      <div class="sheet-backdrop" data-close-deliver></div>
+      <div class="sheet-card">
+        <div class="sheet-handle"></div>
+        <h3>تسليم العملية</h3>
+        <p class="sheet-sub">اختر طريقة الدفع لإغلاق العملية</p>
+        <div class="pay-methods">${PAY_METHODS.map(m=>`<button type="button" class="pay-method pm-${m.k}" data-paymethod="${m.k}">${m.label}</button>`).join("")}</div>
+        <button type="button" class="mini sheet-cancel" data-close-deliver>إلغاء</button>
       </div>
     </div>`;
 }
@@ -201,4 +233,4 @@ function screenCarpets(){
 
 
 /* ---- Commit 4: namespace registration ---- */
-Object.assign(App.pages, { screenCars, screenCarpets, carStageKey, carStepper, carOpCard });
+Object.assign(App.pages, { screenCars, screenCarpets, carStageKey, carStepper, carOpCard, opTimelineHtml });

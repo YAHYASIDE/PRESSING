@@ -88,12 +88,26 @@ function bindScreen(){
   // car workflow (Release 2): stage filter, advance to next stage, jump to a stage
   document.querySelectorAll("[data-carfilter]").forEach(b=>b.onclick=()=>{ state.carStageFilter=b.dataset.carfilter; render(); });
   document.querySelectorAll("[data-car-advance]").forEach(b=>b.onclick=()=>{
+    // advancing INTO delivered goes through the payment sheet
+    const o=state.carOps.find(x=>x.id===b.dataset.carAdvance);
+    const keys=CAR_STAGES.map(s=>s.k); const ni=keys.indexOf((o&&o.stage)||"received")+1;
+    if(keys[ni]==="delivered"){ _deliverId=b.dataset.carAdvance; const ds=document.getElementById("deliverSheet"); if(ds) ds.classList.add("open"); return; }
     const res=App.services.setCarStage({id:b.dataset.carAdvance, stage:"__next__"});
     if(res.ok){ const st=(CAR_STAGES.find(s=>s.k===res.stage)||{}).label||""; toast("المرحلة: "+st); render(); }
   });
   document.querySelectorAll("[data-car-setstage]").forEach(b=>b.onclick=()=>{
+    if(b.dataset.stage==="delivered"){ _deliverId=b.dataset.carSetstage; const ds=document.getElementById("deliverSheet"); if(ds) ds.classList.add("open"); return; }
     const res=App.services.setCarStage({id:b.dataset.carSetstage, stage:b.dataset.stage});
     if(res.ok){ const st=(CAR_STAGES.find(s=>s.k===res.stage)||{}).label||""; toast("المرحلة: "+st); render(); }
+  });
+  // delivery payment sheet (Release 3): open on "تسليم", pick method -> deliverOperation -> close
+  document.querySelectorAll("[data-open-deliver]").forEach(b=>b.onclick=()=>{ _deliverId=b.dataset.openDeliver; const ds=document.getElementById("deliverSheet"); if(ds) ds.classList.add("open"); });
+  document.querySelectorAll("[data-close-deliver]").forEach(b=>b.onclick=()=>{ const ds=document.getElementById("deliverSheet"); if(ds) ds.classList.remove("open"); _deliverId=null; });
+  document.querySelectorAll("[data-paymethod]").forEach(b=>b.onclick=()=>{
+    const ds=document.getElementById("deliverSheet"); if(ds) ds.classList.remove("open");
+    if(_deliverId){ const res=App.services.deliverOperation({id:_deliverId, method:b.dataset.paymethod});
+      if(res.ok){ const m=(PAY_METHODS.find(x=>x.k===res.method)||{}).label||""; toast("تم التسليم — "+m); } }
+    _deliverId=null; render();
   });
 
   // mobile-first: expandable cards (details open on tap) — no re-render, preserves the list
@@ -301,6 +315,17 @@ function bindScreen(){
   const caS=document.getElementById("carSearch"); if(caS) caS.oninput=()=>{ state.carSearch=caS.value; _refocus="carSearch"; render(); };
   const exS=document.getElementById("expSearch"); if(exS) exS.oninput=()=>{ state.expSearch=exS.value; _refocus="expSearch"; render(); };
   const rp=document.getElementById("reportPrint"); if(rp) rp.onclick=printReport;
+  tickOpTimers();   // fill live timers immediately after each render
+}
+/* Release 3 — live operation timers: update elapsed text + red-when-over, without re-render */
+function tickOpTimers(){
+  const now=Date.now();
+  document.querySelectorAll(".op-timer[data-op-since]").forEach(el=>{
+    const since=+el.dataset.opSince, exp=+el.dataset.opExp||0;
+    const min=Math.floor((now-since)/60000);
+    el.textContent=(min<60?min+" د":Math.floor(min/60)+"س "+(min%60)+"د");
+    el.classList.toggle("over", exp>0 && min>exp);
+  });
 }
 
 /* ============ code-protected actions ============ */
@@ -521,7 +546,7 @@ document.getElementById("dvOk").onclick=()=>{
   completeUnpaidDelivery(o);
 };
 document.getElementById("dvCancel").onclick=()=>{ document.getElementById("deliverModal").style.display="none"; _dvId=null; };
-let _payCtx=null;
+let _payCtx=null, _deliverId=null;
 document.getElementById("payOk").onclick=()=>{
   if(_payCtx){ const list=_payCtx.type==="car"?state.carOps:state.carpetOrders; const o=list.find(x=>x.id===_payCtx.id);
     if(o){ const dv=document.getElementById("payDate").value||ymd(new Date()); o.paid=true; o.paidDate=chosenDateIso(dv); toast("تم تحصيل الدفع"); } }
@@ -590,6 +615,7 @@ applyTheme();
 applyHeaderIcons();
 applyLock();
 render();
+setInterval(tickOpTimers, 30000);   // Release 3 — keep live operation timers ticking
 
 /* ---- Commit 4: namespace registration (aliases; globals retained) ---- */
 Object.assign(App.ui,     { render, bindScreen, gateDay, gateDate, bindHold, requireCode, toggleCancelCar,
