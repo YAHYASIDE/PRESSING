@@ -1,0 +1,120 @@
+/* dashboard.css — Release 1: modern dashboard (stat cards, charts, animations) */
+
+/* ---- entrance animation ---- */
+@keyframes dashUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+@keyframes acDraw { to { stroke-dashoffset: 0; } }
+
+/* ---- KPI stat cards ---- */
+.stat-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(168px, 1fr));
+  gap: 14px;
+  margin-bottom: 16px;
+}
+.stat-card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  padding: 16px 16px 16px 18px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  animation: dashUp .45s cubic-bezier(.22,.61,.36,1) both;
+  transition: transform .18s ease, box-shadow .18s ease;
+}
+.stat-card::before {
+  content: "";
+  position: absolute; inset-inline-start: 0; top: 0; bottom: 0;
+  width: 4px; background: var(--sc-accent, var(--brand));
+}
+.stat-card:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(21,37,52,.12); }
+.sc-income  { --sc-accent: var(--ready); }
+.sc-expense { --sc-accent: var(--unpaid); }
+.sc-profit  { --sc-accent: var(--brand); }
+.sc-wash    { --sc-accent: var(--wash); }
+.stat-row .stat-card:nth-child(1) { animation-delay: .02s; }
+.stat-row .stat-card:nth-child(2) { animation-delay: .07s; }
+.stat-row .stat-card:nth-child(3) { animation-delay: .12s; }
+.stat-row .stat-card:nth-child(4) { animation-delay: .17s; }
+.sc-ic {
+  flex: none; width: 46px; height: 46px; border-radius: 13px;
+  display: grid; place-items: center; background: var(--soft);
+}
+.sc-income  .sc-ic { background: var(--ready-bg); }
+.sc-expense .sc-ic { background: var(--unpaid-bg); }
+.sc-profit  .sc-ic { background: var(--chip); }
+.sc-wash    .sc-ic { background: var(--wash-bg); }
+.sc-ic svg { width: 24px; height: 24px; }
+.sc-body { min-width: 0; }
+.sc-label { font-size: .8rem; color: var(--muted); font-weight: 700; }
+.sc-value { font-size: 1.55rem; font-weight: 800; letter-spacing: -.5px; line-height: 1.12; margin-top: 1px; }
+.sc-sub { font-size: .72rem; color: var(--muted); font-weight: 600; margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ---- chart cards ---- */
+.chart-grid {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+.chart-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 16px;
+  animation: dashUp .5s cubic-bezier(.22,.61,.36,1) both;
+  animation-delay: .14s;
+}
+.chart-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 8px; }
+.chart-head h3 { font-size: .95rem; margin: 0; font-weight: 800; }
+.chart-total { font-size: 1rem; font-weight: 800; color: var(--brand); }
+
+/* income area chart */
+.area-chart { width: 100%; height: auto; display: block; overflow: visible; }
+.ac-area { }
+.ac-line {
+  fill: none; stroke: var(--brand); stroke-width: 2.4;
+  stroke-linecap: round; stroke-linejoin: round;
+  stroke-dasharray: 1000; stroke-dashoffset: 1000;
+  animation: acDraw 1s ease forwards .12s;
+}
+.ac-dot { fill: var(--surface); stroke: var(--brand); stroke-width: 2; }
+.ac-x { fill: var(--muted); font-size: 9px; text-anchor: middle; font-weight: 700; }
+
+/* orders donut */
+.donut-wrap { display: flex; flex-direction: column; align-items: center; gap: 10px; padding-top: 4px; }
+.donut { width: 128px; height: 128px; display: block; }
+.donut-track { fill: none; stroke: var(--line); stroke-width: 12; }
+.donut-seg { fill: none; stroke-width: 12; stroke-linecap: round; }
+.donut-seg.seg-a { stroke: var(--brand); }
+.donut-seg.seg-b { stroke: var(--teal); }
+.donut-num { fill: var(--ink); font-size: 24px; font-weight: 800; text-anchor: middle; }
+.donut-lbl { fill: var(--muted); font-size: 10px; font-weight: 700; text-anchor: middle; }
+.donut-legend { display: flex; gap: 18px; font-size: .84rem; font-weight: 700; color: var(--muted); }
+.donut-legend b { color: var(--ink); margin-inline-start: 3px; }
+.lg-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; vertical-align: middle; margin-inline-end: 5px; }
+.dot-a { background: var(--brand); }
+.dot-b { background: var(--teal); }
+
+/* ---- responsive ---- */
+@media (max-width: 760px) {
+  .chart-grid { grid-template-columns: 1fr; }
+  .stat-row { grid-template-columns: 1fr 1fr; gap: 11px; }
+  .sc-value { font-size: 1.35rem; }
+  .stat-card { padding: 13px 13px 13px 15px; }
+}
+@media (max-width: 400px) {
+  .sc-ic { width: 40px; height: 40px; }
+  .sc-value { font-size: 1.25rem; }
+  .donut-legend { gap: 12px; }
+}
+
+/* respect reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  .stat-card, .chart-card { animation: none; }
+  .ac-line { animation: none; stroke-dashoffset: 0; }
+}
