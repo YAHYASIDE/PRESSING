@@ -12,6 +12,7 @@
 <link rel="stylesheet" href="assets/css/layout.css">
 <link rel="stylesheet" href="assets/css/components.css">
 <link rel="stylesheet" href="assets/css/dashboard.css">
+<link rel="stylesheet" href="assets/css/entry.css">
 </head>
 <body>
 <div class="app">
@@ -152,12 +153,13 @@
 </div>
 <div id="lockScreen">
   <div class="lock-box">
-    <img id="lockLogo" src="" alt="">
+    <div class="lk-logo-ring"><img id="lockLogo" src="" alt=""></div>
     <h3>مغاسيل صداقة</h3>
-    <p>أدخل اسمك وكود الدخول</p>
-    <input type="text" id="lockName" placeholder="اسمك" value="إبراهيم" autocomplete="off" style="letter-spacing:normal;text-align:center">
-    <input type="password" id="lockInput" inputmode="numeric" placeholder="كود الدخول">
-    <button class="btn-primary" id="lockEnter" style="width:100%">دخول</button>
+    <p>نظام إدارة المغسلة — سجّل دخولك للمتابعة</p>
+    <div class="lk-field"><input type="text" id="lockName" placeholder="اسمك" value="إبراهيم" autocomplete="off" style="letter-spacing:normal;text-align:center"></div>
+    <div class="lk-field"><input type="password" id="lockInput" inputmode="numeric" placeholder="كود الدخول"></div>
+    <button class="btn-primary lk-btn" id="lockEnter" style="width:100%">دخول</button>
+    <div class="lk-foot">نظافة · عناية · ثقة</div>
   </div>
 </div>
 

@@ -1,0 +1,67 @@
+/* entry.css — Release 1: modernized entry / lock screen (the first view on open) */
+
+@keyframes lkUp    { from { opacity: 0; transform: translateY(16px) scale(.98); } to { opacity: 1; transform: none; } }
+@keyframes lkFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+@keyframes lkGlow  { 0%, 100% { opacity: .45; } 50% { opacity: .85; } }
+
+#lockScreen {
+  background:
+    radial-gradient(1200px 620px at 50% -12%, rgba(255,255,255,.18), transparent 60%),
+    linear-gradient(155deg, var(--brand), var(--brand-2));
+  padding: 24px;
+  overflow: hidden;
+}
+#lockScreen::before {                 /* soft glowing orb behind the card */
+  content: "";
+  position: absolute; top: -140px; left: 50%; transform: translateX(-50%);
+  width: 440px; height: 440px; border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(255,255,255,.22), transparent);
+  animation: lkGlow 5s ease-in-out infinite; pointer-events: none;
+}
+.lock-box {
+  position: relative;
+  background: var(--surface);
+  border-radius: 22px;
+  padding: 30px 24px 24px;
+  max-width: 344px; width: 100%;
+  text-align: center;
+  box-shadow: 0 30px 70px rgba(0,0,0,.35);
+  animation: lkUp .5s cubic-bezier(.22,.61,.36,1) both;
+}
+.lk-logo-ring {
+  width: 92px; height: 92px; margin: 0 auto 14px;
+  border-radius: 50%; display: grid; place-items: center;
+  background: linear-gradient(135deg, var(--brand), var(--brand-2));
+  box-shadow: 0 10px 24px rgba(18,80,124,.35);
+  animation: lkFloat 4s ease-in-out infinite;
+}
+.lk-logo-ring img { width: 80px; height: 80px; border-radius: 50%; margin: 0; border: 3px solid #fff; object-fit: cover; }
+.lock-box h3 { margin: 0 0 5px; font-size: 1.35rem; font-weight: 800; color: var(--ink); letter-spacing: -.3px; }
+.lock-box p  { margin: 0 0 20px; font-size: .86rem; color: var(--muted); font-weight: 600; line-height: 1.5; }
+.lk-field { position: relative; margin-bottom: 13px; }
+.lk-field input {
+  width: 100%; padding: 14px 16px; margin: 0;
+  border: 1.5px solid var(--line); border-radius: 14px;
+  background: var(--input); color: var(--ink);
+  font-size: 1.1rem; text-align: center;
+  transition: border-color .15s, box-shadow .15s, background .15s;
+}
+.lk-field input:focus {
+  outline: none; border-color: var(--brand); background: var(--surface);
+  box-shadow: 0 0 0 4px rgba(18,80,124,.12);
+}
+#lockInput { letter-spacing: 6px; font-weight: 700; }
+.lk-btn {
+  width: 100%; padding: 14px; margin-top: 4px;
+  font-size: 1.02rem; font-weight: 800; border-radius: 14px;
+  background: linear-gradient(135deg, var(--brand), var(--brand-2));
+  box-shadow: 0 8px 20px rgba(18,80,124,.28);
+  transition: transform .15s, box-shadow .15s;
+}
+.lk-btn:hover  { transform: translateY(-2px); box-shadow: 0 12px 26px rgba(18,80,124,.34); }
+.lk-btn:active { transform: translateY(0); }
+.lk-foot { margin-top: 16px; font-size: .75rem; color: var(--muted); font-weight: 700; letter-spacing: 1px; opacity: .8; }
+
+@media (prefers-reduced-motion: reduce) {
+  .lock-box, .lk-logo-ring, #lockScreen::before { animation: none; }
+}
