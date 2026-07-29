@@ -128,3 +128,43 @@ Object.assign(App.core, { fmt, money, isToday, isMonth, ymd, inRange, timeStr, s
   netSalary, accruedDue, wPaid, wCredit, wBalance, wagesToday, wagesMonth, wagesRange, todayIncome, monthIncome,
   STATUS, NEXT });
 Object.assign(App.ui, { toast, svg, I });
+
+/* ---- moved from app.js (dependency cleanup): pure domain / message helpers ---- */
+function todayStr(){ return ymd(new Date()); }
+function isPastDay(dateIso){ return ymd(dateIso)<todayStr(); }
+function chosenDateIso(dateStr){ const t=todayStr(); if(!dateStr||dateStr===t) return iso(new Date()); return new Date(dateStr+"T12:00:00").toISOString(); }
+function meterCode(){ return (state.meterPin&&state.meterPin.trim())?state.meterPin.trim():SECRET_CODE; }
+function orderState(o){
+  if(!o.paid && o.status==="done") return {cls:"st-red"};
+  if(o.paid) return {cls:"st-green"};
+  return {cls:"st-orange"};
+}
+function carNo(vehicle){ const L=VEH_LETTER[vehicle]||"X"; if(!state.carSeq) state.carSeq={}; state.carSeq[L]=(state.carSeq[L]||0)+1; return L+state.carSeq[L]; }
+function waHead(){ return `*${SHOP_NAME}*\nالتاريخ: ${ymd(new Date())}\nالهاتف: ${SHOP_PHONE}\n━━━━━━━━━━`; }
+function waFoot(){ const th=(state.thanksMsg||"شكرًا لغسلتك عندنا 🌟").trim(); const ad=(state.adMsg||"").trim(); return `━━━━━━━━━━${th?`\n${th}`:""}${ad?`\n\n${ad}`:""}`; }
+function countryOpts(sel){ return COUNTRIES.map(x=>`<option value="${x.c}" ${x.c===(sel||"222")?"selected":""}>${x.n} +${x.c}</option>`).join(""); }
+function validPhone(ph){ return ph==="" || /^[0-9]{8,9}$/.test(ph); }
+function waPhoneFull(phone,country){ let ph=(phone||"").replace(/[^0-9]/g,""); if(!ph) return null; const cc=country||"222"; if(ph.startsWith(cc)) return ph; ph=ph.replace(/^0+/,""); return cc+ph; }
+function waPhoneStr(phone){ return waPhoneFull(phone,"222"); }
+function waPhone(o){ return waPhoneFull(o.phone,o.country); }
+function waStatusMsg(o){
+  const st=o.status==="ready"?"جاهز للاستلام":o.status==="done"?"تم التسليم":"قيد الغسيل";
+  const pay=o.paid?"مدفوع":`المبلغ المستحق: ${money(o.price)}`;
+  return `${waHead()}\n${o.type} × ${o.count}\nرقم الطلب: ${o.no}\nالحالة: ${st}\n${pay}\n${waFoot()}`;
+}
+function waLink(o){
+  const phone=(o.phone||"").replace(/[^0-9]/g,"");
+  const msg=`مغاسيل صداقة%0Aطلبك رقم ${o.no} (${o.type} × ${o.count})%0Aالحالة: ${STATUS[o.status].label}%0Aالإجمالي: ${money(o.price)}${o.paid?" (مدفوع)":""}`;
+  return `https://wa.me/${phone}?text=${msg}`;
+}
+function ensureCarNos(){ if(!state.carSeq) state.carSeq={}; (state.carOps||[]).forEach(o=>{ if(!o.no) o.no=carNo(o.vehicle); }); }
+function runMigrations(){
+  let changed=false;
+  if(state.adMsg==="🎁 اجمع 5 غسلات واحصل على غسلة مجانية!\nنغسل السجاد والموكيت والأفرشة أيضًا 🧼\nشاركنا مع أصدقائك 🙌"){ state.adMsg=""; changed=true; }
+  if(state.codesV!==3){ state.lock={enabled:true,pin:"0707"}; if(!state.meterPin) state.meterPin="070752"; state.codesV=3; changed=true; }
+  if(!state.deleted) state.deleted={};
+  if(!state.logins) state.logins=[];
+  ensureCarNos();
+  return changed;
+}
+Object.assign(App.core, { todayStr, isPastDay, chosenDateIso, meterCode, orderState, carNo, waHead, waFoot, countryOpts, validPhone, waPhoneFull, waPhoneStr, waPhone, waStatusMsg, waLink, ensureCarNos, runMigrations });
