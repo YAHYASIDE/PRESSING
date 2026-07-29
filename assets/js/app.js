@@ -42,37 +42,33 @@ function bindScreen(){
     bindPhotoStrip("carBeforeStrip",pendingCarBefore,"carB");
     bindPhotoStrip("carAfterStrip",pendingCarAfter,"carA");
     const doCarSave=()=>{
-      const vehicle=cv.value;
-      const plate=plateInp.value.trim();
-      const phone=document.getElementById("carPhone").value.trim();
-      const country=document.getElementById("carCountry").value;
-      if(!validPhone(phone)) return toast("أدخل رقم هاتف صحيح");
-      const existing=plate?state.customers[plate]:null;
-      const free=!!(existing&&existing.stamps===4);
-      const price=+document.getElementById("carPrice").value;
-      if(!free && !(price>0)) return toast("أدخل سعرًا صحيحًا");
-      const carDateV=(document.getElementById("carDate")||{}).value||todayStr();
-      const deferred = !free && !!(document.getElementById("carDeferred")&&document.getElementById("carDeferred").checked);
-      const commit=()=>{
-        if(!free) state.vehiclePrices[vehicle]=price;
-        if(plate){
-          let c=state.customers[plate]||{plate,stamps:0,totalWashes:0,freeWashes:0};
-          if(phone){ c.phone=phone; c.country=country; }
-          if(free){c.stamps=0;c.freeWashes++;} else c.stamps++;
-          c.totalWashes++; c.lastVisit=iso(new Date());
-          state.customers[plate]=c;
-        }
-        const opDate=chosenDateIso(carDateV);
-        state.carOps.push({id:uid(),no:carNo(vehicle),vehicle,wash:document.getElementById("carWash").value,price:free?0:price,
-          plate,phone,country,free,by:currentUser,paid:!deferred,paidDate:deferred?null:opDate,note:"",photosBefore:[...pendingCarBefore],photosAfter:[...pendingCarAfter],date:opDate});
-        pendingCarBefore.length=0; pendingCarAfter.length=0;
-        if(free) toast("🎁 غسلة مجانية — اكتملت البطاقة");
-        else if(deferred) toast("تم الحفظ — دفع مؤجّل (غير مدفوع)");
-        else if(plate&&state.customers[plate].stamps===4) toast("تم الحفظ — الغسلة القادمة مجانية");
-        else toast("تم حفظ العملية");
-        render();
+      // 1) collect form values into a plain DTO
+      const input={
+        vehicle: cv.value,
+        plate: plateInp.value.trim(),
+        phone: document.getElementById("carPhone").value.trim(),
+        country: document.getElementById("carCountry").value,
+        wash: document.getElementById("carWash").value,
+        price: +document.getElementById("carPrice").value,
+        dateStr: (document.getElementById("carDate")||{}).value||todayStr(),
+        deferred: !!(document.getElementById("carDeferred")&&document.getElementById("carDeferred").checked),
+        by: currentUser,
+        photosBefore: [...pendingCarBefore],
+        photosAfter: [...pendingCarAfter]
       };
-      gateDate(carDateV, commit);
+      // 2) resolve the past-date authorization gate, then 3) call the service
+      gateDate(input.dateStr, ()=>{
+        const res=App.services.createCarWash(input);
+        // 4) handle the returned result (UI concerns live here, not in the service)
+        if(!res.ok){ toast(res.error==="invalid_phone"?"أدخل رقم هاتف صحيح":"أدخل سعرًا صحيحًا"); return; }
+        pendingCarBefore.length=0; pendingCarAfter.length=0;
+        if(res.free) toast("🎁 غسلة مجانية — اكتملت البطاقة");
+        else if(res.deferred) toast("تم الحفظ — دفع مؤجّل (غير مدفوع)");
+        else if(res.cardComplete) toast("تم الحفظ — الغسلة القادمة مجانية");
+        else toast("تم حفظ العملية");
+        // 5) trigger render
+        render();
+      });
     };
     bindHold(document.getElementById("carSave"), doCarSave, 1000);
   }
