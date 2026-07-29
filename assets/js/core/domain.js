@@ -238,6 +238,7 @@ function tabVisible(id){
   if(id==="carpets") return bizTypeOn("carpet")||bizTypeOn("laundry");
   if(id==="reports")    return featureEnabled("accounting");
   if(id==="accounting") return featureEnabled("accounting");
+  if(id==="inventory")  return featureEnabled("inventory");
   return true;
 }
 
@@ -341,6 +342,8 @@ function runMigrations(){
   }
   // accounting — ensure the journal exists
   if(!state.journal){ state.journal=[]; changed=true; }
+  // inventory — ensure the store exists
+  if(!state.inventory){ state.inventory={products:[],categories:[],suppliers:[],movements:[]}; changed=true; }
   // subscription / trial — start a trial for configured installs that don't have one yet
   if(!state.subscription){
     state.subscription = { trialStart: (state.business&&state.business.configured)?iso(new Date()):null, plan:null, active:false };

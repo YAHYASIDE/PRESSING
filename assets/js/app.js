@@ -27,7 +27,7 @@ function render(){
     document.getElementById("main").innerHTML=`<div class="screen">${screenSubscription()}</div>`;
     bindScreen(); return;
   }
-  const map={dashboard:screenDashboard,cars:screenCars,carpets:screenCarpets,expenses:screenExpenses,reports:screenReports,accounting:screenAccounting};
+  const map={dashboard:screenDashboard,cars:screenCars,carpets:screenCarpets,expenses:screenExpenses,reports:screenReports,accounting:screenAccounting,inventory:screenInventory};
   const fn = (allowed.indexOf(state.tab)>=0 ? map[state.tab] : null) || map[allowed[0]] || screenCars;
   document.getElementById("main").innerHTML=`<div class="screen">${fn()}</div>`;
   bindScreen();
@@ -290,6 +290,28 @@ function bindScreen(){
   document.querySelectorAll("[data-sub]").forEach(b=>b.onclick=()=>{state.expSub=b.dataset.sub;render();});
   // accounting sub-tabs
   document.querySelectorAll("[data-acct-tab]").forEach(b=>b.onclick=()=>{state.acctTab=b.dataset.acctTab;render();});
+  // inventory
+  document.querySelectorAll("[data-inv-tab]").forEach(b=>b.onclick=()=>{state.invTab=b.dataset.invTab;render();});
+  { const s=document.getElementById("invSearch"); if(s) s.oninput=()=>{ state.invSearch=s.value; _refocus="invSearch"; render(); }; }
+  { const lc=document.querySelector(".inv-add"); if(lc) lc.addEventListener("toggle",()=>{ state.invAddOpen=lc.open; }); }
+  { const sv=document.getElementById("ipSave"); if(sv) sv.onclick=()=>{
+      const res=App.services.addProduct({ name:document.getElementById("ipName").value, category:document.getElementById("ipCat").value,
+        unit:document.getElementById("ipUnit").value, cost:document.getElementById("ipCost").value, price:document.getElementById("ipPrice").value,
+        qty:document.getElementById("ipQty").value, min:document.getElementById("ipMin").value, barcode:document.getElementById("ipBarcode").value,
+        expiry:document.getElementById("ipExpiry").value, supplier:document.getElementById("ipSupplier").value });
+      if(!res.ok){ toast(res.error==="name_required"?"أدخل اسم المنتج":res.error==="invalid_price"?"أدخل سعر بيع صحيح":"تعذّر الحفظ"); return; }
+      toast("تمت إضافة المنتج"); render();
+    }; }
+  { const sv=document.getElementById("isSave"); if(sv) sv.onclick=()=>{
+      const res=App.services.addSupplier({ name:document.getElementById("isName").value, phone:document.getElementById("isPhone").value });
+      if(!res.ok){ toast("أدخل اسم المورد"); return; } toast("تمت إضافة المورد"); render();
+    }; }
+  document.querySelectorAll("[data-inv-del]").forEach(b=>b.onclick=()=>{ requireCode(()=>{ App.services.deleteProduct(b.dataset.invDel); toast("تم حذف المنتج"); render(); }, SECRET_CODE, "كود الحذف", "حذف منتج يتطلب الكود."); });
+  document.querySelectorAll("[data-inv-supdel]").forEach(b=>b.onclick=()=>{ App.services.deleteSupplier(b.dataset.invSupdel); toast("تم حذف المورد"); render(); });
+  document.querySelectorAll("[data-inv-receive]").forEach(b=>b.onclick=()=>openInvSheet("receive",b.dataset.invReceive));
+  document.querySelectorAll("[data-inv-adjust]").forEach(b=>b.onclick=()=>openInvSheet("adjust",b.dataset.invAdjust));
+  document.querySelectorAll("[data-inv-edit]").forEach(b=>b.onclick=()=>openInvSheet("edit",b.dataset.invEdit));
+  document.querySelectorAll("[data-inv-close]").forEach(b=>b.onclick=()=>{ const s=document.getElementById("invSheet"); if(s) s.classList.remove("open"); });
 
   // meters
   const ms=document.getElementById("meterSave");
@@ -404,6 +426,41 @@ function bindHold(el, cb, ms){
   el.addEventListener("pointercancel",clear);
   el.addEventListener("click",(e)=>{ e.preventDefault(); e.stopPropagation(); });
 }
+/* Inventory — receive / adjust / edit sheet (context-driven). */
+function openInvSheet(mode, id){
+  const p=App.core.invProduct(id); if(!p) return;
+  const sheet=document.getElementById("invSheet"), title=document.getElementById("invSheetTitle"), body=document.getElementById("invSheetBody");
+  if(!sheet) return;
+  if(mode==="receive"){
+    title.textContent="استلام مخزون — "+p.name;
+    body.innerHTML=`<div class="row2"><div class="field"><label>الكمية</label><input id="ivQty" type="number" min="1" value="1"></div>
+      <div class="field"><label>تكلفة الوحدة</label><input id="ivCost" type="number" min="0" value="${p.cost}"></div></div>
+      <button type="button" class="btn-primary" id="ivDo">تأكيد الاستلام</button>`;
+  } else if(mode==="adjust"){
+    title.textContent="جرد — "+p.name;
+    body.innerHTML=`<div class="field"><label>الكمية الفعلية (الحالية: ${p.qty})</label><input id="ivQty" type="number" min="0" value="${p.qty}"></div>
+      <div class="field"><label>السبب</label><input id="ivReason" type="text" placeholder="جرد، تالف، هدر…"></div>
+      <button type="button" class="btn-primary" id="ivDo">حفظ الجرد</button>`;
+  } else {
+    title.textContent="تعديل — "+p.name;
+    body.innerHTML=`<div class="field"><label>الاسم</label><input id="ivName" type="text" value="${(p.name||'').replace(/"/g,'&quot;')}"></div>
+      <div class="row2"><div class="field"><label>التكلفة</label><input id="ivCost" type="number" min="0" value="${p.cost}"></div>
+      <div class="field"><label>سعر البيع</label><input id="ivPrice" type="number" min="0" value="${p.price}"></div></div>
+      <div class="field"><label>حد التنبيه</label><input id="ivMin" type="number" min="0" value="${p.min}"></div>
+      <button type="button" class="btn-primary" id="ivDo">حفظ التعديل</button>`;
+  }
+  sheet.classList.add("open");
+  const doBtn=document.getElementById("ivDo");
+  doBtn.onclick=()=>{
+    let res;
+    if(mode==="receive") res=App.services.receiveStock({productId:id, qty:document.getElementById("ivQty").value, cost:document.getElementById("ivCost").value});
+    else if(mode==="adjust") res=App.services.adjustStock({productId:id, qty:document.getElementById("ivQty").value, reason:document.getElementById("ivReason").value});
+    else res=App.services.updateProduct(id, {name:document.getElementById("ivName").value.trim(), cost:document.getElementById("ivCost").value, price:document.getElementById("ivPrice").value, min:document.getElementById("ivMin").value});
+    if(res&&res.ok){ sheet.classList.remove("open"); toast("تم الحفظ"); render(); }
+    else toast("تعذّر الحفظ — تحقق من القيمة");
+  };
+}
+
 /* Accounting — when an operation/order is cancelled, reverse its sale entry; a re-activation re-posts it. */
 function acctReverseSale(o){ if(o&&o.je&&!o.jeReversed&&App.services.reverseEntry){ const r=App.services.reverseEntry(o.je); if(r&&r.ok) o.jeReversed=r.entry.id; } }
 function acctRepostSale(o,deferred,memo){ if(o&&o.jeReversed&&App.services.postSale){ const je=App.services.postSale({amount:o.price, deferred:deferred, ref:o.no, date:o.date, memo:memo}); if(je&&je.ok){ o.je=je.entry.id; o.jeReversed=null; } } }

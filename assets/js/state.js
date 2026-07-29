@@ -67,6 +67,8 @@ const state = {
   subscription: null,            /* Release 5.1: {trialStart, plan, active} — free trial + plans */
   journal: [],                   /* Accounting: double-entry journal (auto-posted) */
   acctTab: "overview",           /* Accounting screen sub-tab */
+  inventory: {products:[],categories:[],suppliers:[],movements:[]},  /* Inventory module store */
+  invTab: "products", invSearch: "", invAddOpen: false,
   features: defaultFeatures(),   /* Release: optional feature modules (loyalty, …) */
   customers:{},
   meters:[],

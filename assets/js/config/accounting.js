@@ -28,7 +28,8 @@ const CHART_OF_ACCOUNTS = [
   { code:"4000", name:"إيرادات الخدمات",        type:"revenue" },
   { code:"5000", name:"مصروفات عامة",           type:"expense" },
   { code:"5100", name:"رواتب وأجور",            type:"expense" },
-  { code:"5200", name:"كهرباء وماء",            type:"expense" }
+  { code:"5200", name:"كهرباء وماء",            type:"expense" },
+  { code:"5300", name:"تكلفة البضاعة المباعة",  type:"expense" }
 ];
 
 /* payment-method key → cash/asset account it debits (credit = the receivable) */
@@ -36,6 +37,6 @@ const PAY_ACCOUNT = { cash:"1000", bank:"1010", mobile:"1020", credit:"1100" };
 /* expense category → expense account (falls back to general) */
 const EXP_ACCOUNT_BY_CAT = { "مواد":"5000", "صيانة":"5000", "أخرى":"5000" };
 /* well-known account handles used by the posting service */
-const ACCT = { CASH:"1000", AR:"1100", INVENTORY:"1200", AP:"2000", TAX:"2100", REVENUE:"4000", EXP:"5000", SALARY:"5100", UTIL:"5200" };
+const ACCT = { CASH:"1000", AR:"1100", INVENTORY:"1200", AP:"2000", TAX:"2100", EQUITY:"3000", REVENUE:"4000", EXP:"5000", SALARY:"5100", UTIL:"5200", COGS:"5300" };
 
 Object.assign(App.config, { ACCT_TYPES, CHART_OF_ACCOUNTS, PAY_ACCOUNT, EXP_ACCOUNT_BY_CAT, ACCT });

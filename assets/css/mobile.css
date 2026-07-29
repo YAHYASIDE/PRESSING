@@ -22,7 +22,11 @@
     position: fixed; left: 0; right: 0; bottom: 0; width: 100%;
     padding: 6px 8px calc(6px + var(--safe-b)); order: 2;
     box-shadow: 0 -2px 14px rgba(21,37,52,.08); justify-content: space-around;
+    overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none;
   }
+  nav.side::-webkit-scrollbar { display: none; }
+  /* when many feature tabs are enabled, let the bar scroll instead of squishing */
+  .nav-btn { flex: 0 0 auto; min-width: 58px; }
   .nav-btn.active { background: var(--brand); color: #fff; }
   main { padding-bottom: calc(var(--navh) + var(--safe-b) + 16px) !important; }
 }

@@ -13,7 +13,7 @@
 /* ---- module registry (drives the Settings "Feature Modules" list) ---- */
 const FEATURE_MODULES = [
   { key:"loyalty",       label:"برنامج الولاء", icon:"gift",   desc:"مكافأة الزبائن المتكررين — أختام، نقاط، خصم أو كوبون.", configurable:true },
-  { key:"inventory",     label:"المخزون",       icon:"wallet", desc:"تتبّع المواد والكميات وتنبيهات النقص.",              comingSoon:true },
+  { key:"inventory",     label:"المخزون",       icon:"wallet", desc:"تتبّع المواد والكميات وتنبيهات النقص." },
   { key:"reservations",  label:"الحجوزات",      icon:"clock",  desc:"حجز مواعيد غسيل مسبقة للزبائن.",                     comingSoon:true },
   { key:"employees",     label:"الموظفون",      icon:"worker", desc:"وحدة موظفين متقدمة (ورديات، أداء).",                 comingSoon:true },
   { key:"branches",      label:"الفروع",        icon:"other",  desc:"إدارة عدّة فروع بحسابات منفصلة.",                    comingSoon:true },

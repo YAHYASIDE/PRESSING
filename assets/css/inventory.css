@@ -1,0 +1,30 @@
+/* inventory.css — Inventory screen (product cards, alerts, movements). Mobile-first. */
+
+.inv-list{ margin-top: 4px; }
+.inv-card{ position: relative; display: grid; grid-template-columns: 1fr auto; grid-template-areas: "main nums" "acts acts";
+  gap: 8px 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 15px; box-shadow: var(--shadow); padding: 13px 14px; margin-bottom: 10px; animation: dashUp .3s ease both; }
+.inv-card::before{ content:""; position:absolute; inset-inline-start:0; top:0; bottom:0; width:4px; border-start-start-radius:15px; border-end-start-radius:15px; background: var(--ready); }
+.inv-card.st-low::before{ background: var(--wash); } .inv-card.st-out::before{ background: var(--unpaid); }
+.inv-main{ grid-area: main; min-width: 0; }
+.inv-name{ font-weight: 800; font-size: .95rem; display: flex; align-items: center; gap: 7px; }
+.inv-meta{ font-size: .74rem; color: var(--muted); font-weight: 600; margin-top: 4px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.inv-nums{ grid-area: nums; text-align: end; display: flex; flex-direction: column; gap: 3px; }
+.inv-qty{ font-size: .78rem; color: var(--muted); font-weight: 700; }
+.inv-qty b{ font-size: 1.3rem; color: var(--ink); margin-inline-end: 3px; }
+.inv-qty.low b{ color: var(--wash); } .inv-qty.out b{ color: var(--unpaid); }
+.inv-price{ font-weight: 800; color: var(--brand); font-size: .92rem; }
+.inv-acts{ grid-area: acts; display: flex; flex-wrap: wrap; gap: 6px; border-top: 1px dashed var(--line); padding-top: 9px; }
+.inv-acts .mini{ flex: 1; min-width: 70px; padding: 8px; font-size: .78rem; }
+
+.inv-badge{ font-size: .64rem; font-weight: 800; color: #fff; border-radius: 999px; padding: 2px 8px; }
+.inv-badge.b-ok{ background: var(--ready); } .inv-badge.b-low{ background: var(--wash); } .inv-badge.b-out{ background: var(--unpaid); }
+.inv-exp{ font-size: .7rem; font-weight: 700; color: var(--muted); }
+.inv-exp.warn{ color: var(--unpaid); }
+
+.inv-alert{ background: var(--unpaid-bg); color: var(--unpaid); border: 1px solid #f0cccc; border-radius: 12px; padding: 12px 14px; font-weight: 800; font-size: .86rem; text-align: center; margin-bottom: 12px; }
+.inv-add{ margin-top: 12px; }
+.seg-n{ display: inline-grid; place-items: center; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 999px; background: var(--unpaid); color: #fff; font-size: .62rem; font-weight: 800; font-style: normal; margin-inline-start: 4px; }
+
+.inv-mv{ font-size: .68rem; font-weight: 800; color: #fff; border-radius: 999px; padding: 2px 8px; }
+.inv-mv.t-in{ background: var(--ready); } .inv-mv.t-out{ background: var(--unpaid); } .inv-mv.t-adjust{ background: var(--teal); }
+.acc-tbl .amt.pos{ color: var(--ready); } .acc-tbl .amt.neg{ color: var(--unpaid); }

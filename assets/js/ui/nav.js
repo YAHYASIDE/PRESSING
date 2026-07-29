@@ -8,7 +8,8 @@ function renderNav(){
     {id:"carpets",label:"السجاد",icon:I.rug,badge:unpaid},
     {id:"expenses",label:"المصروفات",icon:I.wallet},
     {id:"reports",label:"التقارير",icon:I.chart},
-    {id:"accounting",label:"المحاسبة",icon:I.profit}
+    {id:"accounting",label:"المحاسبة",icon:I.profit},
+    {id:"inventory",label:"المخزون",icon:I.wallet}
   ];
   // Release 4/5 — show tabs allowed by role AND by the business configuration
   // (business type gates cars/carpets; accounting feature gates reports).

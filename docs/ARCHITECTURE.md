@@ -112,6 +112,23 @@ A layer may use the layers below it and never the layers above it.
   one-time `backfillAccounting()` seeds the journal from existing records so an
   upgraded install opens with populated books. The entity stores its entry id
   (`op.je`, `jeCollected`, `jeReversed`) so posting is idempotent.
+
+#### Inventory module (SaaS v1.0) — stock + auto-posted movements
+- Same four layers, gated by the `inventory` Feature Module:
+  - **config** (`config/inventory.js`): units, seed categories (oils, laundry
+    supplies, accessories…), low-stock + expiry thresholds.
+  - **core** (`core/inventory.js`): pure queries — `invProducts`, `invStatus`,
+    `invLowStock`, `invExpiring`, `invValue`, `invMovementsFor`.
+  - **service** (`services/inventory.js`): the only writer of `state.inventory`.
+    `addProduct`/`receiveStock`/`adjustStock`/`consumeStock`/`updateProduct`/
+    suppliers. **Weighted-average costing** keeps on-hand valuation equal to the
+    booked inventory balance.
+  - **page** (`pages/inventory.js`): Products · Alerts · Suppliers · Movements,
+    with a context sheet for receive/adjust/edit.
+- **Every stock movement posts to accounting** (satisfying "every inventory
+  movement affects accounting"): opening/receive → Dr Inventory Cr Cash/Equity;
+  sale consumption → Dr COGS Cr Inventory; shrinkage → Dr Expense Cr Inventory.
+  `consumeStock` is the hook the upcoming POS will call.
 - **Nothing about the business is hardcoded anymore.** Modules read via core
   accessors: `bizServices()` (the service catalog → the wash `<select>`),
   `bizPayMethods()` (the payment selector everywhere), `bizCurrency()` (via
