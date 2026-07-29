@@ -1,0 +1,32 @@
+/* layout.css — App shell: header, nav, main, screens (extracted from index.html) */
+  .app{max-width:1180px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column}
+  header.top{background:linear-gradient(120deg,var(--brand) 0%,var(--brand-2) 100%);color:#fff;
+    padding:16px 20px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;position:sticky;top:0;z-index:20}
+  .brand{display:flex;align-items:center;gap:12px;margin-inline-end:auto}
+  .logo{width:42px;height:42px;border-radius:12px;background:rgba(255,255,255,.16);display:grid;place-items:center;flex:none}
+  .logo svg{width:24px;height:24px}
+  .brand h1{font-size:1.12rem;font-weight:800;margin:0;letter-spacing:-.2px}
+  .brand p{margin:2px 0 0;font-size:.74rem;opacity:.82;font-weight:500}
+  .cur-chip{background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.28);color:#fff;
+    border-radius:999px;padding:8px 16px;font-size:.82rem;font-weight:700}
+
+  .layout{display:flex;flex:1;min-height:0}
+  nav.side{width:212px;flex:none;padding:18px 12px;display:flex;flex-direction:column;gap:4px;
+    border-inline-start:1px solid var(--line);background:var(--soft)}
+  .nav-btn{display:flex;align-items:center;gap:11px;padding:11px 13px;border:none;background:transparent;
+    border-radius:12px;color:var(--muted);font-size:.92rem;font-weight:600;text-align:start;width:100%;
+    transition:background .15s,color .15s;position:relative}
+  .nav-btn svg{width:20px;height:20px;flex:none}
+  .nav-btn:hover{background:var(--soft-hover);color:var(--ink)}
+  .nav-btn.active{background:var(--brand);color:#fff;box-shadow:var(--shadow)}
+  .nav-badge{margin-inline-start:auto;background:var(--unpaid);color:#fff;font-size:.7rem;font-weight:700;
+    min-width:20px;height:20px;border-radius:999px;display:grid;place-items:center;padding:0 5px}
+  .nav-btn.active .nav-badge{background:rgba(255,255,255,.28)}
+
+  main{flex:1;min-width:0;padding:22px;overflow:auto}
+  .screen{animation:fade .25s ease}
+  @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  .screen-head{display:flex;align-items:baseline;gap:12px;margin:0 0 18px}
+  .screen-head h2{font-size:1.35rem;font-weight:800;margin:0}
+  .screen-head span{color:var(--muted);font-size:.86rem;font-weight:500}
+

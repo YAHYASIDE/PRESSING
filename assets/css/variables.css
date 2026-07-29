@@ -1,0 +1,15 @@
+/* variables.css — Design tokens (CSS custom properties) (extracted from index.html) */
+  :root{
+    --bg:#eef3f7; --surface:#ffffff; --ink:#152534; --muted:#5c6f7e; --line:#dbe4ec;
+    --brand:#12507c; --brand-2:#1c6ea4; --teal:#2e7d6e;
+    --wash:#d98a00; --wash-bg:#fdf1de;
+    --ready:#1f9d63; --ready-bg:#e4f6ec;
+    --done:#64748b; --done-bg:#eef2f6;
+    --unpaid:#d64545; --unpaid-bg:#fbeaea;
+    --paid:#1f9d63; --paid-bg:#e4f6ec;
+    --shadow:0 1px 2px rgba(21,37,52,.06), 0 8px 24px rgba(21,37,52,.06);
+    --radius:16px;
+    --soft:#f1f6fa; --soft-hover:#e8eff5; --input:#f7fafc; --chip:#e9f0f6;
+    --info-bg:#eaf3fb; --info-line:#cfe1f3; --info-ink:#1c6ea4;
+  }
+  *{box-sizing:border-box}
