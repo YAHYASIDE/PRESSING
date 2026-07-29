@@ -58,12 +58,19 @@ function repSalesTab(){
 function repCustomersTab(){
   const seg=App.core.repCustomerSegments();
   const top=App.core.repTopCustomers(10);
+  const k=App.core.perfKpis();
   return `
     <div class="acc-kpis">
       ${acctKpi(seg.total,"إجمالي الزبائن","k-cash")}
       ${acctKpi(seg.repeat,"متكررون","k-rev")}
       ${acctKpi(seg.inactive,"خاملون (30ي)","k-net")}
       ${acctKpi(seg.lost,"مفقودون (90ي)","k-loss")}
+    </div>
+    <div class="acc-kpis">
+      ${acctKpi(money(k.avgTicket),"متوسط الفاتورة","k-net")}
+      ${acctKpi(money(k.clv),"قيمة العميل (CLV)","k-rev")}
+      ${acctKpi(k.repeatRate+"%","نسبة التكرار","k-cash")}
+      ${acctKpi(k.activeRate+"%","نسبة النشطين","k-net")}
     </div>
     <div class="acc-card"><div class="acc-card-t">أفضل الزبائن إنفاقًا</div>${repHBar(top,"rev",i=>`${money(i.rev)} · ${i.visits} زيارة`)}</div>
     <button class="mini rep-export" data-rep-export="customers">⬇️ تصدير CSV</button>`;

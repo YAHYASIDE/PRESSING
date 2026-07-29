@@ -1,0 +1,45 @@
+/* industry.css — loyalty tiers, digital inspection, pickup system. */
+
+/* loyalty tier badges */
+.tier-badge{ font-size: .62rem; font-weight: 800; color: #fff; border-radius: 999px; padding: 2px 8px; white-space: nowrap; vertical-align: middle; }
+.tier-vip{ background:#7a5cff; } .tier-silver{ background:#8b98a6; } .tier-gold{ background:#e0a800; } .tier-diamond{ background:#3aa0e0; }
+
+/* inspection summary chips (operation details) */
+.insp-sum{ display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.insp-chip{ font-size: .72rem; font-weight: 700; border-radius: 999px; padding: 3px 9px; background: var(--soft); border: 1px solid var(--line); }
+.insp-chip.good{ background: var(--ready-bg); color: var(--ready); border-color: transparent; }
+.insp-chip.fair{ background: var(--wash-bg); color: var(--wash); border-color: transparent; }
+.insp-chip.damaged{ background: var(--unpaid-bg); color: var(--unpaid); border-color: transparent; }
+
+/* inspection form (modal) */
+.insp-grid{ display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px; }
+.insp-item{ display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.insp-item-l{ font-weight: 800; font-size: .88rem; flex: none; min-width: 64px; }
+.insp-conds{ display: flex; gap: 5px; flex: 1; }
+.insp-cond{ flex: 1; padding: 8px 4px; border-radius: 9px; border: 1.5px solid var(--line); background: var(--surface); font-weight: 800; font-size: .76rem; cursor: pointer; color: var(--muted); }
+.insp-cond.good.on{ border-color: var(--ready); background: var(--ready-bg); color: var(--ready); }
+.insp-cond.fair.on{ border-color: var(--wash); background: var(--wash-bg); color: var(--wash); }
+.insp-cond.damaged.on{ border-color: var(--unpaid); background: var(--unpaid-bg); color: var(--unpaid); }
+.insp-fuel{ display: flex; gap: 6px; flex-wrap: wrap; }
+.insp-fuel-b{ flex: 1; padding: 9px 4px; border-radius: 9px; border: 1.5px solid var(--line); background: var(--surface); font-weight: 700; font-size: .76rem; cursor: pointer; }
+.insp-fuel-b.on{ border-color: var(--brand); background: var(--chip); color: var(--brand); }
+.insp-sigs{ display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 8px; }
+@media (max-width:420px){ .insp-sigs{ grid-template-columns: 1fr; } }
+.insp-sig{ display: flex; flex-direction: column; gap: 6px; }
+.insp-sig label{ font-size: .76rem; font-weight: 700; color: var(--muted); }
+.sig-canvas{ width: 100%; height: 110px; border: 1.5px dashed var(--line); border-radius: 10px; background: #fff; touch-action: none; cursor: crosshair; }
+
+/* pickup system (operation details) */
+.pickup-box{ display: flex; align-items: center; gap: 14px; background: var(--soft); border-radius: 12px; padding: 12px 14px; }
+.pickup-code{ flex: 1; display: flex; flex-direction: column; }
+.pickup-code span{ font-size: .72rem; color: var(--muted); font-weight: 700; }
+.pickup-code b{ font-size: 2rem; font-weight: 800; letter-spacing: 4px; color: var(--brand); }
+.pickup-qr .qr-svg{ width: 96px; height: 96px; }
+.pickup-done{ text-align: center; font-weight: 800; color: var(--ready); background: var(--ready-bg); border-radius: 10px; padding: 12px; }
+
+/* inspection report (receipt-style print) */
+.insp-r-good{ color:#1f9d55; } .insp-r-fair{ color:#c98a00; } .insp-r-damaged{ color:#c0392b; }
+.insp-r-sigs{ display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 6px; }
+.insp-r-sigs span{ display: block; font-size: .72rem; color: #666; font-weight: 700; margin-bottom: 4px; }
+.insp-r-sig{ width: 100%; height: 60px; object-fit: contain; border-bottom: 1px solid #ccc; }
+.insp-r-sigblank{ height: 60px; border-bottom: 1px solid #ccc; }

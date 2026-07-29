@@ -12,7 +12,7 @@ function crmList(){
     const bal=App.core.custBalance(c), visits=App.core.custVisitCount(c);
     return `<button type="button" class="crm-card" data-crm-open="${c.id}">
       <span class="crm-av">${(c.name||c.plate||'?').slice(0,1)}</span>
-      <span class="crm-c-main"><b>${c.name||"زبون"}</b><span>${c.plate||""}${c.phone?` · ${c.phone}`:""}</span></span>
+      <span class="crm-c-main"><b>${c.name||"زبون"} ${App.core.tierBadge(c)}</b><span>${c.plate||""}${c.phone?` · ${c.phone}`:""}</span></span>
       <span class="crm-c-side">${bal>0?`<span class="crm-owe">${money(bal)}</span>`:`<span class="crm-visits">${visits} زيارة</span>`}<i class="op-chev">›</i></span>
     </button>`; }).join("")
     : emptyState({icon:I.profit, title:q?"لا توجد نتائج":"لا يوجد زبائن بعد", sub:q?"جرّب اسمًا أو لوحة أخرى.":"يُضاف الزبائن تلقائيًا مع كل عملية أو فاتورة.", btn:"➕ إضافة زبون", btnAttr:'data-crm-new', btnClass:'big'});
@@ -80,7 +80,7 @@ function crmProfile(c){
     <div class="od-head"><button type="button" class="od-back" data-crm-back aria-label="رجوع">→</button><div class="od-htitle">${c.name||c.plate||"زبون"}</div><button class="icon-btn" data-crm-edit="${c.id}">✏️</button></div>
     <div class="crm-profile">
       <div class="crm-hero"><span class="crm-av big">${(c.name||c.plate||'?').slice(0,1)}</span>
-        <div class="crm-hero-main"><div class="crm-hero-name">${c.name||"زبون"}</div><div class="crm-hero-sub">${c.plate||""}${c.phone?` · ${c.phone}`:""}</div>${pref.length?`<div class="crm-pref">${pref.map(s=>`<span>${s}</span>`).join("")}</div>`:""}</div>
+        <div class="crm-hero-main"><div class="crm-hero-name">${c.name||"زبون"} ${App.core.tierBadge(c)}</div><div class="crm-hero-sub">${c.plate||""}${c.phone?` · ${c.phone}`:""}</div>${pref.length?`<div class="crm-pref">${pref.map(s=>`<span>${s}</span>`).join("")}</div>`:""}</div>
         ${c.phone?`<a class="wa-btn call-btn" href="tel:${c.phone}">📞</a>`:""}
       </div>
       <div class="acc-kpis crm-kpis">

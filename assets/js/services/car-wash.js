@@ -104,6 +104,7 @@
     if (o.timeline.length === 0) o.timeline.push({ stage: prev, at: Date.now() });
     if (stage !== prev) o.timeline.push({ stage: stage, at: Date.now() });
     if (stage === "delivered" && !o.deliveredDate) o.deliveredDate = iso(new Date());
+    if (stage === "ready" && App.services.generatePickup) App.services.generatePickup(o.id);   // pickup code when ready
     return { ok: true, op: o, stage: stage };
   };
 

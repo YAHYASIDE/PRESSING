@@ -6,6 +6,18 @@ platform for car wash, laundry, carpet cleaning, oil change and retail.
 
 ## SaaS v1.0 — Enterprise Edition (incremental)
 
+### Part 7 — Car-wash industry features
+- **Digital Vehicle Inspection** — a checklist (body, glass, lights, tyres,
+  interior, engine) with a good/fair/damaged scale, fuel level, damage notes and
+  **dual signatures** (customer + employee) captured on-canvas; generates a
+  printable inspection report.
+- **Pickup System** — a 4-digit pickup code + **QR** generated automatically when
+  an operation is ready; a verify-and-hand-over action.
+- **Loyalty Tiers** — automatic VIP → Silver → Gold → Diamond tiers by lifetime
+  spend, shown as badges on customer cards/profiles.
+- **Performance KPIs** — average ticket, customer lifetime value (CLV), repeat
+  rate and active rate on the Customers report.
+
 ### Part 6 — Reports, Analytics & Export
 - **Executive Reports** screen with sub-tabs: Financial (P&L, cash flow, balance
   sheet), Sales (invoices, payment methods, top products/services, cashiers),

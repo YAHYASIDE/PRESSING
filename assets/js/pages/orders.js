@@ -68,9 +68,21 @@ function screenOpDetail(){
       </div>
       ${sec("معلومات الزبون", row("اللوحة", o.plate||"—")+row("الهاتف", o.phone?`+${o.country||"222"} ${o.phone}`:"—")+((loyaltyEnabled()&&cust)?row("الولاء", `${loyaltyStatus(cust)} · ${cust.totalWashes} غسلة`):"")+(ph?`<div class="od-contact"><a class="wa-btn call-btn" href="tel:${ph}">📞 اتصال</a><button type="button" class="wa-btn" data-carwa="${o.id}">${svg(I.whatsapp)} واتساب</button></div>`:""))}
       ${sec("معلومات المركبة", row("النوع", o.vehicle)+row("الخدمة", o.wash||"—")+row("استلمها", o.by||"—")+(o.assignedTo?row("المُنفِّذ", o.assignedTo):""))}
+      ${sec("الفحص المبدئي", (function(){
+        const ins=App.core.inspectionSummary(o);
+        if(!ins) return `<div class="od-note">لم يُجرَ فحص بعد</div>`+(can('operate')?`<button type="button" class="mini" data-inspect="${o.id}">🔍 فحص المركبة</button>`:"");
+        const chips=INSPECTION_SECTIONS.map(s=>{ const v=(o.inspection.items||{})[s.k]; const c=INSPECTION_CONDITIONS.find(x=>x.k===v); return `<span class="insp-chip ${c?c.cls:''}">${s.label}${c?" · "+c.label:""}</span>`; }).join("");
+        return `<div class="insp-sum">${chips}</div>${ins.fuel?row("الوقود",(FUEL_LEVELS.find(f=>f.k===ins.fuel)||{}).label||ins.fuel):""}${ins.damaged?row("مناطق تالفة",ins.damaged):""}${o.inspection.notes?`<div class="od-note">${o.inspection.notes}</div>`:""}<div class="od-manage">${can('operate')?`<button type="button" class="mini" data-inspect="${o.id}">✏️ تعديل الفحص</button>`:""}<button type="button" class="mini" data-inspect-report="${o.id}">🧾 تقرير الفحص</button></div>`;
+      })())}
       ${hasPhotos?sec("صور قبل / بعد", `<div class="op-photos">${(o.photosBefore&&o.photosBefore.length)?`<div class="ba"><span class="ba-lbl">قبل</span>${recThumbs(o.photosBefore)}</div>`:""}${(o.photosAfter&&o.photosAfter.length)?`<div class="ba"><span class="ba-lbl">بعد</span>${recThumbs(o.photosAfter)}</div>`:""}</div>${o.phone?`<button type="button" class="mini" data-carphotos="${o.id}">مشاركة الصور عبر واتساب</button>`:""}`):sec("صور قبل / بعد","<div class=\"od-note\">لا توجد صور</div>")}
       ${sec("الخط الزمني", carStepper(o)+opTimelineHtml(o))}
       ${sec("الدفع", row("السعر", money(o.price))+row("الحالة", o.paid?"مدفوع":"غير مدفوع")+(pm?row("الطريقة", pm):"")+((o.paid===false&&can('collect'))?`<button type="button" class="mini op-pay" data-carpay="${o.id}">تحصيل الدفع</button>`:""))}
+      ${(cur==="ready"||cur==="delivered"||o.pickupCode)?sec("الاستلام", (function(){
+        if(!o.pickupCode && App.services.generatePickup) App.services.generatePickup(o.id);
+        if(o.pickedUp) return `<div class="pickup-done">✓ تم تسليم المركبة${o.pickedUpAt?` · ${ymd(o.pickedUpAt)} ${timeStr(o.pickedUpAt)}`:""}</div>`;
+        const qr=(App.ui&&App.ui.qrSVG)?App.ui.qrSVG("PICKUP|"+(o.no||"")+"|"+(o.pickupCode||""),{size:104}):"";
+        return `<div class="pickup-box"><div class="pickup-code"><span>رمز الاستلام</span><b>${o.pickupCode||"—"}</b></div><div class="pickup-qr">${qr}</div></div><div class="od-note">أعطِ الزبون هذا الرمز أو رمز QR لاستلام مركبته.</div>${can('collect')?`<button type="button" class="mini" data-pickup-verify="${o.id}">تأكيد الاستلام بالرمز</button>`:""}`;
+      })()):""}
       ${sec("ملاحظات", `<div class="od-note">${o.note||"—"}</div>`+(can('operate')?`<div class="od-manage"><button type="button" class="icon-btn" data-edit-car="${o.id}">✏️ تعديل</button><button type="button" class="icon-btn cancel-btn ${o.cancelled?'on':''}" data-cancel-car="${o.id}">🚫 ${o.cancelled?'إلغاء الإلغاء':'إلغاء العملية'}</button>${can('delete')?`<button type="button" class="icon-btn" data-del-car="${o.id}">${svg(I.trash)} حذف</button>`:""}</div>`:""))}
       <div class="od-spacer"></div>
     </div>
@@ -287,4 +299,25 @@ function screenCarpets(){
 
 
 /* ---- Commit 4: namespace registration ---- */
-Object.assign(App.pages, { screenCars, screenCarpets, screenOpDetail, carStageKey, carStepper, carOpCard, opTimelineHtml });
+/* printable digital-inspection report (rendered into the receipt modal) */
+function inspectionReportHTML(o){
+  const ins=o.inspection; if(!ins) return "";
+  const b=state.business||{};
+  const rows=INSPECTION_SECTIONS.map(s=>{ const c=INSPECTION_CONDITIONS.find(x=>x.k===(ins.items||{})[s.k]); return `<div class="rc-row"><span>${s.label}</span><b class="insp-r-${c?c.cls:''}">${c?c.label:"—"}</b></div>`; }).join("");
+  const fuel=(FUEL_LEVELS.find(f=>f.k===ins.fuel)||{}).label||ins.fuel||"—";
+  return `<div class="receipt">
+    <div class="rc-head">${b.logo?`<img class="rc-logo" src="${b.logo}" alt="">`:""}<div class="rc-name">${bizName()}</div><div class="rc-phone">تقرير فحص المركبة</div></div>
+    <div class="rc-meta"><span>${o.no||""}</span><span>${ymd(ins.date)} ${timeStr(ins.date)}</span></div>
+    <div class="rc-meta"><span>${o.vehicle} · ${o.plate||""}</span><span>${o.phone||""}</span></div>
+    <div class="rc-sep"></div>${rows}
+    <div class="rc-row"><span>مستوى الوقود</span><b>${fuel}</b></div>
+    ${ins.notes?`<div class="rc-note">${ins.notes}</div>`:""}
+    <div class="rc-sep"></div>
+    <div class="insp-r-sigs">
+      <div><span>توقيع الزبون</span>${ins.custSig?`<img class="insp-r-sig" src="${ins.custSig}" alt="">`:`<div class="insp-r-sigblank"></div>`}</div>
+      <div><span>توقيع الموظف</span>${ins.empSig?`<img class="insp-r-sig" src="${ins.empSig}" alt="">`:`<div class="insp-r-sigblank"></div>`}</div>
+    </div>
+    <div class="rc-foot">${bizName()} · ${ymd(ins.date)}</div>
+  </div>`;
+}
+Object.assign(App.pages, { screenCars, screenCarpets, screenOpDetail, carStageKey, carStepper, carOpCard, opTimelineHtml, inspectionReportHTML });

@@ -77,6 +77,7 @@ const state = {
   crmSel: null, crmSearch: "", crmTab: "timeline",  /* CRM screen state */
   audit: [],                     /* audit trail (append-only) */
   repTab: "financial",           /* Reports screen sub-tab */
+  pickupSeq: 1000,
   features: defaultFeatures(),   /* Release: optional feature modules (loyalty, …) */
   customers:{},
   meters:[],

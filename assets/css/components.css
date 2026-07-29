@@ -256,6 +256,10 @@
     body.printing-receipt *{visibility:hidden}
     body.printing-receipt #receiptModal, body.printing-receipt #receiptModal *{visibility:visible}
     body.printing-receipt #receiptModal{position:absolute;inset:0;display:block;background:#fff;padding:0}
+    body.printing-doc *{visibility:hidden}
+    body.printing-doc #docModal, body.printing-doc #docModal *{visibility:visible}
+    body.printing-doc #docModal{position:absolute;inset:0;display:block;background:#fff;padding:0}
+    body.printing-doc .modal-actions{display:none!important}
     body.printing-receipt #receiptBox{box-shadow:none;border:none;max-width:none;width:100%}
     body.printing-receipt .no-print{display:none!important}
     body.printing-report header.top, body.printing-report nav.side, body.printing-report #toast{display:none!important}

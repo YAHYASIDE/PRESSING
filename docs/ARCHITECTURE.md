@@ -202,6 +202,18 @@ A layer may use the layers below it and never the layers above it.
   (UTF-8 BOM download); per-report CSV export and print.
 - Docs: `CHANGELOG.md`, `docs/USER_GUIDE.md`, `docs/ADMIN_GUIDE.md`,
   `docs/API_GUIDE.md`.
+
+#### Car-wash industry features (SaaS v1.0)
+- `config/industry.js` — inspection sections + condition scale, fuel levels,
+  loyalty tiers. `core/industry.js` — `custTier`/`tierBadge`, `inspectionSummary`,
+  `perfKpis` (avg ticket / CLV / repeat rate). `services/industry.js` —
+  `saveInspection`, `generatePickup`, `verifyPickup`.
+- **Digital inspection** lives on the car operation (`op.inspection`), edited in a
+  modal with on-canvas signatures (`bindSignature`), and printed via a persistent
+  `#docModal` (route both cross-cutting print docs through it).
+- **Pickup code** is generated in `setCarStage` when an op reaches *ready*; the
+  Operation Details screen shows the code + QR and a verify action.
+- Loyalty tiers are derived from `custRevenue` — no stored tier field.
 - **Nothing about the business is hardcoded anymore.** Modules read via core
   accessors: `bizServices()` (the service catalog → the wash `<select>`),
   `bizPayMethods()` (the payment selector everywhere), `bizCurrency()` (via

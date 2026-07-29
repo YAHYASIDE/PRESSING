@@ -125,6 +125,11 @@ function bindScreen(){
   document.querySelectorAll("[data-sub-back]").forEach(b=>b.onclick=()=>{ state.tab="dashboard"; render(); });
   document.querySelectorAll("[data-plan]").forEach(b=>b.onclick=()=>{ toast("قريبًا — بوّابة الدفع قيد التفعيل"); });
 
+  // Industry — digital inspection + pickup
+  document.querySelectorAll("[data-inspect]").forEach(b=>b.onclick=()=>openInspection(b.dataset.inspect));
+  document.querySelectorAll("[data-inspect-report]").forEach(b=>b.onclick=()=>openInspectionReport(b.dataset.inspectReport));
+  document.querySelectorAll("[data-pickup-verify]").forEach(b=>b.onclick=()=>{ const id=b.dataset.pickupVerify; const code=prompt("أدخل رمز الاستلام الذي بحوزة الزبون:"); if(code==null) return; const r=App.services.verifyPickup(id,code); if(r.ok){ toast("✓ تم تأكيد استلام المركبة"); render(); } else toast(r.error==="mismatch"?"الرمز غير صحيح":"تعذّر التحقق"); });
+
   // Release 4 — navigation to / from the Operation Details screen
   document.querySelectorAll("[data-op-open]").forEach(b=>b.onclick=()=>{ state.opDetail=b.dataset.opOpen; render(); window.scrollTo(0,0); });
   document.querySelectorAll("[data-op-back]").forEach(b=>b.onclick=()=>{ state.opDetail=null; render(); });
@@ -515,6 +520,51 @@ function openInvSheet(mode, id){
     if(res&&res.ok){ sheet.classList.remove("open"); toast("تم الحفظ"); render(); }
     else toast("تعذّر الحفظ — تحقق من القيمة");
   };
+}
+
+/* Digital inspection — checklist + signatures (Industry features). */
+function bindSignature(id, existing){
+  const cv=document.getElementById(id); if(!cv) return {data:()=>"",clear:()=>{}};
+  const ctx=cv.getContext("2d"); ctx.lineWidth=2.2; ctx.lineCap="round"; ctx.lineJoin="round"; ctx.strokeStyle="#152534";
+  let drawing=false, dirty=false;
+  if(existing){ const img=new Image(); img.onload=()=>{ try{ctx.drawImage(img,0,0,cv.width,cv.height);}catch(e){} }; img.src=existing; dirty=true; }
+  const pos=(e)=>{ const r=cv.getBoundingClientRect(); return { x:(e.clientX-r.left)*(cv.width/r.width), y:(e.clientY-r.top)*(cv.height/r.height) }; };
+  cv.addEventListener("pointerdown",e=>{ drawing=true; dirty=true; const p=pos(e); ctx.beginPath(); ctx.moveTo(p.x,p.y); cv.setPointerCapture&&cv.setPointerCapture(e.pointerId); e.preventDefault(); });
+  cv.addEventListener("pointermove",e=>{ if(!drawing)return; const p=pos(e); ctx.lineTo(p.x,p.y); ctx.stroke(); e.preventDefault(); });
+  cv.addEventListener("pointerup",()=>{ drawing=false; });
+  cv.addEventListener("pointerleave",()=>{ drawing=false; });
+  return { data:()=>dirty?cv.toDataURL("image/png"):"", clear:()=>{ ctx.clearRect(0,0,cv.width,cv.height); dirty=false; } };
+}
+function openInspection(opId){
+  const o=state.carOps.find(x=>x.id===opId); if(!o) return;
+  const ins=o.inspection||{items:{},fuel:"",notes:"",custSig:"",empSig:""};
+  const body=document.getElementById("inspectBody"); if(!body) return;
+  body.innerHTML=`
+    <div class="insp-grid">${INSPECTION_SECTIONS.map(s=>`
+      <div class="insp-item"><div class="insp-item-l">${s.label}</div>
+        <div class="insp-conds">${INSPECTION_CONDITIONS.map(c=>`<button type="button" class="insp-cond ${c.cls} ${(ins.items||{})[s.k]===c.k?'on':''}" data-insp-sec="${s.k}" data-insp-cond="${c.k}">${c.label}</button>`).join("")}</div>
+      </div>`).join("")}</div>
+    <div class="field"><label>مستوى الوقود</label><div class="insp-fuel">${FUEL_LEVELS.map(f=>`<button type="button" class="insp-fuel-b ${ins.fuel===f.k?'on':''}" data-insp-fuel="${f.k}">${f.label}</button>`).join("")}</div></div>
+    <div class="field"><label>ملاحظات / خدوش وأضرار</label><textarea id="inspNotes" rows="2" placeholder="صف أي خدوش أو أضرار…">${ins.notes||""}</textarea></div>
+    <div class="insp-sigs">
+      <div class="insp-sig"><label>توقيع الزبون</label><canvas id="sigCust" class="sig-canvas" width="300" height="110"></canvas><button type="button" class="mini" data-sig-clear="sigCust">مسح</button></div>
+      <div class="insp-sig"><label>توقيع الموظف</label><canvas id="sigEmp" class="sig-canvas" width="300" height="110"></canvas><button type="button" class="mini" data-sig-clear="sigEmp">مسح</button></div>
+    </div>`;
+  document.getElementById("inspectModal").style.display="flex";
+  const draft={ items:Object.assign({},ins.items), fuel:ins.fuel||"" };
+  body.querySelectorAll("[data-insp-cond]").forEach(b=>b.onclick=()=>{ draft.items[b.dataset.inspSec]=b.dataset.inspCond; body.querySelectorAll(`[data-insp-sec="${b.dataset.inspSec}"]`).forEach(x=>x.classList.toggle("on",x===b)); });
+  body.querySelectorAll("[data-insp-fuel]").forEach(b=>b.onclick=()=>{ draft.fuel=b.dataset.inspFuel; body.querySelectorAll("[data-insp-fuel]").forEach(x=>x.classList.toggle("on",x===b)); });
+  const sigs={ sigCust:bindSignature("sigCust",ins.custSig), sigEmp:bindSignature("sigEmp",ins.empSig) };
+  body.querySelectorAll("[data-sig-clear]").forEach(b=>b.onclick=()=>sigs[b.dataset.sigClear].clear());
+  document.getElementById("inspSave").onclick=()=>{
+    App.services.saveInspection(opId, { items:draft.items, fuel:draft.fuel, notes:document.getElementById("inspNotes").value, custSig:sigs.sigCust.data(), empSig:sigs.sigEmp.data() });
+    document.getElementById("inspectModal").style.display="none"; toast("تم حفظ الفحص"); render();
+  };
+}
+function openInspectionReport(opId){
+  const o=state.carOps.find(x=>x.id===opId); if(!o||!o.inspection){ toast("لا يوجد فحص محفوظ"); return; }
+  document.getElementById("docBody").innerHTML=inspectionReportHTML(o);
+  document.getElementById("docModal").style.display="flex";
 }
 
 /* CRM — customer / vehicle / oil-change sheet (context-driven). */
@@ -916,6 +966,9 @@ document.getElementById("setSave").onclick=()=>{
   save(); document.getElementById("settingsModal").style.display="none"; toast("تم حفظ الإعدادات");
 };
 document.getElementById("receiptClose").onclick=()=>document.getElementById("receiptModal").style.display="none";
+{ const ic=document.getElementById("inspClose"); if(ic) ic.onclick=()=>document.getElementById("inspectModal").style.display="none"; }
+{ const dc=document.getElementById("docClose"); if(dc) dc.onclick=()=>document.getElementById("docModal").style.display="none";
+  const dp=document.getElementById("docPrint"); if(dp) dp.onclick=()=>{ document.body.classList.add("printing-doc"); window.print(); setTimeout(()=>document.body.classList.remove("printing-doc"),400); }; }
 document.getElementById("receiptPrint").onclick=printReceipt;
 (function(){
   // نعرف متى فتح التطبيق نفسه واتساب/المشاركة، حتى لا يُقفل عند العودة القريبة منها
