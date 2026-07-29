@@ -1,0 +1,98 @@
+/* cars.css — Release 2: car reception form + operational workflow board */
+
+/* ---- two-column layout: reception form + operations board ---- */
+.cars-layout { display: grid; grid-template-columns: 380px 1fr; gap: 16px; align-items: start; }
+.ops-board { min-width: 0; }
+.loyalty-panel { margin-top: 18px; }
+
+/* ---- sectioned reception form ---- */
+.reception .rec-title { margin: 0 0 14px; }
+.form-sec { padding: 15px 0; border-top: 1px solid var(--line); }
+.form-sec:first-of-type { border-top: none; padding-top: 2px; }
+.form-sec-title { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: .92rem; color: var(--brand); margin-bottom: 11px; }
+.form-sec-title svg { width: 18px; height: 18px; }
+.ba-strips { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.pay-toggle { display: flex; align-items: center; gap: 9px; font-size: .85rem; font-weight: 600; cursor: pointer; margin-top: 8px; padding: 11px 12px; background: var(--soft); border-radius: 11px; }
+.pay-toggle input { width: 18px; height: 18px; flex: none; }
+#carNote { width: 100%; padding: 11px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--input); color: var(--ink); font-family: inherit; font-size: .95rem; resize: vertical; }
+.btn-receive { width: 100%; margin-top: 10px; padding: 14px; font-size: 1.02rem; font-weight: 800; }
+
+/* ---- operations board head + stage filters ---- */
+.ops-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+.ops-head h3 { margin: 0; }
+.ops-total { font-size: .85rem; color: var(--muted); white-space: nowrap; }
+.ops-total b { color: var(--brand); }
+.ops-filters { margin: 10px 0 14px; flex-wrap: wrap; }
+.chip-n { display: inline-grid; place-items: center; min-width: 18px; height: 18px; border-radius: 999px; background: rgba(0,0,0,.08); font-size: .68rem; font-weight: 800; margin-inline-start: 5px; padding: 0 4px; }
+.chip.on .chip-n { background: rgba(255,255,255,.3); }
+
+/* ---- operations grid + cards ---- */
+.ops-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; }
+.op-card {
+  position: relative; background: var(--surface); border: 1px solid var(--line);
+  border-radius: 16px; box-shadow: var(--shadow); padding: 14px 14px 12px 16px;
+  display: flex; flex-direction: column; gap: 10px; overflow: hidden;
+  animation: dashUp .4s cubic-bezier(.22,.61,.36,1) both;
+}
+.op-card::before { content: ""; position: absolute; inset-inline-start: 0; top: 0; bottom: 0; width: 4px; background: var(--st-c, var(--brand)); }
+.op-card.st-received  { --st-c: var(--brand-2); }
+.op-card.st-waiting   { --st-c: var(--wash); }
+.op-card.st-washing   { --st-c: var(--brand); }
+.op-card.st-drying    { --st-c: var(--teal); }
+.op-card.st-ready     { --st-c: var(--ready); }
+.op-card.st-delivered { --st-c: var(--done); }
+.op-card.cancelled { opacity: .58; }
+
+.op-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.op-no { font-weight: 800; font-size: .9rem; color: var(--brand); }
+.op-badge { padding: 3px 11px; border-radius: 999px; font-size: .72rem; font-weight: 800; color: #fff; background: var(--st-c, var(--brand)); }
+.op-time { color: var(--muted); font-size: .75rem; }
+.op-price { margin-inline-start: auto; font-weight: 800; }
+.op-unpaid { color: var(--unpaid); font-size: .7rem; }
+
+.op-main { display: flex; gap: 12px; align-items: center; }
+.op-veh-img { width: 52px; height: 52px; border-radius: 12px; object-fit: cover; flex: none; }
+.op-veh-ic { width: 52px; height: 52px; border-radius: 12px; background: var(--soft); display: grid; place-items: center; flex: none; }
+.op-veh-ic svg { width: 26px; height: 26px; }
+.op-info { min-width: 0; }
+.op-veh { font-weight: 700; }
+.op-sub { font-size: .8rem; color: var(--muted); margin-top: 2px; }
+.op-note { font-size: .78rem; color: var(--ink); background: var(--soft); border-radius: 8px; padding: 6px 9px; margin-top: 7px; }
+.op-photos { display: flex; gap: 14px; flex-wrap: wrap; }
+.op-photos .ba { display: flex; align-items: center; gap: 6px; }
+.op-photos .ba-lbl { font-size: .7rem; color: var(--muted); font-weight: 700; }
+
+/* ---- 6-stage stepper ---- */
+.op-steps { display: flex; gap: 0; margin: 4px 0; overflow-x: auto; padding-bottom: 2px; }
+.op-step { flex: 1 0 auto; min-width: 50px; background: none; border: none; display: flex; flex-direction: column; align-items: center; gap: 5px; position: relative; padding: 2px; cursor: pointer; }
+.op-step-dot { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; background: var(--soft); color: var(--muted); font-weight: 800; font-size: .78rem; border: 2px solid var(--line); z-index: 1; transition: .2s; }
+.op-step-lbl { font-size: .62rem; font-weight: 700; line-height: 1.1; text-align: center; max-width: 62px; color: var(--muted); }
+.op-step::before { content: ""; position: absolute; top: 13px; right: 50%; width: 100%; height: 2px; background: var(--line); z-index: 0; }
+.op-step:first-child::before { display: none; }
+.op-step.done .op-step-dot { background: var(--ready); border-color: var(--ready); color: #fff; }
+.op-step.done::before { background: var(--ready); }
+.op-step.active .op-step-dot { background: var(--brand); border-color: var(--brand); color: #fff; box-shadow: 0 0 0 4px rgba(18,80,124,.15); }
+.op-step.active .op-step-lbl { color: var(--ink); }
+
+/* ---- action row ---- */
+.op-acts { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; border-top: 1px solid var(--line); padding-top: 10px; }
+.btn-advance {
+  margin-inline-end: auto; border: none; border-radius: 10px; padding: 8px 14px;
+  font-weight: 800; font-size: .82rem; cursor: pointer; color: #fff;
+  background: linear-gradient(135deg, var(--brand), var(--brand-2));
+  box-shadow: 0 3px 10px rgba(18,80,124,.22); transition: transform .15s, box-shadow .15s;
+}
+.btn-advance:hover { transform: translateY(-1px); box-shadow: 0 6px 14px rgba(18,80,124,.28); }
+.op-pay { background: var(--ready-bg); color: var(--ready); border-color: #bfe6c8; font-weight: 800; }
+
+/* ---- responsive ---- */
+@media (max-width: 900px) {
+  .cars-layout { grid-template-columns: 1fr; }
+  .ops-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 420px) {
+  .op-step-lbl { display: none; }
+  .op-steps { gap: 6px; }
+  .ba-strips { grid-template-columns: 1fr; }
+}
+@media (prefers-reduced-motion: reduce) { .op-card { animation: none; } }

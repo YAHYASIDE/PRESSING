@@ -1,37 +1,63 @@
 /* pages/orders.js — Operations screens: car washes + laundry orders (extracted from index.html) */
-function screenCars(){
-  const oq=(state.carSearch||"").trim();
-  const _t=ymd(new Date());
-  const periodTxt = (state.dateFrom===state.dateTo) ? (state.dateFrom===_t?"اليوم":state.dateFrom) : `${state.dateFrom} ← ${state.dateTo}`;
-  const listSrc = oq ? state.carOps.filter(o=>((o.no||"").toLowerCase().includes(oq.toLowerCase()))||((o.plate||"").includes(oq))).slice().reverse() : state.carOps.filter(o=>inRange(o.date)).slice().reverse();
-  const today=listSrc;
-  const total=carIncome(inRange);
-  const rows=today.length?today.map(o=>`
-    <div class="car-card ${o.cancelled?'cancelled':''}">
-      <div class="cc-top">
-        <span class="cc-no">${o.no||"-"}</span>
-        <span class="cc-time">${timeStr(o.date)}</span>
-        <span class="cc-price">${money(o.price)}</span>
+function carStageKey(o){ return o.stage || "delivered"; }   /* legacy ops (no stage) treated as completed */
+function carStepper(o){
+  const cur=carStageKey(o);
+  const idx=CAR_STAGES.findIndex(s=>s.k===cur);
+  return `<div class="op-steps">${CAR_STAGES.map((s,i)=>`
+    <button type="button" class="op-step ${i<idx?'done':i===idx?'active':''}" data-car-setstage="${o.id}" data-stage="${s.k}" title="${s.label}">
+      <span class="op-step-dot">${i<idx?'✓':i+1}</span><span class="op-step-lbl">${s.label}</span>
+    </button>`).join("")}</div>`;
+}
+function carOpCard(o){
+  const cur=carStageKey(o);
+  const st=CAR_STAGES.find(s=>s.k===cur)||CAR_STAGES[0];
+  const idx=CAR_STAGES.findIndex(s=>s.k===cur);
+  const next=(idx<CAR_STAGES.length-1)?CAR_STAGES[idx+1]:null;
+  const hasPhotos=(o.photosBefore&&o.photosBefore.length)||(o.photosAfter&&o.photosAfter.length);
+  return `
+    <div class="op-card st-${cur} ${o.cancelled?'cancelled':''}">
+      <div class="op-top">
+        <span class="op-no">${o.no||"-"}</span>
+        <span class="op-badge b-${cur}">${st.label}</span>
+        <span class="op-time">${timeStr(o.date)}</span>
+        <span class="op-price">${money(o.price)}${o.paid===false?' <b class="op-unpaid">دَين</b>':''}</span>
       </div>
-      <div class="cc-main">
-        ${VEH_IMG[o.vehicle]?`<img class="cc-img" src="${VEH_IMG[o.vehicle]}" alt="">`:`<span class="cc-ic">${svg(vehIcon(o.vehicle))}</span>`}
-        <div class="cc-info">
-          <div class="cc-veh"><b>${o.vehicle}</b>${o.cancelled?'<span class="badge badge-cancel">ملغى 🚫</span>':''}${o.free?'<span class="badge b-wash">مجاني 🎁</span>':''}${o.paid===false?'<span class="badge b-unpaid">غير مدفوع</span>':''}</div>
-          <div class="cc-sub">${o.wash}${o.plate?` • ${o.plate}`:""}${o.by?` • بواسطة ${o.by}`:""}</div>
+      <div class="op-main">
+        ${VEH_IMG[o.vehicle]?`<img class="op-veh-img" src="${VEH_IMG[o.vehicle]}" alt="">`:`<span class="op-veh-ic">${svg(vehIcon(o.vehicle))}</span>`}
+        <div class="op-info">
+          <div class="op-veh"><b>${o.vehicle}</b>${o.free?' <span class="badge b-wash">مجاني 🎁</span>':''}${o.cancelled?' <span class="badge badge-cancel">ملغى 🚫</span>':''}</div>
+          <div class="op-sub">${o.wash}${o.plate?` • ${o.plate}`:""}${o.phone?` • ${o.phone}`:""}${o.by?` • ${o.by}`:""}</div>
+          ${o.note?`<div class="op-note">📝 ${o.note}</div>`:""}
         </div>
       </div>
-      ${(o.photosBefore&&o.photosBefore.length)?`<div class="ba-thumbs"><span class="ba-lbl">قبل:</span>${recThumbs(o.photosBefore)}</div>`:""}
-      ${(o.photosAfter&&o.photosAfter.length)?`<div class="ba-thumbs"><span class="ba-lbl">بعد:</span>${recThumbs(o.photosAfter)}</div>`:""}
-      <div class="cc-acts">
-        ${o.paid===false?`<button class="mini" data-carpay="${o.id}" style="flex:none;background:var(--ready-bg);color:var(--ready);border-color:#bfe6c8;font-weight:800;padding:6px 12px">تحصيل الدفع</button>`:""}
-        ${((o.photosBefore&&o.photosBefore.length)||(o.photosAfter&&o.photosAfter.length))?`<button class="wa-btn photo-btn" data-carphotos="${o.id}" title="إرسال صور قبل/بعد">${svg(I.camera)}</button>`:""}
+      ${hasPhotos?`<div class="op-photos">${(o.photosBefore&&o.photosBefore.length)?`<div class="ba"><span class="ba-lbl">قبل</span>${recThumbs(o.photosBefore)}</div>`:""}${(o.photosAfter&&o.photosAfter.length)?`<div class="ba"><span class="ba-lbl">بعد</span>${recThumbs(o.photosAfter)}</div>`:""}</div>`:""}
+      ${carStepper(o)}
+      <div class="op-acts">
+        ${(next&&!o.cancelled)?`<button class="btn-advance" data-car-advance="${o.id}">${next.label} →</button>`:""}
+        ${o.paid===false?`<button class="mini op-pay" data-carpay="${o.id}">تحصيل الدفع</button>`:""}
+        ${hasPhotos?`<button class="wa-btn" data-carphotos="${o.id}" title="إرسال صور قبل/بعد">${svg(I.camera)}</button>`:""}
         ${o.phone?`<button class="wa-btn" data-carwa="${o.id}" title="واتساب الزبون">${svg(I.whatsapp)}</button>`:""}
         <button class="icon-btn" data-edit-car="${o.id}" title="تعديل">✏️</button>
         <button class="icon-btn cancel-btn ${o.cancelled?'on':''}" data-cancel-car="${o.id}" title="${o.cancelled?'إلغاء الإلغاء (مطوّل)':'إلغاء (اضغط مطوّلًا)'}">🚫</button>
         <button class="icon-btn" data-del-car="${o.id}" title="حذف">${svg(I.trash)}</button>
       </div>
-    </div>`).join("")
-    :`<div class="empty">${svg(I.empty)}${oq?"لا توجد نتائج لهذا الرقم/اللوحة.":"لا توجد عمليات في هذه الفترة."}</div>`;
+    </div>`;
+}
+function screenCars(){
+  const oq=(state.carSearch||"").trim();
+  const sf=state.carStageFilter||"all";
+  const _t=ymd(new Date());
+  const periodTxt = (state.dateFrom===state.dateTo) ? (state.dateFrom===_t?"اليوم":state.dateFrom) : `${state.dateFrom} ← ${state.dateTo}`;
+  const base = oq
+    ? state.carOps.filter(o=>((o.no||"").toLowerCase().includes(oq.toLowerCase()))||((o.plate||"").includes(oq)))
+    : state.carOps.filter(o=>inRange(o.date));
+  const counts={all:base.length}; CAR_STAGES.forEach(s=>counts[s.k]=base.filter(o=>carStageKey(o)===s.k).length);
+  const chips=[{k:"all",t:"الكل"}].concat(CAR_STAGES.map(s=>({k:s.k,t:s.label})))
+    .map(c=>`<button class="chip ${sf===c.k?'on':''}" data-carfilter="${c.k}">${c.t}${counts[c.k]?`<span class="chip-n">${counts[c.k]}</span>`:""}</button>`).join("");
+  const list=(sf==="all"?base:base.filter(o=>carStageKey(o)===sf)).slice().reverse();
+  const cards=list.length?list.map(carOpCard).join("")
+    :`<div class="empty" style="grid-column:1/-1">${svg(I.empty)}${oq?"لا توجد نتائج لهذا الرقم/اللوحة.":"لا توجد عمليات ضمن هذا التصنيف."}</div>`;
+  const total=carIncome(inRange);
   const wOpts=WASH_TYPES.map(w=>`<option value="${w}">${w}</option>`).join("");
   const vehBtns=Object.keys(state.vehiclePrices).map((v,i)=>`<button type="button" class="pick ${i===0?'on':''}" data-vpick="${v}">${VEH_IMG[v]?`<img class="pick-img" src="${VEH_IMG[v]}" alt="">`:svg(vehIcon(v))}<span>${v}</span></button>`).join("");
   const firstV=Object.keys(state.vehiclePrices)[0];
@@ -47,35 +73,52 @@ function screenCars(){
       <td style="text-align:left;white-space:nowrap">${c.phone?`<button class="wa-btn" data-wacust="${c.plate}" title="واتساب" style="width:28px;height:28px;display:inline-grid;vertical-align:middle">${svg(I.whatsapp)}</button> `:""}<button class="icon-btn" data-del-cust="${c.plate}" title="حذف">${svg(I.trash)}</button></td></tr>`).join("")
     :`<tr><td colspan="6"><div class="empty">${svg(I.empty)}لا يوجد زبائن محفوظون بعد — أضف لوحة عند حفظ عملية.</div></td></tr>`;
   return `
-    <div class="screen-head"><h2>مغسلة السيارات</h2><span>اختر نوع السيارة فيظهر سعره تلقائيًا</span></div>
-    <div class="cols">
-      <div class="panel car-sky">
-        <h3>عملية جديدة</h3>
-        <div class="field"><label>لوحة الأرقام (الزبون)</label><input id="carPlate" type="text" placeholder="رقم اللوحة" autocomplete="off"></div>
-        <div class="loyalty" id="loyaltyBox" style="display:none"></div>
-        <div class="field"><label>هاتف الزبون</label><div class="phone-row"><select id="carCountry" class="cc-select">${countryOpts()}</select><input id="carPhone" class="phone-inp" type="tel" inputmode="numeric" maxlength="9" placeholder="رقم الهاتف"></div></div>
-        <div class="field"><label>نوع السيارة</label>
+    <div class="screen-head"><h2>استقبال السيارات</h2><span>سجّل عملية جديدة وتابِع مراحل الغسيل</span></div>
+    <div class="cars-layout">
+      <div class="panel reception">
+        <h3 class="rec-title">استقبال سيارة جديدة</h3>
+        <div class="form-sec">
+          <div class="form-sec-title">${svg(I.worker)}<span>معلومات الزبون</span></div>
+          <div class="field"><label>لوحة الأرقام</label><input id="carPlate" type="text" placeholder="رقم اللوحة" autocomplete="off"></div>
+          <div class="loyalty" id="loyaltyBox" style="display:none"></div>
+          <div class="field"><label>هاتف الزبون</label><div class="phone-row"><select id="carCountry" class="cc-select">${countryOpts()}</select><input id="carPhone" class="phone-inp" type="tel" inputmode="numeric" maxlength="9" placeholder="رقم الهاتف"></div></div>
+        </div>
+        <div class="form-sec">
+          <div class="form-sec-title">${svg(I.car)}<span>معلومات المركبة</span></div>
           <div class="picker" id="vPicker">${vehBtns}</div>
           <input type="hidden" id="carVehicle" value="${firstV}">
         </div>
-        <div class="field"><label>نوع الغسيل</label><select id="carWash">${wOpts}</select></div>
-        <div class="field"><label>السعر</label><input id="carPrice" type="number" min="0" value="${state.vehiclePrices[firstV]}">
-          <div class="hint">آخر سعر تُدخله يصبح السعر الافتراضي لهذا النوع.</div></div>
-        <div class="field"><label>صور قبل الغسيل</label><div class="photos" id="carBeforeStrip"></div></div>
-        <div class="field"><label>صور بعد الغسيل</label><div class="photos" id="carAfterStrip"></div></div>
-        <div class="field"><label>التاريخ</label><input id="carDate" type="date" value="${ymd(new Date())}" max="${ymd(new Date())}"></div>
-        <label style="display:flex;align-items:center;gap:8px;font-size:.88rem;font-weight:600;margin:4px 0 12px;cursor:pointer"><input type="checkbox" id="carDeferred" style="width:18px;height:18px"> دفع مؤجّل (غير مدفوع — يُحصّل لاحقًا)</label>
-        <button class="btn-primary" id="carSave">حفظ العملية</button>
+        <div class="form-sec">
+          <div class="form-sec-title">${svg(I.drop)}<span>الخدمة</span></div>
+          <div class="field"><label>نوع الغسيل</label><select id="carWash">${wOpts}</select></div>
+        </div>
+        <div class="form-sec">
+          <div class="form-sec-title">${svg(I.wallet)}<span>الدفع</span></div>
+          <div class="field"><label>السعر</label><input id="carPrice" type="number" min="0" value="${state.vehiclePrices[firstV]}"><div class="hint">آخر سعر تُدخله يصبح الافتراضي لهذا النوع.</div></div>
+          <label class="pay-toggle"><input type="checkbox" id="carDeferred"> <span>دفع مؤجّل (دَين — يُحصّل لاحقًا)</span></label>
+        </div>
+        <div class="form-sec">
+          <div class="form-sec-title">${svg(I.camera)}<span>صور قبل / بعد</span></div>
+          <div class="ba-strips">
+            <div class="field"><label>قبل الغسيل</label><div class="photos" id="carBeforeStrip"></div></div>
+            <div class="field"><label>بعد الغسيل</label><div class="photos" id="carAfterStrip"></div></div>
+          </div>
+        </div>
+        <div class="form-sec">
+          <div class="form-sec-title">${svg(I.chart)}<span>ملاحظات</span></div>
+          <div class="field"><textarea id="carNote" rows="2" placeholder="ملاحظات إضافية عن الحالة أو الطلب (اختياري)"></textarea></div>
+          <div class="field"><label>التاريخ</label><input id="carDate" type="date" value="${ymd(new Date())}" max="${ymd(new Date())}"></div>
+        </div>
+        <button class="btn-primary btn-receive" id="carSave">استلام السيارة</button>
       </div>
-      <div class="panel car-sky">
-        <h3>${oq?"نتائج البحث":`عمليات ${periodTxt}`}</h3>
-        ${oq?"":`<div class="hint" style="margin-bottom:10px">العرض حسب التاريخ المختار في الرئيسية (${periodTxt}). غيّره من فلتر الرئيسية.</div>`}
-        <input class="search-inp" id="carSearch" type="text" placeholder="بحث برقم الغسلة (S57…) أو اللوحة" value="${oq}">
-        <div class="car-list">${rows}</div>
-        ${oq?"":`<div class="sum-row"><span>إجمالي دخل السيارات (${periodTxt})</span><span class="big">${money(total)}</span></div>`}
+      <div class="ops-board">
+        <div class="ops-head"><h3>${oq?"نتائج البحث":`العمليات — ${periodTxt}`}</h3>${oq?"":`<span class="ops-total">دخل: <b>${money(total)}</b></span>`}</div>
+        <input class="search-inp" id="carSearch" type="text" placeholder="بحث برقم العملية أو اللوحة" value="${oq}">
+        <div class="chips ops-filters">${chips}</div>
+        <div class="ops-grid">${cards}</div>
       </div>
     </div>
-    <div class="panel" style="margin-top:18px">
+    <div class="panel loyalty-panel">
       <h3>بطاقات الولاء</h3>
       <input class="search-inp" id="custSearch" type="text" placeholder="بحث بلوحة الزبون" value="${cq}">
       <div class="tbl-wrap"><table class="tbl"><thead><tr><th>اللوحة</th><th>الهاتف</th><th>الأختام</th><th>الغسلات</th><th>مجانية</th><th></th></tr></thead>
@@ -156,4 +199,4 @@ function screenCarpets(){
 
 
 /* ---- Commit 4: namespace registration ---- */
-Object.assign(App.pages, { screenCars, screenCarpets });
+Object.assign(App.pages, { screenCars, screenCarpets, carStageKey, carStepper, carOpCard });

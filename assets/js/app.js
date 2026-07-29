@@ -53,6 +53,7 @@ function bindScreen(){
         dateStr: (document.getElementById("carDate")||{}).value||todayStr(),
         deferred: !!(document.getElementById("carDeferred")&&document.getElementById("carDeferred").checked),
         by: currentUser,
+        note: (document.getElementById("carNote")||{}).value ? document.getElementById("carNote").value.trim() : "",
         photosBefore: [...pendingCarBefore],
         photosAfter: [...pendingCarAfter]
       };
@@ -83,6 +84,17 @@ function bindScreen(){
     requireCode(()=>{ tomb(b.dataset.delCar); state.carOps=state.carOps.filter(o=>o.id!==b.dataset.delCar); toast("تم الحذف"); render(); }, SECRET_CODE, "كود الحذف", "أدخل كود الحذف لتأكيد العملية.");});
   document.querySelectorAll("[data-del-cust]").forEach(b=>b.onclick=()=>{
     requireCode(()=>{ tombCust(b.dataset.delCust); delete state.customers[b.dataset.delCust]; toast("تم حذف الزبون"); render(); }, SECRET_CODE, "كود الحذف", "أدخل كود الحذف لتأكيد العملية.");});
+
+  // car workflow (Release 2): stage filter, advance to next stage, jump to a stage
+  document.querySelectorAll("[data-carfilter]").forEach(b=>b.onclick=()=>{ state.carStageFilter=b.dataset.carfilter; render(); });
+  document.querySelectorAll("[data-car-advance]").forEach(b=>b.onclick=()=>{
+    const res=App.services.setCarStage({id:b.dataset.carAdvance, stage:"__next__"});
+    if(res.ok){ const st=(CAR_STAGES.find(s=>s.k===res.stage)||{}).label||""; toast("المرحلة: "+st); render(); }
+  });
+  document.querySelectorAll("[data-car-setstage]").forEach(b=>b.onclick=()=>{
+    const res=App.services.setCarStage({id:b.dataset.carSetstage, stage:b.dataset.stage});
+    if(res.ok){ const st=(CAR_STAGES.find(s=>s.k===res.stage)||{}).label||""; toast("المرحلة: "+st); render(); }
+  });
 
   // carpets
   document.querySelectorAll("[data-filter]").forEach(b=>b.onclick=()=>{state.carpetFilter=b.dataset.filter;render();});

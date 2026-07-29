@@ -25,6 +25,7 @@
     var wash = input.wash || "";
     var by = input.by || "";
     var dateStr = input.dateStr;
+    var note = (input.note || "").toString();
     var photosBefore = Array.isArray(input.photosBefore) ? input.photosBefore.slice() : [];
     var photosAfter = Array.isArray(input.photosAfter) ? input.photosAfter.slice() : [];
 
@@ -57,11 +58,30 @@
       id: uid(), no: carNo(vehicle), vehicle: vehicle, wash: wash,
       price: free ? 0 : price, plate: plate, phone: phone, country: country,
       free: free, by: by, paid: !deferred, paidDate: deferred ? null : opDate,
-      note: "", photosBefore: photosBefore, photosAfter: photosAfter, date: opDate
+      note: note, stage: "received", photosBefore: photosBefore, photosAfter: photosAfter, date: opDate
     };
     state.carOps.push(op);
 
     var cardComplete = !!(plate && state.customers[plate].stamps === 4);
     return { ok: true, op: op, free: free, deferred: deferred, cardComplete: cardComplete };
+  };
+
+  /* Release 2 — advance/set a car operation's lifecycle stage.
+     DTO: { id, stage }  (stage may be "__next__" to move one step forward).
+     Pure: no DOM/render/toast; returns a typed Result. */
+  App.services.setCarStage = function (input) {
+    input = input || {};
+    var o = (state.carOps || []).find(function (x) { return x.id === input.id; });
+    if (!o) return { ok: false, error: "not_found" };
+    var keys = CAR_STAGES.map(function (s) { return s.k; });
+    var stage = input.stage;
+    if (stage === "__next__") {
+      var i = keys.indexOf(o.stage || "received");
+      stage = keys[Math.min(i + 1, keys.length - 1)];
+    }
+    if (keys.indexOf(stage) < 0) return { ok: false, error: "invalid_stage" };
+    o.stage = stage;
+    if (stage === "delivered" && !o.deliveredDate) o.deliveredDate = iso(new Date());
+    return { ok: true, op: o, stage: stage };
   };
 })(window.App);
