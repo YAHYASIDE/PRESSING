@@ -144,7 +144,22 @@ function avgStageMin(ops, stage){
   return Math.round((ds.reduce((a,d)=>a+d,0)/ds.length)/60000);
 }
 function fmtDur(ms){ if(ms==null) return ""; const m=Math.max(0,Math.floor(ms/60000)); return m<60 ? (m+" د") : (Math.floor(m/60)+"س "+(m%60)+"د"); }
-Object.assign(App.core, { opTimeline, opSpans, opActive, opStageDur, avgStageMin, fmtDur });
+/* Release 4 — guided workflow: the ONE next action, computed from the current stage.
+   Workers never pick stages; they press this. Returns { kind, label, to? }. */
+function nextAction(o){
+  const cur=(o&&o.stage)||"received";
+  if(o&&o.cancelled) return {kind:"done", label:"عملية ملغاة"};
+  switch(cur){
+    case "received":
+    case "waiting":   return {kind:"stage",  to:"washing", label:"بدء الغسيل"};
+    case "washing":   return {kind:"stage",  to:"drying",  label:"إنهاء الغسيل ▸ التلميع"};
+    case "drying":    return {kind:"stage",  to:"ready",   label:"جاهزة للتسليم"};
+    case "ready":     return {kind:"deliver",             label:"تحصيل الدفع وإتمام التسليم"};
+    case "delivered": return (o&&o.paid===false)?{kind:"collect", label:"تحصيل الدفع"}:{kind:"done", label:"عملية مكتملة ✓"};
+    default:          return {kind:"done", label:"عملية مكتملة ✓"};
+  }
+}
+Object.assign(App.core, { opTimeline, opSpans, opActive, opStageDur, avgStageMin, fmtDur, nextAction });
 
 /* ---- moved from app.js (dependency cleanup): pure domain / message helpers ---- */
 function todayStr(){ return ymd(new Date()); }

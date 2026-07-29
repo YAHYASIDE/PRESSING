@@ -52,6 +52,8 @@ let uidCounter=100; const uid=()=>"id"+(++uidCounter);
 
 const state = {
   tab:"dashboard",
+  role:"manager",
+  opDetail:null,
   expSub:"general",
   carpetFilter:"all",
   dateFrom:null, dateTo:null,

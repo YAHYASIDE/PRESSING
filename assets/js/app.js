@@ -1,9 +1,28 @@
 /* app.js — Render dispatcher, event wiring, modals, lock, boot sequence (extracted from index.html) */
+/* ================= Roles & capabilities (Release 4) ================= */
+function roleDef(){ return (App.config.ROLES[state.role]) || App.config.ROLES.manager; }
+function can(cap){ return !!(roleDef().caps && roleDef().caps[cap]); }
+function roleTabs(){ return roleDef().tabs || ["dashboard","cars","carpets","expenses","reports"]; }
+Object.assign(App.core, { roleDef, can, roleTabs });
+
 /* ================= Render + events ================= */
 function render(){
+  // role guard: if the current tab isn't allowed for this role, fall back to the first allowed tab
+  const allowed=roleTabs();
+  if(!state.opDetail && allowed.indexOf(state.tab)<0) state.tab=allowed[0]||"cars";
+  // Release 4 — hide admin-only chrome (settings) from roles without the capability
+  const sb=document.getElementById("settingsBtn"); if(sb) sb.style.display=can('settings')?"":"none";
+  const rb=document.getElementById("roleBadge"); if(rb){ rb.textContent=roleDef().label; rb.style.display=unlocked?"":"none"; }
+  const lob=document.getElementById("logoutBtn"); if(lob) lob.style.display=unlocked?"":"none";
   renderNav();
+  // Release 4 — the Operation Details screen replaces the main screen when an op is open
+  if(state.opDetail){
+    document.getElementById("main").innerHTML=`<div class="screen op-detail-screen">${screenOpDetail()}</div>`;
+    bindScreen(); return;
+  }
   const map={dashboard:screenDashboard,cars:screenCars,carpets:screenCarpets,expenses:screenExpenses,reports:screenReports};
-  document.getElementById("main").innerHTML=`<div class="screen">${(map[state.tab]||screenDashboard)()}</div>`;
+  const fn = (allowed.indexOf(state.tab)>=0 ? map[state.tab] : null) || map[allowed[0]] || screenCars;
+  document.getElementById("main").innerHTML=`<div class="screen">${fn()}</div>`;
   bindScreen();
 }
 
@@ -84,6 +103,20 @@ function bindScreen(){
     requireCode(()=>{ tomb(b.dataset.delCar); state.carOps=state.carOps.filter(o=>o.id!==b.dataset.delCar); toast("تم الحذف"); render(); }, SECRET_CODE, "كود الحذف", "أدخل كود الحذف لتأكيد العملية.");});
   document.querySelectorAll("[data-del-cust]").forEach(b=>b.onclick=()=>{
     requireCode(()=>{ tombCust(b.dataset.delCust); delete state.customers[b.dataset.delCust]; toast("تم حذف الزبون"); render(); }, SECRET_CODE, "كود الحذف", "أدخل كود الحذف لتأكيد العملية.");});
+
+  // Release 4 — navigation to / from the Operation Details screen
+  document.querySelectorAll("[data-op-open]").forEach(b=>b.onclick=()=>{ state.opDetail=b.dataset.opOpen; render(); window.scrollTo(0,0); });
+  document.querySelectorAll("[data-op-back]").forEach(b=>b.onclick=()=>{ state.opDetail=null; render(); });
+  // Release 4 — the ONE guided primary action: workers never pick a stage, the workflow decides the next step
+  document.querySelectorAll("[data-op-primary]").forEach(b=>b.onclick=()=>{
+    const id=b.dataset.opPrimary, kind=b.dataset.kind;
+    if(kind==="stage"){
+      const res=App.services.setCarStage({id, stage:b.dataset.to});
+      if(res.ok){ const st=(CAR_STAGES.find(s=>s.k===res.stage)||{}).label||""; toast("المرحلة: "+st); render(); }
+    } else if(kind==="deliver" || kind==="collect"){
+      _deliverId=id; const ds=document.getElementById("deliverSheet"); if(ds) ds.classList.add("open");
+    }
+  });
 
   // car workflow (Release 2): stage filter, advance to next stage, jump to a stage
   document.querySelectorAll("[data-carfilter]").forEach(b=>b.onclick=()=>{ state.carStageFilter=b.dataset.carfilter; render(); });
@@ -586,14 +619,23 @@ document.getElementById("receiptPrint").onclick=printReceipt;
     if(away>limit) relock();
   });
   window.addEventListener("pageshow",(e)=>{ if(e.persisted) relock(); });
+  // Release 4 — role picker on the lock screen (defaults to manager)
+  let _pickRole=(state.role)||"manager";
+  document.querySelectorAll("#lockRoles [data-role]").forEach(b=>b.onclick=()=>{
+    _pickRole=b.dataset.role;
+    document.querySelectorAll("#lockRoles .role-chip").forEach(x=>x.classList.toggle("on",x.dataset.role===_pickRole));
+  });
   const doEnter=()=>{
     const nm=document.getElementById("lockName").value.trim();
     const v=document.getElementById("lockInput").value.trim();
     if(nm.length<2) return toast("أدخل اسمك أولًا");
     if(v!==(state.lock&&state.lock.pin)) return toast("كود الدخول غير صحيح");
     currentUser=nm;
+    state.role=_pickRole||"manager";
+    state.opDetail=null;
+    { const allowed=App.core.roleTabs(); if(allowed.indexOf(state.tab)<0) state.tab=allowed[0]||"cars"; }
     if(!state.logins) state.logins=[];
-    state.logins.push({id:uid(),name:nm,date:iso(new Date())});
+    state.logins.push({id:uid(),name:nm,role:state.role,date:iso(new Date())});
     if(state.logins.length>200) state.logins=state.logins.slice(-200);
     unlocked=true;
     document.getElementById("lockInput").value=""; document.getElementById("lockName").value="إبراهيم";
@@ -603,6 +645,8 @@ document.getElementById("receiptPrint").onclick=printReceipt;
   document.getElementById("lockEnter").onclick=doEnter;
   document.getElementById("lockName").addEventListener("keydown",e=>{ if(e.key==="Enter") document.getElementById("lockInput").focus(); });
   document.getElementById("lockInput").addEventListener("keydown",e=>{ if(e.key==="Enter") doEnter(); });
+  const lob=document.getElementById("logoutBtn");
+  if(lob) lob.onclick=()=>{ unlocked=false; currentUser=""; state.opDetail=null; applyLock(); toast("تم تسجيل الخروج"); };
 })();
 
 

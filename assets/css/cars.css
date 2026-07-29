@@ -133,3 +133,78 @@
 .pm-credit { color: var(--unpaid); }
 .call-btn { text-decoration: none; background: var(--ready-bg); color: var(--ready); font-size: 1.05rem; }
 .btn-deliver { background: linear-gradient(135deg, var(--ready), #26b06e); }
+
+/* ============ Release 4 — op summary card as a nav button ============ */
+button.op-card { width: 100%; display: flex; align-items: center; gap: 11px;
+  padding: 11px 12px 11px 15px; text-align: start; cursor: pointer; font: inherit; color: inherit; }
+button.op-card:hover { border-color: var(--brand); }
+button.op-card:active { transform: scale(.995); }
+.op-chev { font-style: normal; color: var(--muted); font-size: 1.2rem; font-weight: 700; margin-inline-start: 2px; }
+
+/* ---- Worker current-task banner ---- */
+.task-banner { display: grid; grid-template-columns: auto 1fr auto; grid-template-areas: "lbl lbl next" "op stage stage"; gap: 4px 10px;
+  width: 100%; text-align: start; cursor: pointer; font: inherit; color: #fff;
+  background: linear-gradient(135deg, var(--brand), var(--brand-2, var(--brand)));
+  border: none; border-radius: 16px; padding: 14px 16px; margin: 4px 0 14px; box-shadow: var(--shadow); animation: dashUp .35s ease both; }
+.task-banner .tb-lbl { grid-area: lbl; font-size: .72rem; font-weight: 700; opacity: .85; }
+.task-banner .tb-op { grid-area: op; font-size: 1rem; font-weight: 800; }
+.task-banner .tb-stage { grid-area: stage; align-self: center; }
+.task-banner .tb-stage .op-badge { background: rgba(255,255,255,.24); }
+.task-banner .tb-next { grid-area: next; align-self: center; font-size: .82rem; font-weight: 800; background: rgba(255,255,255,.2); padding: 5px 11px; border-radius: 999px; white-space: nowrap; }
+.task-banner.tb-empty { display: block; color: var(--muted); background: var(--soft); box-shadow: none; font-size: .85rem; font-weight: 700; text-align: center; cursor: default; }
+
+/* ---- role picker (lock screen) + header role badge ---- */
+.lk-rolelbl { font-size: .78rem; color: var(--muted); font-weight: 700; margin: 4px 0 8px; }
+.lk-roles { display: flex; gap: 8px; margin-bottom: 14px; }
+.role-chip { flex: 1; padding: 11px 6px; border-radius: 12px; border: 1.5px solid var(--line); background: var(--soft); font-weight: 800; font-size: .82rem; cursor: pointer; transition: border-color .15s, background .15s, color .15s; }
+.role-chip.on { border-color: var(--brand); background: var(--chip); color: var(--brand); }
+.role-badge { align-self: center; font-size: .74rem; font-weight: 800; color: var(--brand); background: var(--chip); border-radius: 999px; padding: 4px 11px; white-space: nowrap; }
+
+/* ============ Release 4 — Operation Details screen ============ */
+.op-detail-screen { padding: 0; }
+.od-head { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 12px;
+  background: var(--surface); border-bottom: 1px solid var(--line); padding: 12px 14px; margin: -14px -14px 0; }
+.od-back { flex: none; width: 40px; height: 40px; border-radius: 11px; border: 1px solid var(--line); background: var(--soft); font-size: 1.3rem; cursor: pointer; color: var(--ink); }
+.od-htitle { flex: 1; font-size: 1.02rem; font-weight: 800; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.od-scroll { padding: 14px 0 96px; }
+.od-hero { display: flex; align-items: center; gap: 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--shadow); padding: 16px; margin-bottom: 14px; }
+.od-veh { width: 60px; height: 60px; border-radius: 14px; flex: none; display: grid; place-items: center; background: var(--soft); overflow: hidden; }
+.od-veh img { width: 100%; height: 100%; object-fit: cover; }
+.od-veh svg { width: 30px; height: 30px; }
+.od-hero-main { min-width: 0; flex: 1; }
+.od-vehname { font-size: 1.05rem; font-weight: 800; }
+.od-price { font-size: 1.1rem; font-weight: 800; margin-top: 3px; }
+.od-price .paid { font-size: .72rem; color: var(--ready); font-weight: 800; }
+.od-price .unpaid { font-size: .72rem; color: var(--unpaid); font-weight: 800; }
+.od-timer-row { margin-top: 7px; font-size: .78rem; color: var(--muted); font-weight: 700; display: flex; align-items: center; gap: 7px; }
+.op-timer.big { font-size: .78rem; }
+.od-sec { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--shadow); padding: 14px; margin-bottom: 12px; }
+.od-sec-t { font-size: .82rem; font-weight: 800; color: var(--muted); margin-bottom: 10px; }
+.od-row { display: flex; justify-content: space-between; gap: 12px; padding: 7px 0; border-bottom: 1px dashed var(--line); font-size: .9rem; }
+.od-row:last-child { border-bottom: none; }
+.od-row span { color: var(--muted); font-weight: 600; }
+.od-row b { font-weight: 800; text-align: end; }
+.od-note { font-size: .85rem; color: var(--ink); background: var(--soft); border-radius: 10px; padding: 9px 11px; }
+.od-contact { display: flex; gap: 10px; margin-top: 10px; }
+.od-contact .wa-btn { flex: 1; height: auto; width: auto; display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 11px; border-radius: 12px; font-weight: 800; font-size: .88rem; }
+.od-manage { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.od-manage .icon-btn { flex: 1; min-width: 110px; border: 1px solid var(--line); border-radius: 11px; padding: 10px; background: var(--soft); font-weight: 700; font-size: .82rem; cursor: pointer; }
+.od-manage .cancel-btn.on { color: var(--unpaid); }
+.od-spacer { height: 8px; }
+
+/* the ONE guided primary action, pinned to the bottom */
+.od-action-bar { position: fixed; inset-inline: 0; bottom: 0; z-index: 40; padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+  background: linear-gradient(to top, var(--bg) 72%, transparent); pointer-events: none; }
+.od-primary { pointer-events: auto; width: 100%; max-width: 560px; margin: 0 auto; display: block; border: none; border-radius: 16px;
+  padding: 18px; font-size: 1.1rem; font-weight: 800; color: #fff; cursor: pointer; box-shadow: 0 8px 24px rgba(21,37,52,.18);
+  background: linear-gradient(135deg, var(--brand), var(--brand-2, var(--brand))); transition: transform .12s, filter .15s; }
+.od-primary:hover { filter: brightness(1.05); }
+.od-primary:active { transform: scale(.99); }
+.od-primary.k-deliver, .od-primary.k-collect { background: linear-gradient(135deg, var(--ready), #26b06e); }
+.od-done { pointer-events: auto; max-width: 560px; margin: 0 auto; text-align: center; font-weight: 800; color: var(--muted); background: var(--soft); border-radius: 16px; padding: 16px; }
+@media (min-width: 760px){
+  .od-action-bar { position: sticky; background: none; padding: 16px 0 0; }
+}
+
+/* solo nav (Worker: a single tab) collapses to a clean centered pill */
+#nav.solo { justify-content: center; }

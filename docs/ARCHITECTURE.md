@@ -62,6 +62,10 @@ A layer may use the layers below it and never the layers above it.
   formatting, dates, financial aggregation, wages, meters, loyalty math, phone/
   WhatsApp message building, order-state classification, id/number helpers,
   domain enums (`STATUS`, `NEXT`). Given the same inputs, the same output.
+- **Release 4 additions:** `nextAction(op)` maps an operation's current stage to
+  the single guided next step (`{kind,label,to}`), so the UI never asks a worker
+  to pick a stage; `roleDef()/can(cap)/roleTabs()` resolve the active role
+  (`App.config.ROLES[state.role]`) into capabilities and visible tabs.
 - **Allowed dependencies:** `App.config`, `App.store` (read-only).
 - **Forbidden dependencies:** `App.repositories`, `App.services`, `App.ui`,
   `App.pages`, the DOM/`document`, `render()`, `toast()`, dialogs, network.

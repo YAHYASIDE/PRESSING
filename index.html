@@ -26,6 +26,8 @@
         <p>سيارات • أفرشة — نموذج تجريبي</p>
       </div>
     </div>
+    <span class="role-badge" id="roleBadge" style="display:none"></span>
+    <button class="theme-btn" id="logoutBtn" title="تسجيل الخروج" aria-label="تسجيل الخروج" style="display:none">⎋</button>
     <button class="theme-btn" id="settingsBtn" title="الإعدادات" aria-label="الإعدادات"></button>
     <button class="theme-btn" id="themeBtn" title="الوضع الليلي" aria-label="الوضع الليلي"></button>
   </header>
@@ -159,6 +161,12 @@
     <h3>مغاسيل صداقة</h3>
     <p>نظام إدارة المغسلة — سجّل دخولك للمتابعة</p>
     <div class="lk-field"><input type="text" id="lockName" placeholder="اسمك" value="إبراهيم" autocomplete="off" style="letter-spacing:normal;text-align:center"></div>
+    <div class="lk-rolelbl">اختر دورك</div>
+    <div class="lk-roles" id="lockRoles">
+      <button type="button" class="role-chip on" data-role="manager">👔 مدير</button>
+      <button type="button" class="role-chip" data-role="cashier">💵 كاشير</button>
+      <button type="button" class="role-chip" data-role="worker">🧽 عامل</button>
+    </div>
     <div class="lk-field"><input type="password" id="lockInput" inputmode="numeric" placeholder="كود الدخول"></div>
     <button class="btn-primary lk-btn" id="lockEnter" style="width:100%">دخول</button>
     <div class="lk-foot">نظافة · عناية · ثقة</div>

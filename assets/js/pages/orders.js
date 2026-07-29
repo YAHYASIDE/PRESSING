@@ -17,47 +17,77 @@ function opTimelineHtml(o){
     return `<div class="tl-row"><span class="tl-time">${t}</span><span class="tl-dot"></span><span class="tl-stage">${lbl}</span>${d}</div>`;
   }).join("")}</div>`;
 }
+/* Release 4 — the card is now a compact navigation summary; tapping opens the Details screen. */
 function carOpCard(o){
   const cur=carStageKey(o);
   const st=CAR_STAGES.find(s=>s.k===cur)||CAR_STAGES[0];
-  const idx=CAR_STAGES.findIndex(s=>s.k===cur);
-  const next=(idx<CAR_STAGES.length-1)?CAR_STAGES[idx+1]:null;
-  const hasPhotos=(o.photosBefore&&o.photosBefore.length)||(o.photosAfter&&o.photosAfter.length);
   const active=opActive(o);
   const isActive=active && cur!=="delivered" && !o.cancelled;
   const timer=isActive?`<span class="op-timer" data-op-since="${active.since}" data-op-exp="${st.exp||0}"></span>`:"";
-  const ph=o.phone?waPhoneFull(o.phone,o.country):null;
   return `
-    <div class="op-card st-${cur} ${o.cancelled?'cancelled':''} ${isActive?'live':''}">
-      <button type="button" class="op-summary" data-op-toggle>
-        <span class="op-veh-ic-sm">${VEH_IMG[o.vehicle]?`<img src="${VEH_IMG[o.vehicle]}" alt="">`:svg(vehIcon(o.vehicle))}</span>
-        <span class="op-sum-main">
-          <span class="op-sum-l1">${o.no||"-"} · ${o.vehicle}${o.plate?` · ${o.plate}`:""}</span>
-          <span class="op-sum-l2"><span class="op-badge b-${cur}">${st.label}</span>${timer}${o.paid===false?' <span class="op-unpaid">دَين</span>':""}${o.free?' <span class="op-unpaid" style="color:var(--ready)">مجاني</span>':""}${o.cancelled?' <span class="op-unpaid" style="color:var(--muted)">ملغى</span>':""}</span>
-        </span>
-        <span class="op-sum-price">${money(o.price)}<i class="op-chev">▾</i></span>
-      </button>
-      <div class="op-detail">
-        <div class="op-sub">${o.wash}${o.phone?` • ${o.phone}`:""}${o.by?` • ${o.by}`:""}${o.paymentMethod?` • ${(PAY_METHODS.find(m=>m.k===o.paymentMethod)||{}).label||""}`:""}</div>
-        ${o.note?`<div class="op-note">📝 ${o.note}</div>`:""}
-        ${hasPhotos?`<div class="op-photos">${(o.photosBefore&&o.photosBefore.length)?`<div class="ba"><span class="ba-lbl">قبل</span>${recThumbs(o.photosBefore)}</div>`:""}${(o.photosAfter&&o.photosAfter.length)?`<div class="ba"><span class="ba-lbl">بعد</span>${recThumbs(o.photosAfter)}</div>`:""}</div>`:""}
-        ${carStepper(o)}
-        ${opTimelineHtml(o)}
-        <div class="op-acts">
-          ${cur==="ready"?`
-            ${ph?`<button class="wa-btn" data-carwa="${o.id}" title="واتساب الزبون">${svg(I.whatsapp)}</button>`:""}
-            ${ph?`<a class="wa-btn call-btn" href="tel:${ph}" title="اتصال بالزبون">📞</a>`:""}
-            <button class="btn-advance btn-deliver" data-open-deliver="${o.id}">تسليم ✅</button>
-          `:`
-            ${(next&&!o.cancelled)?`<button class="btn-advance" data-car-advance="${o.id}">${next.label} →</button>`:""}
-            ${(o.paid===false&&cur==="delivered")?`<button class="mini op-pay" data-carpay="${o.id}">تحصيل الدفع</button>`:""}
-            ${hasPhotos?`<button class="wa-btn" data-carphotos="${o.id}" title="إرسال صور قبل/بعد">${svg(I.camera)}</button>`:""}
-            ${ph?`<button class="wa-btn" data-carwa="${o.id}" title="واتساب الزبون">${svg(I.whatsapp)}</button>`:""}
-          `}
-          <button class="icon-btn" data-edit-car="${o.id}" title="تعديل">✏️</button>
-          <button class="icon-btn cancel-btn ${o.cancelled?'on':''}" data-cancel-car="${o.id}" title="${o.cancelled?'إلغاء الإلغاء (مطوّل)':'إلغاء (اضغط مطوّلًا)'}">🚫</button>
-          <button class="icon-btn" data-del-car="${o.id}" title="حذف">${svg(I.trash)}</button>
+    <button type="button" class="op-card st-${cur} ${o.cancelled?'cancelled':''} ${isActive?'live':''}" data-op-open="${o.id}">
+      <span class="op-veh-ic-sm">${VEH_IMG[o.vehicle]?`<img src="${VEH_IMG[o.vehicle]}" alt="">`:svg(vehIcon(o.vehicle))}</span>
+      <span class="op-sum-main">
+        <span class="op-sum-l1">${o.no||"-"} · ${o.vehicle}${o.plate?` · ${o.plate}`:""}</span>
+        <span class="op-sum-l2"><span class="op-badge b-${cur}">${st.label}</span>${timer}${o.paid===false?' <span class="op-unpaid">دَين</span>':""}${o.free?' <span class="op-unpaid" style="color:var(--ready)">مجاني</span>':""}${o.cancelled?' <span class="op-unpaid" style="color:var(--muted)">ملغى</span>':""}</span>
+      </span>
+      <span class="op-sum-price">${money(o.price)}<i class="op-chev">›</i></span>
+    </button>`;
+}
+/* Release 4 — dedicated Operation Details screen (summary, customer, vehicle, photos,
+   timeline, payment, notes) with ONE guided primary action. */
+function screenOpDetail(){
+  const o=state.carOps.find(x=>x.id===state.opDetail);
+  if(!o){ state.opDetail=null; return screenCars(); }
+  const cur=carStageKey(o);
+  const st=CAR_STAGES.find(s=>s.k===cur)||CAR_STAGES[0];
+  const na=nextAction(o);
+  const ph=o.phone?waPhoneFull(o.phone,o.country):null;
+  const active=opActive(o);
+  const isActive=active && cur!=="delivered" && !o.cancelled;
+  const timer=isActive?`<span class="op-timer big" data-op-since="${active.since}" data-op-exp="${st.exp||0}"></span>`:"";
+  const cust=o.plate?state.customers[o.plate]:null;
+  const pm=o.paymentMethod?((PAY_METHODS.find(m=>m.k===o.paymentMethod)||{}).label||""):"";
+  const hasPhotos=(o.photosBefore&&o.photosBefore.length)||(o.photosAfter&&o.photosAfter.length);
+  const sec=(t,body)=>`<div class="od-sec"><div class="od-sec-t">${t}</div>${body}</div>`;
+  const row=(k,v)=>`<div class="od-row"><span>${k}</span><b>${v}</b></div>`;
+  return `
+    <div class="od-head">
+      <button type="button" class="od-back" data-op-back aria-label="رجوع">→</button>
+      <div class="od-htitle">${o.no||"-"} · ${o.vehicle}</div>
+      <span class="op-badge b-${cur}">${st.label}</span>
+    </div>
+    <div class="od-scroll">
+      <div class="od-hero">
+        <span class="od-veh">${VEH_IMG[o.vehicle]?`<img src="${VEH_IMG[o.vehicle]}" alt="">`:svg(vehIcon(o.vehicle))}</span>
+        <div class="od-hero-main">
+          <div class="od-vehname">${o.vehicle}${o.plate?` · ${o.plate}`:""}</div>
+          <div class="od-price">${money(o.price)} <span class="${o.paid?'paid':'unpaid'}">${o.paid?"مدفوع":"غير مدفوع"}</span></div>
+          ${timer?`<div class="od-timer-row">${st.label} · ${timer}</div>`:""}
         </div>
+      </div>
+      ${sec("معلومات الزبون", row("اللوحة", o.plate||"—")+row("الهاتف", o.phone?`+${o.country||"222"} ${o.phone}`:"—")+(cust?row("بطاقة الولاء", `${cust.stamps}/5 · ${cust.totalWashes} غسلة`):"")+(ph?`<div class="od-contact"><a class="wa-btn call-btn" href="tel:${ph}">📞 اتصال</a><button type="button" class="wa-btn" data-carwa="${o.id}">${svg(I.whatsapp)} واتساب</button></div>`:""))}
+      ${sec("معلومات المركبة", row("النوع", o.vehicle)+row("الخدمة", o.wash||"—")+row("استلمها", o.by||"—")+(o.assignedTo?row("المُنفِّذ", o.assignedTo):""))}
+      ${hasPhotos?sec("صور قبل / بعد", `<div class="op-photos">${(o.photosBefore&&o.photosBefore.length)?`<div class="ba"><span class="ba-lbl">قبل</span>${recThumbs(o.photosBefore)}</div>`:""}${(o.photosAfter&&o.photosAfter.length)?`<div class="ba"><span class="ba-lbl">بعد</span>${recThumbs(o.photosAfter)}</div>`:""}</div>${o.phone?`<button type="button" class="mini" data-carphotos="${o.id}">مشاركة الصور عبر واتساب</button>`:""}`):sec("صور قبل / بعد","<div class=\"od-note\">لا توجد صور</div>")}
+      ${sec("الخط الزمني", carStepper(o)+opTimelineHtml(o))}
+      ${sec("الدفع", row("السعر", money(o.price))+row("الحالة", o.paid?"مدفوع":"غير مدفوع")+(pm?row("الطريقة", pm):"")+((o.paid===false&&can('collect'))?`<button type="button" class="mini op-pay" data-carpay="${o.id}">تحصيل الدفع</button>`:""))}
+      ${sec("ملاحظات", `<div class="od-note">${o.note||"—"}</div>`+(can('operate')?`<div class="od-manage"><button type="button" class="icon-btn" data-edit-car="${o.id}">✏️ تعديل</button><button type="button" class="icon-btn cancel-btn ${o.cancelled?'on':''}" data-cancel-car="${o.id}">🚫 ${o.cancelled?'إلغاء الإلغاء':'إلغاء العملية'}</button>${can('delete')?`<button type="button" class="icon-btn" data-del-car="${o.id}">${svg(I.trash)} حذف</button>`:""}</div>`:""))}
+      <div class="od-spacer"></div>
+    </div>
+    <div class="od-action-bar">
+      ${na.kind!=="done"
+        ? `<button type="button" class="od-primary k-${na.kind}" data-op-primary="${o.id}" data-kind="${na.kind}" data-to="${na.to||""}">${na.label}</button>`
+        : `<div class="od-done">${na.label}</div>`}
+    </div>
+
+    <div id="deliverSheet" class="sheet">
+      <div class="sheet-backdrop" data-close-deliver></div>
+      <div class="sheet-card">
+        <div class="sheet-handle"></div>
+        <h3>تسليم العملية</h3>
+        <p class="sheet-sub">اختر طريقة الدفع لإغلاق العملية</p>
+        <div class="pay-methods">${PAY_METHODS.map(m=>`<button type="button" class="pay-method pm-${m.k}" data-paymethod="${m.k}">${m.label}</button>`).join("")}</div>
+        <button type="button" class="mini sheet-cancel" data-close-deliver>إلغاء</button>
       </div>
     </div>`;
 }
@@ -83,6 +113,26 @@ function screenCars(){
   const cq=(state.custSearch||"").trim();
   let custList=Object.values(state.customers).sort((a,b)=>new Date(b.lastVisit||0)-new Date(a.lastVisit||0));
   if(cq) custList=custList.filter(c=>(c.plate||"").includes(cq));
+  // Release 4 — Worker current-task banner: the single most-urgent active op with its guided next action.
+  let taskBanner="";
+  if(!oq && !can('finance')){
+    const mine=state.carOps.filter(o=>!o.cancelled && carStageKey(o)!=="delivered" && opActive(o));
+    mine.sort((a,b)=>(opActive(a).since||0)-(opActive(b).since||0));
+    const cur1=mine[0];
+    if(cur1){
+      const na=nextAction(cur1);
+      const st1=CAR_STAGES.find(s=>s.k===carStageKey(cur1))||CAR_STAGES[0];
+      taskBanner=`
+        <button type="button" class="task-banner" data-op-open="${cur1.id}">
+          <span class="tb-lbl">مهمتك الحالية</span>
+          <span class="tb-op">${cur1.no||"-"} · ${cur1.vehicle}${cur1.plate?` · ${cur1.plate}`:""}</span>
+          <span class="tb-stage"><span class="op-badge b-${carStageKey(cur1)}">${st1.label}</span></span>
+          <span class="tb-next">${na.kind!=="done"?na.label:"—"} ›</span>
+        </button>`;
+    } else {
+      taskBanner=`<div class="task-banner tb-empty">لا توجد مهمة نشطة الآن — كل العمليات مكتملة أو بالانتظار.</div>`;
+    }
+  }
   const custRows=custList.length?custList.map(c=>`
     <tr><td><b>${c.plate}</b></td>
       <td>${c.phone||"—"}</td>
@@ -93,20 +143,21 @@ function screenCars(){
     :`<tr><td colspan="6"><div class="empty">${svg(I.empty)}لا يوجد زبائن محفوظون بعد — أضف لوحة عند حفظ عملية.</div></td></tr>`;
   return `
     <div class="screen-head cars-head"><h2>مركز العمليات</h2><span>${counts.all} عملية · ${periodTxt}</span></div>
+    ${taskBanner}
     <input class="search-inp ops-search" id="carSearch" type="text" placeholder="بحث برقم العملية أو اللوحة" value="${oq}">
     <div class="queues scroll-x">${queues}</div>
     <div class="ops-list">${cards}</div>
-    ${oq?"":`<div class="ops-foot" style="text-align:center;color:var(--muted);font-size:.82rem;margin-top:14px">دخل السيارات (${periodTxt}): <b style="color:var(--brand)">${money(total)}</b></div>`}
-    <details class="loyalty-collapse" ${state.loyaltyOpen?"open":""}>
+    ${(oq||!can('finance'))?"":`<div class="ops-foot" style="text-align:center;color:var(--muted);font-size:.82rem;margin-top:14px">دخل السيارات (${periodTxt}): <b style="color:var(--brand)">${money(total)}</b></div>`}
+    ${can('finance')?`<details class="loyalty-collapse" ${state.loyaltyOpen?"open":""}>
       <summary>بطاقات الولاء (${Object.keys(state.customers).length})</summary>
       <div class="lc-body">
         <input class="search-inp" id="custSearch" type="text" placeholder="بحث بلوحة الزبون" value="${cq}">
         <div class="tbl-wrap"><table class="tbl"><thead><tr><th>اللوحة</th><th>الهاتف</th><th>الأختام</th><th>الغسلات</th><th>مجانية</th><th></th></tr></thead>
         <tbody>${custRows}</tbody></table></div>
       </div>
-    </details>
+    </details>`:""}
 
-    <button class="fab" data-open-reception aria-label="استقبال سيارة جديدة">＋</button>
+    ${can('receive')?`<button class="fab" data-open-reception aria-label="استقبال سيارة جديدة">＋</button>`:""}
 
     <div id="receptionWizard" class="wizard" data-step="0">
       <div class="wiz-sheet">
@@ -233,4 +284,4 @@ function screenCarpets(){
 
 
 /* ---- Commit 4: namespace registration ---- */
-Object.assign(App.pages, { screenCars, screenCarpets, carStageKey, carStepper, carOpCard, opTimelineHtml });
+Object.assign(App.pages, { screenCars, screenCarpets, screenOpDetail, carStageKey, carStepper, carOpCard, opTimelineHtml });
