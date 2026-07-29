@@ -69,6 +69,13 @@
     };
     state.carOps.push(op);
 
+    // Accounting — auto-post the sale (Dr cash/AR, Cr revenue). No-op if the module is off
+    // or the wash is free. Deferred sales debit receivables; collection posts later.
+    if (!free && op.price > 0 && App.services.postSale) {
+      var je = App.services.postSale({ amount:op.price, method:"cash", deferred:deferred, ref:op.no, date:opDate, memo:"غسيل "+op.vehicle });
+      if (je && je.ok) op.je = je.entry.id;
+    }
+
     // "next wash free" hint for the stamp card (kept for the toast; false for other strategies)
     var cardComplete = !!(plate && App.core.loyaltyEnabled() && App.core.loyaltyStrategy() === "stamp" &&
                           (state.customers[plate].stamps === (App.core.loyaltyThreshold() - 1)));

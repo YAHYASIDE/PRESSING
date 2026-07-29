@@ -1,0 +1,58 @@
+/* accounting.css — Accounting screen (statements, journal). Mobile-first. */
+
+.acc-datebar{ margin-bottom: 10px; }
+.acc-seg{ display: flex; gap: 6px; margin-bottom: 14px; overflow-x: auto; padding-bottom: 2px; }
+.acc-seg button{ flex: 0 0 auto; white-space: nowrap; padding: 9px 14px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); font-weight: 800; font-size: .82rem; color: var(--muted); cursor: pointer; transition: .15s; }
+.acc-seg button.on{ background: var(--brand); border-color: var(--brand); color: #fff; }
+
+/* KPI strip */
+.acc-kpis{ display: grid; grid-template-columns: repeat(2,1fr); gap: 10px; margin-bottom: 14px; }
+.acc-kpi{ background: var(--surface); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); padding: 14px; text-align: center; animation: dashUp .35s ease both; }
+.acc-kpi-v{ font-size: 1.3rem; font-weight: 800; letter-spacing: -.3px; }
+.acc-kpi-l{ font-size: .72rem; font-weight: 700; color: var(--muted); margin-top: 4px; }
+.acc-kpi.k-rev .acc-kpi-v{ color: var(--ready); }
+.acc-kpi.k-exp .acc-kpi-v{ color: var(--unpaid); }
+.acc-kpi.k-net .acc-kpi-v{ color: var(--brand); }
+.acc-kpi.k-loss .acc-kpi-v{ color: var(--unpaid); }
+.acc-kpi.k-cash .acc-kpi-v{ color: var(--teal); }
+@media (min-width:560px){ .acc-kpis{ grid-template-columns: repeat(4,1fr); } }
+
+/* statement cards */
+.acc-card{ background: var(--surface); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--shadow); padding: 14px 16px; margin-bottom: 12px; animation: dashUp .35s ease both; }
+.acc-card-t{ font-size: .82rem; font-weight: 800; color: var(--muted); margin-bottom: 8px; }
+.acc-row{ display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px dashed var(--line); font-size: .9rem; }
+.acc-row:last-child{ border-bottom: none; }
+.acc-row span{ color: var(--ink); font-weight: 600; }
+.acc-row b{ font-weight: 800; white-space: nowrap; }
+.acc-row.strong{ border-top: 2px solid var(--line); border-bottom: none; margin-top: 2px; padding-top: 10px; }
+.acc-row.strong span, .acc-row.strong b{ font-weight: 800; color: var(--brand); }
+.acc-code{ display: inline-block; font-size: .72rem; font-weight: 800; color: var(--muted); background: var(--soft); border-radius: 6px; padding: 1px 6px; margin-inline-end: 4px; }
+.acc-empty{ text-align: center; color: var(--muted); font-size: .82rem; padding: 8px; }
+.acc-balance{ text-align: center; font-weight: 800; font-size: .86rem; margin-top: 8px; padding: 8px; border-radius: 10px; }
+.acc-balance.ok{ color: var(--ready); background: var(--ready-bg); }
+.acc-balance.bad{ color: var(--unpaid); background: var(--unpaid-bg); }
+.acc-net{ display: flex; align-items: center; justify-content: space-between; }
+.acc-net span{ font-weight: 800; }
+.acc-net b{ font-size: 1.2rem; font-weight: 800; }
+.acc-net.pos b{ color: var(--ready); }
+.acc-net.neg b{ color: var(--unpaid); }
+
+/* trial-balance table */
+.acc-tbl th, .acc-tbl td{ font-size: .82rem; }
+.acc-tbl .amt{ text-align: end; white-space: nowrap; font-weight: 700; }
+.acc-tfoot td{ font-weight: 800; border-top: 2px solid var(--line); color: var(--brand); }
+
+/* journal entries */
+.acc-journal{ display: flex; flex-direction: column; gap: 10px; }
+.je-card{ background: var(--surface); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); padding: 12px 14px; animation: dashUp .3s ease both; }
+.je-head{ display: flex; align-items: center; gap: 8px; font-size: .74rem; }
+.je-src{ font-weight: 800; color: #fff; border-radius: 999px; padding: 2px 9px; background: var(--brand); }
+.je-src.src-expense{ background: var(--unpaid); } .je-src.src-collection{ background: var(--teal); } .je-src.src-reversal{ background: var(--muted); } .je-src.src-sale{ background: var(--ready); }
+.je-ref{ font-weight: 700; color: var(--muted); }
+.je-date{ margin-inline-start: auto; color: var(--muted); font-weight: 700; }
+.je-memo{ font-size: .84rem; font-weight: 700; margin: 7px 0 8px; }
+.je-lines{ border-top: 1px dashed var(--line); padding-top: 7px; }
+.je-line{ display: grid; grid-template-columns: 1fr auto auto; gap: 10px; font-size: .82rem; padding: 3px 0; }
+.je-acc{ color: var(--muted); font-weight: 600; }
+.je-d{ color: var(--ink); font-weight: 800; min-width: 62px; text-align: end; }
+.je-c{ color: var(--brand); font-weight: 800; min-width: 62px; text-align: end; }

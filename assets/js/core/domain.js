@@ -236,7 +236,8 @@ function tabVisible(id){
   if(!businessConfigured()) return true;                 // before setup, show everything
   if(id==="cars")    return bizTypeOn("carwash");
   if(id==="carpets") return bizTypeOn("carpet")||bizTypeOn("laundry");
-  if(id==="reports") return featureEnabled("accounting");
+  if(id==="reports")    return featureEnabled("accounting");
+  if(id==="accounting") return featureEnabled("accounting");
   return true;
 }
 
@@ -338,6 +339,8 @@ function runMigrations(){
     if(state.business.types["oil-change"]===undefined){ state.business.types["oil-change"]=false; changed=true; }
     if(state.business.types.shop===undefined){ state.business.types.shop=false; changed=true; }
   }
+  // accounting — ensure the journal exists
+  if(!state.journal){ state.journal=[]; changed=true; }
   // subscription / trial — start a trial for configured installs that don't have one yet
   if(!state.subscription){
     state.subscription = { trialStart: (state.business&&state.business.configured)?iso(new Date()):null, plan:null, active:false };

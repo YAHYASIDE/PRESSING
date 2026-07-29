@@ -27,7 +27,7 @@ function render(){
     document.getElementById("main").innerHTML=`<div class="screen">${screenSubscription()}</div>`;
     bindScreen(); return;
   }
-  const map={dashboard:screenDashboard,cars:screenCars,carpets:screenCarpets,expenses:screenExpenses,reports:screenReports};
+  const map={dashboard:screenDashboard,cars:screenCars,carpets:screenCarpets,expenses:screenExpenses,reports:screenReports,accounting:screenAccounting};
   const fn = (allowed.indexOf(state.tab)>=0 ? map[state.tab] : null) || map[allowed[0]] || screenCars;
   document.getElementById("main").innerHTML=`<div class="screen">${fn()}</div>`;
   bindScreen();
@@ -218,9 +218,12 @@ function bindScreen(){
         state.piecePrices[type]=unit;
         state.orderSeq++;
         const d=chosenDateIso(cpDateV);
-        state.carpetOrders.push({id:uid(),no:orderNo(state.orderSeq,d),
+        const cpOrder={id:uid(),no:orderNo(state.orderSeq,d),
           customer:cpcust, phone:cpph, country:cpcountry, by:currentUser,
-          type,count,unit,price:unit*count,status:"wash",paid:false,photos:[...pendingCpPhotos],date:d});
+          type,count,unit,price:unit*count,status:"wash",paid:false,photos:[...pendingCpPhotos],date:d};
+        // Accounting — carpet orders start unpaid: post a receivable sale (Dr AR, Cr revenue)
+        if(cpOrder.price>0 && App.services.postSale){ const je=App.services.postSale({amount:cpOrder.price, deferred:true, ref:cpOrder.no, date:d, memo:"سجاد — "+type}); if(je&&je.ok) cpOrder.je=je.entry.id; }
+        state.carpetOrders.push(cpOrder);
         pendingCpPhotos.length=0;
         toast("تمت إضافة الطلب"); render();
       };
@@ -269,17 +272,24 @@ function bindScreen(){
       if(!(amount>0)) return toast("أدخل مبلغًا صحيحًا");
       const expDateV=(document.getElementById("expDate")||{}).value||todayStr();
       const doAdd=()=>{
-        state.expenses.push({id:uid(),amount,category:document.getElementById("expCat").value,reason,date:chosenDateIso(expDateV)});
+        const exp={id:uid(),amount,category:document.getElementById("expCat").value,reason,date:chosenDateIso(expDateV)};
+        // Accounting — post the expense (Dr expense account, Cr cash)
+        if(App.services.postExpense){ const je=App.services.postExpense({amount:exp.amount, category:exp.category, ref:exp.reason, date:exp.date}); if(je&&je.ok) exp.je=je.entry.id; }
+        state.expenses.push(exp);
         toast("تمت إضافة المصروف"); render();
       };
       doAdd();
     };
   }
   document.querySelectorAll("[data-del-exp]").forEach(b=>b.onclick=()=>{
+    const ex=state.expenses.find(e=>e.id===b.dataset.delExp);
+    if(ex&&ex.je&&App.services.reverseEntry) App.services.reverseEntry(ex.je);   // reverse the expense entry
     tomb(b.dataset.delExp); state.expenses=state.expenses.filter(e=>e.id!==b.dataset.delExp); toast("تم الحذف"); render(); });
 
   // expenses sub-tabs
   document.querySelectorAll("[data-sub]").forEach(b=>b.onclick=()=>{state.expSub=b.dataset.sub;render();});
+  // accounting sub-tabs
+  document.querySelectorAll("[data-acct-tab]").forEach(b=>b.onclick=()=>{state.acctTab=b.dataset.acctTab;render();});
 
   // meters
   const ms=document.getElementById("meterSave");
@@ -394,8 +404,11 @@ function bindHold(el, cb, ms){
   el.addEventListener("pointercancel",clear);
   el.addEventListener("click",(e)=>{ e.preventDefault(); e.stopPropagation(); });
 }
-function toggleCancelCar(id){ const o=state.carOps.find(x=>x.id===id); if(o){ o.cancelled=!o.cancelled; toast(o.cancelled?"تم إلغاء العملية 🚫":"أُلغي الإلغاء"); render(); } }
-function toggleCancelOrder(id){ const o=state.carpetOrders.find(x=>x.id===id); if(o){ o.cancelled=!o.cancelled; toast(o.cancelled?"تم إلغاء الطلب 🚫":"أُلغي الإلغاء"); render(); } }
+/* Accounting — when an operation/order is cancelled, reverse its sale entry; a re-activation re-posts it. */
+function acctReverseSale(o){ if(o&&o.je&&!o.jeReversed&&App.services.reverseEntry){ const r=App.services.reverseEntry(o.je); if(r&&r.ok) o.jeReversed=r.entry.id; } }
+function acctRepostSale(o,deferred,memo){ if(o&&o.jeReversed&&App.services.postSale){ const je=App.services.postSale({amount:o.price, deferred:deferred, ref:o.no, date:o.date, memo:memo}); if(je&&je.ok){ o.je=je.entry.id; o.jeReversed=null; } } }
+function toggleCancelCar(id){ const o=state.carOps.find(x=>x.id===id); if(o){ o.cancelled=!o.cancelled; if(o.cancelled) acctReverseSale(o); else acctRepostSale(o,o.paid===false,"غسيل "+o.vehicle); toast(o.cancelled?"تم إلغاء العملية 🚫":"أُلغي الإلغاء"); render(); } }
+function toggleCancelOrder(id){ const o=state.carpetOrders.find(x=>x.id===id); if(o){ o.cancelled=!o.cancelled; if(o.cancelled) acctReverseSale(o); else acctRepostSale(o,true,"سجاد — "+o.type); toast(o.cancelled?"تم إلغاء الطلب 🚫":"أُلغي الإلغاء"); render(); } }
 function requireCode(cb, expected, title, desc){
   _codeCb=cb; _codeExpected=expected||SECRET_CODE;
   const t=document.getElementById("codeTitle"); if(t) t.textContent=title||"أدخل الكود";
@@ -663,7 +676,10 @@ document.getElementById("dvCancel").onclick=()=>{ document.getElementById("deliv
 let _payCtx=null, _deliverId=null;
 document.getElementById("payOk").onclick=()=>{
   if(_payCtx){ const list=_payCtx.type==="car"?state.carOps:state.carpetOrders; const o=list.find(x=>x.id===_payCtx.id);
-    if(o){ const dv=document.getElementById("payDate").value||ymd(new Date()); o.paid=true; o.paidDate=chosenDateIso(dv); toast("تم تحصيل الدفع"); } }
+    if(o){ const dv=document.getElementById("payDate").value||ymd(new Date()); o.paid=true; o.paidDate=chosenDateIso(dv);
+      // Accounting — collecting a receivable (Dr cash, Cr accounts receivable), once per entity
+      if(!o.jeCollected && App.services.postCollection){ const je=App.services.postCollection({amount:o.price, method:"cash", ref:o.no, date:o.paidDate}); if(je&&je.ok) o.jeCollected=je.entry.id; }
+      toast("تم تحصيل الدفع"); } }
   document.getElementById("payModal").style.display="none"; _payCtx=null; render();
 };
 document.getElementById("payCancel").onclick=()=>{ document.getElementById("payModal").style.display="none"; _payCtx=null; };
@@ -850,6 +866,30 @@ function finishSetup(mode){
 
 load();
 runMigrations(); saveLocal();
+/* Accounting — one-time backfill so an existing install has populated books.
+   Idempotent: only runs when the journal is empty and the module is enabled. */
+function backfillAccounting(){
+  if(!App.core.featureEnabled("accounting")) return;
+  if((state.journal||[]).length) return;
+  (state.carOps||[]).forEach(o=>{
+    if(o.cancelled || o.free || !(o.price>0) || o.je) return;
+    const je=App.services.postSale({amount:o.price, method:"cash", deferred:(o.paid===false), ref:o.no, date:o.date, memo:"غسيل "+o.vehicle});
+    if(je&&je.ok) o.je=je.entry.id;
+  });
+  (state.carpetOrders||[]).forEach(o=>{
+    if(o.cancelled || !(o.price>0) || o.je) return;
+    const je=App.services.postSale({amount:o.price, deferred:true, ref:o.no, date:o.date, memo:"سجاد — "+o.type});
+    if(je&&je.ok){ o.je=je.entry.id;
+      if(o.paid){ const c=App.services.postCollection({amount:o.price, method:"cash", ref:o.no, date:o.paidDate||o.date}); if(c&&c.ok) o.jeCollected=c.entry.id; } }
+  });
+  (state.expenses||[]).forEach(e=>{
+    if(e.je || !(e.amount>0)) return;
+    const je=App.services.postExpense({amount:e.amount, category:e.category, ref:e.reason, date:e.date});
+    if(je&&je.ok) e.je=je.entry.id;
+  });
+  saveLocal();
+}
+backfillAccounting();
 { const t=ymd(new Date()); state.dateFrom=t; state.dateTo=t; }
 state.lock={enabled:true, pin:(state.lock&&state.lock.pin)||"0707"};
 applyPalette();

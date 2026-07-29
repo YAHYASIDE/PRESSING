@@ -24,8 +24,8 @@ const PAY_METHODS=[
 /* Release 4 — roles & permissions. tabs = nav visible to the role; caps = capabilities.
    receive=create ops · operate=advance stages · collect=take payment · finance=see money · settings/delete/workers = admin. */
 const ROLES={
-  manager: {label:"مدير",   tabs:["dashboard","cars","carpets","expenses","reports"], caps:{settings:1,delete:1,workers:1,finance:1,receive:1,operate:1,collect:1}},
-  admin:   {label:"مسؤول",  tabs:["dashboard","cars","carpets","expenses","reports"], caps:{settings:1,delete:1,workers:1,finance:1,receive:1,operate:1,collect:1}},
+  manager: {label:"مدير",   tabs:["dashboard","cars","carpets","expenses","reports","accounting"], caps:{settings:1,delete:1,workers:1,finance:1,receive:1,operate:1,collect:1}},
+  admin:   {label:"مسؤول",  tabs:["dashboard","cars","carpets","expenses","reports","accounting"], caps:{settings:1,delete:1,workers:1,finance:1,receive:1,operate:1,collect:1}},
   cashier: {label:"كاشير",  tabs:["cars","reports"],                                   caps:{finance:1,receive:1,collect:1,operate:1}},
   worker:  {label:"عامل",   tabs:["cars"],                                              caps:{operate:1}}
 };

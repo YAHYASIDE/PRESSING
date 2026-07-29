@@ -65,6 +65,8 @@ const state = {
   business: defaultBusiness(),   /* Release 5: business configuration layer (set by the Setup Wizard) */
   manager: null,                 /* Release 5.1: first user created during onboarding */
   subscription: null,            /* Release 5.1: {trialStart, plan, active} — free trial + plans */
+  journal: [],                   /* Accounting: double-entry journal (auto-posted) */
+  acctTab: "overview",           /* Accounting screen sub-tab */
   features: defaultFeatures(),   /* Release: optional feature modules (loyalty, …) */
   customers:{},
   meters:[],

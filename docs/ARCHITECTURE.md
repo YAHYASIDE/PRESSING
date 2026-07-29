@@ -89,6 +89,29 @@ A layer may use the layers below it and never the layers above it.
   `{trialStart, plan, active}`; `core.trialInfo()`/`subscribed()` drive the
   dashboard trial card and the Subscription page (`pages/subscription.js`, three
   plans, no gateway yet). The card hides once `subscribed()`.
+
+#### Accounting module (SaaS v1.0) — double-entry, auto-posted
+- A real double-entry ledger, layered like everything else and gated by the
+  `accounting` feature flag:
+  - **config** (`config/accounting.js`): the Chart of Accounts (`CHART_OF_ACCOUNTS`),
+    account families (`ACCT_TYPES`, normal side + statement), and the posting
+    maps (`PAY_ACCOUNT`, `EXP_ACCOUNT_BY_CAT`, `ACCT`). No account codes are
+    hardcoded at call sites.
+  - **core** (`core/accounting.js`): pure statements over `state.journal` —
+    `accountBalance`, `ledgerFor`, `trialBalance`, `plStatement`, `balanceSheet`,
+    `cashSummary`. Same inputs → same output.
+  - **service** (`services/accounting.js`): the ONLY writer of `state.journal`.
+    `postEntry` validates a balanced entry; `postSale`/`postCollection`/
+    `postExpense`/`reverseEntry` translate events. Every poster is a no-op when
+    the module is off.
+  - **page** (`pages/accounting.js`): Overview · P&L · Balance Sheet · Trial
+    Balance · Journal · Accounts, over the selected period.
+- **Auto-posting:** `createCarWash` (sale), carpet-order create (receivable
+  sale), expense add, payment collection, and cancellations (reversing entries)
+  all post automatically — a business event never needs manual bookkeeping. A
+  one-time `backfillAccounting()` seeds the journal from existing records so an
+  upgraded install opens with populated books. The entity stores its entry id
+  (`op.je`, `jeCollected`, `jeReversed`) so posting is idempotent.
 - **Nothing about the business is hardcoded anymore.** Modules read via core
   accessors: `bizServices()` (the service catalog → the wash `<select>`),
   `bizPayMethods()` (the payment selector everywhere), `bizCurrency()` (via
