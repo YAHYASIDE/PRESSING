@@ -6,6 +6,27 @@ platform for car wash, laundry, carpet cleaning, oil change and retail.
 
 ## SaaS v1.0 — Enterprise Edition (incremental)
 
+### RC1 — Release Candidate hardening
+- **Production readiness pass** (no new business features): reviewed every page,
+  workflow, modal and mobile screen across mobile + desktop viewports.
+- **Dead code removed** — 15 unused JS functions/constants (`ledgerFor`,
+  `invMovementsFor`, `cartCogs`, `bizCurrency`, `todayIncome`, `monthIncome`,
+  `meterToday`, `meterUse`, `expenseSum`, `waLink`, `waPhoneStr`, `qrMatrix`,
+  `addCategory`, `suSwitch`, `OP_QUEUES`) and ~40 unused CSS classes (dead
+  car-card, chart, alert and bar components).
+- **Error handling** — `saveLocal` now surfaces a warning toast when
+  localStorage is full instead of silently losing data.
+- **Accessibility** — `aria-label`s added to icon-only buttons; `theme-color`,
+  `description` and mobile web-app meta added; product title corrected.
+- **Naming/versioning** — app version unified to `1.0.0-rc.1`; the stale
+  hardcoded version line in Settings now derives from `APP_VERSION`.
+- **Testing** — added a committed, portable smoke test (`tests/smoke.test.js`)
+  that renders every page + sub-screen on both viewports and fails on any console
+  error; all regression suites re-run green after the cleanup.
+- **Docs** — added `RELEASE_NOTES_v1.md`, `PRODUCTION_CHECKLIST.md`,
+  `docs/DEPLOYMENT_GUIDE.md`, `docs/BACKUP_RECOVERY.md`; refreshed API/architecture
+  references to match the trimmed surface.
+
 ### Part 8 — Membership Platform & Queue Display
 - **Membership System** — seven configurable plans (Basic, Silver, Gold, Diamond,
   Unlimited, Family, Fleet) with price, duration, included services, discount %,

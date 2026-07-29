@@ -14,18 +14,6 @@ function accountBalance(code, filter){
   journalEntries(filter).forEach(e=>e.lines.forEach(l=>{ if(l.account===code){ d+=+l.debit||0; c+=+l.credit||0; } }));
   return acctNormal(code)==="debit" ? (d-c) : (c-d);
 }
-/* per-line ledger for one account, chronological, with a running balance */
-function ledgerFor(code, filter){
-  const rows=[]; let bal=0;
-  journalEntries(filter).slice().sort((a,b)=>new Date(a.date)-new Date(b.date)).forEach(e=>{
-    e.lines.forEach(l=>{ if(l.account===code){
-      const dd=+l.debit||0, cc=+l.credit||0;
-      bal += (acctNormal(code)==="debit" ? (dd-cc) : (cc-dd));
-      rows.push({ date:e.date, ref:e.ref, memo:e.memo, debit:dd, credit:cc, balance:bal });
-    }});
-  });
-  return { rows, balance:bal };
-}
 /* trial balance — every touched account with its net debit/credit */
 function trialBalance(filter){
   const map={};
@@ -57,4 +45,4 @@ function cashSummary(filter){
   return { inflow, outflow, net:inflow-outflow };
 }
 
-Object.assign(App.core, { acctByCode, acctType, acctNormal, journalEntries, accountBalance, ledgerFor, trialBalance, plStatement, balanceSheet, cashSummary });
+Object.assign(App.core, { acctByCode, acctType, acctNormal, journalEntries, accountBalance, trialBalance, plStatement, balanceSheet, cashSummary });

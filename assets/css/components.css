@@ -174,9 +174,6 @@
   .date-presets .chip{cursor:pointer}
 
   .bars{display:flex;flex-direction:column;gap:12px;margin-top:6px}
-  .bar-row{display:grid;grid-template-columns:90px 1fr auto;align-items:center;gap:10px;font-size:.86rem;font-weight:700}
-  .bar-track{height:12px;background:#eef2f6;border-radius:999px;overflow:hidden}
-  .bar-fill{height:100%;border-radius:999px}
 
   #toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--ink);
     color:#fff;padding:12px 20px;border-radius:12px;font-size:.88rem;font-weight:600;box-shadow:0 10px 30px rgba(0,0,0,.25);
@@ -245,13 +242,6 @@
   .lock-box h3{margin:0 0 4px;font-size:1.2rem;font-weight:800;color:var(--brand)}
   .lock-box p{margin:0 0 16px;font-size:.85rem;color:var(--muted)}
   .lock-box input{width:100%;padding:13px;border:1px solid var(--line);border-radius:12px;background:var(--input);color:var(--ink);font-size:1.2rem;text-align:center;letter-spacing:4px;margin-bottom:14px}
-  .chart7{display:flex;align-items:flex-end;gap:8px;height:150px;padding-top:10px}
-  .c7col{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:4px;height:100%}
-  .c7bar{width:60%;min-height:3px;background:linear-gradient(var(--brand-2),var(--brand));border-radius:6px 6px 0 0;transition:height .3s}
-  .c7lbl{font-size:.68rem;color:var(--muted);font-weight:700}
-  .c7val{font-size:.6rem;color:var(--ink);font-weight:700}
-  .cmp{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px dashed var(--line);font-size:.9rem;font-weight:700}
-  .cmp .up{color:var(--ready)} .cmp .down{color:var(--unpaid)}
   @media print{
     body.printing-receipt *{visibility:hidden}
     body.printing-receipt #receiptModal, body.printing-receipt #receiptModal *{visibility:visible}
@@ -281,11 +271,6 @@
   .wstat.wdue{background:var(--info-bg)}
   .wstat.wdue b{color:var(--brand)}
 
-  .alert-row{display:flex;align-items:center;gap:11px;padding:10px 0;border-bottom:1px solid var(--line);font-weight:600;font-size:.9rem}
-  .alert-row:last-child{border-bottom:none}
-  .alert-ic{width:26px;height:26px;flex:none;display:grid;place-items:center}
-  .alert-ic svg{width:22px;height:22px}
-  .alerts-card{border-inline-start:4px solid var(--wash)}
 
   .phone-row{display:flex;gap:8px;align-items:stretch}
   .phone-row .cc-select{flex:0 0 auto;width:135px;padding:10px 6px;border:1px solid var(--line);border-radius:11px;background:var(--input);color:var(--ink);font-size:.8rem}
@@ -335,24 +320,6 @@
   .cancelled-row td b,.cancelled-row td .amt{text-decoration:line-through}
   .order.cancelled{border:2px solid var(--unpaid)!important;background:rgba(214,69,69,.08)!important;opacity:.8}
   .order.cancelled .price{text-decoration:line-through}
-
-  .car-list{display:flex;flex-direction:column;gap:11px}
-  .car-card{border:1px solid var(--line);border-radius:14px;padding:12px 13px;background:var(--surface);box-shadow:0 1px 3px rgba(0,0,0,.04)}
-  .car-card.cancelled{border:2px solid var(--unpaid);background:rgba(214,69,69,.07);opacity:.85}
-  .cc-top{display:flex;align-items:center;gap:9px;margin-bottom:11px}
-  .cc-no{font-weight:800;color:var(--brand);background:var(--chip);padding:2px 11px;border-radius:8px;font-size:.95rem}
-  .cc-time{font-size:.72rem;color:var(--muted)}
-  .cc-price{margin-inline-start:auto;font-weight:800;font-size:1.08rem}
-  .cc-main{display:flex;align-items:center;gap:11px}
-  .cc-img{width:46px;height:46px;border-radius:11px;object-fit:cover;flex:none}
-  .cc-ic{width:46px;height:46px;border-radius:11px;background:var(--chip);color:var(--brand);display:grid;place-items:center;flex:none}
-  .cc-info{flex:1;min-width:0}
-  .cc-veh{font-size:1rem;display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-weight:700}
-  .cc-sub{font-size:.82rem;color:var(--muted);margin-top:3px}
-  .cc-acts{display:flex;gap:8px;margin-top:12px;padding-top:11px;border-top:1px solid var(--line);flex-wrap:wrap}
-  .cc-acts .icon-btn,.cc-acts .wa-btn{width:34px;height:34px}
-  .cc-acts .wa-btn svg{width:18px;height:18px}
-  .car-card.cancelled .cc-price,.car-card.cancelled .cc-veh b{text-decoration:line-through}
 
   .order-dates{font-size:.66rem;color:var(--muted);margin-top:6px;line-height:1.55}
 

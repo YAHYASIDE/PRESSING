@@ -42,13 +42,9 @@ function mElec(m){ return (m.elec!==undefined&&m.elec!=="")?(+m.elec||0):(+m.ele
 function mWater(m){ return (m.water!==undefined&&m.water!=="")?(+m.water||0):(+m.waterEnd||+m.waterStart||0); }
 function sortedMeters(){ return state.meters.slice().sort((a,b)=>(a.savedAt||new Date(a.date).getTime())-(b.savedAt||new Date(b.date).getTime())); }
 function meterConsAt(i,list){ if(i<=0) return {elec:0,water:0}; return {elec:Math.max(0,mElec(list[i])-mElec(list[i-1])), water:Math.max(0,mWater(list[i])-mWater(list[i-1]))}; }
-function meterUse(m){return {elec:Math.max(0,(+m.elecEnd||0)-(+m.elecStart||0)), water:Math.max(0,(+m.waterEnd||0)-(+m.waterStart||0))};}
 function utilityCost(f){ const list=sortedMeters(); let t=0; for(let i=0;i<list.length;i++){ if(!f(list[i].date))continue; const u=meterConsAt(i,list); t+=u.elec*state.tariff.elec+u.water*state.tariff.water; } return t; }
 function wagesFor(f){return f===isToday?wagesToday() : f===isMonth?wagesMonth() : 0;}
 function totalExp(f){return manualExp(f)+utilityCost(f)+wagesFor(f);}
-/* kept name for backward calls -> now returns combined total */
-function expenseSum(f){return totalExp(f);}
-function meterToday(){return state.meters.find(m=>isToday(m.date));}
 /* worker derived amounts (monthly salary, daily accrual) */
 function dayRate(w){return w.monthly/daysInMonth;}
 function monthAbsences(w){return w.absent.filter(isMonth).length;}
@@ -77,8 +73,6 @@ function wagesRange(){
   const days=[]; for(let d=new Date(start); d<=end; d.setDate(d.getDate()+1)) days.push(ymd(d));
   return sum(state.workers, w=>{ let cnt=0; for(const ds of days){ if(!w.absent.some(a=>ymd(a)===ds)) cnt++; } return cnt*dayRate(w); });
 }
-function todayIncome(){return carIncome(isToday)+carpetIncome(isToday);}
-function monthIncome(){return carIncome(isMonth)+carpetIncome(isMonth);}
 
 const STATUS={wash:{label:"قيد الغسيل",cls:"wash"},ready:{label:"جاهز",cls:"ready"},done:{label:"تم التسليم",cls:"done"}};
 const NEXT={wash:"ready",ready:"done",done:null};
@@ -125,8 +119,8 @@ const svg=(p,color="currentColor")=>`<svg viewBox="0 0 24 24" fill="none" stroke
 /* ---- Commit 4: namespace registration (aliases; globals retained) ---- */
 Object.assign(App.core, { fmt, money, isToday, isMonth, ymd, inRange, timeStr, sum, vehIcon, pieceIcon,
   vehicleCounts, carpetCounts, carIncome, carpetIncome, manualExp, mElec, mWater, sortedMeters, meterConsAt,
-  meterUse, utilityCost, wagesFor, totalExp, expenseSum, meterToday, dayRate, monthAbsences, absentToday,
-  netSalary, accruedDue, wPaid, wCredit, wBalance, wagesToday, wagesMonth, wagesRange, todayIncome, monthIncome,
+  utilityCost, wagesFor, totalExp, dayRate, monthAbsences, absentToday,
+  netSalary, accruedDue, wPaid, wCredit, wBalance, wagesToday, wagesMonth, wagesRange,
   STATUS, NEXT });
 Object.assign(App.ui, { toast, svg, I });
 
@@ -178,17 +172,11 @@ function waFoot(){ const th=(state.thanksMsg||"شكرًا لغسلتك عندن�
 function countryOpts(sel){ return COUNTRIES.map(x=>`<option value="${x.c}" ${x.c===(sel||"222")?"selected":""}>${x.n} +${x.c}</option>`).join(""); }
 function validPhone(ph){ return ph==="" || /^[0-9]{8,9}$/.test(ph); }
 function waPhoneFull(phone,country){ let ph=(phone||"").replace(/[^0-9]/g,""); if(!ph) return null; const cc=country||"222"; if(ph.startsWith(cc)) return ph; ph=ph.replace(/^0+/,""); return cc+ph; }
-function waPhoneStr(phone){ return waPhoneFull(phone,"222"); }
 function waPhone(o){ return waPhoneFull(o.phone,o.country); }
 function waStatusMsg(o){
   const st=o.status==="ready"?"جاهز للاستلام":o.status==="done"?"تم التسليم":"قيد الغسيل";
   const pay=o.paid?"مدفوع":`المبلغ المستحق: ${money(o.price)}`;
   return `${waHead()}\n${o.type} × ${o.count}\nرقم الطلب: ${o.no}\nالحالة: ${st}\n${pay}\n${waFoot()}`;
-}
-function waLink(o){
-  const phone=(o.phone||"").replace(/[^0-9]/g,"");
-  const msg=`مغاسيل صداقة%0Aطلبك رقم ${o.no} (${o.type} × ${o.count})%0Aالحالة: ${STATUS[o.status].label}%0Aالإجمالي: ${money(o.price)}${o.paid?" (مدفوع)":""}`;
-  return `https://wa.me/${phone}?text=${msg}`;
 }
 function ensureCarNos(){ if(!state.carSeq) state.carSeq={}; (state.carOps||[]).forEach(o=>{ if(!o.no) o.no=carNo(o.vehicle); }); }
 
@@ -209,7 +197,6 @@ function biz(){ return state.business||{}; }
 function businessConfigured(){ return !!biz().configured; }
 function bizName(){ return (biz().name||"").trim()||SHOP_NAME; }
 function bizPhone(){ return (biz().phone||"").trim()||SHOP_PHONE; }
-function bizCurrency(){ return biz().currency||CUR; }
 function bizTypeOn(k){ return !!(biz().types&&biz().types[k]); }
 /* the enabled service catalog, as label strings for the wash <select> (falls back to WASH_TYPES) */
 function bizServices(){
@@ -362,6 +349,6 @@ function runMigrations(){
   ensureCarNos();
   return changed;
 }
-Object.assign(App.core, { todayStr, isPastDay, chosenDateIso, meterCode, orderState, carNo, waHead, waFoot, countryOpts, validPhone, waPhoneFull, waPhoneStr, waPhone, waStatusMsg, waLink, ensureCarNos, runMigrations,
+Object.assign(App.core, { todayStr, isPastDay, chosenDateIso, meterCode, orderState, carNo, waHead, waFoot, countryOpts, validPhone, waPhoneFull, waPhone, waStatusMsg, ensureCarNos, runMigrations,
   featureEnabled, featureCfg, loyaltyEnabled, loyaltyStrategy, loyaltyThreshold, loyaltyReward, loyaltyOnWash, loyaltyStatus,
-  biz, businessConfigured, bizName, bizPhone, bizCurrency, bizTypeOn, bizServices, bizPayMethods, tabVisible, subscribed, trialInfo, emptyState });
+  biz, businessConfigured, bizName, bizPhone, bizTypeOn, bizServices, bizPayMethods, tabVisible, subscribed, trialInfo, emptyState });

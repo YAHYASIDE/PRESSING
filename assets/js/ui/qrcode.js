@@ -60,7 +60,6 @@
     return { m:m, n:n, ver:ver };
   }
 
-  App.ui.qrMatrix = function(text){ return encode(String(text||"")); };
   App.ui.qrSVG = function(text, opts){
     opts=opts||{}; var q=encode(String(text||"")); var n=q.n; var quiet=(opts.quiet!=null?opts.quiet:2); var dim=n+quiet*2;
     var px=opts.size?(opts.size/dim):8; var size=Math.round(dim*px);

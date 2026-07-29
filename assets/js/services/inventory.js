@@ -82,8 +82,4 @@
     ensure().suppliers.push({ id:uid(), name:name, phone:(dto.phone||"").trim() }); return { ok:true };
   };
   App.services.deleteSupplier = function (id) { if(!on()) return { ok:false }; var inv=ensure(); inv.suppliers=inv.suppliers.filter(s=>s.id!==id); return { ok:true }; };
-  App.services.addCategory = function (name) {
-    if(!on()) return { ok:false }; name=(name||"").trim(); if(!name) return { ok:false };
-    var inv=ensure(); if(inv.categories.indexOf(name)<0 && INV_DEFAULT_CATEGORIES.indexOf(name)<0) inv.categories.push(name); return { ok:true };
-  };
 })(window.App);

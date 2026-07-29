@@ -24,6 +24,5 @@ function invExpiring(days){
 }
 function invValue(){ return invProducts().reduce((s,p)=>s+(+p.qty||0)*(+p.cost||0),0); }
 function invRetailValue(){ return invProducts().reduce((s,p)=>s+(+p.qty||0)*(+p.price||0),0); }
-function invMovementsFor(productId){ return invMovements().filter(m=>m.productId===productId).slice().reverse(); }
 
-Object.assign(App.core, { invStore, invProducts, invSuppliers, invMovements, invCategories, invProduct, invStatus, invLowStock, invExpiring, invValue, invRetailValue, invMovementsFor });
+Object.assign(App.core, { invStore, invProducts, invSuppliers, invMovements, invCategories, invProduct, invStatus, invLowStock, invExpiring, invValue, invRetailValue });

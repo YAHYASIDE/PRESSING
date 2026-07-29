@@ -81,7 +81,7 @@ function invLowTab(){
 }
 function invSuppliersTab(){
   const sup=App.core.invSuppliers();
-  const rows=sup.length?sup.map(s=>`<div class="acc-row"><span>${s.name}${s.phone?` · ${s.phone}`:""}</span><button class="icon-btn" data-inv-supdel="${s.id}">${svg(I.trash)}</button></div>`).join("")
+  const rows=sup.length?sup.map(s=>`<div class="acc-row"><span>${s.name}${s.phone?` · ${s.phone}`:""}</span><button class="icon-btn" data-inv-supdel="${s.id}" title="حذف المورّد" aria-label="حذف المورّد">${svg(I.trash)}</button></div>`).join("")
     :emptyState({icon:I.profit, title:"لا يوجد موردون", sub:"أضف موردًا لربطه بعمليات الاستلام."});
   return `<div class="acc-card"><div class="acc-card-t">إضافة مورد</div>
       <div class="row2"><div class="field"><label>الاسم</label><input id="isName" type="text" placeholder="اسم المورد"></div>

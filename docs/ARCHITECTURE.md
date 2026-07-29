@@ -98,7 +98,7 @@ A layer may use the layers below it and never the layers above it.
     maps (`PAY_ACCOUNT`, `EXP_ACCOUNT_BY_CAT`, `ACCT`). No account codes are
     hardcoded at call sites.
   - **core** (`core/accounting.js`): pure statements over `state.journal` —
-    `accountBalance`, `ledgerFor`, `trialBalance`, `plStatement`, `balanceSheet`,
+    `accountBalance`, `trialBalance`, `plStatement`, `balanceSheet`,
     `cashSummary`. Same inputs → same output.
   - **service** (`services/accounting.js`): the ONLY writer of `state.journal`.
     `postEntry` validates a balanced entry; `postSale`/`postCollection`/
@@ -118,7 +118,7 @@ A layer may use the layers below it and never the layers above it.
   - **config** (`config/inventory.js`): units, seed categories (oils, laundry
     supplies, accessories…), low-stock + expiry thresholds.
   - **core** (`core/inventory.js`): pure queries — `invProducts`, `invStatus`,
-    `invLowStock`, `invExpiring`, `invValue`, `invMovementsFor`.
+    `invLowStock`, `invExpiring`, `invValue`, `invRetailValue`.
   - **service** (`services/inventory.js`): the only writer of `state.inventory`.
     `addProduct`/`receiveStock`/`adjustStock`/`consumeStock`/`updateProduct`/
     suppliers. **Weighted-average costing** keeps on-hand valuation equal to the
@@ -238,7 +238,7 @@ A layer may use the layers below it and never the layers above it.
   rises. No new data — a read-only projection of the operations already tracked.
 - **Nothing about the business is hardcoded anymore.** Modules read via core
   accessors: `bizServices()` (the service catalog → the wash `<select>`),
-  `bizPayMethods()` (the payment selector everywhere), `bizCurrency()` (via
+  `bizPayMethods()` (the payment selector everywhere), the business currency (via
   `money()`), `bizName()`/`bizPhone()` (header, receipts, WhatsApp), `bizTypeOn()`
   + `tabVisible()` (which screens/tabs appear). The wizard's feature choices are
   applied into the Feature Modules engine, and the loyalty step reuses the same

@@ -3,7 +3,14 @@
 const LS_KEY="sadaqa_laundry_v1";
 /* Persistence now goes through the repositories layer (App.repositories.stateStore),
    which is the Firebase-ready seam. Behaviour is identical to direct localStorage. */
-function saveLocal(){ state._savedAt=Date.now(); App.repositories.stateStore.write(LS_KEY, state); }
+var _saveFailed=false;
+function saveLocal(){
+  state._savedAt=Date.now();
+  var ok=App.repositories.stateStore.write(LS_KEY, state);
+  if(!ok && !_saveFailed){ _saveFailed=true; if(typeof toast==="function") toast("⚠️ تعذّر الحفظ — مساحة التخزين ممتلئة. صدّر نسخة احتياطية وامسح بيانات قديمة."); }
+  else if(ok) _saveFailed=false;
+  return ok;
+}
 function save(){ saveLocal(); }
 function load(){ const d=App.repositories.stateStore.read(LS_KEY); if(d) Object.assign(state, d); }
 function tomb(id){ if(!state.deleted) state.deleted={}; state.deleted["rec:"+id]=Date.now(); }

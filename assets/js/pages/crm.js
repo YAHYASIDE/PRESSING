@@ -51,7 +51,7 @@ function crmVehicles(c){
       <div class="veh-acts">
         ${oil?`<button class="mini" data-crm-oil="${v.id}">🛢️ تغيير زيت</button>`:""}
         <button class="mini" data-crm-veh-edit="${v.id}">تعديل</button>
-        <button class="icon-btn" data-crm-veh-del="${v.id}">${svg(I.trash)}</button>
+        <button class="icon-btn" data-crm-veh-del="${v.id}" title="حذف المركبة" aria-label="حذف المركبة">${svg(I.trash)}</button>
       </div>
     </div>`; }).join("")
     : emptyState({icon:I.car, title:"لا توجد مركبات", sub:"أضف مركبة لهذا الزبون لتتبّع الصيانة."});

@@ -858,6 +858,7 @@ function openSettings(){
   }
   bindFeatureModules();
   bindBusinessSettings();
+  { const vl=document.getElementById("appVerLbl"); if(vl) vl.textContent=APP_NAME+" · الإصدار "+APP_VERSION; }
   document.getElementById("settingsModal").style.display="flex";
 };
 /* Business Settings — edit state.business (types, currency/location, hours, services, payments) live. */

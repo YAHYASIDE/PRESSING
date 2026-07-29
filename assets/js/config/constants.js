@@ -12,8 +12,6 @@ const CAR_STAGES=[
   {k:"ready",    label:"جاهزة للتسليم",  icon:"profit", exp:30},
   {k:"delivered",label:"تم التسليم",     icon:"income", exp:0}
 ];
-/* Release 3 — operational queues shown with live counts. */
-const OP_QUEUES=["waiting","washing","drying","ready"];
 /* Release 3 — payment methods asked at delivery. */
 const PAY_METHODS=[
   {k:"cash",   label:"نقدًا"},
@@ -29,4 +27,4 @@ const ROLES={
   cashier: {label:"كاشير",  tabs:["pos","cars","crm","reports"],                             caps:{finance:1,receive:1,collect:1,operate:1}},
   worker:  {label:"عامل",   tabs:["cars"],                                              caps:{operate:1}}
 };
-Object.assign(App.config, { SHOP_NAME, SHOP_PHONE, VEH_LETTER, COUNTRIES, SECRET_CODE, CAR_STAGES, OP_QUEUES, PAY_METHODS, ROLES });
+Object.assign(App.config, { SHOP_NAME, SHOP_PHONE, VEH_LETTER, COUNTRIES, SECRET_CODE, CAR_STAGES, PAY_METHODS, ROLES });

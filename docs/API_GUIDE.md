@@ -27,12 +27,12 @@ Services take a **plain DTO** and return a **typed Result**:
   only writer of `state.journal`; validates a **balanced** double entry.
 - `postSale`, `postCollection`, `postExpense`, `reverseEntry(id)`.
 - Statements are pure in `core/accounting.js`: `accountBalance(code, filter)`,
-  `ledgerFor`, `trialBalance(filter)`, `plStatement(filter)`, `balanceSheet`,
+  `trialBalance(filter)`, `plStatement(filter)`, `balanceSheet`,
   `cashSummary`.
 
 ### Inventory (`services/inventory.js`)
 - `addProduct`, `updateProduct`, `deleteProduct`, `receiveStock`,
-  `adjustStock`, `consumeStock`, `addSupplier`, `addCategory`.
+  `adjustStock`, `consumeStock`, `addSupplier`.
 - Every movement posts to accounting; `consumeStock` posts COGS.
 - Pure queries in `core/inventory.js`: `invProducts`, `invStatus`, `invLowStock`,
   `invExpiring`, `invValue`, …
@@ -63,7 +63,7 @@ Services take a **plain DTO** and return a **typed Result**:
 - `App.services.audit(action, detail)` — append-only trail (capped).
 
 ## Business configuration & features
-- `App.core.businessConfigured()`, `bizName`, `bizPhone`, `bizCurrency`,
+- `App.core.businessConfigured()`, `bizName`, `bizPhone`,
   `bizServices`, `bizPayMethods`, `bizTypeOn(key)`, `tabVisible(id)`.
 - `App.core.featureEnabled(key)`, `featureCfg(key)` gate every optional module.
 

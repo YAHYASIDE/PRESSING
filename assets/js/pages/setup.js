@@ -7,8 +7,6 @@
 function setupSteps(){ return ["welcome","activities","manager","info","success"]; }
 function setupFormSteps(){ return ["activities","manager","info"]; }
 
-function suSwitch(attr,val,on){ return `<span class="switch"><input type="checkbox" data-su-${attr}="${val}" ${on?"checked":""}><span class="slider"></span></span>`; }
-
 function setupStepView(key,d){
   if(key==="welcome"){
     return `<div class="su-landing">
