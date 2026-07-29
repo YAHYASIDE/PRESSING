@@ -6,6 +6,7 @@ function renderNav(){
     {id:"dashboard",label:"الرئيسية",icon:I.home},
     {id:"pos",label:"نقطة البيع",icon:I.income},
     {id:"cars",label:"العمليات",icon:I.car},
+    {id:"crm",label:"الزبائن",icon:I.profit},
     {id:"carpets",label:"السجاد",icon:I.rug,badge:unpaid},
     {id:"expenses",label:"المصروفات",icon:I.wallet},
     {id:"reports",label:"التقارير",icon:I.chart},

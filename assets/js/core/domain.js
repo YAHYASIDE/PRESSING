@@ -350,6 +350,9 @@ function runMigrations(){
   if(!state.pos){ state.pos={cart:[],discount:0,discType:"amount",taxOn:true,note:"",customer:{name:"",plate:""},payments:[],coupon:""}; changed=true; }
   if(state.business && !state.business.tax){ state.business.tax={enabled:false,rate:0,label:"ضريبة القيمة المضافة"}; changed=true; }
   if(state.business && state.business.features && state.business.features.pos===undefined){ state.business.features.pos=true; if(state.features&&!state.features.pos) state.features.pos={enabled:true}; changed=true; }
+  // CRM / vehicles — ensure stores exist
+  if(!state.vehicles){ state.vehicles=[]; changed=true; }
+  if(!state.reminders){ state.reminders=[]; changed=true; }
   // subscription / trial — start a trial for configured installs that don't have one yet
   if(!state.subscription){
     state.subscription = { trialStart: (state.business&&state.business.configured)?iso(new Date()):null, plan:null, active:false };

@@ -16,6 +16,7 @@ function render(){
   const lob=document.getElementById("logoutBtn"); if(lob) lob.style.display=unlocked?"":"none";
   applySetup();   // Release 5 — first launch (unconfigured business) opens the Setup Wizard
   applyBusiness();   // Release 5.2 — keep header name/logo/subtitle in sync with the config
+  if(App.services.crmSync) App.services.crmSync();   // CRM: ensure customer ids + vehicle records
   renderNav();
   // Release 4 — the Operation Details screen replaces the main screen when an op is open
   if(state.opDetail){
@@ -27,7 +28,7 @@ function render(){
     document.getElementById("main").innerHTML=`<div class="screen">${screenSubscription()}</div>`;
     bindScreen(); return;
   }
-  const map={dashboard:screenDashboard,pos:screenPos,cars:screenCars,carpets:screenCarpets,expenses:screenExpenses,reports:screenReports,accounting:screenAccounting,inventory:screenInventory};
+  const map={dashboard:screenDashboard,pos:screenPos,cars:screenCars,crm:screenCrm,carpets:screenCarpets,expenses:screenExpenses,reports:screenReports,accounting:screenAccounting,inventory:screenInventory};
   const fn = (allowed.indexOf(state.tab)>=0 ? map[state.tab] : null) || map[allowed[0]] || screenCars;
   document.getElementById("main").innerHTML=`<div class="screen">${fn()}</div>`;
   bindScreen();
@@ -351,6 +352,19 @@ function bindScreen(){
   const rcC=document.getElementById("rcptClose"); if(rcC) rcC.onclick=()=>document.getElementById("receiptModal").style.display="none";
   const rcP=document.getElementById("rcptPrint"); if(rcP) rcP.onclick=()=>{ document.body.classList.add("printing-receipt"); window.print(); setTimeout(()=>document.body.classList.remove("printing-receipt"),400); };
 
+  // ===== CRM =====
+  { const s=document.getElementById("crmSearch"); if(s) s.oninput=()=>{ state.crmSearch=s.value; _refocus="crmSearch"; render(); }; }
+  document.querySelectorAll("[data-crm-open]").forEach(b=>b.onclick=()=>{ state.crmSel=b.dataset.crmOpen; state.crmTab="timeline"; render(); window.scrollTo(0,0); });
+  document.querySelectorAll("[data-crm-back]").forEach(b=>b.onclick=()=>{ state.crmSel=null; render(); });
+  document.querySelectorAll("[data-crm-tab]").forEach(b=>b.onclick=()=>{ state.crmTab=b.dataset.crmTab; render(); });
+  document.querySelectorAll("[data-crm-new]").forEach(b=>b.onclick=()=>openCrmSheet("new-cust"));
+  document.querySelectorAll("[data-crm-edit]").forEach(b=>b.onclick=()=>openCrmSheet("edit-cust",b.dataset.crmEdit));
+  document.querySelectorAll("[data-crm-veh-new]").forEach(b=>b.onclick=()=>openCrmSheet("new-veh",b.dataset.crmVehNew));
+  document.querySelectorAll("[data-crm-veh-edit]").forEach(b=>b.onclick=()=>openCrmSheet("edit-veh",b.dataset.crmVehEdit));
+  document.querySelectorAll("[data-crm-veh-del]").forEach(b=>b.onclick=()=>{ requireCode(()=>{ App.services.deleteVehicle(b.dataset.crmVehDel); toast("حُذفت المركبة"); render(); }, SECRET_CODE, "كود الحذف", "حذف مركبة يتطلب الكود."); });
+  document.querySelectorAll("[data-crm-oil]").forEach(b=>b.onclick=()=>openCrmSheet("oil",b.dataset.crmOil));
+  document.querySelectorAll("[data-crm-sheet-close]").forEach(b=>b.onclick=()=>{ const s=document.getElementById("crmSheet"); if(s) s.classList.remove("open"); });
+
   // meters
   const ms=document.getElementById("meterSave");
   if(ms){
@@ -497,6 +511,79 @@ function openInvSheet(mode, id){
     if(res&&res.ok){ sheet.classList.remove("open"); toast("تم الحفظ"); render(); }
     else toast("تعذّر الحفظ — تحقق من القيمة");
   };
+}
+
+/* CRM — customer / vehicle / oil-change sheet (context-driven). */
+function openCrmSheet(mode, arg){
+  const sheet=document.getElementById("crmSheet"), title=document.getElementById("crmSheetTitle"), body=document.getElementById("crmSheetBody");
+  if(!sheet) return;
+  const fld=(id,lbl,val,type)=>`<div class="field"><label>${lbl}</label><input id="${id}" type="${type||'text'}" value="${(val==null?'':String(val)).replace(/"/g,'&quot;')}"></div>`;
+  if(mode==="new-cust"||mode==="edit-cust"){
+    const c=(mode==="edit-cust")?App.core.crmCustomer(arg):{};
+    title.textContent=(mode==="edit-cust")?"تعديل الزبون":"زبون جديد";
+    body.innerHTML=`${(mode==="new-cust")?fld("cmPlate","اللوحة / المعرّف",""):""}
+      ${fld("cmName","الاسم",c.name)}
+      <div class="row2">${fld("cmPhone","الهاتف",c.phone,"tel")}${fld("cmPhone2","هاتف إضافي",c.phone2,"tel")}</div>
+      <div class="row2">${fld("cmWhats","واتساب",c.whatsapp,"tel")}${fld("cmEmail","البريد",c.email)}</div>
+      ${fld("cmAddr","العنوان",c.address)}
+      <div class="row2">${fld("cmType","النوع",c.type)}${fld("cmCredit","حد الائتمان",c.creditLimit,"number")}</div>
+      ${fld("cmTags","الوسوم (بفواصل)",(c.tags||[]).join(", "))}
+      ${fld("cmMembership","العضوية",c.membership)}
+      <div class="field"><label>ملاحظات</label><textarea id="cmNotes" rows="2">${c.notes||""}</textarea></div>
+      <button type="button" class="btn-primary" id="cmSave">حفظ</button>`;
+    sheet.classList.add("open");
+    document.getElementById("cmSave").onclick=()=>{
+      const dto={ id:(c&&c.id)||null, plate:(document.getElementById("cmPlate")||{}).value, name:V("cmName"), phone:V("cmPhone"), phone2:V("cmPhone2"),
+        whatsapp:V("cmWhats"), email:V("cmEmail"), address:V("cmAddr"), type:V("cmType"), creditLimit:V("cmCredit"), tags:V("cmTags"), membership:V("cmMembership"), notes:V("cmNotes") };
+      const r=App.services.saveCustomer(dto);
+      if(!r.ok){ toast(r.error==="plate_required"?"أدخل لوحة/معرّف الزبون":"تعذّر الحفظ"); return; }
+      sheet.classList.remove("open"); if(mode==="new-cust") state.crmSel=r.customer.id; toast("تم الحفظ"); render();
+    };
+  } else if(mode==="new-veh"||mode==="edit-veh"){
+    const v=(mode==="edit-veh")?App.core.vehicle(arg):{};
+    const cid=(mode==="new-veh")?arg:v.customerId;
+    title.textContent=(mode==="edit-veh")?"تعديل المركبة":"مركبة جديدة";
+    body.innerHTML=`${fld("vhPlate","اللوحة",v.plate)}
+      <div class="row2">${fld("vhBrand","الماركة",v.brand)}${fld("vhModel","الموديل",v.model)}</div>
+      <div class="row2">${fld("vhYear","السنة",v.year)}${fld("vhColor","اللون",v.color)}</div>
+      <div class="row2">${fld("vhFuel","الوقود",v.fuelType)}${fld("vhTrans","ناقل الحركة",v.transmission)}</div>
+      <div class="row2">${fld("vhOil","نوع الزيت",v.oilType)}${fld("vhCap","سعة الزيت (لتر)",v.oilCapacity,"number")}</div>
+      <div class="row2">${fld("vhMile","العداد (كم)",v.mileage,"number")}${fld("vhVin","VIN",v.vin)}</div>
+      <div class="field"><label>ملاحظات</label><textarea id="vhNotes" rows="2">${v.notes||""}</textarea></div>
+      <button type="button" class="btn-primary" id="vhSave">حفظ</button>`;
+    sheet.classList.add("open");
+    document.getElementById("vhSave").onclick=()=>{
+      const dto={ plate:V("vhPlate"), brand:V("vhBrand"), model:V("vhModel"), year:V("vhYear"), color:V("vhColor"), fuelType:V("vhFuel"),
+        transmission:V("vhTrans"), oilType:V("vhOil"), oilCapacity:V("vhCap"), mileage:V("vhMile"), vin:V("vhVin"), notes:V("vhNotes") };
+      const r=(mode==="edit-veh")?App.services.updateVehicle(v.id,dto):App.services.addVehicle(cid,dto);
+      if(!r.ok){ toast(r.error==="plate_required"?"أدخل لوحة المركبة":"تعذّر الحفظ"); return; }
+      sheet.classList.remove("open"); toast("تم الحفظ"); render();
+    };
+  } else if(mode==="oil"){
+    const v=App.core.vehicle(arg); if(!v) return;
+    const prods=App.core.invProducts();
+    const oilOpts=`<option value="">— اختر زيتًا —</option>`+prods.map(p=>`<option value="${p.id}">${p.name}</option>`).join("");
+    const partOpts=`<option value="">— بدون —</option>`+prods.map(p=>`<option value="${p.id}">${p.name}</option>`).join("");
+    title.textContent="تغيير زيت — "+v.plate;
+    body.innerHTML=`
+      <div class="field"><label>زيت المحرك (من المخزون)</label><select id="olProd">${oilOpts}</select></div>
+      <div class="row2">${fld("olQty","الكمية (لتر)",v.oilCapacity||4,"number")}${fld("olLabor","أجرة الخدمة",0,"number")}</div>
+      <div class="row2">${fld("olBrand","العلامة",v.oilType)}${fld("olGrade","اللزوجة (5W30..)","")}</div>
+      <div class="field"><label>فلتر / قطعة إضافية</label><select id="olPart">${partOpts}</select></div>
+      <div class="row2">${fld("olMileBefore","العداد الحالي",v.mileage,"number")}${fld("olMileAfter","العداد الجديد",v.mileage,"number")}</div>
+      ${fld("olInterval","مسافة التغيير القادم (كم)",5000,"number")}
+      <button type="button" class="btn-primary" id="olSave">إتمام وتحصيل نقدًا</button>`;
+    sheet.classList.add("open");
+    document.getElementById("olSave").onclick=()=>{
+      const parts=[]; const pp=V("olPart"); if(pp) parts.push({productId:pp, qty:1});
+      const r=App.services.oilChange({ vehicleId:v.id, oilProductId:V("olProd"), oilQty:V("olQty"), laborPrice:V("olLabor"),
+        oilBrand:V("olBrand"), oilType:V("olBrand"), oilGrade:V("olGrade"), parts:parts,
+        mileageBefore:V("olMileBefore"), mileageAfter:V("olMileAfter"), interval:V("olInterval") });
+      if(!r.ok){ toast(r.error==="empty"?"أضف زيتًا أو أجرة خدمة":"تعذّر إتمام الخدمة"); return; }
+      sheet.classList.remove("open"); toast("تم تغيير الزيت — "+r.invoice.no); openReceipt2(r.invoice.id); render();
+    };
+  }
+  function V(id){ const el=document.getElementById(id); return el?el.value:""; }
 }
 
 /* Accounting — when an operation/order is cancelled, reverse its sale entry; a re-activation re-posts it. */

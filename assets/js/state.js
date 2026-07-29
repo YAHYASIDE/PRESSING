@@ -72,6 +72,9 @@ const state = {
   pos: {cart:[],discount:0,discType:"amount",taxOn:true,note:"",customer:{name:"",plate:""},payments:[],coupon:""},  /* POS cart */
   invoices: [], invoiceSeq: 0, posServicePrices: {},              /* POS invoices + learned service prices */
   posTab: "sell", posSearch: "", posCat: "all",
+  vehicles: [],                  /* Vehicle registry (customer-owned) */
+  reminders: [],                 /* generated reminders (oil change, etc.) */
+  crmSel: null, crmSearch: "", crmTab: "timeline",  /* CRM screen state */
   features: defaultFeatures(),   /* Release: optional feature modules (loyalty, …) */
   customers:{},
   meters:[],

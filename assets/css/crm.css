@@ -1,0 +1,51 @@
+/* crm.css — Customer CRM + Vehicle registry. Mobile-first. */
+
+.crm-cards{ display: flex; flex-direction: column; gap: 9px; }
+.crm-card{ display: flex; align-items: center; gap: 12px; width: 100%; text-align: start; cursor: pointer; font: inherit; color: inherit;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); padding: 11px 13px; animation: dashUp .3s ease both; }
+.crm-card:active{ transform: scale(.99); }
+.crm-av{ flex: none; width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; font-size: 1.1rem;
+  background: linear-gradient(135deg, var(--brand), var(--teal)); color: #fff; }
+.crm-av.big{ width: 60px; height: 60px; font-size: 1.6rem; }
+.crm-c-main{ flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.crm-c-main b{ font-weight: 800; font-size: .92rem; }
+.crm-c-main span{ font-size: .76rem; color: var(--muted); font-weight: 600; }
+.crm-c-side{ display: flex; align-items: center; gap: 6px; }
+.crm-owe{ color: var(--unpaid); font-weight: 800; font-size: .84rem; }
+.crm-visits{ color: var(--muted); font-weight: 700; font-size: .78rem; }
+
+/* profile */
+.crm-hero{ display: flex; align-items: center; gap: 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--shadow); padding: 16px; margin: 14px 0; }
+.crm-hero-main{ flex: 1; min-width: 0; }
+.crm-hero-name{ font-size: 1.15rem; font-weight: 800; }
+.crm-hero-sub{ font-size: .8rem; color: var(--muted); font-weight: 600; margin-top: 2px; }
+.crm-pref{ display: flex; flex-wrap: wrap; gap: 5px; margin-top: 7px; }
+.crm-pref span{ font-size: .68rem; font-weight: 700; color: var(--brand); background: var(--chip); border-radius: 999px; padding: 2px 9px; }
+.crm-hero .call-btn{ flex: none; width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; text-decoration: none; font-size: 1.2rem; }
+.crm-kpis{ margin-bottom: 14px; }
+
+/* timeline */
+.crm-tl{ display: flex; flex-direction: column; gap: 8px; position: relative; }
+.tl-ev{ display: flex; align-items: center; gap: 11px; background: var(--surface); border: 1px solid var(--line); border-radius: 13px; box-shadow: var(--shadow); padding: 11px 13px; animation: dashUp .28s ease both; }
+.tl-ev-ic{ flex: none; width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; background: var(--soft); font-size: 1.05rem; }
+.tl-ev-body{ flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.tl-ev-body b{ font-weight: 800; font-size: .88rem; }
+.tl-ev-body span{ font-size: .74rem; color: var(--muted); font-weight: 600; }
+.tl-ev-amt{ font-weight: 800; white-space: nowrap; color: var(--brand); }
+.tl-ev-amt.neg{ color: var(--unpaid); }
+.tl-ev-amt.owe{ color: var(--wash); }
+
+/* vehicles */
+.veh-card{ background: var(--surface); border: 1px solid var(--line); border-radius: 15px; box-shadow: var(--shadow); padding: 14px; margin-bottom: 10px; animation: dashUp .3s ease both; }
+.veh-head{ display: flex; align-items: center; gap: 9px; font-weight: 800; }
+.veh-head b{ font-size: 1.05rem; }
+.veh-head span{ font-size: .8rem; color: var(--muted); font-weight: 600; }
+.veh-due{ margin-inline-start: auto; font-size: .66rem; font-weight: 800; color: #fff; background: var(--unpaid); border-radius: 999px; padding: 2px 9px; }
+.veh-grid{ display: grid; grid-template-columns: 1fr 1fr; gap: 6px 12px; margin: 10px 0; }
+.veh-grid > div{ display: flex; justify-content: space-between; font-size: .82rem; border-bottom: 1px dashed var(--line); padding: 4px 0; }
+.veh-grid span{ color: var(--muted); font-weight: 600; }
+.veh-grid b{ font-weight: 800; }
+.veh-hist{ font-size: .74rem; color: var(--muted); font-weight: 700; margin-bottom: 9px; }
+.veh-acts{ display: flex; flex-wrap: wrap; gap: 7px; }
+.veh-acts .mini{ flex: 1; min-width: 90px; }
+.crm-addveh{ width: 100%; margin-top: 4px; }

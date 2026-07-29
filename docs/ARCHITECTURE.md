@@ -149,6 +149,30 @@ A layer may use the layers below it and never the layers above it.
   entry (payment accounts / receivable Dr; revenue net Cr; tax-payable Cr) and
   `consumeStock` per product line (COGS). Refunds reverse revenue/tax/cash and
   restock on a full refund. A cart can mix products and services in one invoice.
+- `finalizeInvoice(dto)` is the **single invoice-posting path** — both POS
+  checkout and the Oil-Change module call it, so sale/accounting/inventory logic
+  is never duplicated.
+
+#### CRM + Vehicle Registry + Oil-Change (SaaS v1.0)
+- **Single source of truth:** customer profiles live in `state.customers`
+  (plate-keyed loyalty/contact record, enriched with CRM fields); the Vehicle
+  Registry is `state.vehicles` (customer-owned, multiple per customer). **Every
+  aggregate is DERIVED** from the transactional stores — `custRevenue`,
+  `custBalance`, `custVisitCount`, `custAvgTicket`, `custTimeline` read carOps +
+  carpetOrders + invoices; nothing is stored twice.
+  - **core** (`core/crm.js`): the derivations + `customerOfPlate` (resolves a
+    plate to its owning customer via the vehicle registry, so a secondary
+    vehicle's plate never spawns a duplicate customer).
+  - **service** (`services/crm.js`): `crmSync` (idempotently assigns customer ids
+    + registers each plate as a vehicle), `saveCustomer`, vehicle CRUD, and
+    `oilChange` — which builds line items (oil + filters from inventory + labor),
+    posts through `finalizeInvoice`, consumes inventory (COGS), updates the
+    vehicle (mileage, last/next oil), records service history and a reminder.
+  - **page** (`pages/crm.js`): customer list → profile with stat KPIs, a unified
+    chronological **timeline** (invoices, oil changes, car/carpet orders,
+    refunds), vehicles tab (full registry + oil-change action), and contact info.
+- The oil change is a normal invoice (`meta.oil`) in the one invoice store, so it
+  shows in POS history, the ledger, and the customer timeline at once.
 - **Nothing about the business is hardcoded anymore.** Modules read via core
   accessors: `bizServices()` (the service catalog → the wash `<select>`),
   `bizPayMethods()` (the payment selector everywhere), `bizCurrency()` (via
