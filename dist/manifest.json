@@ -1,0 +1,27 @@
+{
+  "name": "واشلي · Washly",
+  "short_name": "واشلي",
+  "lang": "ar",
+  "dir": "rtl",
+  "description": "منصّة إدارة الأعمال لغسيل السيارات والملابس والسجاد وتغيير الزيت والمتجر.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#eef3f7",
+  "theme_color": "#12507c",
+  "icons": [
+    {
+      "src": "assets/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

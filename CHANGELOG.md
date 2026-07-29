@@ -6,6 +6,25 @@ platform for car wash, laundry, carpet cleaning, oil change and retail.
 
 ## SaaS v1.0 — Enterprise Edition (incremental)
 
+### v1.0.0 — Production release
+- **Production bundle** (`build.js` → `dist/`): the 53 JS + 19 CSS source files
+  are concatenated in load order and minified with esbuild (whitespace + syntax
+  only; identifiers preserved) into one content-hashed JS + one CSS —
+  **72 asset requests collapsed to 2**. App code over the wire: ~178 KB gzip.
+- **PWA / offline**: generated `manifest.json` + `sw.js` service worker
+  (precached app shell, cache-first). Offline reload boots and renders with data
+  intact. 192/512 maskable icons generated from the app logo.
+- **Loading optimization**: the Google Fonts stylesheet is now
+  non-render-blocking — first paint dropped from ~12.9 s to **240 ms** (FCP
+  240 ms, LCP 516 ms) with a system-font fallback.
+- **Version** bumped to `1.0.0`.
+- **Verified** end-to-end on the served bundle: no 404s, service worker controls
+  the page, backup/restore round-trips with a balanced ledger, print output
+  correct, responsive with 0px horizontal overflow, zero console errors — full
+  results in `DEPLOYMENT_REPORT.md`.
+- **Reproducible build**: `package.json` (`npm run build` / `serve` / `test`),
+  `.gitignore`; deployment guide updated for the bundle + PWA update flow.
+
 ### RC1 — Release Candidate hardening
 - **Production readiness pass** (no new business features): reviewed every page,
   workflow, modal and mobile screen across mobile + desktop viewports.

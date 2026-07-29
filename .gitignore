@@ -1,0 +1,10 @@
+# Build tooling (installed via `npm install`, not committed)
+node_modules/
+package-lock.json
+
+# Local server / OS noise
+.DS_Store
+*.log
+
+# NOTE: dist/ IS committed on purpose — it is the deployable production bundle.
+# Regenerate it with `npm run build`.

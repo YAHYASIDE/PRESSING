@@ -1,6 +1,6 @@
 # Production Checklist — Washly v1.0
 
-Gate for promoting `1.0.0-rc.1` to a live deployment. Work top-to-bottom; do not
+Gate for promoting `1.0.0` to a live deployment. Work top-to-bottom; do not
 go live with an unchecked **Blocker**.
 
 ---
@@ -67,8 +67,7 @@ go live with an unchecked **Blocker**.
 
 ## Sign-off
 
-- [ ] Version string reads `1.0.0-rc.1` (or the promoted GA number) in
-      **Settings** and on the welcome screen.
+- [ ] Version string reads `1.0.0` in **Settings** and on the welcome screen.
 - [ ] `RELEASE_NOTES_v1.md`, `docs/DEPLOYMENT_GUIDE.md` and
       `docs/BACKUP_RECOVERY.md` reviewed by whoever operates the deployment.
 - [ ] Rollback plan understood (redeploy previous commit; user data is

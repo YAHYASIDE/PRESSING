@@ -1,0 +1,16 @@
+{
+  "name": "washly",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Washly — mobile-first, offline-capable business-management platform (car wash, laundry, carpet, oil change, retail).",
+  "scripts": {
+    "build": "node build.js",
+    "serve": "python3 -m http.server 8137 --directory dist",
+    "test": "node tests/smoke.test.js"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.1",
+    "sharp": "^0.34.0",
+    "playwright": "^1.40.0"
+  }
+}

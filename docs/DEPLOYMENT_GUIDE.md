@@ -1,26 +1,54 @@
 # Deployment Guide — Washly v1.0
 
 Washly is a **static single-page application**. There is no server, no database
-and no build step: the deliverable is `index.html` plus the `assets/` folder.
-Any static web host works.
+and no runtime dependencies. Any static web host works.
+
+You can deploy in two ways:
+
+- **Production bundle (recommended):** deploy the pre-built `dist/` folder — one
+  minified JS + one minified CSS (72 asset requests collapsed to 2), plus a
+  service worker and PWA manifest for offline use and install. This is what
+  `DEPLOYMENT_REPORT.md` measures.
+- **Source (dev / zero-tooling):** deploy the repository root and let the browser
+  load the ~72 individual source files. Works identically; just slower on first
+  load and without the service worker.
 
 ---
 
 ## 1. What you are deploying
 
+**Production bundle** — build it, then deploy `dist/`:
+
+```bash
+npm install      # dev-only: esbuild + sharp (build tools)
+npm run build    # writes dist/
+```
+```
+dist/
+  index.html                  # 2 asset refs + service-worker registration
+  assets/app.<hash>.min.js     # all JS, bundled + minified, cache-busted
+  assets/app.<hash>.min.css    # all CSS, bundled + minified, cache-busted
+  assets/icon-192.png          # PWA icons (generated from the app logo)
+  assets/icon-512.png
+  manifest.json                # PWA manifest
+  sw.js                        # service worker (offline app shell)
+```
+
+**Source** — the repository root:
 ```
 index.html            # entry point (loads all CSS + JS in order)
 assets/css/*.css       # stylesheets
-assets/js/**/*.js       # application code (plain ES; no bundler)
+assets/js/**/*.js       # application code (plain classic scripts; no bundler)
 ```
 
 Nothing else is required at runtime. There are no environment variables, secrets
 or API keys baked into the app.
 
-> **Do not reorder or lazy-load the `<script>` tags.** They are classic
-> (non-module) scripts that publish onto a shared `window.App` namespace and must
-> load in the order declared in `index.html` (config → state → core →
-> repositories → services → ui → pages → `app.js`).
+> **Do not reorder or lazy-load the `<script>` tags in source `index.html`.** They
+> are classic (non-module) scripts that publish onto a shared `window.App`
+> namespace and must load in declared order (config → state → core → repositories
+> → services → ui → pages → `app.js`). `build.js` preserves this order exactly and
+> disables identifier minification so global names survive bundling.
 
 ---
 
@@ -113,12 +141,17 @@ After this the app has **zero** third-party network dependencies.
 
 ## 6. Updating a live deployment
 
-- Push the new commit; re-deploy the static files.
+- Push the new commit; **re-run `npm run build`** and deploy the new `dist/`.
 - **User data is untouched** by an update — it lives in the browser's
   localStorage, not in the deployed files. There is no migration downtime; the
   app runs idempotent store migrations on load.
-- Tell users to hard-refresh (or bump a query string on asset links) if a browser
-  serves stale cached files.
+- **Bundle updates propagate automatically.** Asset filenames are content-hashed,
+  so a changed bundle is a new URL the browser must fetch. The service worker
+  (`sw.js`) also changes each build, so browsers install the new worker, drop the
+  old cache (`washly-v*`), and serve the new shell on the next load — no manual
+  hard-refresh needed for bundle deployments.
+- For **source** (unbundled) deployments there is no service worker; tell users to
+  hard-refresh if a browser serves stale cached files.
 
 ---
 

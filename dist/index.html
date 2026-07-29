@@ -13,25 +13,8 @@
 <!-- Font is loaded non-render-blocking: text paints immediately in a system fallback and swaps to Tajawal on load. -->
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" media="print" onload="this.media='all'">
 <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap"></noscript>
-<link rel="stylesheet" href="assets/css/variables.css">
-<link rel="stylesheet" href="assets/css/base.css">
-<link rel="stylesheet" href="assets/css/layout.css">
-<link rel="stylesheet" href="assets/css/components.css">
-<link rel="stylesheet" href="assets/css/dashboard.css">
-<link rel="stylesheet" href="assets/css/mobile.css">
-<link rel="stylesheet" href="assets/css/cars.css">
-<link rel="stylesheet" href="assets/css/setup.css">
-<link rel="stylesheet" href="assets/css/subscription.css">
-<link rel="stylesheet" href="assets/css/accounting.css">
-<link rel="stylesheet" href="assets/css/inventory.css">
-<link rel="stylesheet" href="assets/css/pos.css">
-<link rel="stylesheet" href="assets/css/crm.css">
-<link rel="stylesheet" href="assets/css/ops.css">
-<link rel="stylesheet" href="assets/css/reports.css">
-<link rel="stylesheet" href="assets/css/industry.css">
-<link rel="stylesheet" href="assets/css/membership.css">
-<link rel="stylesheet" href="assets/css/queue.css">
-<link rel="stylesheet" href="assets/css/entry.css">
+<link rel="manifest" href="manifest.json">
+<link rel="stylesheet" href="assets/app.8006d329d3.min.css">
 </head>
 <body>
 <div class="app">
@@ -245,65 +228,14 @@
 </div>
 
 <!-- root -->
-<script src="assets/js/app.namespace.js"></script>
 <!-- config + store -->
-<script src="assets/js/config/app.js"></script>
-<script src="assets/js/config/constants.js"></script>
-<script src="assets/js/config/features.js"></script>
-<script src="assets/js/config/business.js"></script>
-<script src="assets/js/config/accounting.js"></script>
-<script src="assets/js/config/inventory.js"></script>
-<script src="assets/js/config/pos.js"></script>
-<script src="assets/js/config/industry.js"></script>
-<script src="assets/js/config/membership.js"></script>
-<script src="assets/js/state.js"></script>
 <!-- core (pure domain) -->
-<script src="assets/js/core/domain.js"></script>
-<script src="assets/js/core/accounting.js"></script>
-<script src="assets/js/core/inventory.js"></script>
-<script src="assets/js/core/pos.js"></script>
-<script src="assets/js/core/crm.js"></script>
-<script src="assets/js/core/ops.js"></script>
-<script src="assets/js/core/search.js"></script>
-<script src="assets/js/core/reports.js"></script>
-<script src="assets/js/core/industry.js"></script>
-<script src="assets/js/core/membership.js"></script>
 <!-- repositories (persistence ports + adapters) -->
-<script src="assets/js/repositories/persistence.js"></script>
-<script src="assets/js/repositories/state-facade.js"></script>
 <!-- services (use-cases) -->
-<script src="assets/js/services/index.js"></script>
-<script src="assets/js/services/car-wash.js"></script>
-<script src="assets/js/services/accounting.js"></script>
-<script src="assets/js/services/inventory.js"></script>
-<script src="assets/js/services/pos.js"></script>
-<script src="assets/js/services/crm.js"></script>
-<script src="assets/js/services/audit.js"></script>
-<script src="assets/js/services/industry.js"></script>
-<script src="assets/js/services/membership.js"></script>
 <!-- ui (presentation primitives) -->
-<script src="assets/js/ui/theme.js"></script>
-<script src="assets/js/ui/nav.js"></script>
-<script src="assets/js/ui/photos.js"></script>
-<script src="assets/js/ui/qrcode.js"></script>
-<script src="assets/js/ui/export.js"></script>
 <!-- pages (per-screen render + wiring) -->
-<script src="assets/js/pages/dashboard.js"></script>
-<script src="assets/js/pages/orders.js"></script>
-<script src="assets/js/pages/customers.js"></script>
-<script src="assets/js/pages/reports.js"></script>
-<script src="assets/js/pages/settings.js"></script>
-<script src="assets/js/pages/features.js"></script>
-<script src="assets/js/pages/setup.js"></script>
-<script src="assets/js/pages/subscription.js"></script>
-<script src="assets/js/pages/accounting.js"></script>
-<script src="assets/js/pages/inventory.js"></script>
-<script src="assets/js/pages/pos.js"></script>
-<script src="assets/js/pages/crm.js"></script>
-<script src="assets/js/pages/ops.js"></script>
-<script src="assets/js/pages/queue.js"></script>
-<script src="assets/js/pages/business-settings.js"></script>
 <!-- composition root (must load last) -->
-<script src="assets/js/app.js"></script>
+<script src="assets/app.91c72b1412.min.js"></script>
+<script>if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){});});}</script>
 </body>
 </html>

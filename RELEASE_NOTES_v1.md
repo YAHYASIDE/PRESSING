@@ -1,6 +1,6 @@
 # Washly · واشلي — Release Notes v1.0
 
-**Release candidate:** `1.0.0-rc.1`
+**Version:** `1.0.0` (GA)
 **Type:** Mobile-first, offline-capable, Arabic (RTL) business-management platform
 **Segments:** Car wash · Laundry · Carpet cleaning · Oil change · Retail shop
 
