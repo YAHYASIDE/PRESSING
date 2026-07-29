@@ -1,4 +1,4 @@
-/* components/photos.js — Photo capture/compress + thumbnail strip + lightbox (extracted from index.html) */
+/* ui/photos.js — photo capture/compress + thumbnail strip + lightbox */
 /* ================= Photos ================= */
 let pendingCarBefore=[], pendingCarAfter=[], pendingCpPhotos=[];
 function readAndCompress(file,cb){

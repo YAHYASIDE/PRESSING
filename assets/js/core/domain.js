@@ -1,4 +1,4 @@
-/* utils.js — Pure helpers: formatting, dates, math, icons, financial calcs (extracted from index.html) */
+/* core/domain.js — pure domain: formatting, dates, math, financial calcs (+ icons/toast, to move to ui/ later) */
 /* ================= Helpers ================= */
 const fmt=(n)=>(Math.round(n*100)/100).toLocaleString("en-US");
 const money=(n)=>fmt(n);

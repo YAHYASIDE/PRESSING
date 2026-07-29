@@ -1,4 +1,4 @@
-/* components/ui.js — Palette + light/dark theme (extracted from index.html) */
+/* ui/theme.js — palette + light/dark theme */
 const PALETTES=[
   {k:"teal",  name:"أخضر سماوي", b:"#0f9d8f", b2:"#16b8a6"},
   {k:"aqua",  name:"فيروزي",     b:"#0e8fa8", b2:"#22b6cf"},

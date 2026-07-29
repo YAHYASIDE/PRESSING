@@ -1,4 +1,4 @@
-/* storage.js — localStorage persistence + backup import/export/reset (extracted from index.html) */
+/* repositories/state-facade.js — global save/load facade over the StateStore port + backup import/export/reset (backup moves to services/ later) */
 /* ============ persistence (localStorage) ============ */
 const LS_KEY="sadaqa_laundry_v1";
 /* Persistence now goes through the repositories layer (App.repositories.stateStore),

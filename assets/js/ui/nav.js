@@ -1,4 +1,4 @@
-/* components/nav.js — Sidebar navigation renderer (extracted from index.html) */
+/* ui/nav.js — sidebar navigation renderer */
 /* ================= Nav ================= */
 function renderNav(){
   const unpaid=state.carpetOrders.filter(o=>o.status!=="done").length;

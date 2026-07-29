@@ -160,19 +160,28 @@
   </div>
 </div>
 
+<!-- root -->
 <script src="assets/js/app.namespace.js"></script>
-<script src="assets/js/repositories/persistence.js"></script>
+<!-- config + store -->
 <script src="assets/js/state.js"></script>
-<script src="assets/js/utils.js"></script>
-<script src="assets/js/pages/customers.js"></script>
-<script src="assets/js/components/photos.js"></script>
-<script src="assets/js/components/nav.js"></script>
-<script src="assets/js/components/ui.js"></script>
+<!-- core (pure domain) -->
+<script src="assets/js/core/domain.js"></script>
+<!-- repositories (persistence ports + adapters) -->
+<script src="assets/js/repositories/persistence.js"></script>
+<script src="assets/js/repositories/state-facade.js"></script>
+<!-- services (use-cases) -->
+<script src="assets/js/services/index.js"></script>
+<!-- ui (presentation primitives) -->
+<script src="assets/js/ui/theme.js"></script>
+<script src="assets/js/ui/nav.js"></script>
+<script src="assets/js/ui/photos.js"></script>
+<!-- pages (per-screen render + wiring) -->
 <script src="assets/js/pages/dashboard.js"></script>
 <script src="assets/js/pages/orders.js"></script>
-<script src="assets/js/pages/settings.js"></script>
+<script src="assets/js/pages/customers.js"></script>
 <script src="assets/js/pages/reports.js"></script>
-<script src="assets/js/storage.js"></script>
+<script src="assets/js/pages/settings.js"></script>
+<!-- composition root (must load last) -->
 <script src="assets/js/app.js"></script>
 </body>
 </html>
