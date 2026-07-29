@@ -4,6 +4,7 @@ function renderNav(){
   const unpaid=state.carpetOrders.filter(o=>o.status!=="done").length;
   const allItems=[
     {id:"dashboard",label:"الرئيسية",icon:I.home},
+    {id:"pos",label:"نقطة البيع",icon:I.income},
     {id:"cars",label:"العمليات",icon:I.car},
     {id:"carpets",label:"السجاد",icon:I.rug,badge:unpaid},
     {id:"expenses",label:"المصروفات",icon:I.wallet},

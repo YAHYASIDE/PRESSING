@@ -128,7 +128,27 @@ A layer may use the layers below it and never the layers above it.
 - **Every stock movement posts to accounting** (satisfying "every inventory
   movement affects accounting"): opening/receive → Dr Inventory Cr Cash/Equity;
   sale consumption → Dr COGS Cr Inventory; shrinkage → Dr Expense Cr Inventory.
-  `consumeStock` is the hook the upcoming POS will call.
+  `consumeStock` is the hook the POS calls.
+
+#### POS module (SaaS v1.0) — invoices, mixed products+services, ledger-posted
+- Same four layers, gated by the `pos` Feature Module (default on):
+  - **config** (`config/pos.js`): coupon codes + invoice-number format. Tax lives
+    on `state.business.tax` ({enabled, rate, label}), editable in Settings.
+  - **core** (`core/pos.js`): pure cart math — `cartSubtotal`, `cartDiscountAmt`,
+    `cartNet`, `cartTaxAmt`, `cartTotal`, `paymentsDue`, `invNo`, invoice rollups.
+  - **service** (`services/pos.js`): sole writer of `state.invoices` + the cart.
+    `checkoutInvoice`, `holdInvoice`/`resumeInvoice`/`cancelHeld`,
+    `duplicateInvoice`, `refundInvoice` (full or partial). No-op when off.
+  - **page** (`pages/pos.js`): catalog (inventory products + business services in
+    one grid), cart bottom-sheet (qty, discount, coupon, tax, customer, note,
+    split multi-method payments, store-credit remainder), invoice history, and a
+    printable **receipt** (logo, invoice #, customer, VAT, total, QR).
+  - **ui** (`ui/qrcode.js`): a tiny self-contained QR encoder (byte mode, ECC-L,
+    v1–5, fixed mask 0) — no external dependency — for the receipt QR.
+- **Accounting + inventory integration:** every checkout posts one balanced sale
+  entry (payment accounts / receivable Dr; revenue net Cr; tax-payable Cr) and
+  `consumeStock` per product line (COGS). Refunds reverse revenue/tax/cash and
+  restock on a full refund. A cart can mix products and services in one invoice.
 - **Nothing about the business is hardcoded anymore.** Modules read via core
   accessors: `bizServices()` (the service catalog → the wash `<select>`),
   `bizPayMethods()` (the payment selector everywhere), `bizCurrency()` (via

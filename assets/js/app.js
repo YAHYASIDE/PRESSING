@@ -27,7 +27,7 @@ function render(){
     document.getElementById("main").innerHTML=`<div class="screen">${screenSubscription()}</div>`;
     bindScreen(); return;
   }
-  const map={dashboard:screenDashboard,cars:screenCars,carpets:screenCarpets,expenses:screenExpenses,reports:screenReports,accounting:screenAccounting,inventory:screenInventory};
+  const map={dashboard:screenDashboard,pos:screenPos,cars:screenCars,carpets:screenCarpets,expenses:screenExpenses,reports:screenReports,accounting:screenAccounting,inventory:screenInventory};
   const fn = (allowed.indexOf(state.tab)>=0 ? map[state.tab] : null) || map[allowed[0]] || screenCars;
   document.getElementById("main").innerHTML=`<div class="screen">${fn()}</div>`;
   bindScreen();
@@ -313,6 +313,44 @@ function bindScreen(){
   document.querySelectorAll("[data-inv-edit]").forEach(b=>b.onclick=()=>openInvSheet("edit",b.dataset.invEdit));
   document.querySelectorAll("[data-inv-close]").forEach(b=>b.onclick=()=>{ const s=document.getElementById("invSheet"); if(s) s.classList.remove("open"); });
 
+  // ===== POS =====
+  document.querySelectorAll("[data-pos-tab]").forEach(b=>b.onclick=()=>{ state.posTab=b.dataset.posTab; render(); });
+  document.querySelectorAll("[data-pos-cat]").forEach(b=>b.onclick=()=>{ state.posCat=b.dataset.posCat; render(); });
+  { const s=document.getElementById("posSearch"); if(s) s.oninput=()=>{ state.posSearch=s.value; _refocus="posSearch"; render(); }; }
+  const posAdd=(line)=>{ if(!state.pos.cart) state.pos.cart=[]; const ex=state.pos.cart.find(i=>i.kind===line.kind&&i.refId===line.refId&&i.name===line.name&&line.kind==="product"); if(ex){ ex.qty++; } else state.pos.cart.push(Object.assign({lid:uid(),qty:1},line)); };
+  document.querySelectorAll("[data-pos-prod]").forEach(b=>b.onclick=()=>{ const p=App.core.invProduct(b.dataset.posProd); if(!p) return; posAdd({kind:"product",refId:p.id,name:p.name,price:+p.price||0,cost:+p.cost||0}); toast("أُضيف: "+p.name); render(); });
+  document.querySelectorAll("[data-pos-svc]").forEach(b=>b.onclick=()=>{ const name=decodeURIComponent(b.dataset.posSvc); const price=(state.posServicePrices&&state.posServicePrices[name])||0; posAdd({kind:"service",refId:null,name:name,price:price,cost:0}); render(); const sh=document.getElementById("cartSheet"); });
+  document.querySelectorAll("[data-pos-opencart]").forEach(b=>b.onclick=()=>{ const s=document.getElementById("cartSheet"); if(s) s.classList.add("open"); });
+  document.querySelectorAll("[data-pos-closecart]").forEach(b=>b.onclick=()=>{ const s=document.getElementById("cartSheet"); if(s) s.classList.remove("open"); });
+  const posLine=(lid)=>state.pos.cart.find(i=>i.lid===lid);
+  document.querySelectorAll("[data-pc-inc]").forEach(b=>b.onclick=()=>{ const l=posLine(b.dataset.pcInc); if(l){ l.qty++; render(); } });
+  document.querySelectorAll("[data-pc-dec]").forEach(b=>b.onclick=()=>{ const l=posLine(b.dataset.pcDec); if(l){ l.qty--; if(l.qty<=0) state.pos.cart=state.pos.cart.filter(x=>x.lid!==l.lid); render(); } });
+  document.querySelectorAll("[data-pc-rm]").forEach(b=>b.onclick=()=>{ state.pos.cart=state.pos.cart.filter(x=>x.lid!==b.dataset.pcRm); render(); });
+  document.querySelectorAll("[data-pc-price]").forEach(inp=>inp.onchange=()=>{ const l=posLine(inp.dataset.pcPrice); if(l){ l.price=+inp.value||0; render(); } });
+  document.querySelectorAll("[data-pc-disctype]").forEach(b=>b.onclick=()=>{ state.pos.discType=b.dataset.pcDisctype; render(); });
+  { const d=document.getElementById("pcDisc"); if(d) d.onchange=()=>{ state.pos.discount=+d.value||0; render(); }; }
+  { const cn=document.getElementById("pcCustName"); if(cn) cn.onchange=()=>{ state.pos.customer.name=cn.value; }; }
+  { const cp=document.getElementById("pcCustPlate"); if(cp) cp.onchange=()=>{ state.pos.customer.plate=cp.value; }; }
+  { const nt=document.getElementById("pcNote"); if(nt) nt.onchange=()=>{ state.pos.note=nt.value; }; }
+  { const ap=document.getElementById("pcCouponApply"); if(ap) ap.onclick=()=>{ const code=(document.getElementById("pcCoupon").value||"").trim(); const c=App.config.posCoupon(code); if(!c){ toast("كوبون غير صالح"); return; } state.pos.coupon=c.code; state.pos.discType=c.type; state.pos.discount=c.value; toast("طُبّق: "+c.label); render(); }; }
+  document.querySelectorAll("[data-pc-pay]").forEach(b=>b.onclick=()=>{ const due=App.core.paymentsDue(); if(due<=0.009){ toast("المبلغ مدفوع بالكامل"); return; } if(!state.pos.payments) state.pos.payments=[]; state.pos.payments.push({method:b.dataset.pcPay, amount:due}); render(); });
+  document.querySelectorAll("[data-pc-payrm]").forEach(b=>b.onclick=()=>{ state.pos.payments.splice(+b.dataset.pcPayrm,1); render(); });
+  document.querySelectorAll("[data-pos-hold]").forEach(b=>b.onclick=()=>{ const r=App.services.holdInvoice(); if(r.ok){ toast("عُلّقت الفاتورة"); render(); } else toast("السلة فارغة"); });
+  document.querySelectorAll("[data-pos-checkout]").forEach(b=>b.onclick=()=>{ const r=App.services.checkoutInvoice(); if(!r.ok){ toast(r.error==="empty"?"السلة فارغة":"أضف دفعة أولًا"); return; } const s=document.getElementById("cartSheet"); if(s) s.classList.remove("open"); toast("تم البيع — "+r.invoice.no); openReceipt2(r.invoice.id); render(); });
+  // invoice history actions
+  document.querySelectorAll("[data-pos-receipt]").forEach(b=>b.onclick=()=>openReceipt2(b.dataset.posReceipt));
+  document.querySelectorAll("[data-pos-resume]").forEach(b=>b.onclick=()=>{ App.services.resumeInvoice(b.dataset.posResume); state.posTab="sell"; toast("استُؤنفت الفاتورة"); render(); });
+  document.querySelectorAll("[data-pos-cancelheld]").forEach(b=>b.onclick=()=>{ App.services.cancelHeld(b.dataset.posCancelheld); toast("حُذفت"); render(); });
+  document.querySelectorAll("[data-pos-dup]").forEach(b=>b.onclick=()=>{ App.services.duplicateInvoice(b.dataset.posDup); state.posTab="sell"; toast("نُسخت إلى سلة جديدة"); render(); });
+  document.querySelectorAll("[data-pos-refund]").forEach(b=>b.onclick=()=>{
+    const inv=(state.invoices||[]).find(x=>x.id===b.dataset.posRefund); if(!inv) return;
+    const max=Math.round((inv.total-App.core.invoiceRefunded(inv))*100)/100;
+    const v=prompt("مبلغ المرتجع (الأقصى "+max+")؟ اتركه فارغًا لمرتجع كامل", "");
+    requireCode(()=>{ const r=App.services.refundInvoice(inv.id, v===""?null:+v); if(r.ok){ toast("تم المرتجع "+money(r.amount)); render(); } else toast("مبلغ غير صالح"); }, SECRET_CODE, "كود المرتجع", "المرتجع يتطلب كود التحقق.");
+  });
+  const rcC=document.getElementById("rcptClose"); if(rcC) rcC.onclick=()=>document.getElementById("receiptModal").style.display="none";
+  const rcP=document.getElementById("rcptPrint"); if(rcP) rcP.onclick=()=>{ document.body.classList.add("printing-receipt"); window.print(); setTimeout(()=>document.body.classList.remove("printing-receipt"),400); };
+
   // meters
   const ms=document.getElementById("meterSave");
   if(ms){
@@ -542,6 +580,13 @@ function applyLock(){
 }
 
 /* ---- receipt + print + whatsapp ---- */
+/* POS receipt (Release: SaaS v1.0 POS) — render an invoice's receipt with QR. */
+function openReceipt2(invId){
+  const inv=(state.invoices||[]).find(x=>x.id===invId); if(!inv) return;
+  const body=document.getElementById("receiptBody"); if(!body) return;
+  body.innerHTML=posReceiptHTML(inv);
+  document.getElementById("receiptModal").style.display="flex";
+}
 function openReceipt(o){
   document.getElementById("receiptContent").innerHTML=`
     <div class="rcpt">

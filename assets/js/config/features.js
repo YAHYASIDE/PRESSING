@@ -12,6 +12,7 @@
 
 /* ---- module registry (drives the Settings "Feature Modules" list) ---- */
 const FEATURE_MODULES = [
+  { key:"pos",           label:"نقطة البيع",    icon:"income", desc:"بيع المنتجات والخدمات بفواتير وضريبة وطرق دفع متعددة." },
   { key:"loyalty",       label:"برنامج الولاء", icon:"gift",   desc:"مكافأة الزبائن المتكررين — أختام، نقاط، خصم أو كوبون.", configurable:true },
   { key:"inventory",     label:"المخزون",       icon:"wallet", desc:"تتبّع المواد والكميات وتنبيهات النقص." },
   { key:"reservations",  label:"الحجوزات",      icon:"clock",  desc:"حجز مواعيد غسيل مسبقة للزبائن.",                     comingSoon:true },

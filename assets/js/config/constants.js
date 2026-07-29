@@ -24,9 +24,9 @@ const PAY_METHODS=[
 /* Release 4 — roles & permissions. tabs = nav visible to the role; caps = capabilities.
    receive=create ops · operate=advance stages · collect=take payment · finance=see money · settings/delete/workers = admin. */
 const ROLES={
-  manager: {label:"مدير",   tabs:["dashboard","cars","carpets","expenses","reports","accounting","inventory"], caps:{settings:1,delete:1,workers:1,finance:1,receive:1,operate:1,collect:1}},
-  admin:   {label:"مسؤول",  tabs:["dashboard","cars","carpets","expenses","reports","accounting","inventory"], caps:{settings:1,delete:1,workers:1,finance:1,receive:1,operate:1,collect:1}},
-  cashier: {label:"كاشير",  tabs:["cars","reports"],                                   caps:{finance:1,receive:1,collect:1,operate:1}},
+  manager: {label:"مدير",   tabs:["dashboard","pos","cars","carpets","expenses","reports","accounting","inventory"], caps:{settings:1,delete:1,workers:1,finance:1,receive:1,operate:1,collect:1}},
+  admin:   {label:"مسؤول",  tabs:["dashboard","pos","cars","carpets","expenses","reports","accounting","inventory"], caps:{settings:1,delete:1,workers:1,finance:1,receive:1,operate:1,collect:1}},
+  cashier: {label:"كاشير",  tabs:["pos","cars","reports"],                             caps:{finance:1,receive:1,collect:1,operate:1}},
   worker:  {label:"عامل",   tabs:["cars"],                                              caps:{operate:1}}
 };
 Object.assign(App.config, { SHOP_NAME, SHOP_PHONE, VEH_LETTER, COUNTRIES, SECRET_CODE, CAR_STAGES, OP_QUEUES, PAY_METHODS, ROLES });

@@ -69,6 +69,9 @@ const state = {
   acctTab: "overview",           /* Accounting screen sub-tab */
   inventory: {products:[],categories:[],suppliers:[],movements:[]},  /* Inventory module store */
   invTab: "products", invSearch: "", invAddOpen: false,
+  pos: {cart:[],discount:0,discType:"amount",taxOn:true,note:"",customer:{name:"",plate:""},payments:[],coupon:""},  /* POS cart */
+  invoices: [], invoiceSeq: 0, posServicePrices: {},              /* POS invoices + learned service prices */
+  posTab: "sell", posSearch: "", posCat: "all",
   features: defaultFeatures(),   /* Release: optional feature modules (loyalty, …) */
   customers:{},
   meters:[],

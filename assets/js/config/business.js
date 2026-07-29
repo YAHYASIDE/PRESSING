@@ -57,7 +57,8 @@ function defaultBusiness(){
     types:{ carwash:true, carpet:false, laundry:false, "oil-change":false, shop:false },
     services: defaultServices(),
     paymentMethods: PAYMENT_CATALOG.map(p=>({ k:p.k, label:p.label })),
-    features:{ loyalty:true, employees:true, inventory:false, reservations:false, notifications:false, branches:false, accounting:true },
+    tax:{ enabled:false, rate:0, label:"ضريبة القيمة المضافة" },
+    features:{ pos:true, loyalty:true, employees:true, inventory:false, reservations:false, notifications:false, branches:false, accounting:true },
     workingHours:{ open:"08:00", close:"22:00", days:[6,0,1,2,3,4] }   // السبت–الخميس (الجمعة عطلة)
   };
 }

@@ -236,6 +236,7 @@ function tabVisible(id){
   if(!businessConfigured()) return true;                 // before setup, show everything
   if(id==="cars")    return bizTypeOn("carwash");
   if(id==="carpets") return bizTypeOn("carpet")||bizTypeOn("laundry");
+  if(id==="pos")        return featureEnabled("pos");
   if(id==="reports")    return featureEnabled("accounting");
   if(id==="accounting") return featureEnabled("accounting");
   if(id==="inventory")  return featureEnabled("inventory");
@@ -344,6 +345,11 @@ function runMigrations(){
   if(!state.journal){ state.journal=[]; changed=true; }
   // inventory — ensure the store exists
   if(!state.inventory){ state.inventory={products:[],categories:[],suppliers:[],movements:[]}; changed=true; }
+  // POS — ensure invoices + cart exist; tax config on the business
+  if(!state.invoices){ state.invoices=[]; changed=true; }
+  if(!state.pos){ state.pos={cart:[],discount:0,discType:"amount",taxOn:true,note:"",customer:{name:"",plate:""},payments:[],coupon:""}; changed=true; }
+  if(state.business && !state.business.tax){ state.business.tax={enabled:false,rate:0,label:"ضريبة القيمة المضافة"}; changed=true; }
+  if(state.business && state.business.features && state.business.features.pos===undefined){ state.business.features.pos=true; if(state.features&&!state.features.pos) state.features.pos={enabled:true}; changed=true; }
   // subscription / trial — start a trial for configured installs that don't have one yet
   if(!state.subscription){
     state.subscription = { trialStart: (state.business&&state.business.configured)?iso(new Date()):null, plan:null, active:false };
