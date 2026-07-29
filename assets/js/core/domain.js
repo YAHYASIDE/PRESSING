@@ -190,13 +190,86 @@ function waLink(o){
   return `https://wa.me/${phone}?text=${msg}`;
 }
 function ensureCarNos(){ if(!state.carSeq) state.carSeq={}; (state.carOps||[]).forEach(o=>{ if(!o.no) o.no=carNo(o.vehicle); }); }
+
+/* ================= Feature Modules (optional business features) ================= */
+/* Generic toggle API — every optional module (loyalty, inventory, …) is gated by these. */
+function featureEnabled(key){ const f=state.features&&state.features[key]; return !!(f&&f.enabled); }
+function featureCfg(key){ return (state.features&&state.features[key])||{}; }
+
+/* ---- loyalty module ---- */
+function loyaltyEnabled(){ return featureEnabled("loyalty"); }
+function loyaltyStrategy(){ return featureCfg("loyalty").strategy||"stamp"; }
+function loyaltyThreshold(){ return +featureCfg("loyalty").threshold||5; }
+
+/* Pure: given the customer record BEFORE this wash and the entered price, decide the
+   loyalty outcome for the current strategy. Returns {free, price, kind, ...}. When the
+   module is disabled it is a no-op (never free, price unchanged). */
+function loyaltyReward(c, price){
+  if(!loyaltyEnabled()) return { free:false, price:price, kind:"off", applied:false };
+  const cfg=featureCfg("loyalty"), strat=cfg.strategy||"stamp";
+  if(strat==="points"){
+    const redeem=+cfg.redeemPoints||100, pts=(c&&c.points)||0;
+    const free = pts>=redeem;
+    return { free, price:free?0:price, kind:"points", applied:free, redeem };
+  }
+  if(strat==="discount"){
+    const after=+cfg.discountAfter||5, pct=+cfg.discountPct||0, done=(c&&c.totalWashes)||0;
+    const on = pct>0 && done>=after;
+    return { free:false, price:on?Math.max(0,Math.round(price*(1-pct/100))):price, kind:"discount", applied:on, pct };
+  }
+  if(strat==="coupon"){
+    const every=+cfg.couponEvery||5, prog=((c&&c.couponProgress)||0)+1;
+    const earn = prog>=every;
+    return { free:false, price:price, kind:"coupon", applied:earn, earn, code:cfg.couponCode||"", value:+cfg.couponValue||0 };
+  }
+  // default: stamp card — free on the Nth wash
+  const N=+cfg.threshold||5, s=(c&&c.stamps)||0;
+  const free = s>=N-1;
+  return { free, price:free?0:price, kind:"stamp", applied:free, threshold:N };
+}
+/* Mutates the customer record to record this wash's loyalty progress (called by the service
+   AFTER the operation is created). Keeps counters per strategy; safe no-op when disabled. */
+function loyaltyOnWash(c, loy){
+  if(!c) return;
+  c.totalWashes=(c.totalWashes||0)+1; c.lastVisit=iso(new Date());
+  if(!loyaltyEnabled()) return;
+  if(loy.kind==="stamp"){
+    if(loy.free){ c.stamps=0; c.freeWashes=(c.freeWashes||0)+1; } else c.stamps=(c.stamps||0)+1;
+  } else if(loy.kind==="points"){
+    if(loy.free){ c.points=Math.max(0,((c.points||0)-loy.redeem)); c.freeWashes=(c.freeWashes||0)+1; }
+    else c.points=(c.points||0)+(+featureCfg("loyalty").pointsPerWash||10);
+  } else if(loy.kind==="coupon"){
+    if(loy.earn){ c.couponProgress=0; c.coupons=(c.coupons||0)+1; }
+    else c.couponProgress=((c.couponProgress||0)+1);
+  }
+  /* discount strategy needs no extra counter — it derives from totalWashes */
+}
+/* Short human label of a customer's loyalty standing for the current strategy (UI only). */
+function loyaltyStatus(c){
+  if(!loyaltyEnabled()||!c) return "";
+  const cfg=featureCfg("loyalty"), strat=cfg.strategy||"stamp";
+  if(strat==="points")   return `${c.points||0} نقطة`;
+  if(strat==="discount"){ const on=(c.totalWashes||0)>=(+cfg.discountAfter||5); return on?`خصم ${+cfg.discountPct||0}%`:`بعد ${Math.max(0,(+cfg.discountAfter||5)-(c.totalWashes||0))} غسلات`; }
+  if(strat==="coupon")   return `${c.coupons||0} كوبون`;
+  const N=+cfg.threshold||5; return `${(c.stamps||0)}/${N}`;
+}
 function runMigrations(){
   let changed=false;
   if(state.adMsg==="🎁 اجمع 5 غسلات واحصل على غسلة مجانية!\nنغسل السجاد والموكيت والأفرشة أيضًا 🧼\nشاركنا مع أصدقائك 🙌"){ state.adMsg=""; changed=true; }
   if(state.codesV!==3){ state.lock={enabled:true,pin:"0707"}; if(!state.meterPin) state.meterPin="070752"; state.codesV=3; changed=true; }
   if(!state.deleted) state.deleted={};
   if(!state.logins) state.logins=[];
+  // Feature Modules — ensure the registry exists and every declared module has a flag.
+  if(!state.features){ state.features=defaultFeatures(); changed=true; }
+  else {
+    const dflt=defaultFeatures();
+    Object.keys(dflt).forEach(k=>{ if(!state.features[k]) { state.features[k]=dflt[k]; changed=true; } });
+    // backfill any newly-added loyalty rule fields
+    const L=state.features.loyalty, dl=dflt.loyalty;
+    if(L){ Object.keys(dl).forEach(k=>{ if(L[k]===undefined){ L[k]=dl[k]; changed=true; } }); }
+  }
   ensureCarNos();
   return changed;
 }
-Object.assign(App.core, { todayStr, isPastDay, chosenDateIso, meterCode, orderState, carNo, waHead, waFoot, countryOpts, validPhone, waPhoneFull, waPhoneStr, waPhone, waStatusMsg, waLink, ensureCarNos, runMigrations });
+Object.assign(App.core, { todayStr, isPastDay, chosenDateIso, meterCode, orderState, carNo, waHead, waFoot, countryOpts, validPhone, waPhoneFull, waPhoneStr, waPhone, waStatusMsg, waLink, ensureCarNos, runMigrations,
+  featureEnabled, featureCfg, loyaltyEnabled, loyaltyStrategy, loyaltyThreshold, loyaltyReward, loyaltyOnWash, loyaltyStatus });

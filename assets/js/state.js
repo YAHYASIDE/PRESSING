@@ -62,6 +62,7 @@ const state = {
   vehiclePrices:{...VEHICLE_PRICES},
   piecePrices:{...PIECE_PRICES},
   tariff:{elec:0, water:0},   /* سعر الكيلو / سعر وحدة الماء (0 = تسجيل الاستهلاك فقط) */
+  features: defaultFeatures(),   /* Release: optional feature modules (loyalty, …) */
   customers:{},
   meters:[],
   workers:[],

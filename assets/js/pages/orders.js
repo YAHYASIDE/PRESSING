@@ -66,7 +66,7 @@ function screenOpDetail(){
           ${timer?`<div class="od-timer-row">${st.label} · ${timer}</div>`:""}
         </div>
       </div>
-      ${sec("معلومات الزبون", row("اللوحة", o.plate||"—")+row("الهاتف", o.phone?`+${o.country||"222"} ${o.phone}`:"—")+(cust?row("بطاقة الولاء", `${cust.stamps}/5 · ${cust.totalWashes} غسلة`):"")+(ph?`<div class="od-contact"><a class="wa-btn call-btn" href="tel:${ph}">📞 اتصال</a><button type="button" class="wa-btn" data-carwa="${o.id}">${svg(I.whatsapp)} واتساب</button></div>`:""))}
+      ${sec("معلومات الزبون", row("اللوحة", o.plate||"—")+row("الهاتف", o.phone?`+${o.country||"222"} ${o.phone}`:"—")+((loyaltyEnabled()&&cust)?row("الولاء", `${loyaltyStatus(cust)} · ${cust.totalWashes} غسلة`):"")+(ph?`<div class="od-contact"><a class="wa-btn call-btn" href="tel:${ph}">📞 اتصال</a><button type="button" class="wa-btn" data-carwa="${o.id}">${svg(I.whatsapp)} واتساب</button></div>`:""))}
       ${sec("معلومات المركبة", row("النوع", o.vehicle)+row("الخدمة", o.wash||"—")+row("استلمها", o.by||"—")+(o.assignedTo?row("المُنفِّذ", o.assignedTo):""))}
       ${hasPhotos?sec("صور قبل / بعد", `<div class="op-photos">${(o.photosBefore&&o.photosBefore.length)?`<div class="ba"><span class="ba-lbl">قبل</span>${recThumbs(o.photosBefore)}</div>`:""}${(o.photosAfter&&o.photosAfter.length)?`<div class="ba"><span class="ba-lbl">بعد</span>${recThumbs(o.photosAfter)}</div>`:""}</div>${o.phone?`<button type="button" class="mini" data-carphotos="${o.id}">مشاركة الصور عبر واتساب</button>`:""}`):sec("صور قبل / بعد","<div class=\"od-note\">لا توجد صور</div>")}
       ${sec("الخط الزمني", carStepper(o)+opTimelineHtml(o))}
@@ -133,14 +133,15 @@ function screenCars(){
       taskBanner=`<div class="task-banner tb-empty">لا توجد مهمة نشطة الآن — كل العمليات مكتملة أو بالانتظار.</div>`;
     }
   }
+  const loyOn=loyaltyEnabled();
+  const custCols=loyOn?5:4;
   const custRows=custList.length?custList.map(c=>`
     <tr><td><b>${c.plate}</b></td>
       <td>${c.phone||"—"}</td>
-      <td class="amt" style="text-align:center;font-weight:800;white-space:nowrap">${c.stamps}/5${c.stamps===4?" 🎁":""}</td>
-      <td class="amt" style="text-align:center">${c.totalWashes}</td>
-      <td class="amt" style="text-align:center;color:var(--wash)">${c.freeWashes}</td>
+      ${loyOn?`<td class="amt" style="text-align:center;font-weight:800;white-space:nowrap">${loyaltyStatus(c)}${(c.stamps||0)>=loyaltyThreshold()-1&&loyaltyStrategy()==="stamp"?" 🎁":""}</td>`:""}
+      <td class="amt" style="text-align:center">${c.totalWashes||0}</td>
       <td style="text-align:left;white-space:nowrap">${c.phone?`<button class="wa-btn" data-wacust="${c.plate}" title="واتساب" style="width:28px;height:28px;display:inline-grid;vertical-align:middle">${svg(I.whatsapp)}</button> `:""}<button class="icon-btn" data-del-cust="${c.plate}" title="حذف">${svg(I.trash)}</button></td></tr>`).join("")
-    :`<tr><td colspan="6"><div class="empty">${svg(I.empty)}لا يوجد زبائن محفوظون بعد — أضف لوحة عند حفظ عملية.</div></td></tr>`;
+    :`<tr><td colspan="${custCols}"><div class="empty">${svg(I.empty)}لا يوجد زبائن محفوظون بعد — أضف لوحة عند حفظ عملية.</div></td></tr>`;
   return `
     <div class="screen-head cars-head"><h2>مركز العمليات</h2><span>${counts.all} عملية · ${periodTxt}</span></div>
     ${taskBanner}
@@ -149,10 +150,10 @@ function screenCars(){
     <div class="ops-list">${cards}</div>
     ${(oq||!can('finance'))?"":`<div class="ops-foot" style="text-align:center;color:var(--muted);font-size:.82rem;margin-top:14px">دخل السيارات (${periodTxt}): <b style="color:var(--brand)">${money(total)}</b></div>`}
     ${can('finance')?`<details class="loyalty-collapse" ${state.loyaltyOpen?"open":""}>
-      <summary>بطاقات الولاء (${Object.keys(state.customers).length})</summary>
+      <summary>${loyOn?"بطاقات الولاء":"الزبائن"} (${Object.keys(state.customers).length})</summary>
       <div class="lc-body">
         <input class="search-inp" id="custSearch" type="text" placeholder="بحث بلوحة الزبون" value="${cq}">
-        <div class="tbl-wrap"><table class="tbl"><thead><tr><th>اللوحة</th><th>الهاتف</th><th>الأختام</th><th>الغسلات</th><th>مجانية</th><th></th></tr></thead>
+        <div class="tbl-wrap"><table class="tbl"><thead><tr><th>اللوحة</th><th>الهاتف</th>${loyOn?"<th>الولاء</th>":""}<th>الغسلات</th><th></th></tr></thead>
         <tbody>${custRows}</tbody></table></div>
       </div>
     </details>`:""}

@@ -42,10 +42,26 @@ A layer may use the layers below it and never the layers above it.
 - **Responsibilities:** immutable constants, lookup tables, enums-as-data, codes.
   Examples: `CUR`, `LOGO`, `VEHICLE_PRICES`, `PIECE_PRICES`, `VEH_IMG`, `PIECE_IMG`,
   `WASH_TYPES`, `EXP_CATS`, `SHOP_NAME`, `SHOP_PHONE`, `VEH_LETTER`, `COUNTRIES`,
-  `SECRET_CODE`.
+  `SECRET_CODE`, `ROLES`, and the **Feature Modules registry**
+  (`FEATURE_MODULES`, `LOYALTY_STRATEGIES`, `LOYALTY_FIELDS`, `defaultFeatures`).
 - **Allowed dependencies:** none. `config` is a leaf.
 - **Forbidden dependencies:** everything (no `store`, `core`, `services`, `ui`,
   `pages`, `repositories`, no DOM, no functions with side effects).
+
+#### Feature Modules (optional business features)
+- Optional features (loyalty today; inventory, reservations, branches, … next)
+  are declared **once** in `config/features.js` (`FEATURE_MODULES`). Per-shop
+  on/off + configuration lives in `state.features[key]`; a migration backfills
+  new modules and rule fields so old saves keep working.
+- The gate is `App.core.featureEnabled(key)` / `featureCfg(key)`. Every piece of
+  a module's UI and logic must sit behind that gate, so a disabled module leaves
+  **no** calculation, card, column, or control anywhere in the app.
+- Settings ▸ *الميزات الإضافية* renders the registry generically (toggle +, for
+  configurable modules, a schema-driven panel — see `pages/features.js`);
+  changes apply live via `app.js bindFeatureModules()`.
+- **Adding a module is two steps:** (1) add a `FEATURE_MODULES` entry (+ default
+  flag in `defaultFeatures`), (2) wrap its UI/logic in `featureEnabled('key')`.
+  The toggle UI, persistence, and migration need no changes.
 
 ### `App.store`
 - **Responsibilities:** hold the single in-memory application state object

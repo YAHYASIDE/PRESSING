@@ -96,6 +96,11 @@
   <div class="modal-box">
     <h3>الإعدادات</h3>
     <div class="set-sec"><div class="set-title">المزامنة السحابية</div>حالة الاتصال: <b id="cloudStat">جارٍ الاتصال…</b></div>
+    <div class="set-sec">
+      <div class="set-title">الميزات الإضافية (وحدات)</div>
+      <div class="hint" style="margin-bottom:10px">فعّل الميزات التي يحتاجها عملك فقط. المُطفأة تختفي تمامًا من التطبيق.</div>
+      <div id="featureModules"></div>
+    </div>
     <div class="set-sec"><div class="set-title">لون التطبيق</div><div class="pal-row" id="palRow"></div></div>
     <div class="set-sec">
       <div class="set-title">النسخة الاحتياطية</div>
@@ -177,6 +182,7 @@
 <script src="assets/js/app.namespace.js"></script>
 <!-- config + store -->
 <script src="assets/js/config/constants.js"></script>
+<script src="assets/js/config/features.js"></script>
 <script src="assets/js/state.js"></script>
 <!-- core (pure domain) -->
 <script src="assets/js/core/domain.js"></script>
@@ -196,6 +202,7 @@
 <script src="assets/js/pages/customers.js"></script>
 <script src="assets/js/pages/reports.js"></script>
 <script src="assets/js/pages/settings.js"></script>
+<script src="assets/js/pages/features.js"></script>
 <!-- composition root (must load last) -->
 <script src="assets/js/app.js"></script>
 </body>

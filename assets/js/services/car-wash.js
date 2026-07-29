@@ -29,26 +29,31 @@
     var photosBefore = Array.isArray(input.photosBefore) ? input.photosBefore.slice() : [];
     var photosAfter = Array.isArray(input.photosAfter) ? input.photosAfter.slice() : [];
 
-    // A wash is free when the customer's loyalty card is complete (4 stamps).
+    // Loyalty is an OPTIONAL feature module: when enabled, the active strategy
+    // (stamp / points / discount / coupon) decides whether this wash is free or
+    // discounted. When disabled, loyaltyReward is a no-op (never free, price as-is).
     var existing = plate ? state.customers[plate] : null;
-    var free = !!(existing && existing.stamps === 4);
-    var price = +input.price;
+    var rawPrice = +input.price;
+    var loy = App.core.loyaltyReward(existing, rawPrice);
+    var free = !!loy.free;
+    var price = loy.price;                 // may be discounted or 0 (free)
     var deferred = !free && !!input.deferred;
 
-    // ---- validation ----
+    // ---- validation ---- (validate the entered price, not the loyalty-adjusted one)
     if (!validPhone(phone)) return { ok: false, error: "invalid_phone" };
-    if (!free && !(price > 0)) return { ok: false, error: "invalid_price" };
+    if (!free && !(rawPrice > 0)) return { ok: false, error: "invalid_price" };
 
     // ---- update store ----
     // learn the last entered price as this vehicle type's default
-    if (!free) state.vehiclePrices[vehicle] = price;
+    if (!free) state.vehiclePrices[vehicle] = rawPrice;
 
-    // loyalty card
+    // customer record + loyalty progress (per active strategy; no-op when disabled)
+    var couponEarned = false;
     if (plate) {
       var c = state.customers[plate] || { plate: plate, stamps: 0, totalWashes: 0, freeWashes: 0 };
       if (phone) { c.phone = phone; c.country = country; }
-      if (free) { c.stamps = 0; c.freeWashes++; } else c.stamps++;
-      c.totalWashes++; c.lastVisit = iso(new Date());
+      App.core.loyaltyOnWash(c, loy);
+      couponEarned = (loy.kind === "coupon" && loy.earn);
       state.customers[plate] = c;
     }
 
@@ -57,14 +62,18 @@
     var op = {
       id: uid(), no: carNo(vehicle), vehicle: vehicle, wash: wash,
       price: free ? 0 : price, plate: plate, phone: phone, country: country,
-      free: free, by: by, paid: !deferred, paidDate: deferred ? null : opDate,
+      free: free, discounted: !!loy.applied && loy.kind === "discount", by: by,
+      paid: !deferred, paidDate: deferred ? null : opDate,
       note: note, stage: "received", timeline: [{ stage: "received", at: Date.now() }],
       photosBefore: photosBefore, photosAfter: photosAfter, date: opDate
     };
     state.carOps.push(op);
 
-    var cardComplete = !!(plate && state.customers[plate].stamps === 4);
-    return { ok: true, op: op, free: free, deferred: deferred, cardComplete: cardComplete };
+    // "next wash free" hint for the stamp card (kept for the toast; false for other strategies)
+    var cardComplete = !!(plate && App.core.loyaltyEnabled() && App.core.loyaltyStrategy() === "stamp" &&
+                          (state.customers[plate].stamps === (App.core.loyaltyThreshold() - 1)));
+    return { ok: true, op: op, free: free, deferred: deferred, cardComplete: cardComplete,
+             discounted: op.discounted, couponEarned: couponEarned };
   };
 
   /* Release 2 — advance/set a car operation's lifecycle stage.

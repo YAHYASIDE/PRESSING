@@ -56,7 +56,12 @@ function bindScreen(){
     const lbox=document.getElementById("loyaltyBox");
     const ccoEl=document.getElementById("carCountry");
     if(ccoEl) ccoEl.onchange=()=>{ ccoEl.dataset.touched="1"; };
-    const updLoyalty=()=>{const pl=plateInp.value.trim(); const cph=document.getElementById("carPhone"); const cco=document.getElementById("carCountry"); if(pl){lbox.style.display="block";lbox.innerHTML=loyaltyCardHTML(pl); const c=state.customers[pl]; if(c){ if(c.phone&&cph&&!cph.value) cph.value=c.phone; if(c.country&&cco&&!cco.dataset.touched) cco.value=c.country; }}else{lbox.style.display="none";}};
+    const updLoyalty=()=>{const pl=plateInp.value.trim(); const cph=document.getElementById("carPhone"); const cco=document.getElementById("carCountry");
+      const c=pl?state.customers[pl]:null;
+      if(c){ if(c.phone&&cph&&!cph.value) cph.value=c.phone; if(c.country&&cco&&!cco.dataset.touched) cco.value=c.country; }
+      // loyalty card preview only when the module is enabled
+      if(pl && loyaltyEnabled()){ lbox.style.display="block"; lbox.innerHTML=loyaltyCardHTML(pl); }
+      else { lbox.style.display="none"; lbox.innerHTML=""; }};
     plateInp.oninput=updLoyalty;
     bindPhotoStrip("carBeforeStrip",pendingCarBefore,"carB");
     bindPhotoStrip("carAfterStrip",pendingCarAfter,"carA");
@@ -82,8 +87,10 @@ function bindScreen(){
         // 4) handle the returned result (UI concerns live here, not in the service)
         if(!res.ok){ toast(res.error==="invalid_phone"?"أدخل رقم هاتف صحيح":"أدخل سعرًا صحيحًا"); return; }
         pendingCarBefore.length=0; pendingCarAfter.length=0;
-        if(res.free) toast("🎁 غسلة مجانية — اكتملت البطاقة");
+        if(res.free) toast("🎁 غسلة مجانية — مكافأة الولاء");
         else if(res.deferred) toast("تم الحفظ — دفع مؤجّل (غير مدفوع)");
+        else if(res.discounted) toast("تم الحفظ — طُبِّق خصم الولاء 🎉");
+        else if(res.couponEarned) toast("تم الحفظ — حصل الزبون على كوبون 🎟️");
         else if(res.cardComplete) toast("تم الحفظ — الغسلة القادمة مجانية");
         else toast("تم حفظ العملية");
         // 5) trigger render
@@ -511,8 +518,37 @@ function openSettings(){
     palRow.innerHTML=PALETTES.map(pl=>`<button class="pal-sw ${state.palette===pl.k?'on':''}" data-pal="${pl.k}" style="background:linear-gradient(135deg,${pl.b},${pl.b2})" title="${pl.name}"><span>${pl.name}</span></button>`).join("");
     palRow.querySelectorAll("[data-pal]").forEach(sw=>sw.onclick=()=>{ state.palette=sw.dataset.pal; applyPalette(); saveLocal(); palRow.querySelectorAll(".pal-sw").forEach(x=>x.classList.toggle("on",x.dataset.pal===state.palette)); });
   }
+  bindFeatureModules();
   document.getElementById("settingsModal").style.display="flex";
 };
+/* Feature Modules — render the registry, wire toggles + loyalty config; changes apply live. */
+function bindFeatureModules(){
+  const host=document.getElementById("featureModules");
+  if(!host) return;
+  const paint=()=>{
+    host.innerHTML=featureModulesHTML();
+    // module on/off toggles
+    host.querySelectorAll("[data-feat]").forEach(cb=>cb.onchange=()=>{
+      const k=cb.dataset.feat;
+      if(!state.features[k]) state.features[k]={};
+      state.features[k].enabled=cb.checked;
+      saveLocal(); paint(); render();     // re-render main so gated UI appears/disappears immediately
+      toast(cb.checked?"تم تفعيل الميزة":"تم إيقاف الميزة");
+    });
+    // loyalty strategy pills
+    host.querySelectorAll("[data-loy-strat]").forEach(b=>b.onclick=()=>{
+      state.features.loyalty.strategy=b.dataset.loyStrat;
+      saveLocal(); paint(); render();
+    });
+    // loyalty rule fields
+    host.querySelectorAll("[data-loy-field]").forEach(inp=>inp.onchange=()=>{
+      const key=inp.dataset.loyField;
+      state.features.loyalty[key]=(inp.type==="number")?(+inp.value||0):inp.value.trim();
+      saveLocal(); render();
+    });
+  };
+  paint();
+}
 document.getElementById("setClose").onclick=()=>document.getElementById("settingsModal").style.display="none";
 let _editCtx=null;
 function openEditCar(id){
@@ -662,7 +698,7 @@ render();
 setInterval(tickOpTimers, 30000);   // Release 3 — keep live operation timers ticking
 
 /* ---- Commit 4: namespace registration (aliases; globals retained) ---- */
-Object.assign(App.ui,     { render, bindScreen, gateDay, gateDate, bindHold, requireCode, toggleCancelCar,
+Object.assign(App.ui,     { render, bindScreen, bindFeatureModules, gateDay, gateDate, bindHold, requireCode, toggleCancelCar,
   toggleCancelOrder, openWorkerStatement, applyHeaderIcons, applyLock, openReceipt, printReceipt, printReport,
   openCarChat, shareCarImages, openWa, openSettings, openEditCar, openEditOrder, completeUnpaidDelivery,
   openDeliverInfo });
