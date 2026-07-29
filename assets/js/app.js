@@ -96,6 +96,34 @@ function bindScreen(){
     if(res.ok){ const st=(CAR_STAGES.find(s=>s.k===res.stage)||{}).label||""; toast("المرحلة: "+st); render(); }
   });
 
+  // mobile-first: expandable cards (details open on tap) — no re-render, preserves the list
+  document.querySelectorAll("[data-op-toggle]").forEach(h=>h.onclick=()=>{ const c=h.closest(".op-card"); if(c) c.classList.toggle("open"); });
+  // loyalty collapsible — persist open state across re-renders (so search stays usable)
+  const lc=document.querySelector(".loyalty-collapse");
+  if(lc) lc.addEventListener("toggle",()=>{ state.loyaltyOpen=lc.open; });
+  // reception wizard (step-by-step) — pure DOM step navigation, no re-render
+  const wiz=document.getElementById("receptionWizard");
+  if(wiz){
+    const panels=[...wiz.querySelectorAll(".wiz-panel")];
+    const dots=[...wiz.querySelectorAll(".wiz-dot")];
+    const total=panels.length;
+    const backB=wiz.querySelector("[data-wiz-back]"), nextB=wiz.querySelector("[data-wiz-next]");
+    const saveB=document.getElementById("carSave"), lbl=wiz.querySelector(".wiz-progress-lbl");
+    const show=(n)=>{ n=Math.max(0,Math.min(total-1,n)); wiz.dataset.step=n;
+      panels.forEach((p,i)=>p.classList.toggle("active",i===n));
+      dots.forEach((d,i)=>d.classList.toggle("on",i<=n));
+      if(backB) backB.style.visibility=(n===0)?"hidden":"visible";
+      if(nextB) nextB.style.display=(n===total-1)?"none":"";
+      if(saveB) saveB.style.display=(n===total-1)?"":"none";
+      if(lbl) lbl.textContent=`الخطوة ${n+1} من ${total}`;
+    };
+    if(nextB) nextB.onclick=()=>show((+wiz.dataset.step||0)+1);
+    if(backB) backB.onclick=()=>show((+wiz.dataset.step||0)-1);
+    document.querySelectorAll("[data-open-reception]").forEach(b=>b.onclick=()=>{ wiz.classList.add("open"); show(0); });
+    document.querySelectorAll("[data-close-reception]").forEach(b=>b.onclick=()=>{ wiz.classList.remove("open"); });
+    show(0);
+  }
+
   // carpets
   document.querySelectorAll("[data-filter]").forEach(b=>b.onclick=()=>{state.carpetFilter=b.dataset.filter;render();});
   const ct=document.getElementById("cpType"), cpP=document.getElementById("cpPrice"),

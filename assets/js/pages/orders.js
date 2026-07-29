@@ -16,30 +16,28 @@ function carOpCard(o){
   const hasPhotos=(o.photosBefore&&o.photosBefore.length)||(o.photosAfter&&o.photosAfter.length);
   return `
     <div class="op-card st-${cur} ${o.cancelled?'cancelled':''}">
-      <div class="op-top">
-        <span class="op-no">${o.no||"-"}</span>
-        <span class="op-badge b-${cur}">${st.label}</span>
-        <span class="op-time">${timeStr(o.date)}</span>
-        <span class="op-price">${money(o.price)}${o.paid===false?' <b class="op-unpaid">دَين</b>':''}</span>
-      </div>
-      <div class="op-main">
-        ${VEH_IMG[o.vehicle]?`<img class="op-veh-img" src="${VEH_IMG[o.vehicle]}" alt="">`:`<span class="op-veh-ic">${svg(vehIcon(o.vehicle))}</span>`}
-        <div class="op-info">
-          <div class="op-veh"><b>${o.vehicle}</b>${o.free?' <span class="badge b-wash">مجاني 🎁</span>':''}${o.cancelled?' <span class="badge badge-cancel">ملغى 🚫</span>':''}</div>
-          <div class="op-sub">${o.wash}${o.plate?` • ${o.plate}`:""}${o.phone?` • ${o.phone}`:""}${o.by?` • ${o.by}`:""}</div>
-          ${o.note?`<div class="op-note">📝 ${o.note}</div>`:""}
+      <button type="button" class="op-summary" data-op-toggle>
+        <span class="op-veh-ic-sm">${VEH_IMG[o.vehicle]?`<img src="${VEH_IMG[o.vehicle]}" alt="">`:svg(vehIcon(o.vehicle))}</span>
+        <span class="op-sum-main">
+          <span class="op-sum-l1">${o.no||"-"} · ${o.vehicle}${o.plate?` · ${o.plate}`:""}</span>
+          <span class="op-sum-l2"><span class="op-badge b-${cur}">${st.label}</span>${o.paid===false?' <span class="op-unpaid">دَين</span>':""}${o.free?' <span class="op-unpaid" style="color:var(--ready)">مجاني</span>':""}${o.cancelled?' <span class="op-unpaid" style="color:var(--muted)">ملغى</span>':""}</span>
+        </span>
+        <span class="op-sum-price">${money(o.price)}<i class="op-chev">▾</i></span>
+      </button>
+      <div class="op-detail">
+        <div class="op-sub">${o.wash}${o.phone?` • ${o.phone}`:""}${o.by?` • ${o.by}`:""} • ${timeStr(o.date)}</div>
+        ${o.note?`<div class="op-note">📝 ${o.note}</div>`:""}
+        ${hasPhotos?`<div class="op-photos">${(o.photosBefore&&o.photosBefore.length)?`<div class="ba"><span class="ba-lbl">قبل</span>${recThumbs(o.photosBefore)}</div>`:""}${(o.photosAfter&&o.photosAfter.length)?`<div class="ba"><span class="ba-lbl">بعد</span>${recThumbs(o.photosAfter)}</div>`:""}</div>`:""}
+        ${carStepper(o)}
+        <div class="op-acts">
+          ${(next&&!o.cancelled)?`<button class="btn-advance" data-car-advance="${o.id}">${next.label} →</button>`:""}
+          ${o.paid===false?`<button class="mini op-pay" data-carpay="${o.id}">تحصيل الدفع</button>`:""}
+          ${hasPhotos?`<button class="wa-btn" data-carphotos="${o.id}" title="إرسال صور قبل/بعد">${svg(I.camera)}</button>`:""}
+          ${o.phone?`<button class="wa-btn" data-carwa="${o.id}" title="واتساب الزبون">${svg(I.whatsapp)}</button>`:""}
+          <button class="icon-btn" data-edit-car="${o.id}" title="تعديل">✏️</button>
+          <button class="icon-btn cancel-btn ${o.cancelled?'on':''}" data-cancel-car="${o.id}" title="${o.cancelled?'إلغاء الإلغاء (مطوّل)':'إلغاء (اضغط مطوّلًا)'}">🚫</button>
+          <button class="icon-btn" data-del-car="${o.id}" title="حذف">${svg(I.trash)}</button>
         </div>
-      </div>
-      ${hasPhotos?`<div class="op-photos">${(o.photosBefore&&o.photosBefore.length)?`<div class="ba"><span class="ba-lbl">قبل</span>${recThumbs(o.photosBefore)}</div>`:""}${(o.photosAfter&&o.photosAfter.length)?`<div class="ba"><span class="ba-lbl">بعد</span>${recThumbs(o.photosAfter)}</div>`:""}</div>`:""}
-      ${carStepper(o)}
-      <div class="op-acts">
-        ${(next&&!o.cancelled)?`<button class="btn-advance" data-car-advance="${o.id}">${next.label} →</button>`:""}
-        ${o.paid===false?`<button class="mini op-pay" data-carpay="${o.id}">تحصيل الدفع</button>`:""}
-        ${hasPhotos?`<button class="wa-btn" data-carphotos="${o.id}" title="إرسال صور قبل/بعد">${svg(I.camera)}</button>`:""}
-        ${o.phone?`<button class="wa-btn" data-carwa="${o.id}" title="واتساب الزبون">${svg(I.whatsapp)}</button>`:""}
-        <button class="icon-btn" data-edit-car="${o.id}" title="تعديل">✏️</button>
-        <button class="icon-btn cancel-btn ${o.cancelled?'on':''}" data-cancel-car="${o.id}" title="${o.cancelled?'إلغاء الإلغاء (مطوّل)':'إلغاء (اضغط مطوّلًا)'}">🚫</button>
-        <button class="icon-btn" data-del-car="${o.id}" title="حذف">${svg(I.trash)}</button>
       </div>
     </div>`;
 }
@@ -73,56 +71,60 @@ function screenCars(){
       <td style="text-align:left;white-space:nowrap">${c.phone?`<button class="wa-btn" data-wacust="${c.plate}" title="واتساب" style="width:28px;height:28px;display:inline-grid;vertical-align:middle">${svg(I.whatsapp)}</button> `:""}<button class="icon-btn" data-del-cust="${c.plate}" title="حذف">${svg(I.trash)}</button></td></tr>`).join("")
     :`<tr><td colspan="6"><div class="empty">${svg(I.empty)}لا يوجد زبائن محفوظون بعد — أضف لوحة عند حفظ عملية.</div></td></tr>`;
   return `
-    <div class="screen-head"><h2>استقبال السيارات</h2><span>سجّل عملية جديدة وتابِع مراحل الغسيل</span></div>
-    <div class="cars-layout">
-      <div class="panel reception">
-        <h3 class="rec-title">استقبال سيارة جديدة</h3>
-        <div class="form-sec">
-          <div class="form-sec-title">${svg(I.worker)}<span>معلومات الزبون</span></div>
-          <div class="field"><label>لوحة الأرقام</label><input id="carPlate" type="text" placeholder="رقم اللوحة" autocomplete="off"></div>
-          <div class="loyalty" id="loyaltyBox" style="display:none"></div>
-          <div class="field"><label>هاتف الزبون</label><div class="phone-row"><select id="carCountry" class="cc-select">${countryOpts()}</select><input id="carPhone" class="phone-inp" type="tel" inputmode="numeric" maxlength="9" placeholder="رقم الهاتف"></div></div>
-        </div>
-        <div class="form-sec">
-          <div class="form-sec-title">${svg(I.car)}<span>معلومات المركبة</span></div>
-          <div class="picker" id="vPicker">${vehBtns}</div>
-          <input type="hidden" id="carVehicle" value="${firstV}">
-        </div>
-        <div class="form-sec">
-          <div class="form-sec-title">${svg(I.drop)}<span>الخدمة</span></div>
-          <div class="field"><label>نوع الغسيل</label><select id="carWash">${wOpts}</select></div>
-        </div>
-        <div class="form-sec">
-          <div class="form-sec-title">${svg(I.wallet)}<span>الدفع</span></div>
-          <div class="field"><label>السعر</label><input id="carPrice" type="number" min="0" value="${state.vehiclePrices[firstV]}"><div class="hint">آخر سعر تُدخله يصبح الافتراضي لهذا النوع.</div></div>
-          <label class="pay-toggle"><input type="checkbox" id="carDeferred"> <span>دفع مؤجّل (دَين — يُحصّل لاحقًا)</span></label>
-        </div>
-        <div class="form-sec">
-          <div class="form-sec-title">${svg(I.camera)}<span>صور قبل / بعد</span></div>
-          <div class="ba-strips">
-            <div class="field"><label>قبل الغسيل</label><div class="photos" id="carBeforeStrip"></div></div>
-            <div class="field"><label>بعد الغسيل</label><div class="photos" id="carAfterStrip"></div></div>
+    <div class="screen-head cars-head"><h2>السيارات</h2><span>${counts.all} عملية · ${periodTxt}</span></div>
+    <input class="search-inp ops-search" id="carSearch" type="text" placeholder="بحث برقم العملية أو اللوحة" value="${oq}">
+    <div class="ops-filters scroll-x">${chips}</div>
+    <div class="ops-list">${cards}</div>
+    ${oq?"":`<div class="ops-foot" style="text-align:center;color:var(--muted);font-size:.82rem;margin-top:14px">دخل السيارات (${periodTxt}): <b style="color:var(--brand)">${money(total)}</b></div>`}
+    <details class="loyalty-collapse" ${state.loyaltyOpen?"open":""}>
+      <summary>بطاقات الولاء (${Object.keys(state.customers).length})</summary>
+      <div class="lc-body">
+        <input class="search-inp" id="custSearch" type="text" placeholder="بحث بلوحة الزبون" value="${cq}">
+        <div class="tbl-wrap"><table class="tbl"><thead><tr><th>اللوحة</th><th>الهاتف</th><th>الأختام</th><th>الغسلات</th><th>مجانية</th><th></th></tr></thead>
+        <tbody>${custRows}</tbody></table></div>
+      </div>
+    </details>
+
+    <button class="fab" data-open-reception aria-label="استقبال سيارة جديدة">＋</button>
+
+    <div id="receptionWizard" class="wizard" data-step="0">
+      <div class="wiz-sheet">
+        <div class="wiz-head"><button type="button" class="wiz-x" data-close-reception aria-label="إغلاق">✕</button><h3>استقبال سيارة</h3><span class="wiz-progress-lbl"></span></div>
+        <div class="wiz-dots">${[0,1,2,3].map(()=>`<span class="wiz-dot"></span>`).join("")}</div>
+        <div class="wiz-body">
+          <div class="wiz-panel" data-panel="0">
+            <h4>نوع المركبة</h4>
+            <div class="picker wiz-veh-grid" id="vPicker">${vehBtns}</div>
+            <input type="hidden" id="carVehicle" value="${firstV}">
+          </div>
+          <div class="wiz-panel" data-panel="1">
+            <h4>معلومات الزبون</h4>
+            <div class="field"><label>لوحة الأرقام</label><input id="carPlate" type="text" placeholder="رقم اللوحة" autocomplete="off"></div>
+            <div class="loyalty wiz-loyalty" id="loyaltyBox" style="display:none"></div>
+            <div class="field"><label>هاتف الزبون</label><div class="phone-row"><select id="carCountry" class="cc-select">${countryOpts()}</select><input id="carPhone" class="phone-inp" type="tel" inputmode="numeric" maxlength="9" placeholder="رقم الهاتف"></div></div>
+          </div>
+          <div class="wiz-panel" data-panel="2">
+            <h4>الخدمة والدفع</h4>
+            <div class="field"><label>نوع الغسيل</label><select id="carWash">${wOpts}</select></div>
+            <div class="field"><label>السعر</label><input id="carPrice" type="number" min="0" value="${state.vehiclePrices[firstV]}"><div class="hint">آخر سعر تُدخله يصبح الافتراضي لهذا النوع.</div></div>
+            <label class="pay-toggle"><input type="checkbox" id="carDeferred"> <span>دفع مؤجّل (دَين — يُحصّل لاحقًا)</span></label>
+          </div>
+          <div class="wiz-panel" data-panel="3">
+            <h4>الصور والملاحظات</h4>
+            <div class="ba-strips">
+              <div class="field"><label>قبل الغسيل</label><div class="photos" id="carBeforeStrip"></div></div>
+              <div class="field"><label>بعد الغسيل</label><div class="photos" id="carAfterStrip"></div></div>
+            </div>
+            <div class="field"><label>ملاحظات</label><textarea id="carNote" rows="2" placeholder="ملاحظات إضافية (اختياري)"></textarea></div>
+            <div class="field"><label>التاريخ</label><input id="carDate" type="date" value="${ymd(new Date())}" max="${ymd(new Date())}"></div>
           </div>
         </div>
-        <div class="form-sec">
-          <div class="form-sec-title">${svg(I.chart)}<span>ملاحظات</span></div>
-          <div class="field"><textarea id="carNote" rows="2" placeholder="ملاحظات إضافية عن الحالة أو الطلب (اختياري)"></textarea></div>
-          <div class="field"><label>التاريخ</label><input id="carDate" type="date" value="${ymd(new Date())}" max="${ymd(new Date())}"></div>
+        <div class="wiz-nav">
+          <button type="button" class="mini" data-wiz-back>رجوع</button>
+          <button type="button" class="btn-primary" data-wiz-next>التالي</button>
+          <button class="btn-primary btn-receive" id="carSave">استلام السيارة</button>
         </div>
-        <button class="btn-primary btn-receive" id="carSave">استلام السيارة</button>
       </div>
-      <div class="ops-board">
-        <div class="ops-head"><h3>${oq?"نتائج البحث":`العمليات — ${periodTxt}`}</h3>${oq?"":`<span class="ops-total">دخل: <b>${money(total)}</b></span>`}</div>
-        <input class="search-inp" id="carSearch" type="text" placeholder="بحث برقم العملية أو اللوحة" value="${oq}">
-        <div class="chips ops-filters">${chips}</div>
-        <div class="ops-grid">${cards}</div>
-      </div>
-    </div>
-    <div class="panel loyalty-panel">
-      <h3>بطاقات الولاء</h3>
-      <input class="search-inp" id="custSearch" type="text" placeholder="بحث بلوحة الزبون" value="${cq}">
-      <div class="tbl-wrap"><table class="tbl"><thead><tr><th>اللوحة</th><th>الهاتف</th><th>الأختام</th><th>الغسلات</th><th>مجانية</th><th></th></tr></thead>
-      <tbody>${custRows}</tbody></table></div>
     </div>`;
 }
 
