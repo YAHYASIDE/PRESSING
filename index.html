@@ -15,6 +15,7 @@
 <link rel="stylesheet" href="assets/css/mobile.css">
 <link rel="stylesheet" href="assets/css/cars.css">
 <link rel="stylesheet" href="assets/css/setup.css">
+<link rel="stylesheet" href="assets/css/subscription.css">
 <link rel="stylesheet" href="assets/css/entry.css">
 </head>
 <body>
@@ -97,6 +98,11 @@
   <div class="modal-box">
     <h3>الإعدادات</h3>
     <div class="set-sec"><div class="set-title">المزامنة السحابية</div>حالة الاتصال: <b id="cloudStat">جارٍ الاتصال…</b></div>
+    <details class="set-sec bs-collapse">
+      <summary class="set-title">إعدادات النشاط</summary>
+      <div class="hint" style="margin:8px 0 12px">عدّل نوع النشاط والعملة والموقع وساعات العمل والخدمات وطرق الدفع.</div>
+      <div id="businessSettings"></div>
+    </details>
     <div class="set-sec">
       <div class="set-title">الميزات الإضافية (وحدات)</div>
       <div class="hint" style="margin-bottom:10px">فعّل الميزات التي يحتاجها عملك فقط. المُطفأة تختفي تمامًا من التطبيق.</div>
@@ -187,7 +193,7 @@
       <div class="su-step-lbl" id="suStepLbl"></div>
     </div>
     <div class="su-body" id="setupBody"></div>
-    <div class="su-nav">
+    <div class="su-nav" id="suNav">
       <button type="button" class="mini" id="suBack">رجوع</button>
       <button type="button" class="btn-primary" id="suNext">التالي</button>
     </div>
@@ -221,6 +227,8 @@
 <script src="assets/js/pages/settings.js"></script>
 <script src="assets/js/pages/features.js"></script>
 <script src="assets/js/pages/setup.js"></script>
+<script src="assets/js/pages/subscription.js"></script>
+<script src="assets/js/pages/business-settings.js"></script>
 <!-- composition root (must load last) -->
 <script src="assets/js/app.js"></script>
 </body>

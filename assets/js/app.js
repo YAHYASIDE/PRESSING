@@ -9,7 +9,7 @@ Object.assign(App.core, { roleDef, can, roleTabs });
 function render(){
   // role + business guard: fall back to the first tab allowed by BOTH role and business config
   const allowed=roleTabs().filter(t=>tabVisible(t));
-  if(!state.opDetail && allowed.indexOf(state.tab)<0) state.tab=allowed[0]||"cars";
+  if(!state.opDetail && state.tab!=="subscription" && allowed.indexOf(state.tab)<0) state.tab=allowed[0]||"cars";
   // Release 4 — hide admin-only chrome (settings) from roles without the capability
   const sb=document.getElementById("settingsBtn"); if(sb) sb.style.display=can('settings')?"":"none";
   const rb=document.getElementById("roleBadge"); if(rb){ rb.textContent=roleDef().label; rb.style.display=unlocked?"":"none"; }
@@ -19,6 +19,11 @@ function render(){
   // Release 4 — the Operation Details screen replaces the main screen when an op is open
   if(state.opDetail){
     document.getElementById("main").innerHTML=`<div class="screen op-detail-screen">${screenOpDetail()}</div>`;
+    bindScreen(); return;
+  }
+  // Release 5.1 — the Subscription page (reachable from the trial card / onboarding)
+  if(state.tab==="subscription"){
+    document.getElementById("main").innerHTML=`<div class="screen">${screenSubscription()}</div>`;
     bindScreen(); return;
   }
   const map={dashboard:screenDashboard,cars:screenCars,carpets:screenCarpets,expenses:screenExpenses,reports:screenReports};
@@ -111,6 +116,11 @@ function bindScreen(){
     requireCode(()=>{ tomb(b.dataset.delCar); state.carOps=state.carOps.filter(o=>o.id!==b.dataset.delCar); toast("تم الحذف"); render(); }, SECRET_CODE, "كود الحذف", "أدخل كود الحذف لتأكيد العملية.");});
   document.querySelectorAll("[data-del-cust]").forEach(b=>b.onclick=()=>{
     requireCode(()=>{ tombCust(b.dataset.delCust); delete state.customers[b.dataset.delCust]; toast("تم حذف الزبون"); render(); }, SECRET_CODE, "كود الحذف", "أدخل كود الحذف لتأكيد العملية.");});
+
+  // Release 5.1 — subscription page navigation + plan buttons (no gateway yet)
+  document.querySelectorAll("[data-go-sub]").forEach(b=>b.onclick=()=>{ state.tab="subscription"; state.opDetail=null; render(); window.scrollTo(0,0); });
+  document.querySelectorAll("[data-sub-back]").forEach(b=>b.onclick=()=>{ state.tab="dashboard"; render(); });
+  document.querySelectorAll("[data-plan]").forEach(b=>b.onclick=()=>{ toast("قريبًا — بوّابة الدفع قيد التفعيل"); });
 
   // Release 4 — navigation to / from the Operation Details screen
   document.querySelectorAll("[data-op-open]").forEach(b=>b.onclick=()=>{ state.opDetail=b.dataset.opOpen; render(); window.scrollTo(0,0); });
@@ -454,7 +464,9 @@ function applyHeaderIcons(){
 let unlocked=false, currentUser="";
 function applyLock(){
   const ls=document.getElementById("lockScreen");
-  if(state.lock&&state.lock.enabled&&!unlocked){ document.getElementById("lockLogo").src=LOGO; ls.style.display="flex"; setTimeout(()=>{const i=document.getElementById("lockName"); if(i)i.focus();},60); }
+  // Release 5.1 — a fresh (unconfigured) business goes straight to the Setup Wizard,
+  // which creates the first user; the lock screen only applies once configured.
+  if(businessConfigured() && state.lock&&state.lock.enabled&&!unlocked){ document.getElementById("lockLogo").src=LOGO; ls.style.display="flex"; setTimeout(()=>{const i=document.getElementById("lockName"); if(i)i.focus();},60); }
   else ls.style.display="none";
 }
 
@@ -520,8 +532,34 @@ function openSettings(){
     palRow.querySelectorAll("[data-pal]").forEach(sw=>sw.onclick=()=>{ state.palette=sw.dataset.pal; applyPalette(); saveLocal(); palRow.querySelectorAll(".pal-sw").forEach(x=>x.classList.toggle("on",x.dataset.pal===state.palette)); });
   }
   bindFeatureModules();
+  bindBusinessSettings();
   document.getElementById("settingsModal").style.display="flex";
 };
+/* Business Settings — edit state.business (types, currency/location, hours, services, payments) live. */
+function bindBusinessSettings(){
+  const host=document.getElementById("businessSettings"); if(!host) return;
+  const b=state.business; if(!b) return;
+  const paint=()=>{
+    host.innerHTML=businessSettingsHTML();
+    host.querySelectorAll("[data-bs-type]").forEach(x=>x.onclick=()=>{ b.types[x.dataset.bsType]=!b.types[x.dataset.bsType]; saveLocal(); paint(); render(); });
+    host.querySelectorAll("[data-bs-svc]").forEach(cb=>cb.onchange=()=>{ b.services[cb.dataset.bsSvc]=cb.checked; saveLocal(); render(); });
+    host.querySelectorAll("[data-bs-pay]").forEach(cb=>cb.onchange=()=>{
+      const k=cb.dataset.bsPay, base=PAYMENT_CATALOG.find(p=>p.k===k);
+      if(cb.checked){ if(!b.paymentMethods.some(x=>x.k===k)) b.paymentMethods.push({k:k,label:(base||{}).label||k}); }
+      else b.paymentMethods=b.paymentMethods.filter(x=>x.k!==k);
+      saveLocal();
+    });
+    const addB=host.querySelector("[data-bs-pay-add]");
+    if(addB) addB.onclick=()=>{ const inp=document.getElementById("bsPayCustom"); const v=(inp.value||"").trim(); if(!v) return; b.paymentMethods.push({k:"custom_"+uid(),label:v,custom:true}); saveLocal(); paint(); };
+    host.querySelectorAll("[data-bs-pay-del]").forEach(x=>x.onclick=()=>{ b.paymentMethods=b.paymentMethods.filter(y=>y.k!==x.dataset.bsPayDel); saveLocal(); paint(); });
+    host.querySelectorAll("[data-bs-day]").forEach(x=>x.onclick=()=>{ const k=+x.dataset.bsDay; const i=b.workingHours.days.indexOf(k); if(i>=0) b.workingHours.days.splice(i,1); else b.workingHours.days.push(k); saveLocal(); paint(); });
+    const sel=(id,fn)=>{ const el=document.getElementById(id); if(el) el.onchange=()=>{ fn(el.value); saveLocal(); render(); }; };
+    sel("bsCurrency",v=>b.currency=v); sel("bsCountry",v=>b.country=v); sel("bsLang",v=>b.language=v); sel("bsTz",v=>b.timezone=v);
+    const tm=(id,fn)=>{ const el=document.getElementById(id); if(el) el.onchange=()=>{ fn(el.value); saveLocal(); }; };
+    tm("bsOpen",v=>b.workingHours.open=v); tm("bsClose",v=>b.workingHours.close=v);
+  };
+  paint();
+}
 /* Feature Modules — render the registry, wire toggles + loyalty config; changes apply live. */
 function bindFeatureModules(){
   const host=document.getElementById("featureModules");
@@ -695,87 +733,94 @@ function applyBusiness(){
   const h=document.querySelector(".brand h1"); if(h && b.name) h.textContent=b.name;
   const lg=document.getElementById("brandLogo"); if(lg && b.logo) lg.src=b.logo;
 }
-/* show the wizard only once the app is unlocked and the business is not yet configured */
+/* Release 5.1 — the wizard now runs BEFORE login (it creates the first user).
+   Show it whenever the business is not yet configured. */
 function applySetup(){
   const el=document.getElementById("setupScreen"); if(!el) return;
-  if(unlocked && !businessConfigured()){ if(!_setup) startSetup(); el.style.display="flex"; }
+  if(!businessConfigured()){ if(!_setup) startSetup(); el.style.display="flex"; }
   else el.style.display="none";
 }
 function startSetup(){
-  const draft=JSON.parse(JSON.stringify(defaultBusiness()));
+  const draft=JSON.parse(JSON.stringify(defaultBusiness()));   // everything defaulted here
   draft.loyalty=Object.assign(defaultLoyaltyCfg(), (state.features&&state.features.loyalty)||{});
   draft.loyalty.enabled=true;
+  draft._mgrName=""; draft._mgrPhone=""; draft._mgrPass=""; draft._mgrCountry="222";
   _setup={ i:0, draft };
   renderSetupStep();
 }
 function renderSetupStep(){
   if(!_setup) return;
-  const steps=setupSteps(_setup.draft);
+  const steps=setupSteps();
   if(_setup.i>steps.length-1) _setup.i=steps.length-1;
   const key=steps[_setup.i];
   document.getElementById("setupBody").innerHTML=setupStepView(key,_setup.draft);
   const total=steps.length, pct=Math.round((_setup.i/(total-1))*100);
   document.getElementById("suBar").style.width=pct+"%";
   document.getElementById("suStepLbl").textContent=`الخطوة ${_setup.i+1} من ${total}`;
-  const back=document.getElementById("suBack"), next=document.getElementById("suNext");
-  back.style.visibility=_setup.i===0?"hidden":"visible";
-  next.textContent = key==="welcome" ? "ابدأ" : key==="finish" ? "الذهاب إلى لوحة التحكم" : "التالي";
-  const body=document.getElementById("setupBody"); body.scrollTop=0;
+  const nav=document.getElementById("suNav"), back=document.getElementById("suBack"), next=document.getElementById("suNext");
+  if(nav) nav.style.display = key==="success" ? "none" : "flex";   // success has its own buttons
+  if(back) back.style.visibility=_setup.i===0?"hidden":"visible";
+  if(next) next.textContent = key==="info" ? "إنشاء النشاط" : "التالي";
+  const body=document.getElementById("setupBody"); if(body) body.scrollTop=0;
   wireSetupStep(key);
 }
-/* wire the interactive controls of the current step; most update the draft immediately */
+/* wire the interactive controls of the current step */
 function wireSetupStep(key){
   const d=_setup.draft, host=document.getElementById("setupBody");
+  // Step 1 — business activities (multi-select)
   host.querySelectorAll("[data-su-type]").forEach(b=>b.onclick=()=>{ const k=b.dataset.suType; d.types[k]=!d.types[k]; renderSetupStep(); });
-  host.querySelectorAll("[data-su-svc]").forEach(cb=>cb.onchange=()=>{ d.services[cb.dataset.suSvc]=cb.checked; });
-  host.querySelectorAll("[data-su-feat]").forEach(cb=>cb.onchange=()=>{ d.features[cb.dataset.suFeat]=cb.checked; });
-  host.querySelectorAll("[data-su-pay]").forEach(cb=>cb.onchange=()=>{
-    const k=cb.dataset.suPay, base=PAYMENT_CATALOG.find(p=>p.k===k);
-    if(cb.checked){ if(!d.paymentMethods.some(x=>x.k===k)) d.paymentMethods.push({k:k,label:(base||{}).label||k}); }
-    else d.paymentMethods=d.paymentMethods.filter(x=>x.k!==k);
-  });
-  const addBtn=host.querySelector("[data-su-pay-add]");
-  if(addBtn) addBtn.onclick=()=>{ const inp=document.getElementById("suPayCustom"); const v=(inp.value||"").trim(); if(!v) return;
-    d.paymentMethods.push({k:"custom_"+uid(), label:v, custom:true}); renderSetupStep(); };
-  host.querySelectorAll("[data-su-pay-del]").forEach(b=>b.onclick=()=>{ d.paymentMethods=d.paymentMethods.filter(x=>x.k!==b.dataset.suPayDel); renderSetupStep(); });
-  host.querySelectorAll("[data-su-day]").forEach(b=>b.onclick=()=>{ const k=+b.dataset.suDay; const i=d.workingHours.days.indexOf(k); if(i>=0) d.workingHours.days.splice(i,1); else d.workingHours.days.push(k); renderSetupStep(); });
-  // loyalty config (reuses the loyalty engine's schema-driven panel, bound to the draft)
-  host.querySelectorAll("[data-loy-strat]").forEach(b=>b.onclick=()=>{ d.loyalty.strategy=b.dataset.loyStrat; renderSetupStep(); });
-  host.querySelectorAll("[data-loy-field]").forEach(inp=>inp.onchange=()=>{ const f=inp.dataset.loyField; d.loyalty[f]=(inp.type==="number")?(+inp.value||0):inp.value.trim(); });
-  // business info inputs
-  const bind=(id,fn)=>{ const el=document.getElementById(id); if(el) el.onchange=()=>fn(el); };
-  bind("suName",el=>d.name=el.value.trim());
-  bind("suCountry",el=>d.country=el.value);
-  bind("suCurrency",el=>d.currency=el.value);
-  bind("suLang",el=>d.language=el.value);
-  bind("suTz",el=>d.timezone=el.value);
-  bind("suOpen",el=>d.workingHours.open=el.value);
-  bind("suClose",el=>d.workingHours.close=el.value);
+  // Step 2 — manager info (live-bind to draft)
+  const bind=(id,fn)=>{ const el=document.getElementById(id); if(el) el.oninput=()=>fn(el); };
+  bind("suMgrName",el=>d._mgrName=el.value);
+  bind("suMgrPhone",el=>{ el.value=el.value.replace(/[^0-9]/g,"").slice(0,9); d._mgrPhone=el.value; });
+  bind("suMgrPass",el=>d._mgrPass=el.value);
+  const mc=document.getElementById("suMgrCountry"); if(mc) mc.onchange=()=>d._mgrCountry=mc.value;
+  // Step 3 — business info
+  bind("suName",el=>d.name=el.value);
   const logo=document.getElementById("suLogo");
   if(logo) logo.onchange=()=>{ const f=logo.files&&logo.files[0]; if(!f) return; const r=new FileReader(); r.onload=()=>{ d.logo=r.result; const pv=document.getElementById("suLogoPrev"); if(pv) pv.src=r.result; }; r.readAsDataURL(f); };
+  // Step 4 — success actions
+  host.querySelectorAll("[data-su-finish]").forEach(b=>b.onclick=()=>finishSetup(b.dataset.suFinish));
 }
-function finishSetup(){
+/* commit the draft: create the manager + log in, save business config, start the trial */
+function finishSetup(mode){
   const d=_setup.draft;
-  // apply the chosen feature flags into the Feature Modules engine
+  // 1) create the first user (manager) and log them in automatically
+  currentUser=(d._mgrName||"مدير").trim();
+  state.role="manager";
+  state.lock={ enabled:true, pin:(d._mgrPass||"0707") };
+  state.manager={ name:currentUser, phone:d._mgrPhone||"", country:d._mgrCountry||"222" };
+  if(!state.logins) state.logins=[];
+  state.logins.push({ id:uid(), name:currentUser, role:"manager", date:iso(new Date()) });
+  unlocked=true;
+  // 2) apply feature flags into the engine + merge loyalty (reused, not duplicated)
   Object.keys(d.features).forEach(k=>{ if(!state.features[k]) state.features[k]={}; state.features[k].enabled=!!d.features[k]; });
-  // merge loyalty rules into the loyalty engine (reused, not duplicated)
   state.features.loyalty=Object.assign({}, state.features.loyalty, d.loyalty, { enabled:!!d.features.loyalty });
+  // 3) finalize the business config (strip temp manager fields)
+  d.phone=d._mgrPhone||d.phone||""; delete d._mgrName; delete d._mgrPhone; delete d._mgrPass; delete d._mgrCountry; delete d.loyalty;
   d.configured=true;
   state.business=d;
+  // 4) start the free trial
+  state.subscription={ trialStart:iso(new Date()), plan:null, active:false };
   _setup=null;
   save(); applyBusiness();
   document.getElementById("setupScreen").style.display="none";
-  state.tab="dashboard"; state.opDetail=null;
-  render(); toast("تم إعداد نشاطك 🎉");
+  state.opDetail=null;
+  state.tab = (mode==="plans") ? "subscription" : "dashboard";
+  render(); toast("تم إنشاء نشاطك 🎉");
 }
 (function(){
   const next=document.getElementById("suNext"), back=document.getElementById("suBack");
   if(next) next.onclick=()=>{
     if(!_setup) return;
-    const steps=setupSteps(_setup.draft), key=steps[_setup.i];
-    if(key==="types" && !Object.keys(_setup.draft.types).some(k=>_setup.draft.types[k])) return toast("اختر نوع النشاط أولًا");
-    if(key==="info"){ const nm=(document.getElementById("suName")||{}).value||""; if(!nm.trim()) return toast("أدخل اسم النشاط"); _setup.draft.name=nm.trim(); }
-    if(key==="finish"){ finishSetup(); return; }
+    const steps=setupSteps(), key=steps[_setup.i], d=_setup.draft;
+    if(key==="activities" && !Object.keys(d.types).some(k=>d.types[k])) return toast("اختر نشاطًا واحدًا على الأقل");
+    if(key==="manager"){
+      if((d._mgrName||"").trim().length<2) return toast("أدخل اسم المدير");
+      if(!validPhone(d._mgrPhone||"")) return toast("أدخل رقم هاتف صحيح (8 أرقام)");
+      if((d._mgrPass||"").length<4) return toast("اختر كلمة مرور (4 خانات على الأقل)");
+    }
+    if(key==="info"){ if(!(d.name||"").trim()) return toast("أدخل اسم النشاط"); }
     _setup.i=Math.min(steps.length-1,_setup.i+1); renderSetupStep();
   };
   if(back) back.onclick=()=>{ if(_setup && _setup.i>0){ _setup.i--; renderSetupStep(); } };
@@ -795,7 +840,7 @@ render();
 setInterval(tickOpTimers, 30000);   // Release 3 — keep live operation timers ticking
 
 /* ---- Commit 4: namespace registration (aliases; globals retained) ---- */
-Object.assign(App.ui,     { render, bindScreen, bindFeatureModules, gateDay, gateDate, bindHold, requireCode, toggleCancelCar,
+Object.assign(App.ui,     { render, bindScreen, bindFeatureModules, bindBusinessSettings, gateDay, gateDate, bindHold, requireCode, toggleCancelCar,
   toggleCancelOrder, openWorkerStatement, applyHeaderIcons, applyLock, openReceipt, printReceipt, printReport,
   openCarChat, shareCarImages, openWa, openSettings, openEditCar, openEditOrder, completeUnpaidDelivery,
   openDeliverInfo, applySetup, applyBusiness, startSetup, renderSetupStep, finishSetup });

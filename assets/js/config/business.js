@@ -9,9 +9,11 @@
 
 /* ---- catalogs the wizard chooses from ---- */
 const BUSINESS_TYPES = [
-  { k:"carwash", label:"غسيل سيارات", icon:"car",    desc:"استقبال وغسيل المركبات." },
-  { k:"carpet",  label:"غسيل سجاد",   icon:"rug",    desc:"غسيل السجاد والموكيت." },
-  { k:"laundry", label:"مغسلة ملابس", icon:"fabric", desc:"غسيل وكي الملابس والأفرشة." }
+  { k:"carwash",   label:"غسيل سيارات", icon:"car",     desc:"استقبال وغسيل المركبات." },
+  { k:"carpet",    label:"غسيل سجاد",   icon:"rug",     desc:"غسيل السجاد والموكيت." },
+  { k:"laundry",   label:"مغسلة ملابس", icon:"fabric",  desc:"غسيل وكي الملابس والأفرشة." },
+  { k:"oil-change",label:"تغيير الزيت", icon:"drop",    desc:"تغيير الزيوت وصيانة سريعة." },
+  { k:"shop",      label:"محل / متجر",  icon:"wallet",  desc:"بيع المنتجات والإكسسوارات." }
 ];
 
 /* The service catalog is now configurable (was the hardcoded WASH_TYPES). */
@@ -44,13 +46,15 @@ function defaultServices(){
   s.exterior=true; s.interior=true; s.full=true;   // sensible starting catalog
   return s;
 }
-/* A fresh, UNCONFIGURED business — first launch opens the wizard to fill it. */
+/* A fresh, UNCONFIGURED business — first launch opens the wizard to fill it.
+   Release 5.1: everything except the business types + name/logo now has a sensible
+   DEFAULT here and is NOT asked during onboarding (editable later in Settings). */
 function defaultBusiness(){
   return {
     configured:false,
-    name:"", logo:"",
+    name:"", logo:"", phone:"",
     country:"موريتانيا", currency:"أوقية", language:"ar", timezone:"Africa/Nouakchott",
-    types:{ carwash:true, carpet:false, laundry:false },
+    types:{ carwash:true, carpet:false, laundry:false, "oil-change":false, shop:false },
     services: defaultServices(),
     paymentMethods: PAYMENT_CATALOG.map(p=>({ k:p.k, label:p.label })),
     features:{ loyalty:true, employees:true, inventory:false, reservations:false, notifications:false, branches:false, accounting:true },
@@ -58,4 +62,12 @@ function defaultBusiness(){
   };
 }
 
-Object.assign(App.config, { BUSINESS_TYPES, SERVICE_CATALOG, PAYMENT_CATALOG, LANGUAGES, CURRENCIES, TIMEZONES, WEEK_DAYS, defaultServices, defaultBusiness });
+/* Release 5.1 — trial + subscription plans (no payment gateway yet). */
+const TRIAL_DAYS = 3;
+const SUB_PLANS = [
+  { k:"monthly",  name:"شهري",     price:"—", per:"/شهر",  badge:"",            features:["كل الميزات المدفوعة","دعم فني","تحديثات مستمرة"] },
+  { k:"biannual", name:"6 أشهر",   price:"—", per:"/6 أشهر", badge:"الأكثر توفيرًا", features:["كل مزايا الخطة الشهرية","خصم على السعر","أولوية الدعم"] },
+  { k:"yearly",   name:"سنوي",     price:"—", per:"/سنة",  badge:"الأفضل قيمة",  features:["كل مزايا الخطة نصف السنوية","شهران مجانًا","مدير حساب مخصّص"] }
+];
+
+Object.assign(App.config, { BUSINESS_TYPES, SERVICE_CATALOG, PAYMENT_CATALOG, LANGUAGES, CURRENCIES, TIMEZONES, WEEK_DAYS, TRIAL_DAYS, SUB_PLANS, defaultServices, defaultBusiness });

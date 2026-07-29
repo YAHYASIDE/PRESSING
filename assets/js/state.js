@@ -63,6 +63,8 @@ const state = {
   piecePrices:{...PIECE_PRICES},
   tariff:{elec:0, water:0},   /* سعر الكيلو / سعر وحدة الماء (0 = تسجيل الاستهلاك فقط) */
   business: defaultBusiness(),   /* Release 5: business configuration layer (set by the Setup Wizard) */
+  manager: null,                 /* Release 5.1: first user created during onboarding */
+  subscription: null,            /* Release 5.1: {trialStart, plan, active} — free trial + plans */
   features: defaultFeatures(),   /* Release: optional feature modules (loyalty, …) */
   customers:{},
   meters:[],

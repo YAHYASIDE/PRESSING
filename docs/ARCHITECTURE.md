@@ -71,7 +71,19 @@ A layer may use the layers below it and never the layers above it.
 - The **Setup Wizard** (`pages/setup.js` render + `app.js` orchestration) writes
   this object once. First launch — an unconfigured business — opens the wizard
   instead of the dashboard (`applySetup` in `render`); a migration marks
-  pre-existing installs configured so they are never sent through it.
+  pre-existing installs (those with operational data) configured so they are
+  never sent through it.
+- **Release 5.1 — fast onboarding:** the wizard is now FOUR steps (activities →
+  manager → business info → success) and runs *before* the lock screen — it
+  creates the first user (role manager) and logs them in. Everything not asked
+  (currency, country, language, timezone, working hours, services, payment
+  methods, features) uses `defaultBusiness()` defaults and is editable later in
+  **Settings ▸ Business Settings** (`pages/business-settings.js`). Two new
+  first-class business types — `oil-change`, `shop` — live in `business.types`.
+- **Trial + subscriptions (Release 5.1):** `state.subscription` holds
+  `{trialStart, plan, active}`; `core.trialInfo()`/`subscribed()` drive the
+  dashboard trial card and the Subscription page (`pages/subscription.js`, three
+  plans, no gateway yet). The card hides once `subscribed()`.
 - **Nothing about the business is hardcoded anymore.** Modules read via core
   accessors: `bizServices()` (the service catalog → the wash `<select>`),
   `bizPayMethods()` (the payment selector everywhere), `bizCurrency()` (via

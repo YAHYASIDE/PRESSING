@@ -208,6 +208,18 @@ function bizServices(){
 }
 /* the enabled payment methods (falls back to the built-in PAY_METHODS) */
 function bizPayMethods(){ const p=biz().paymentMethods; return (p&&p.length)?p:PAY_METHODS; }
+/* ---- trial + subscription (Release 5.1) ---- */
+function subscribed(){ return !!(state.subscription && state.subscription.active); }
+function trialInfo(){
+  const s=state.subscription||{};
+  if(subscribed()) return { onTrial:false, subscribed:true, daysLeft:0, ended:false };
+  if(!s.trialStart) return { onTrial:false, subscribed:false, daysLeft:TRIAL_DAYS, ended:false };
+  const start=new Date(s.trialStart).getTime();
+  const msLeft=(start + TRIAL_DAYS*86400000) - Date.now();
+  const daysLeft=Math.max(0, Math.ceil(msLeft/86400000));
+  return { onTrial:daysLeft>0, subscribed:false, daysLeft:daysLeft, ended:daysLeft<=0 };
+}
+
 /* whether a nav tab is allowed by business type / feature config (role is applied separately) */
 function tabVisible(id){
   if(!businessConfigured()) return true;                 // before setup, show everything
@@ -294,21 +306,30 @@ function runMigrations(){
     const L=state.features.loyalty, dl=dflt.loyalty;
     if(L){ Object.keys(dl).forEach(k=>{ if(L[k]===undefined){ L[k]=dl[k]; changed=true; } }); }
   }
-  // Business Configuration — ensure it exists. An install that already has data
-  // (returning user) is marked configured with sensible values so it is NOT sent
-  // through the wizard and loses nothing; a truly fresh install stays unconfigured
-  // so first launch opens the Setup Wizard.
-  if(!state.business){
-    state.business=defaultBusiness();
-    const hadData = state._savedAt || (state.carOps&&state.carOps.length) || (state.carpetOrders&&state.carpetOrders.length) ||
-      (state.customers&&Object.keys(state.customers).length) || (state.expenses&&state.expenses.length) || (state.workers&&state.workers.length);
-    if(hadData){
-      state.business.configured=true;
-      state.business.name=SHOP_NAME; state.business.phone=SHOP_PHONE; state.business.currency=CUR;
-      state.business.types={ carwash:true, carpet:true, laundry:false };   // existing app had both boards
-      Object.keys(state.business.features).forEach(k=>{ state.business.features[k]=!!(state.features[k]&&state.features[k].enabled); });
-      state.business.features.accounting=true; state.business.features.employees=true;
-    }
+  // Business Configuration — state seeds a fresh (unconfigured) default. A returning
+  // install that already has OPERATIONAL data is marked configured with sensible
+  // values so its owner is NOT sent through onboarding again and loses nothing; a
+  // truly fresh install stays unconfigured so first launch opens the Setup Wizard.
+  if(!state.business){ state.business=defaultBusiness(); changed=true; }
+  const hasOpsData = (state.carOps&&state.carOps.length) || (state.carpetOrders&&state.carpetOrders.length) ||
+    (state.customers&&Object.keys(state.customers).length) || (state.expenses&&state.expenses.length) || (state.workers&&state.workers.length);
+  if(hasOpsData && state.business && !state.business.configured){
+    state.business.configured=true;
+    if(!state.business.name)  state.business.name=SHOP_NAME;
+    if(!state.business.phone) state.business.phone=SHOP_PHONE;
+    state.business.types.carpet=true;   // existing app had both the cars and carpets boards
+    Object.keys(state.business.features).forEach(k=>{ state.business.features[k]=!!(state.features&&state.features[k]&&state.features[k].enabled); });
+    state.business.features.accounting=true; state.business.features.employees=true;
+    changed=true;
+  }
+  // backfill the two new business types on already-configured installs
+  if(state.business && state.business.types){
+    if(state.business.types["oil-change"]===undefined){ state.business.types["oil-change"]=false; changed=true; }
+    if(state.business.types.shop===undefined){ state.business.types.shop=false; changed=true; }
+  }
+  // subscription / trial — start a trial for configured installs that don't have one yet
+  if(!state.subscription){
+    state.subscription = { trialStart: (state.business&&state.business.configured)?iso(new Date()):null, plan:null, active:false };
     changed=true;
   }
   ensureCarNos();
@@ -316,4 +337,4 @@ function runMigrations(){
 }
 Object.assign(App.core, { todayStr, isPastDay, chosenDateIso, meterCode, orderState, carNo, waHead, waFoot, countryOpts, validPhone, waPhoneFull, waPhoneStr, waPhone, waStatusMsg, waLink, ensureCarNos, runMigrations,
   featureEnabled, featureCfg, loyaltyEnabled, loyaltyStrategy, loyaltyThreshold, loyaltyReward, loyaltyOnWash, loyaltyStatus,
-  biz, businessConfigured, bizName, bizPhone, bizCurrency, bizTypeOn, bizServices, bizPayMethods, tabVisible });
+  biz, businessConfigured, bizName, bizPhone, bizCurrency, bizTypeOn, bizServices, bizPayMethods, tabVisible, subscribed, trialInfo });

@@ -149,6 +149,7 @@ function screenDashboard(){
     </div>`;
   return `
     <div class="screen-head"><h2>الصفحة الرئيسية</h2><span>${periodLabel==="اليوم"?new Date().toLocaleDateString("ar",{weekday:"long",day:"numeric",month:"long"}):`${state.dateFrom} ← ${state.dateTo}`}</span></div>
+    ${trialCardHTML()}
     <div class="datebar">
       <div class="date-field"><label>من</label><input type="date" id="dateFrom" value="${state.dateFrom}" max="${today}"></div>
       <div class="date-field"><label>إلى</label><input type="date" id="dateTo" value="${state.dateTo}" max="${today}"></div>

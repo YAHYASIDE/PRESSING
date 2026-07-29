@@ -80,6 +80,28 @@
 .su-sum-row span{ color:var(--muted); font-weight:600; flex:none; }
 .su-sum-row b{ font-weight:800; text-align:end; }
 
+/* info-step "auto-configured" note + optional tag */
+.su-opt{ font-size:.7rem; color:var(--muted); font-weight:600; }
+.su-defaults{ margin-top:18px; background:var(--soft); border:1px dashed var(--line); border-radius:14px; padding:14px; }
+.su-def-h{ font-size:.76rem; font-weight:800; color:var(--muted); margin-bottom:9px; }
+.su-def-tags{ display:flex; flex-wrap:wrap; gap:7px; margin-bottom:8px; }
+.su-def-tags span{ font-size:.74rem; font-weight:700; color:var(--brand); background:var(--chip); border-radius:999px; padding:4px 10px; }
+
+/* Step 4 — commercial success screen */
+.su-success{ text-align:center; padding-top:14px; animation:dashUp .4s ease both; display:flex; flex-direction:column; min-height:100%; }
+.su-congrats{ font-size:3.4rem; line-height:1; margin:8px 0 6px; animation:dashUp .5s ease both; }
+.su-success h2{ font-size:1.8rem; font-weight:800; margin:0 0 8px; }
+.su-trial-box{ margin:22px 0; background:linear-gradient(135deg, var(--chip), var(--surface)); border:1.5px solid var(--brand); border-radius:20px; padding:22px 18px; box-shadow:var(--shadow); }
+.su-gift{ font-size:2.6rem; line-height:1; }
+.su-trial-t{ font-size:1.05rem; font-weight:800; margin-top:8px; }
+.su-trial-s{ font-size:.84rem; color:var(--muted); font-weight:600; margin-top:6px; line-height:1.5; }
+.su-trial-count{ margin-top:16px; display:flex; flex-direction:column; align-items:center; gap:2px; }
+.su-trial-days{ font-size:2.6rem; font-weight:800; color:var(--brand); line-height:1; }
+.su-trial-count span:last-child{ font-size:.8rem; font-weight:700; color:var(--muted); }
+.su-success-actions{ margin-top:auto; display:flex; flex-direction:column; gap:10px; padding-top:16px; }
+.su-success-actions .btn-primary{ padding:16px; font-size:1.05rem; font-weight:800; }
+.su-plans-btn{ padding:13px; }
+
 @media (min-width:600px){
   #setupScreen{ align-items:center; padding:24px; }
   .su-shell{ max-height:92vh; border-radius:24px; border:1px solid var(--line); box-shadow:0 20px 60px rgba(21,37,52,.25); overflow:hidden; }

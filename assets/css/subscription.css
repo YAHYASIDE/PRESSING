@@ -1,0 +1,43 @@
+/* subscription.css — trial card, subscription plans, business-settings (Release 5.1) */
+
+/* dashboard trial card */
+.trial-card{ width:100%; display:flex; align-items:center; gap:13px; text-align:start; cursor:pointer; font:inherit; color:#fff;
+  background:linear-gradient(135deg,#7a5cff,#5b8bff); border:none; border-radius:16px; padding:14px 16px; margin:0 0 16px;
+  box-shadow:0 8px 22px rgba(91,139,255,.28); animation:dashUp .35s ease both; }
+.trial-card.ended{ background:linear-gradient(135deg,#e0872f,#d64545); box-shadow:0 8px 22px rgba(214,69,69,.28); }
+.trial-ic{ font-size:1.7rem; flex:none; }
+.trial-body{ flex:1; min-width:0; display:flex; flex-direction:column; }
+.trial-body b{ font-size:.98rem; font-weight:800; }
+.trial-body span{ font-size:.8rem; opacity:.92; font-weight:600; }
+.trial-cta{ flex:none; font-size:.82rem; font-weight:800; background:rgba(255,255,255,.22); border-radius:999px; padding:8px 14px; white-space:nowrap; }
+
+/* subscription page */
+.sub-head{ display:flex; align-items:center; gap:12px; }
+.sub-status{ display:flex; align-items:center; justify-content:space-between; gap:10px; background:var(--chip); border:1px solid var(--line); border-radius:14px; padding:12px 15px; margin-bottom:12px; font-weight:800; font-size:.9rem; }
+.sub-status b{ color:var(--brand); }
+.sub-status.active{ justify-content:center; color:var(--ready); }
+.sub-intro{ font-size:.86rem; color:var(--muted); font-weight:600; margin:0 0 16px; line-height:1.5; }
+.plans-grid{ display:grid; grid-template-columns:1fr; gap:14px; }
+.plan-card{ position:relative; background:var(--surface); border:1.5px solid var(--line); border-radius:18px; box-shadow:var(--shadow); padding:20px 18px; animation:dashUp .4s ease both; }
+.plan-card.featured{ border-color:var(--brand); box-shadow:0 10px 30px rgba(16,157,143,.16); }
+.plan-badge{ position:absolute; top:-11px; inset-inline-start:18px; background:var(--brand); color:#fff; font-size:.7rem; font-weight:800; border-radius:999px; padding:4px 12px; }
+.plan-name{ font-size:1.15rem; font-weight:800; }
+.plan-price{ font-size:2rem; font-weight:800; color:var(--brand); margin:6px 0 14px; }
+.plan-price .plan-per{ font-size:.82rem; color:var(--muted); font-weight:700; }
+.plan-feats{ list-style:none; padding:0; margin:0 0 18px; display:flex; flex-direction:column; gap:9px; }
+.plan-feats li{ position:relative; padding-inline-start:26px; font-size:.86rem; font-weight:600; }
+.plan-feats li::before{ content:"✓"; position:absolute; inset-inline-start:0; top:0; width:18px; height:18px; border-radius:50%; background:var(--chip); color:var(--brand); font-weight:800; font-size:.72rem; display:grid; place-items:center; }
+.plan-sub{ width:100%; padding:14px; font-weight:800; }
+.sub-foot{ text-align:center; font-size:.78rem; color:var(--muted); font-weight:600; margin-top:16px; }
+@media (min-width:720px){ .plans-grid{ grid-template-columns:repeat(3,1fr); } }
+
+/* business settings (in the settings modal) */
+.bs-collapse > summary{ cursor:pointer; list-style:none; }
+.bs-collapse > summary::-webkit-details-marker{ display:none; }
+.bs-collapse > summary::after{ content:"▾"; color:var(--muted); float:inline-start; transition:transform .2s; }
+.bs-collapse[open] > summary::after{ transform:rotate(180deg); }
+.bs-sub{ margin-top:14px; }
+.bs-sub-t{ font-size:.82rem; font-weight:800; color:var(--muted); margin-bottom:9px; }
+.bs-chips{ display:flex; flex-wrap:wrap; gap:8px; }
+.bs-chip{ padding:9px 14px; border-radius:999px; border:1.5px solid var(--line); background:var(--surface); font-weight:800; font-size:.82rem; cursor:pointer; transition:.15s; }
+.bs-chip.on{ border-color:var(--brand); background:var(--chip); color:var(--brand); }
