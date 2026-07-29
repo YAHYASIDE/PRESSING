@@ -1,9 +1,11 @@
 /* storage.js — localStorage persistence + backup import/export/reset (extracted from index.html) */
 /* ============ persistence (localStorage) ============ */
 const LS_KEY="sadaqa_laundry_v1";
-function saveLocal(){ try{ state._savedAt=Date.now(); localStorage.setItem(LS_KEY, JSON.stringify(state)); }catch(e){} }
+/* Persistence now goes through the repositories layer (App.repositories.stateStore),
+   which is the Firebase-ready seam. Behaviour is identical to direct localStorage. */
+function saveLocal(){ state._savedAt=Date.now(); App.repositories.stateStore.write(LS_KEY, state); }
 function save(){ saveLocal(); }
-function load(){ try{ const d=localStorage.getItem(LS_KEY); if(d) Object.assign(state, JSON.parse(d)); }catch(e){} }
+function load(){ const d=App.repositories.stateStore.read(LS_KEY); if(d) Object.assign(state, d); }
 function tomb(id){ if(!state.deleted) state.deleted={}; state.deleted["rec:"+id]=Date.now(); }
 function tombCust(k){ if(!state.deleted) state.deleted={}; state.deleted["cust:"+k]=Date.now(); }
 function exportData(){
