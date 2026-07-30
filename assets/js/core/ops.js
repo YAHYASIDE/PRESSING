@@ -46,4 +46,7 @@ function opsReminders(){
   return out;
 }
 
-Object.assign(App.core, { opsStats, opsReminders });
+/* customer-submitted service requests still awaiting staff action (newest first) */
+function customerRequests(){ return (state.serviceRequests||[]).filter(function(r){ return r.status!=="done"; }).slice().reverse(); }
+
+Object.assign(App.core, { opsStats, opsReminders, customerRequests });

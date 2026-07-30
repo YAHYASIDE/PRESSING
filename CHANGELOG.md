@@ -6,6 +6,20 @@ platform for car wash, laundry, carpet cleaning, oil change and retail.
 
 ## SaaS v1.0 — Enterprise Edition (incremental)
 
+### v1.3.0 — Welcome-screen customer intake + subscriptions
+- On the welcome screen, tapping a service now expands a **customer intake**: a
+  name + phone form and the business's **subscriptions** (membership plans) shown
+  as selectable cards. The customer can optionally pick a plan they're interested
+  in.
+- Submitting captures a real **service request** (lead) on the business's
+  workspace and shows a confirmation. Requests surface to staff in the
+  **Operations Center** ("طلبات الزبائن") with a call link and a "تم" (done)
+  action — not write-only.
+- New `services/reception.js` (`submitServiceRequest`/`markRequestDone`),
+  `core.customerRequests()`, and the requests panel in `pages/ops.js`. Validated
+  intake (name ≥ 2, valid phone). Committed `tests/reception.test.js` covers the
+  full round-trip; smoke, welcome, multi-business and regression suites green.
+
 ### v1.2.0 — Premium customer-facing welcome screen
 - **The app no longer opens to the employee login.** The first impression is now a
   premium, glassmorphic **welcome screen**: business logo + name, an animated

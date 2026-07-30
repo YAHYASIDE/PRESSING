@@ -304,6 +304,7 @@ function runMigrations(){
   }
   if(!state.deleted) state.deleted={};
   if(!state.logins) state.logins=[];
+  if(!state.serviceRequests) state.serviceRequests=[];
   // Feature Modules — ensure the registry exists and every declared module has a flag.
   if(!state.features){ state.features=defaultFeatures(); changed=true; }
   else {

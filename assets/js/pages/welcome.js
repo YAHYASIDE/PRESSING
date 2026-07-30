@@ -45,4 +45,28 @@ function welcomeHTML(){
     </div>`;
 }
 
-Object.assign(App.pages, { welcomeHTML, welcomeServiceCards });
+/* the expanded panel shown when a customer taps a service: booking form + subscriptions */
+function welcomeServiceDetail(k){
+  const t=BUSINESS_TYPES.find(function(x){ return x.k===k; })||{};
+  const b=state.business||{}, hrs=b.workingHours||{};
+  const plans=(typeof MEMBERSHIP_PLANS!=="undefined"?MEMBERSHIP_PLANS:[]).map(function(pl){
+    return `<button type="button" class="wc-sub tier-${pl.k}" data-wc-plan="${pl.k}">
+      <span class="wc-sub-n">${pl.label}</span>
+      <span class="wc-sub-p">${money(pl.price)}</span>
+      <span class="wc-sub-d">${pl.unlimited?"غير محدود":pl.services+" خدمة"} · ${pl.days} يوم${pl.discount?` · خصم ${pl.discount}%`:""}</span>
+    </button>`;
+  }).join("");
+  return `<div class="wc-det-card">
+    <div class="wc-det-top"><b>${t.label}</b>${(hrs.open&&hrs.close)?`<span class="wc-det-hours">🕐 ${hrs.open}–${hrs.close}</span>`:``}</div>
+    ${t.desc?`<p class="wc-det-desc">${t.desc}</p>`:``}
+    <div class="wc-form">
+      <div class="wc-form-h">سجّل بياناتك ليخدمك فريقنا 👇</div>
+      <input id="wcName" class="wc-inp" type="text" placeholder="الاسم" autocomplete="off">
+      <input id="wcPhone" class="wc-inp" type="tel" inputmode="numeric" maxlength="9" placeholder="رقم الهاتف">
+    </div>
+    ${plans?`<div class="wc-subs-wrap"><div class="wc-subs-h">اشتراكاتنا <span>(اختياري)</span></div><div class="wc-subs">${plans}</div></div>`:``}
+    <button type="button" class="wc-submit" id="wcSubmit">📩 إرسال الطلب</button>
+  </div>`;
+}
+
+Object.assign(App.pages, { welcomeHTML, welcomeServiceCards, welcomeServiceDetail });

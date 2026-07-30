@@ -55,3 +55,14 @@
 .gs-item b{ font-weight: 800; font-size: .9rem; }
 .gs-item span{ font-size: .76rem; color: var(--muted); font-weight: 600; }
 .gs-more{ font-size: .72rem; color: var(--muted); font-weight: 700; text-align: center; padding: 4px; }
+
+/* customer service requests (from the welcome screen) */
+.ops-reqs summary{ color: var(--brand); }
+.ops-req-list{ display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+.ops-req-row{ display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 12px;
+  background: var(--soft); border: 1px solid var(--line); }
+.ops-req-main{ flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.ops-req-main b{ font-weight: 800; font-size: .92rem; }
+.ops-req-main span{ font-size: .74rem; color: var(--muted); font-weight: 600; }
+.ops-req-tel{ font-size: .78rem; font-weight: 700; color: var(--brand); white-space: nowrap; text-decoration: none; }
+.ops-req-done{ flex: none; }

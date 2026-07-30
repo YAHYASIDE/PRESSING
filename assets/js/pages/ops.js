@@ -22,6 +22,14 @@ function opsCenterHTML(){
       ${opsTile(m.redemptions,"استخدامات الولاء")}
       ${opsTile(money(m.avgValue),"متوسط قيمة الزبون","t-net")}
     </div>`:"";
+  const reqs=App.core.customerRequests();
+  const reqBlock=reqs.length?`<details class="ops-rem ops-reqs" open><summary>📩 طلبات الزبائن (${reqs.length})</summary>
+    <div class="ops-req-list">${reqs.slice(0,20).map(function(r){
+      return `<div class="ops-req-row"><div class="ops-req-main"><b>${(r.name||"").replace(/</g,"&lt;")}</b>
+        <span>${r.serviceLabel||""}${r.planLabel?` · اشتراك ${r.planLabel}`:""} · ${ymd(r.date)} ${timeStr(r.date)}</span></div>
+        ${r.phone?`<a class="ops-req-tel" href="tel:${r.phone}" title="اتصال">📞 ${r.phone}</a>`:""}
+        <button type="button" class="mini ops-req-done" data-req-done="${r.id}">تم</button></div>`;
+    }).join("")}</div></details>`:"";
   return `<div class="ops-center">
     <div class="ops-sec-h">مركز العمليات المباشر <span>اليوم · ${new Date().toLocaleDateString("ar",{weekday:"long"})}</span>
       <button type="button" class="ops-tv" data-open-queue>📺 شاشة العرض</button></div>
@@ -46,6 +54,7 @@ function opsCenterHTML(){
       ${inv?opsTile(s.lowStock,"تنبيهات مخزون",s.lowStock?"t-alert":""):opsTile(s.employees,"الموظفون")}
     </div>
     ${memBlock}
+    ${reqBlock}
     ${rem.length?`<details class="ops-rem" open><summary>🔔 التذكيرات (${rem.length})</summary><div class="ops-rem-list">${rem.slice(0,12).map(remRow).join("")}</div></details>`:""}
     ${audit.length?`<details class="ops-rem"><summary>📋 سجل التدقيق (${(state.audit||[]).length})</summary><div class="audit-list">${audit.map(a=>`<div class="audit-row"><span class="audit-act">${a.action}</span><span class="audit-det">${a.detail||""}</span><span class="audit-meta">${a.user||"—"} · ${ymd(a.date)} ${timeStr(a.date)}</span></div>`).join("")}</div></details>`:""}
   </div>`;

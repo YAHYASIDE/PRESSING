@@ -383,6 +383,8 @@ function bindScreen(){
   document.querySelectorAll("[data-mem-autorenew]").forEach(cb=>cb.onchange=()=>{ App.services.toggleAutoRenew(cb.dataset.memAutorenew); saveLocal(); });
   // fullscreen queue board (TV mode)
   document.querySelectorAll("[data-open-queue]").forEach(b=>b.onclick=openQueueDisplay);
+  // customer service requests (from the welcome screen) — mark handled
+  document.querySelectorAll("[data-req-done]").forEach(b=>b.onclick=()=>{ App.services.markRequestDone(b.dataset.reqDone); toast("تم"); render(); });
 
   // meters
   const ms=document.getElementById("meterSave");
@@ -721,7 +723,7 @@ function applyHeaderIcons(){
 }
 
 /* ---- backup ---- */
-let unlocked=false, currentUser="", bizEntered=false, showLogin=false;
+let unlocked=false, currentUser="", bizEntered=false, showLogin=false, _wcSvc="", _wcPlan="";
 function applyLock(){
   const ls=document.getElementById("lockScreen");
   // The customer-facing Welcome screen is the first view; the employee login form
@@ -742,12 +744,30 @@ function renderWelcome(){
   const lb=document.getElementById("welcomeLoginBtn"); if(lb) lb.onclick=goEmployeeLogin;
 }
 function selectWelcomeService(k,el){
+  _wcSvc=k; _wcPlan="";
   document.querySelectorAll("#welcomeBody .wc-card").forEach(c=>c.classList.toggle("on",c===el));
-  const t=BUSINESS_TYPES.find(x=>x.k===k)||{}, b=state.business||{}, hrs=b.workingHours||{};
   const d=document.getElementById("welcomeDetail"); if(!d) return;
-  d.innerHTML=`<div class="wc-det-card"><b>${t.label}</b><p>${t.desc||""}</p>
-    <span class="wc-det-hint">توجّه إلى الكاشير لطلب الخدمة${(hrs.open&&hrs.close)?` · مواعيد العمل ${hrs.open}–${hrs.close}`:""}</span></div>`;
+  d.innerHTML=App.pages.welcomeServiceDetail(k);
   d.classList.add("show");
+  const ph=document.getElementById("wcPhone"); if(ph) ph.oninput=()=>{ ph.value=ph.value.replace(/[^0-9]/g,"").slice(0,9); };
+  d.querySelectorAll("[data-wc-plan]").forEach(pb=>pb.onclick=()=>{
+    _wcPlan=(_wcPlan===pb.dataset.wcPlan)?"":pb.dataset.wcPlan;
+    d.querySelectorAll(".wc-sub").forEach(x=>x.classList.toggle("on",x.dataset.wcPlan===_wcPlan));
+  });
+  const sub=document.getElementById("wcSubmit"); if(sub) sub.onclick=submitWelcomeRequest;
+  if(d.scrollIntoView) d.scrollIntoView({behavior:"smooth",block:"nearest"});
+}
+function submitWelcomeRequest(){
+  const t=BUSINESS_TYPES.find(x=>x.k===_wcSvc)||{};
+  const name=(document.getElementById("wcName")||{}).value||"";
+  const phone=(document.getElementById("wcPhone")||{}).value||"";
+  const plan=_wcPlan?(MEMBERSHIP_PLANS.find(p=>p.k===_wcPlan)||null):null;
+  const r=App.services.submitServiceRequest({ name, phone, service:_wcSvc, serviceLabel:t.label, plan:plan?plan.k:"", planLabel:plan?plan.label:"" });
+  if(!r.ok){ toast(r.error==="name"?"أدخل اسمك (حرفان على الأقل)":"أدخل رقم هاتف صحيح"); return; }
+  const d=document.getElementById("welcomeDetail");
+  if(d) d.innerHTML=`<div class="wc-det-card wc-done"><div class="wc-done-ic">✓</div><b>تم استلام طلبك!</b><p>سيتواصل معك فريق ${((state.business||{}).name||"").replace(/</g,"&lt;")} قريبًا${plan?` بخصوص اشتراك «${plan.label}»`:""}.</p></div>`;
+  document.querySelectorAll("#welcomeBody .wc-card").forEach(c=>c.classList.remove("on"));
+  _wcSvc=""; _wcPlan="";
 }
 function goEmployeeLogin(){ showLogin=true; applyWelcome(); applyLock(); }
 function backToWelcome(){ showLogin=false; applyLock(); applyWelcome(); }
