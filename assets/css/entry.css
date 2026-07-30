@@ -18,11 +18,18 @@
   background: radial-gradient(closest-side, rgba(255,255,255,.22), transparent);
   animation: lkGlow 5s ease-in-out infinite; pointer-events: none;
 }
+.lk-back {
+  position: absolute; top: 12px; inset-inline-start: 12px;
+  background: var(--soft); color: var(--muted); border: 1px solid var(--line);
+  border-radius: 999px; padding: 6px 12px; font-size: .78rem; font-weight: 700; cursor: pointer;
+  transition: background .15s, color .15s;
+}
+.lk-back:hover { background: var(--soft-hover); color: var(--brand); }
 .lock-box {
   position: relative;
   background: var(--surface);
   border-radius: 22px;
-  padding: 30px 24px 24px;
+  padding: 38px 24px 24px;
   max-width: 344px; width: 100%;
   text-align: center;
   box-shadow: 0 30px 70px rgba(0,0,0,.35);

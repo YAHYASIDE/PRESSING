@@ -6,6 +6,25 @@ platform for car wash, laundry, carpet cleaning, oil change and retail.
 
 ## SaaS v1.0 — Enterprise Edition (incremental)
 
+### v1.2.0 — Premium customer-facing welcome screen
+- **The app no longer opens to the employee login.** The first impression is now a
+  premium, glassmorphic **welcome screen**: business logo + name, an animated
+  gradient background with drifting blurs, and **large service cards** for the
+  business's enabled activities (Car Wash, Laundry, Carpet, Oil Change, Shop).
+- **Customer chooses a service** → a detail panel shows the service description and
+  working hours (a storefront view, no fake ordering).
+- **"Employee Login"** button opens the login as a **separate screen** (with a
+  back-to-welcome control). After login the existing flow applies: one business
+  opens directly, multiple businesses show the Business Selector.
+- **Logout / auto-relock return to the welcome screen**, so the storefront is
+  always the default face of the app — never the login form.
+- Mobile-first, dark-mode aware, professional Arabic typography, smooth entrance
+  and micro-interaction animations (respects `prefers-reduced-motion`).
+- Fixed a latent migration bug that reset a business's login code on reload for
+  workspaces created after the first (the code upgrade no longer clobbers a real
+  chosen PIN). New committed test `tests/welcome.test.js`; smoke, multi-business
+  and regression suites green.
+
 ### v1.1.0 — Multi-business / multi-branch with data isolation
 - **Business/Branch selector after login.** One business opens directly; with
   more than one, a selector appears showing each business's **logo, name, branch,

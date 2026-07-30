@@ -295,7 +295,13 @@ function loyaltyStatus(c){
 function runMigrations(){
   let changed=false;
   if(state.adMsg==="🎁 اجمع 5 غسلات واحصل على غسلة مجانية!\nنغسل السجاد والموكيت والأفرشة أيضًا 🧼\nشاركنا مع أصدقائك 🙌"){ state.adMsg=""; changed=true; }
-  if(state.codesV!==3){ state.lock={enabled:true,pin:"0707"}; if(!state.meterPin) state.meterPin="070752"; state.codesV=3; changed=true; }
+  if(state.codesV!==3){
+    // one-time code upgrade for legacy installs — but never clobber a real pin a
+    // business already chose (each multi-business workspace has its own lock).
+    if(state.lock && state.lock.pin) state.lock.enabled=true;
+    else state.lock={enabled:true,pin:"0707"};
+    if(!state.meterPin) state.meterPin="070752"; state.codesV=3; changed=true;
+  }
   if(!state.deleted) state.deleted={};
   if(!state.logins) state.logins=[];
   // Feature Modules — ensure the registry exists and every declared module has a flag.

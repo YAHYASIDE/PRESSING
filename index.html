@@ -32,6 +32,7 @@
 <link rel="stylesheet" href="assets/css/membership.css">
 <link rel="stylesheet" href="assets/css/queue.css">
 <link rel="stylesheet" href="assets/css/business.css">
+<link rel="stylesheet" href="assets/css/welcome.css">
 <link rel="stylesheet" href="assets/css/entry.css">
 </head>
 <body>
@@ -210,11 +211,15 @@
     </div>
   </div>
 </div>
+<!-- Premium customer-facing welcome screen (first impression: the business + its services) -->
+<div id="welcomeScreen"><div id="welcomeBody" class="wc-root"></div></div>
+
 <div id="lockScreen">
   <div class="lock-box">
+    <button type="button" class="lk-back" id="lockBack" aria-label="رجوع">→ الشاشة الرئيسية</button>
     <div class="lk-logo-ring"><img id="lockLogo" src="" alt=""></div>
     <h3 id="lockTitle">Washly</h3>
-    <p>سجّل دخولك للمتابعة</p>
+    <p>دخول الموظفين — سجّل دخولك للمتابعة</p>
     <div class="lk-field"><input type="text" id="lockName" placeholder="اسمك" value="إبراهيم" autocomplete="off" style="letter-spacing:normal;text-align:center"></div>
     <div class="lk-rolelbl">اختر دورك</div>
     <div class="lk-roles" id="lockRoles">
@@ -313,6 +318,7 @@
 <script src="assets/js/pages/crm.js"></script>
 <script src="assets/js/pages/ops.js"></script>
 <script src="assets/js/pages/queue.js"></script>
+<script src="assets/js/pages/welcome.js"></script>
 <script src="assets/js/pages/business-settings.js"></script>
 <!-- composition root (must load last) -->
 <script src="assets/js/app.js"></script>

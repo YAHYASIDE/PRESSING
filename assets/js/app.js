@@ -17,6 +17,7 @@ function render(){
   const sbtn=document.getElementById("searchBtn"); if(sbtn) sbtn.style.display=unlocked?"":"none";
   const swb=document.getElementById("switchBizBtn"); if(swb) swb.style.display=(unlocked && App.repositories.businessCount()>1)?"":"none";
   applySetup();   // Release 5 — first launch (unconfigured business) opens the Setup Wizard
+  applyWelcome(); // customer-facing welcome is the first screen (before employee login)
   applyBizGate(); // multi-business — after login, pick which business to open
   applyBusiness();   // Release 5.2 — keep header name/logo/subtitle in sync with the config
   if(App.services.crmSync) App.services.crmSync();   // CRM: ensure customer ids + vehicle records
@@ -720,14 +721,36 @@ function applyHeaderIcons(){
 }
 
 /* ---- backup ---- */
-let unlocked=false, currentUser="", bizEntered=false;
+let unlocked=false, currentUser="", bizEntered=false, showLogin=false;
 function applyLock(){
   const ls=document.getElementById("lockScreen");
-  // Release 5.1 — a fresh (unconfigured) business goes straight to the Setup Wizard,
-  // which creates the first user; the lock screen only applies once configured.
-  if(businessConfigured() && state.lock&&state.lock.enabled&&!unlocked){ document.getElementById("lockLogo").src=LOGO; ls.style.display="flex"; setTimeout(()=>{const i=document.getElementById("lockName"); if(i)i.focus();},60); }
+  // The customer-facing Welcome screen is the first view; the employee login form
+  // only appears once the user taps "دخول الموظفين" (showLogin) on a configured business.
+  if(businessConfigured() && state.lock&&state.lock.enabled && !unlocked && showLogin){ document.getElementById("lockLogo").src=LOGO; ls.style.display="flex"; setTimeout(()=>{const i=document.getElementById("lockName"); if(i)i.focus();},60); }
   else ls.style.display="none";
 }
+/* ---- Welcome screen (premium customer-facing first impression) ---- */
+function applyWelcome(){
+  const el=document.getElementById("welcomeScreen"); if(!el) return;
+  const show = businessConfigured() && !unlocked && !showLogin;
+  if(show){ renderWelcome(); el.style.display="flex"; } else el.style.display="none";
+}
+function renderWelcome(){
+  const host=document.getElementById("welcomeBody"); if(!host) return;
+  host.innerHTML=App.pages.welcomeHTML();
+  host.querySelectorAll("[data-wc-svc]").forEach(c=>c.onclick=()=>selectWelcomeService(c.dataset.wcSvc,c));
+  const lb=document.getElementById("welcomeLoginBtn"); if(lb) lb.onclick=goEmployeeLogin;
+}
+function selectWelcomeService(k,el){
+  document.querySelectorAll("#welcomeBody .wc-card").forEach(c=>c.classList.toggle("on",c===el));
+  const t=BUSINESS_TYPES.find(x=>x.k===k)||{}, b=state.business||{}, hrs=b.workingHours||{};
+  const d=document.getElementById("welcomeDetail"); if(!d) return;
+  d.innerHTML=`<div class="wc-det-card"><b>${t.label}</b><p>${t.desc||""}</p>
+    <span class="wc-det-hint">توجّه إلى الكاشير لطلب الخدمة${(hrs.open&&hrs.close)?` · مواعيد العمل ${hrs.open}–${hrs.close}`:""}</span></div>`;
+  d.classList.add("show");
+}
+function goEmployeeLogin(){ showLogin=true; applyWelcome(); applyLock(); }
+function backToWelcome(){ showLogin=false; applyLock(); applyWelcome(); }
 /* ---- Business / Branch selector (multi-business support) ---- */
 function applyBizGate(){
   const el=document.getElementById("bizSelector"); if(!el) return;
@@ -1074,7 +1097,7 @@ document.getElementById("receiptPrint").onclick=printReceipt;
   const _share=navigator.share?navigator.share.bind(navigator):null;
   if(_share) navigator.share=function(){ window._extNav=Date.now(); return _share.apply(navigator,arguments); };
   window._hiddenAt=0;
-  const relock=()=>{ unlocked=false; currentUser=""; applyLock(); };
+  const relock=()=>{ unlocked=false; currentUser=""; showLogin=false; applyLock(); applyWelcome(); };
   document.addEventListener("visibilitychange",()=>{
     if(document.hidden){ window._hiddenAt=Date.now(); return; }
     const away = window._hiddenAt ? (Date.now()-window._hiddenAt) : 0;
@@ -1102,21 +1125,23 @@ document.getElementById("receiptPrint").onclick=printReceipt;
     if(!state.logins) state.logins=[];
     state.logins.push({id:uid(),name:nm,role:state.role,date:iso(new Date())});
     if(state.logins.length>200) state.logins=state.logins.slice(-200);
-    unlocked=true;
+    unlocked=true; showLogin=false;
     // multi-business: >1 business => show the selector; a single business opens directly
     bizEntered = App.repositories.businessCount() <= 1;
     if(App.services.audit) App.services.audit("تسجيل دخول", nm+" · "+(App.config.ROLES[state.role]||{label:state.role}).label);
     document.getElementById("lockInput").value=""; document.getElementById("lockName").value="إبراهيم";
-    save(); applyLock(); applyBizGate(); render();
+    save(); applyWelcome(); applyLock(); applyBizGate(); render();
     toast("أهلًا "+nm);
   };
   document.getElementById("lockEnter").onclick=doEnter;
   document.getElementById("lockName").addEventListener("keydown",e=>{ if(e.key==="Enter") document.getElementById("lockInput").focus(); });
   document.getElementById("lockInput").addEventListener("keydown",e=>{ if(e.key==="Enter") doEnter(); });
   const lob=document.getElementById("logoutBtn");
-  if(lob) lob.onclick=()=>{ if(App.services.audit) App.services.audit("تسجيل خروج", currentUser); saveLocal(); unlocked=false; bizEntered=false; currentUser=""; state.opDetail=null; applyBizGate(); applyLock(); toast("تم تسجيل الخروج"); };
+  if(lob) lob.onclick=()=>{ if(App.services.audit) App.services.audit("تسجيل خروج", currentUser); saveLocal(); unlocked=false; bizEntered=false; showLogin=false; currentUser=""; state.opDetail=null; applyBizGate(); applyLock(); applyWelcome(); toast("تم تسجيل الخروج"); };
   const swb=document.getElementById("switchBizBtn");
   if(swb) swb.onclick=switchBusinessMenu;
+  const lbk=document.getElementById("lockBack");
+  if(lbk) lbk.onclick=backToWelcome;
 })();
 
 /* ================= Business Setup Wizard (Release 5) ================= */
@@ -1285,6 +1310,7 @@ applyTheme();
 applyHeaderIcons();
 applyBusiness();   // Release 5 — apply saved business name/logo to the header
 applyLock();
+applyWelcome();    // customer-facing welcome is the first screen on open
 render();
 setInterval(tickOpTimers, 30000);   // Release 3 — keep live operation timers ticking
 
