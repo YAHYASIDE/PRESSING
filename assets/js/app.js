@@ -15,7 +15,9 @@ function render(){
   const rb=document.getElementById("roleBadge"); if(rb){ rb.textContent=roleDef().label; rb.style.display=unlocked?"":"none"; }
   const lob=document.getElementById("logoutBtn"); if(lob) lob.style.display=unlocked?"":"none";
   const sbtn=document.getElementById("searchBtn"); if(sbtn) sbtn.style.display=unlocked?"":"none";
+  const swb=document.getElementById("switchBizBtn"); if(swb) swb.style.display=(unlocked && App.repositories.businessCount()>1)?"":"none";
   applySetup();   // Release 5 — first launch (unconfigured business) opens the Setup Wizard
+  applyBizGate(); // multi-business — after login, pick which business to open
   applyBusiness();   // Release 5.2 — keep header name/logo/subtitle in sync with the config
   if(App.services.crmSync) App.services.crmSync();   // CRM: ensure customer ids + vehicle records
   renderNav();
@@ -718,13 +720,63 @@ function applyHeaderIcons(){
 }
 
 /* ---- backup ---- */
-let unlocked=false, currentUser="";
+let unlocked=false, currentUser="", bizEntered=false;
 function applyLock(){
   const ls=document.getElementById("lockScreen");
   // Release 5.1 — a fresh (unconfigured) business goes straight to the Setup Wizard,
   // which creates the first user; the lock screen only applies once configured.
   if(businessConfigured() && state.lock&&state.lock.enabled&&!unlocked){ document.getElementById("lockLogo").src=LOGO; ls.style.display="flex"; setTimeout(()=>{const i=document.getElementById("lockName"); if(i)i.focus();},60); }
   else ls.style.display="none";
+}
+/* ---- Business / Branch selector (multi-business support) ---- */
+function applyBizGate(){
+  const el=document.getElementById("bizSelector"); if(!el) return;
+  const show = unlocked && !bizEntered && App.repositories.businessCount()>1;
+  if(show){ renderBizSelector(); el.style.display="flex"; } else el.style.display="none";
+}
+function typeLabelsFor(types){
+  return BUSINESS_TYPES.filter(t=>types&&types[t.k]).map(t=>t.label).join(" · ")||"—";
+}
+function renderBizSelector(){
+  const list=App.repositories.businessList();
+  const last=App.repositories.lastBusinessId();
+  const roleLbl=(k)=>((App.config.ROLES[k]||{}).label||k);
+  const host=document.getElementById("bizList"); if(!host) return;
+  host.innerHTML=list.map(b=>`
+    <button type="button" class="bz-card ${b.id===last?'last':''}" data-biz-open="${b.id}">
+      <span class="bz-logo"><img src="${b.logo||LOGO}" alt=""></span>
+      <span class="bz-main">
+        <b class="bz-name">${(b.name||'نشاط').replace(/</g,'&lt;')}</b>
+        ${b.branch?`<span class="bz-branch">فرع: ${b.branch.replace(/</g,'&lt;')}</span>`:``}
+        <span class="bz-type">${typeLabelsFor(b.types)}</span>
+        <span class="bz-role">الدور: ${roleLbl(b.role)}</span>
+      </span>
+      ${b.id===last?`<i class="bz-last-badge">الأخيرة</i>`:``}
+      <i class="op-chev">›</i>
+    </button>`).join("");
+  host.querySelectorAll("[data-biz-open]").forEach(c=>c.onclick=()=>enterBusiness(c.dataset.bizOpen));
+  const add=document.getElementById("bizAddBtn"); if(add) add.onclick=addBusinessFlow;
+}
+function enterBusiness(id){
+  App.repositories.switchBusiness(id);        // loads ONLY that business's data into `state`
+  bizEntered=true;
+  state.opDetail=null;
+  { const allowed=App.core.roleTabs(); if(allowed.indexOf(state.tab)<0) state.tab=allowed[0]||"dashboard"; }
+  applyBizGate(); applyBusiness(); render();
+  toast("النشاط: "+((state.business||{}).name||""));
+}
+function switchBusinessMenu(){
+  saveLocal();                                 // persist the current business first
+  bizEntered=false;
+  applyBizGate();
+}
+function addBusinessFlow(){
+  saveLocal();
+  App.repositories.addBusiness();              // fresh, unconfigured workspace becomes active
+  bizEntered=true;                             // we're entering the new one; the wizard will run
+  _setup=null;
+  document.getElementById("bizSelector").style.display="none";
+  render();                                    // applySetup() opens the wizard for the new business
 }
 
 /* ---- receipt + print + whatsapp ---- */
@@ -885,6 +937,7 @@ function bindBusinessSettings(){
     tm("bsOpen",v=>b.workingHours.open=v); tm("bsClose",v=>b.workingHours.close=v);
     // business identity — name + logo
     const nm=document.getElementById("bsName"); if(nm) nm.onchange=()=>{ b.name=nm.value.trim(); saveLocal(); applyBusiness(); render(); };
+    const br=document.getElementById("bsBranch"); if(br) br.onchange=()=>{ b.branch=br.value.trim(); saveLocal(); render(); };
     const lg=document.getElementById("bsLogo"); if(lg) lg.onchange=()=>{ const f=lg.files&&lg.files[0]; if(!f) return; const r=new FileReader(); r.onload=()=>{ b.logo=r.result; const pv=document.getElementById("bsLogoPrev"); if(pv) pv.src=r.result; saveLocal(); applyBusiness(); }; r.readAsDataURL(f); };
   };
   paint();
@@ -1050,16 +1103,20 @@ document.getElementById("receiptPrint").onclick=printReceipt;
     state.logins.push({id:uid(),name:nm,role:state.role,date:iso(new Date())});
     if(state.logins.length>200) state.logins=state.logins.slice(-200);
     unlocked=true;
+    // multi-business: >1 business => show the selector; a single business opens directly
+    bizEntered = App.repositories.businessCount() <= 1;
     if(App.services.audit) App.services.audit("تسجيل دخول", nm+" · "+(App.config.ROLES[state.role]||{label:state.role}).label);
     document.getElementById("lockInput").value=""; document.getElementById("lockName").value="إبراهيم";
-    save(); applyLock(); render();
+    save(); applyLock(); applyBizGate(); render();
     toast("أهلًا "+nm);
   };
   document.getElementById("lockEnter").onclick=doEnter;
   document.getElementById("lockName").addEventListener("keydown",e=>{ if(e.key==="Enter") document.getElementById("lockInput").focus(); });
   document.getElementById("lockInput").addEventListener("keydown",e=>{ if(e.key==="Enter") doEnter(); });
   const lob=document.getElementById("logoutBtn");
-  if(lob) lob.onclick=()=>{ if(App.services.audit) App.services.audit("تسجيل خروج", currentUser); unlocked=false; currentUser=""; state.opDetail=null; applyLock(); toast("تم تسجيل الخروج"); };
+  if(lob) lob.onclick=()=>{ if(App.services.audit) App.services.audit("تسجيل خروج", currentUser); saveLocal(); unlocked=false; bizEntered=false; currentUser=""; state.opDetail=null; applyBizGate(); applyLock(); toast("تم تسجيل الخروج"); };
+  const swb=document.getElementById("switchBizBtn");
+  if(swb) swb.onclick=switchBusinessMenu;
 })();
 
 /* ================= Business Setup Wizard (Release 5) ================= */
@@ -1154,7 +1211,7 @@ function finishSetup(mode){
   state.manager={ name:(d._mgrName||"").trim(), phone:d._mgrPhone||"", country:d._mgrCountry||"222", address:(d._address||"").trim() };
   if(!state.logins) state.logins=[];
   state.logins.push({ id:uid(), name:currentUser, role:"manager", date:iso(new Date()) });
-  unlocked=true;
+  unlocked=true; bizEntered=true;   // we're now inside the just-created business
   // 2) apply feature flags into the engine + merge loyalty (reused, not duplicated)
   Object.keys(d.features).forEach(k=>{ if(!state.features[k]) state.features[k]={}; state.features[k].enabled=!!d.features[k]; });
   state.features.loyalty=Object.assign({}, state.features.loyalty, d.loyalty, { enabled:!!d.features.loyalty });

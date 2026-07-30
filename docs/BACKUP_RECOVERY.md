@@ -11,13 +11,18 @@ is no export, the data is gone.
 
 - **Store:** `localStorage`
 - **Key:** `sadaqa_laundry_v1`
-- **Shape:** one JSON object holding every collection (car operations, carpet
-  orders, invoices, customers, vehicles, inventory, journal, expenses, workers,
-  meters, memberships, settings, sequences).
+- **Shape:** a **container** — `{ __v:2, activeId, lastActiveId, workspaces:{ <id>: … } }`
+  — holding one fully isolated **workspace per business/branch**. Each workspace
+  is a complete JSON object with that business's own collections (car operations,
+  carpet orders, invoices, customers, vehicles, inventory, journal, expenses,
+  workers, meters, memberships, settings, sequences). The live app operates on
+  whichever workspace is active; switching swaps the whole dataset.
 
-Everything the app shows is derived from this one object. Aggregates (revenue,
+Everything the app shows is derived from these objects. Aggregates (revenue,
 balances, MRR, tiers) are **not** stored separately — they are recomputed — so a
-backup of this object is a complete, self-consistent backup.
+backup of the container is a complete, self-consistent backup of **all**
+businesses. (Older single-business installs and backups are migrated to this
+container format automatically on load/import.)
 
 ---
 
@@ -25,9 +30,9 @@ backup of this object is a complete, self-consistent backup.
 
 **In the app:** Settings → النسخة الاحتياطية → **تصدير البيانات**.
 
-This downloads `sadaqa-backup-YYYY-MM-DD.json` — the entire state object,
-pretty-printed. Store it somewhere off the device (cloud drive, email to the
-owner, USB).
+This downloads `washly-backup-YYYY-MM-DD.json` — the entire container (**every
+business/branch**), pretty-printed. Store it somewhere off the device (cloud
+drive, email to the owner, USB).
 
 ### Recommended cadence
 - **Daily** for an active shop (end of day).
@@ -43,7 +48,7 @@ owner, USB).
 ## Restoring (import)
 
 **In the app:** Settings → النسخة الاحتياطية → **استيراد** → choose a
-`sadaqa-backup-*.json` file.
+`washly-backup-*.json` (or older `sadaqa-backup-*.json`) file.
 
 On import the app replaces the in-memory state with the file's contents, saves,
 and re-renders. **Import overwrites current data** — export the current state

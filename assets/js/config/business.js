@@ -52,7 +52,7 @@ function defaultServices(){
 function defaultBusiness(){
   return {
     configured:false,
-    name:"", logo:"", phone:"",
+    name:"", branch:"", logo:"", phone:"",
     country:"موريتانيا", currency:"أوقية", language:"ar", timezone:"Africa/Nouakchott",
     types:{ carwash:true, carpet:false, laundry:false, "oil-change":false, shop:false },
     services: defaultServices(),

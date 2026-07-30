@@ -31,6 +31,7 @@
 <link rel="stylesheet" href="assets/css/industry.css">
 <link rel="stylesheet" href="assets/css/membership.css">
 <link rel="stylesheet" href="assets/css/queue.css">
+<link rel="stylesheet" href="assets/css/business.css">
 <link rel="stylesheet" href="assets/css/entry.css">
 </head>
 <body>
@@ -44,6 +45,7 @@
       </div>
     </div>
     <span class="role-badge" id="roleBadge" style="display:none"></span>
+    <button class="theme-btn" id="switchBizBtn" title="تبديل النشاط" aria-label="تبديل النشاط" style="display:none">🏢</button>
     <button class="theme-btn" id="searchBtn" title="بحث شامل" aria-label="بحث شامل" style="display:none">🔍</button>
     <button class="theme-btn" id="logoutBtn" title="تسجيل الخروج" aria-label="تسجيل الخروج" style="display:none">⎋</button>
     <button class="theme-btn" id="settingsBtn" title="الإعدادات" aria-label="الإعدادات"></button>
@@ -223,6 +225,15 @@
     <div class="lk-field"><input type="password" id="lockInput" inputmode="numeric" placeholder="كود الدخول"></div>
     <button class="btn-primary lk-btn" id="lockEnter" style="width:100%">دخول</button>
     <div class="lk-foot">نظافة · عناية · ثقة</div>
+  </div>
+</div>
+
+<!-- Business / Branch selector (after login, when the user has more than one) -->
+<div id="bizSelector">
+  <div class="bz-shell">
+    <div class="bz-head"><h2>اختر النشاط</h2><p>لديك أكثر من نشاط — اختر الذي تريد العمل عليه.</p></div>
+    <div class="bz-list" id="bizList"></div>
+    <button type="button" class="bz-add" id="bizAddBtn">➕ إضافة نشاط / فرع</button>
   </div>
 </div>
 

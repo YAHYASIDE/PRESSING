@@ -278,6 +278,15 @@ A layer may use the layers below it and never the layers above it.
   (`assets/js/repositories/persistence.js`), and the `save`/`load`/backup facade
   (`assets/js/repositories/state-facade.js`). This is the seam a future Firebase
   adapter plugs into (see §7 of `docs/MIGRATION.md`).
+- **Multi-business isolation:** the facade persists a **container**
+  `{ __v:2, activeId, lastActiveId, workspaces:{ id: <stateSnapshot> } }`. Each
+  business/branch is a full, independent `state` snapshot; the live `state` object
+  is the active workspace (invariant: `workspaces[activeId] === state`).
+  `switchBusiness(id)` detaches the current snapshot and loads the target into
+  `state`, so a business can only ever touch its own data — isolation is
+  structural, not query-filtered. `businessList()`/`businessCount()` drive the
+  selector; `addBusiness()` seeds a fresh workspace for the wizard. Legacy
+  single-object installs migrate to the container on load.
 - **Allowed dependencies:** `App.store` (the data it persists), `App.config`.
 - **Forbidden dependencies:** business rules (`core`/`services` logic), `App.ui`,
   `App.pages`. A repository decides nothing; it moves bytes.

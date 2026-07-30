@@ -17,7 +17,8 @@ function businessSettingsHTML(){
   return `
     <div class="bs-sub bs-identity">
       <div class="bs-logo-wrap"><img id="bsLogoPrev" class="bs-logo-prev" src="${b.logo||LOGO}" alt=""><label class="bs-logo-btn">تغيير<input type="file" id="bsLogo" accept="image/*" hidden></label></div>
-      <div class="bs-id-fields"><div class="field"><label>اسم النشاط</label><input id="bsName" type="text" value="${(b.name||'').replace(/"/g,'&quot;')}" placeholder="اسم النشاط"></div></div>
+      <div class="bs-id-fields"><div class="field"><label>اسم النشاط</label><input id="bsName" type="text" value="${(b.name||'').replace(/"/g,'&quot;')}" placeholder="اسم النشاط"></div>
+        <div class="field"><label>اسم الفرع <span class="su-opt">(اختياري)</span></label><input id="bsBranch" type="text" value="${(b.branch||'').replace(/"/g,'&quot;')}" placeholder="مثال: الفرع الرئيسي"></div></div>
     </div>
     <div class="bs-sub"><div class="bs-sub-t">أنشطة العمل</div><div class="bs-chips">${typeChips}</div></div>
     <div class="bs-sub"><div class="bs-sub-t">العملة والموقع</div>

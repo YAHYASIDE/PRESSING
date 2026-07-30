@@ -6,6 +6,24 @@ platform for car wash, laundry, carpet cleaning, oil change and retail.
 
 ## SaaS v1.0 — Enterprise Edition (incremental)
 
+### v1.1.0 — Multi-business / multi-branch with data isolation
+- **Business/Branch selector after login.** One business opens directly; with
+  more than one, a selector appears showing each business's **logo, name, branch,
+  business type and the user's role**, with the last-used one highlighted.
+- **Real data isolation.** Each business/branch is a fully independent workspace —
+  its own customers, invoices, workers, inventory, journal and reports. The live
+  `state` is whichever workspace is active; switching swaps the entire dataset, so
+  no business can ever read or write another's data (verified both directions).
+- **Remember last selected** — the last business is restored on the next launch.
+- **Switch Business** button added to the header (shown only with >1 business),
+  plus **Add Business / Branch** on the selector (runs the setup wizard for a new
+  workspace). Branch name is editable in Settings ▸ Business Settings.
+- **Backup/restore** now covers **all** businesses (the whole container); legacy
+  single-business installs and backups migrate automatically to the new format.
+- New committed test `tests/multibusiness.test.js` proves the selector, isolation,
+  switching and remember-last. Existing single-business flow unchanged; full smoke
+  + regression suites green.
+
 ### v1.0.1 — Setup Wizard restored to the designed flow
 - **Onboarding regression fixed.** On first launch (before login) the wizard now
   runs the full designed 4-step flow:
