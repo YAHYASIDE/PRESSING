@@ -18,12 +18,22 @@ const R={};
 
   // choose a service -> form + subscriptions appear
   await p.click('#welcomeBody .wc-card[data-wc-svc="carwash"]'); await p.waitForTimeout(200);
-  R.detail = await p.evaluate(()=>({
-    hasName: !!document.getElementById('wcName'),
-    hasPhone: !!document.getElementById('wcPhone'),
-    subs: document.querySelectorAll('#welcomeDetail .wc-sub').length,   // 7 membership plans
-    hasSubmit: !!document.getElementById('wcSubmit'),
-  }));
+  R.detail = await p.evaluate(()=>{
+    const d=document.getElementById('welcomeDetail');
+    const sub=document.getElementById('wcSubmit');
+    // VISIBLE, not merely present: the panel must not clip its content, and the
+    // submit button must render inside the panel's box (guards the max-height bug).
+    const clipped = d.scrollHeight - d.clientHeight;
+    const submitInside = sub ? (sub.getBoundingClientRect().bottom <= d.getBoundingClientRect().bottom+2) : false;
+    return {
+      hasName: !!document.getElementById('wcName'),
+      hasPhone: !!document.getElementById('wcPhone'),
+      subs: document.querySelectorAll('#welcomeDetail .wc-sub').length,   // 7 membership plans
+      hasSubmit: !!sub,
+      notClipped: clipped<=1,
+      submitVisible: submitInside,
+    };
+  });
 
   // try submit with empty -> blocked (toast, no request created)
   await p.click('#wcSubmit'); await p.waitForTimeout(120);
@@ -59,6 +69,8 @@ const R={};
   ok(R.detail.hasName&&R.detail.hasPhone,'service detail shows name + phone fields');
   ok(R.detail.subs===7,'service detail shows the 7 subscription plans');
   ok(R.detail.hasSubmit,'service detail has a submit button');
+  ok(R.detail.notClipped,'detail panel is not clipped (form + subscriptions fully visible)');
+  ok(R.detail.submitVisible,'submit button renders inside the visible panel');
   ok(R.blockedEmpty===0,'empty submit is blocked (no request)');
   ok(R.planSelected===1,'a subscription can be selected');
   ok(R.afterSubmit.count===1 && R.afterSubmit.last && R.afterSubmit.last.name==='سالم' && R.afterSubmit.last.plan==='gold','submit creates a request capturing name/phone/service/plan');

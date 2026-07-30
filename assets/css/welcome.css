@@ -74,8 +74,9 @@ body.dark #welcomeScreen{
 .wc-empty{ color:rgba(255,255,255,.85); text-align:center; padding:18px; font-weight:600; }
 
 /* selected-service detail */
-.wc-detail{ max-height:0; overflow:hidden; transition:max-height .3s ease; }
-.wc-detail.show{ max-height:220px; }
+/* the detail must never clip — it holds the full intake form + subscriptions */
+.wc-detail:not(.show){ display:none; }
+.wc-detail.show{ display:block; animation:wcPop .35s ease both; }
 .wc-det-card{
   margin-top:13px; padding:14px 15px; border-radius:16px; color:#fff;
   background:rgba(0,0,0,.16); border:1px solid rgba(255,255,255,.22); animation:wcPop .35s ease both;

@@ -6,6 +6,15 @@ platform for car wash, laundry, carpet cleaning, oil change and retail.
 
 ## SaaS v1.0 — Enterprise Edition (incremental)
 
+### v1.3.1 — Fix: welcome intake was clipped (invisible)
+- The service-detail panel had a leftover `max-height:220px` + `overflow:hidden`
+  from when it held only a one-line description. The new intake form + 7
+  subscription cards + submit button (≈420px tall) were clipped to 220px, so the
+  phone field, subscriptions and submit button rendered **off-screen** — the
+  feature was present in the DOM but not visible. Removed the height clip so the
+  full intake shows. Added a **visibility** assertion (panel not clipped, submit
+  inside the visible box) to `tests/reception.test.js` so it can't regress.
+
 ### v1.3.0 — Welcome-screen customer intake + subscriptions
 - On the welcome screen, tapping a service now expands a **customer intake**: a
   name + phone form and the business's **subscriptions** (membership plans) shown
