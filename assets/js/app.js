@@ -1087,7 +1087,10 @@ function startSetup(){
   const draft=JSON.parse(JSON.stringify(defaultBusiness()));   // everything defaulted here
   draft.loyalty=Object.assign(defaultLoyaltyCfg(), (state.features&&state.features.loyalty)||{});
   draft.loyalty.enabled=true;
-  draft._mgrName=""; draft._mgrPhone=""; draft._mgrPass=""; draft._mgrCountry="222";
+  // Step 2 (business info) temp fields
+  draft._mgrName=""; draft._mgrPhone=""; draft._mgrCountry="222"; draft._address="";
+  // Step 3 (admin account) temp fields
+  draft._adminName=""; draft._username=""; draft._pass=""; draft._confirm="";
   _setup={ i:0, draft };
   renderSetupStep();
 }
@@ -1096,7 +1099,7 @@ function renderSetupStep(){
   const steps=setupSteps(), form=setupFormSteps();
   if(_setup.i>steps.length-1) _setup.i=steps.length-1;
   const key=steps[_setup.i];
-  const bare = (key==="welcome" || key==="success");   // full-bleed screens, no chrome
+  const bare = (key==="success");   // full-bleed completion screen, no chrome
   const body=document.getElementById("setupBody");
   body.classList.remove("su-anim"); void body.offsetWidth;   // restart the step transition
   body.innerHTML=setupStepView(key,_setup.draft);
@@ -1110,7 +1113,7 @@ function renderSetupStep(){
     document.getElementById("suStepLbl").textContent=`الخطوة ${fi+1} من ${form.length}`;
     const back=document.getElementById("suBack"), next=document.getElementById("suNext");
     if(back) back.style.visibility="visible";
-    if(next) next.textContent = key==="info" ? "إنشاء النشاط" : "التالي";
+    if(next) next.textContent = key==="admin" ? "إنشاء الحساب" : "التالي";
   }
   if(body) body.scrollTop=0;
   wireSetupStep(key);
@@ -1118,39 +1121,47 @@ function renderSetupStep(){
 /* wire the interactive controls of the current step */
 function wireSetupStep(key){
   const d=_setup.draft, host=document.getElementById("setupBody");
-  // Landing — Get Started
-  host.querySelectorAll("[data-su-go]").forEach(b=>b.onclick=()=>{ _setup.i=Math.min(setupSteps().length-1,_setup.i+1); renderSetupStep(); });
   // Step 1 — business activities (multi-select)
   host.querySelectorAll("[data-su-type]").forEach(b=>b.onclick=()=>{ const k=b.dataset.suType; d.types[k]=!d.types[k]; renderSetupStep(); });
-  // Step 2 — manager info (live-bind to draft)
   const bind=(id,fn)=>{ const el=document.getElementById(id); if(el) el.oninput=()=>fn(el); };
-  bind("suMgrName",el=>d._mgrName=el.value);
-  bind("suMgrPhone",el=>{ el.value=el.value.replace(/[^0-9]/g,"").slice(0,9); d._mgrPhone=el.value; });
-  bind("suMgrPass",el=>d._mgrPass=el.value);
-  const mc=document.getElementById("suMgrCountry"); if(mc) mc.onchange=()=>d._mgrCountry=mc.value;
-  // Step 3 — business info
+  // Step 2 — business information (live-bind to draft)
   bind("suName",el=>d.name=el.value);
   const logo=document.getElementById("suLogo");
   if(logo) logo.onchange=()=>{ const f=logo.files&&logo.files[0]; if(!f) return; const r=new FileReader(); r.onload=()=>{ d.logo=r.result; const pv=document.getElementById("suLogoPrev"); if(pv) pv.src=r.result; }; r.readAsDataURL(f); };
+  bind("suMgrName",el=>d._mgrName=el.value);
+  bind("suMgrPhone",el=>{ el.value=el.value.replace(/[^0-9]/g,"").slice(0,9); d._mgrPhone=el.value; });
+  bind("suAddress",el=>d._address=el.value);
+  const mc=document.getElementById("suMgrCountry"); if(mc) mc.onchange=()=>d._mgrCountry=mc.value;
+  // Step 3 — create admin account
+  bind("suAdminName",el=>d._adminName=el.value);
+  bind("suUsername",el=>d._username=el.value);
+  bind("suPass",el=>d._pass=el.value);
+  bind("suConfirm",el=>d._confirm=el.value);
   // Step 4 — success actions
   host.querySelectorAll("[data-su-finish]").forEach(b=>b.onclick=()=>finishSetup(b.dataset.suFinish));
 }
 /* commit the draft: create the manager + log in, save business config, start the trial */
 function finishSetup(mode){
   const d=_setup.draft;
-  // 1) create the first user (manager) and log them in automatically
-  currentUser=(d._mgrName||"مدير").trim();
+  // guard: never finalize with a mismatched/empty admin password (e.g. finish tapped early)
+  if((d._pass||"").length<4 || d._pass!==d._confirm){ _setup.i=setupSteps().indexOf("admin"); renderSetupStep(); return toast("أكمل بيانات حساب المدير"); }
+  // 1) create the admin account and log them in automatically
+  const adminName=(d._adminName||d._username||"مدير").trim();
+  currentUser=adminName;
   state.role="manager";
-  state.lock={ enabled:true, pin:(d._mgrPass||"0707") };
-  state.manager={ name:currentUser, phone:d._mgrPhone||"", country:d._mgrCountry||"222" };
+  state.lock={ enabled:true, pin:(d._pass||"0707") };
+  state.account={ username:(d._username||"").trim(), name:adminName, role:"manager" };
+  state.manager={ name:(d._mgrName||"").trim(), phone:d._mgrPhone||"", country:d._mgrCountry||"222", address:(d._address||"").trim() };
   if(!state.logins) state.logins=[];
   state.logins.push({ id:uid(), name:currentUser, role:"manager", date:iso(new Date()) });
   unlocked=true;
   // 2) apply feature flags into the engine + merge loyalty (reused, not duplicated)
   Object.keys(d.features).forEach(k=>{ if(!state.features[k]) state.features[k]={}; state.features[k].enabled=!!d.features[k]; });
   state.features.loyalty=Object.assign({}, state.features.loyalty, d.loyalty, { enabled:!!d.features.loyalty });
-  // 3) finalize the business config (strip temp manager fields)
-  d.phone=d._mgrPhone||d.phone||""; delete d._mgrName; delete d._mgrPhone; delete d._mgrPass; delete d._mgrCountry; delete d.loyalty;
+  // 3) finalize the business config (persist address + manager, strip temp fields)
+  d.phone=d._mgrPhone||d.phone||""; d.managerName=(d._mgrName||"").trim(); d.address=(d._address||"").trim();
+  delete d._mgrName; delete d._mgrPhone; delete d._mgrCountry; delete d._address;
+  delete d._adminName; delete d._username; delete d._pass; delete d._confirm; delete d.loyalty;
   d.configured=true;
   state.business=d;
   // 4) start the free trial
@@ -1168,12 +1179,16 @@ function finishSetup(mode){
     if(!_setup) return;
     const steps=setupSteps(), key=steps[_setup.i], d=_setup.draft;
     if(key==="activities" && !Object.keys(d.types).some(k=>d.types[k])) return toast("اختر نشاطًا واحدًا على الأقل");
-    if(key==="manager"){
-      if((d._mgrName||"").trim().length<2) return toast("أدخل اسم المدير");
+    if(key==="business"){
+      if(!(d.name||"").trim()) return toast("أدخل اسم النشاط");
       if(!validPhone(d._mgrPhone||"")) return toast("أدخل رقم هاتف صحيح (8 أرقام)");
-      if((d._mgrPass||"").length<4) return toast("اختر كلمة مرور (4 خانات على الأقل)");
     }
-    if(key==="info"){ if(!(d.name||"").trim()) return toast("أدخل اسم النشاط"); }
+    if(key==="admin"){
+      if((d._adminName||"").trim().length<2) return toast("أدخل الاسم الكامل");
+      if((d._username||"").trim().length<2) return toast("أدخل اسم المستخدم");
+      if((d._pass||"").length<4) return toast("اختر كلمة مرور (4 خانات على الأقل)");
+      if(d._pass!==d._confirm) return toast("كلمتا المرور غير متطابقتين");
+    }
     _setup.i=Math.min(steps.length-1,_setup.i+1); renderSetupStep();
   };
   if(back) back.onclick=()=>{ if(_setup && _setup.i>0){ _setup.i--; renderSetupStep(); } };

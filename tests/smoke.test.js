@@ -37,10 +37,12 @@ const INDEX = 'file://' + path.resolve(__dirname, '..', 'index.html');
 
     // complete the setup wizard for a multi-activity business
     await p.evaluate(() => {
-      startSetup(); _setup.i = 1;
-      _setup.draft._mgrName = 'مدير'; _setup.draft._mgrPhone = '22112233'; _setup.draft._mgrPass = '1234';
-      _setup.draft.name = 'مغسلة الاختبار';
-      _setup.draft.types = { 'car-wash': true, 'carpet': true, 'laundry': true, 'oil-change': true, 'shop': true };
+      startSetup();
+      const d = _setup.draft;
+      d.types = { carwash: true, carpet: true, laundry: true, 'oil-change': true, shop: true };
+      d.name = 'مغسلة الاختبار';
+      d._mgrName = 'مدير'; d._mgrPhone = '22112233'; d._mgrCountry = '222'; d._address = 'العنوان';
+      d._adminName = 'مدير النظام'; d._username = 'admin'; d._pass = '1234'; d._confirm = '1234';
       finishSetup('dashboard');
     });
     await p.waitForTimeout(200);

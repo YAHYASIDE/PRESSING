@@ -6,6 +6,27 @@ platform for car wash, laundry, carpet cleaning, oil change and retail.
 
 ## SaaS v1.0 — Enterprise Edition (incremental)
 
+### v1.0.1 — Setup Wizard restored to the designed flow
+- **Onboarding regression fixed.** On first launch (before login) the wizard now
+  runs the full designed 4-step flow:
+  1. **Choose business activities** — multi-select Car Wash, Laundry, Carpet
+     Cleaning, Oil Change, Shop (activities the first screen; ≥1 required).
+  2. **Business Information** — Business Name (required), Logo (optional),
+     Manager Name, Phone, **Address**.
+  3. **Create Admin Account** — Full Name, **Username**, Password, **Confirm
+     Password** (mismatch blocks the step).
+  4. **Success** — shows the selected activities and business name, then enters
+     the dashboard.
+- Adds the previously-missing **Address**, **Username** and **Confirm Password**
+  fields, splits business-info and admin-account into distinct steps, and makes
+  the activities screen the literal first screen (the branded splash no longer
+  precedes it).
+- After finish: all info is saved (`state.business` incl. address/manager,
+  `state.account` username), the wizard **never reappears** until factory reset,
+  the dashboard loads per selected activities, and feature/type gating reflects
+  only the chosen activities. Verified end-to-end (source + built bundle) incl.
+  the factory-reset re-trigger, with zero console errors.
+
 ### v1.0.0 — Production release
 - **Production bundle** (`build.js` → `dist/`): the 53 JS + 19 CSS source files
   are concatenated in load order and minified with esbuild (whitespace + syntax
