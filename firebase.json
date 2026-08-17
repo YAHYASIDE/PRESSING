@@ -1,20 +1,15 @@
 {
   "firestore": {
-    "rules": "firestore.rules",
-    "indexes": "firestore.indexes.json"
-  },
-  "storage": {
-    "rules": "storage.rules"
-  },
-  "functions": {
-    "source": "functions",
-    "runtime": "nodejs20"
+    "rules": "firestore.rules"
   },
   "hosting": {
     "public": ".",
-    "ignore": ["firebase.json", "**/.*", "functions/**", "**/node_modules/**"],
-    "rewrites": [
-      { "source": "/admin", "destination": "/admin.html" }
+    "ignore": [
+      "firebase.json",
+      "firestore.rules",
+      "README.md",
+      "**/.*",
+      "**/node_modules/**"
     ]
   }
 }
