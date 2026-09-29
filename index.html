@@ -1797,6 +1797,16 @@ function logActivity(action, detail){
   }catch(e){}
 }
 function unseenActivity(){ const t=state.notifSeenTs||0; return (state.activity||[]).filter(a=>a.byRole==="worker" && (a.ts||0)>t); }
+let _lastAlertTs=0;
+function beep(){ try{ const AC=window.AudioContext||window.webkitAudioContext; if(!AC) return; const c=new AC(),o=c.createOscillator(),g=c.createGain(); o.type="sine";o.frequency.value=880;o.connect(g);g.connect(c.destination); g.gain.setValueAtTime(0.001,c.currentTime); g.gain.exponentialRampToValueAtTime(0.25,c.currentTime+0.02); g.gain.exponentialRampToValueAtTime(0.001,c.currentTime+0.45); o.start();o.stop(c.currentTime+0.47);}catch(e){} }
+function maybeAlertNewActivity(){
+  if(currentRole!=="owner" || !unlocked) return;
+  const news=(state.activity||[]).filter(a=>a.byRole==="worker" && (a.ts||0)>_lastAlertTs);
+  if(news.length){ _lastAlertTs=Math.max.apply(null, news.map(a=>a.ts||0));
+    beep(); try{ if(navigator.vibrate) navigator.vibrate(200); }catch(e){}
+    const last=news[news.length-1]; toast("🔔 "+last.byName+" — "+last.action);
+  }
+}
 function markNotifSeen(){ state.notifSeenTs=Date.now(); save(); render(); }
 function notifyTelegram(text){
   try{
@@ -1862,6 +1872,7 @@ function applyRemote(remote){
   if(state.adMsg==="🎁 اجمع 5 غسلات واحصل على غسلة مجانية!\nنغسل السجاد والموكيت والأفرشة أيضًا 🧼\nشاركنا مع أصدقائك 🙌"){ state.adMsg=""; migChanged=true; }
   if(typeof ensureCarNos==="function") ensureCarNos();
   saveLocal(); applyTheme(); applyLock(); render();
+  maybeAlertNewActivity();
   _applyingRemote=false;
   // Always push merged result back so cloud stays current
   try{ if(window.cloudReady) window.cloudPush(cloudCopy()); }catch(e){}
@@ -2251,6 +2262,7 @@ document.getElementById("receiptPrint").onclick=printReceipt;
     if(state.logins.length>200) state.logins=state.logins.slice(-200);
     unlocked=true;
     document.getElementById("lockInput").value=""; document.getElementById("lockName").value="إبراهيم";
+    _lastAlertTs=Date.now();
     save(); applyLock(); render();
     setTimeout(()=>{ try{ if(window.cloudReady) window.cloudPush(cloudCopy()); }catch(e){} }, 800);
   };
