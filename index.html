@@ -807,6 +807,15 @@ function laundryNext(o){ const fl=laundryFlow(o.service); const i=fl.indexOf(o.s
 function laundryDefaultPrice(type,service){ const k=type+"|"+service; return (state.laundryPrices&&state.laundryPrices[k])||0; }
 function laundryIncome(f){ return sum((state.laundryOrders||[]).filter(o=>!o.cancelled&&o.paid&&f(o.paidDate||o.deliveredDate||o.date)),o=>o.price); }
 function laundryPending(o){ return !o.cancelled && (o.status!=="done" || !o.paid); }
+/* رقم طلب ملابس مقاوم للتصادم بين الأجهزة: يُشتق من أعلى رقم موجود في نفس الشهر */
+function laundryNextNo(dateISO){
+  const d=new Date(dateISO), prefix="L"+d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-";
+  let max=0;
+  (state.laundryOrders||[]).forEach(o=>{ if(typeof o.no==="string" && o.no.startsWith(prefix)){ const s=parseInt(o.no.slice(prefix.length),10); if(s>max) max=s; } });
+  const seq=max+1;
+  if((state.lndSeq||0)<seq) state.lndSeq=seq;
+  return prefix+String(seq).padStart(3,"0");
+}
 
 function toast(msg){const t=document.getElementById("toast");t.textContent=msg;t.classList.add("show");
   clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove("show"),1800);}
@@ -1753,10 +1762,9 @@ function bindScreen(){
       const dateV=(document.getElementById("lndDate")||{}).value||todayStr();
       const commit=()=>{
         state.laundryPrices[type+"|"+service]=unit;
-        state.lndSeq=(state.lndSeq||0)+1;
         const d=chosenDateIso(dateV);
         const status=laundryFirstStatus(service);
-        state.laundryOrders.push({id:uid(),no:"L"+orderNo(state.lndSeq,d),
+        state.laundryOrders.push({id:uid(),no:laundryNextNo(d),
           customer:cust, phone:ph, country, by:currentUser,
           type, service, count, unit, price:unit*count, status, paid:false, date:d});
         logActivity("طلب ملابس", type+" ×"+count+" ("+service+") · "+fmt(unit*count)+" "+CUR);
