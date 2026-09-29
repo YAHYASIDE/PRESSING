@@ -1,327 +1,58 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="theme-color" content="#12507c">
-<meta name="description" content="واشلي — منصّة إدارة الأعمال لغسيل السيارات والملابس والسجاد وتغيير الزيت والمتجر.">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>واشلي · Washly</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<!-- Font is loaded non-render-blocking: text paints immediately in a system fallback and swaps to Tajawal on load. -->
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" media="print" onload="this.media='all'">
-<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap"></noscript>
-<link rel="stylesheet" href="assets/css/variables.css">
-<link rel="stylesheet" href="assets/css/base.css">
-<link rel="stylesheet" href="assets/css/layout.css">
-<link rel="stylesheet" href="assets/css/components.css">
-<link rel="stylesheet" href="assets/css/dashboard.css">
-<link rel="stylesheet" href="assets/css/mobile.css">
-<link rel="stylesheet" href="assets/css/cars.css">
-<link rel="stylesheet" href="assets/css/setup.css">
-<link rel="stylesheet" href="assets/css/subscription.css">
-<link rel="stylesheet" href="assets/css/accounting.css">
-<link rel="stylesheet" href="assets/css/inventory.css">
-<link rel="stylesheet" href="assets/css/pos.css">
-<link rel="stylesheet" href="assets/css/crm.css">
-<link rel="stylesheet" href="assets/css/ops.css">
-<link rel="stylesheet" href="assets/css/reports.css">
-<link rel="stylesheet" href="assets/css/industry.css">
-<link rel="stylesheet" href="assets/css/membership.css">
-<link rel="stylesheet" href="assets/css/queue.css">
-<link rel="stylesheet" href="assets/css/business.css">
-<link rel="stylesheet" href="assets/css/welcome.css">
-<link rel="stylesheet" href="assets/css/entry.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#4f46e5">
+  <meta name="description" content="تطبيق ويب جديد — نقطة انطلاق نظيفة.">
+  <title>تطبيق جديد</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" media="print" onload="this.media='all'">
+  <link rel="stylesheet" href="assets/css/style.css">
 </head>
 <body>
-<div class="app">
-  <header class="top">
+  <header class="app-header">
     <div class="brand">
-      <img class="logo-img" src="" id="brandLogo" alt="مغاسيل صداقة">
-      <div>
-        <h1>Washly</h1>
-        <p class="brand-sub"></p>
-      </div>
+      <span class="brand-mark">◆</span>
+      <span class="brand-name">تطبيق جديد</span>
     </div>
-    <span class="role-badge" id="roleBadge" style="display:none"></span>
-    <button class="theme-btn" id="switchBizBtn" title="تبديل النشاط" aria-label="تبديل النشاط" style="display:none">🏢</button>
-    <button class="theme-btn" id="searchBtn" title="بحث شامل" aria-label="بحث شامل" style="display:none">🔍</button>
-    <button class="theme-btn" id="logoutBtn" title="تسجيل الخروج" aria-label="تسجيل الخروج" style="display:none">⎋</button>
-    <button class="theme-btn" id="settingsBtn" title="الإعدادات" aria-label="الإعدادات"></button>
-    <button class="theme-btn" id="themeBtn" title="الوضع الليلي" aria-label="الوضع الليلي"></button>
+    <button id="themeToggle" class="icon-btn" type="button" aria-label="تبديل السمة">🌙</button>
   </header>
 
-  <div class="layout">
-    <nav class="side" id="nav"></nav>
-    <main id="main"></main>
-  </div>
-</div>
-<div id="searchModal" class="gs-modal">
-  <div class="gs-backdrop" data-gs-close></div>
-  <div class="gs-panel">
-    <div class="gs-top"><input id="gsInput" type="text" placeholder="🔍 بحث شامل — زبون، مركبة، فاتورة، منتج…" autocomplete="off"><button class="mini" data-gs-close>إغلاق</button></div>
-    <div id="gsResults" class="gs-results"></div>
-  </div>
-</div>
-<div id="toast"></div>
-<div id="lightbox" onclick="this.style.display='none'"><img alt=""></div>
-<div id="wsModal" class="modal">
-  <div class="modal-box" style="max-width:420px">
-    <h3 id="wsTitle">كشف حساب الموظف</h3>
-    <div id="wsBody"></div>
-    <div class="modal-actions" style="margin-top:6px">
-      <button class="mini" id="wsClose" style="flex:1">إغلاق</button>
-    </div>
-  </div>
-</div>
-<div id="deliverModal" class="modal">
-  <div class="modal-box">
-    <h3>تسليم غير مدفوع</h3>
-    <p>لتسليم طلب غير مدفوع يجب إدخال اسم الزبون ورقمه (لمتابعة الدَّين):</p>
-    <div class="field"><label>اسم الزبون <span style="color:var(--unpaid)">*</span></label><input id="dvName" type="text" placeholder="الاسم" style="letter-spacing:normal;text-align:right;font-size:1rem"></div>
-    <div class="field"><label>رقم الهاتف <span style="color:var(--unpaid)">*</span></label><div class="phone-row"><select id="dvCountry" class="cc-select"></select><input id="dvPhone" class="phone-inp" type="tel" inputmode="numeric" maxlength="9" placeholder="الرقم" style="letter-spacing:normal;text-align:right;font-size:1rem"></div></div>
-    <div class="modal-actions" style="margin-top:6px">
-      <button class="btn-primary" id="dvOk" style="flex:1">تأكيد التسليم (دَين)</button>
-      <button class="mini" id="dvCancel">إلغاء</button>
-    </div>
-  </div>
-</div>
-<div id="payModal" class="modal">
-  <div class="modal-box">
-    <h3>تحصيل الدفع</h3>
-    <p>تاريخ الدفعة — يُحسب الدخل في هذا اليوم:</p>
-    <input id="payDate" type="date">
-    <div class="modal-actions" style="margin-top:6px">
-      <button class="btn-primary" id="payOk" style="flex:1">تأكيد التحصيل</button>
-      <button class="mini" id="payCancel">إلغاء</button>
-    </div>
-  </div>
-</div>
-<div id="editModal" class="modal">
-  <div class="modal-box">
-    <h3>تعديل</h3>
-    <div id="editBody"></div>
-    <div class="modal-actions" style="margin-top:6px">
-      <button class="btn-primary" id="editSave" style="flex:1">حفظ التعديل</button>
-      <button class="mini" id="editClose">إغلاق</button>
-    </div>
-  </div>
-</div>
-<div id="inspectModal" class="modal">
-  <div class="modal-box" style="max-width:460px">
-    <h3>فحص المركبة</h3>
-    <div id="inspectBody"></div>
-    <div class="modal-actions" style="margin-top:8px">
-      <button class="btn-primary" id="inspSave" style="flex:1">حفظ الفحص</button>
-      <button class="mini" id="inspClose">إلغاء</button>
-    </div>
-  </div>
-</div>
-<div id="docModal" class="modal">
-  <div class="modal-box receipt-box"><div id="docBody"></div>
-    <div class="modal-actions" style="margin-top:8px">
-      <button class="btn-primary" id="docPrint" style="flex:1">🖨️ طباعة</button>
-      <button class="mini" id="docClose">إغلاق</button>
-    </div>
-  </div>
-</div>
-<div id="codeModal" class="modal">
-  <div class="modal-box">
-    <h3 id="codeTitle">أدخل الكود</h3>
-    <p id="codeDesc">هذا الإجراء يتطلب إدخال الكود.</p>
-    <input type="password" id="codeInput" inputmode="numeric" autocomplete="off" placeholder="الكود">
-    <div class="modal-actions">
-      <button class="btn-primary" id="codeOk" style="width:auto;flex:1">تأكيد</button>
-      <button class="mini" id="codeCancel">إلغاء</button>
-    </div>
-  </div>
-</div>
-<div id="settingsModal" class="modal">
-  <div class="modal-box">
-    <h3>الإعدادات</h3>
-    <div class="set-sec"><div class="set-title">المزامنة السحابية</div>حالة الاتصال: <b id="cloudStat">جارٍ الاتصال…</b></div>
-    <details class="set-sec bs-collapse">
-      <summary class="set-title">إعدادات النشاط</summary>
-      <div class="hint" style="margin:8px 0 12px">عدّل نوع النشاط والعملة والموقع وساعات العمل والخدمات وطرق الدفع.</div>
-      <div id="businessSettings"></div>
-    </details>
-    <div class="set-sec">
-      <div class="set-title">الميزات الإضافية (وحدات)</div>
-      <div class="hint" style="margin-bottom:10px">فعّل الميزات التي يحتاجها عملك فقط. المُطفأة تختفي تمامًا من التطبيق.</div>
-      <div id="featureModules"></div>
-    </div>
-    <div class="set-sec"><div class="set-title">لون التطبيق</div><div class="pal-row" id="palRow"></div></div>
-    <div class="set-sec">
-      <div class="set-title">النسخة الاحتياطية</div>
-      <div class="set-row">
-        <button class="mini" id="btnExport">تصدير البيانات</button>
-        <label class="mini" style="cursor:pointer">استيراد<input type="file" id="fileImport" accept="application/json,.json" style="display:none"></label>
+  <main class="app-main">
+    <section class="hero">
+      <h1>نقطة انطلاق نظيفة</h1>
+      <p>هذا المشروع فارغ وجاهز للبناء. أخبرني ما التطبيق الذي تريده وسأبدأ في تطويره هنا.</p>
+      <div class="hero-actions">
+        <button class="btn btn-primary" id="ctaBtn" type="button">لنبدأ</button>
+        <a class="btn btn-ghost" href="#about">تعرّف أكثر</a>
       </div>
-      <div class="set-row" style="margin-top:9px">
-        <button class="mini" id="btnReset" style="background:var(--unpaid-bg);color:var(--unpaid);border-color:#f0cccc">مسح كل البيانات نهائيًا</button>
-      </div>
-    </div>
-    <div class="set-sec">
-      <div class="set-title">كود فتح التطبيق (دائمًا مفعّل)</div>
-      <input type="hidden" id="lockToggle" value="1">
-      <input type="password" id="lockPinSet" inputmode="numeric" placeholder="كود فتح التطبيق">
-      <div class="hint" style="margin-top:6px">يُطلب عند كل فتح للتطبيق. لا يمكن إطفاؤه — يمكنك تغيير الكود فقط.</div>
-    </div>
-    <div class="set-sec">
-      <div class="set-title">كود العدّادات (تعديل القراءة والسعر)</div>
-      <input type="password" id="meterPinSet" inputmode="numeric" placeholder="كود العدّادات">
-      <div class="hint" style="margin-top:6px">مستقلّ عن كود فتح التطبيق — اجعله مختلفًا. إن تركته فارغًا يعود للكود الافتراضي.</div>
-    </div>
-    <div class="set-sec">
-      <div class="set-title">سجلّ الدخول (آخر 20)</div>
-      <div id="loginLog" class="hint" style="max-height:150px;overflow-y:auto;line-height:1.9"></div>
-    </div>
-    <div class="set-sec">
-      <div class="set-title">أسعار استهلاك العدّاد</div>
-      <div class="row2">
-        <div class="field"><label>سعر كيلو الكهرباء</label><input type="number" id="tarElecSet" min="0" placeholder="0"></div>
-        <div class="field"><label>سعر وحدة الماء</label><input type="number" id="tarWaterSet" min="0" placeholder="0"></div>
-      </div>
-      <div class="hint" style="margin-top:6px">اتركها صفرًا لتسجيل الاستهلاك بلا تكلفة.</div>
-    </div>
-    <div class="set-sec">
-      <div class="set-title">رسالة الشكر (نهاية الرسالة)</div>
-      <input type="text" id="thanksSet" placeholder="مثال: شكرًا لغسلتك عندنا 🌟">
-    </div>
-    <div class="set-sec">
-      <div class="set-title">رسالة إعلانية (تُضاف لرسائل واتساب)</div>
-      <textarea id="adMsgSet" rows="3" placeholder="مثال: اجمع 5 غسلات واحصل على غسلة مجانية 🎁"></textarea>
-      <div class="hint" style="margin-top:6px">تظهر في نهاية كل رسالة واتساب لجذب الزبائن. اتركها فارغة لإخفائها.</div>
-    </div>
-    <div class="modal-actions" style="margin-top:4px">
-      <button class="btn-primary" id="setSave" style="flex:1">حفظ</button>
-      <button class="mini" id="setClose">إغلاق</button>
-    </div>
-    <div class="hint" id="appVerLbl" style="text-align:center;margin-top:10px;opacity:.8"></div>
-  </div>
-</div>
-<div id="receiptModal" class="modal">
-  <div class="modal-box" id="receiptBox">
-    <div id="receiptContent"></div>
-    <div class="modal-actions no-print" style="margin-top:14px">
-      <button class="btn-primary" id="receiptPrint" style="flex:1">طباعة</button>
-      <button class="mini" id="receiptClose">إغلاق</button>
-    </div>
-  </div>
-</div>
-<!-- Premium customer-facing welcome screen (first impression: the business + its services) -->
-<div id="welcomeScreen"><div id="welcomeBody" class="wc-root"></div></div>
+    </section>
 
-<div id="lockScreen">
-  <div class="lock-box">
-    <button type="button" class="lk-back" id="lockBack" aria-label="رجوع">→ الشاشة الرئيسية</button>
-    <div class="lk-logo-ring"><img id="lockLogo" src="" alt=""></div>
-    <h3 id="lockTitle">Washly</h3>
-    <p>دخول الموظفين — سجّل دخولك للمتابعة</p>
-    <div class="lk-field"><input type="text" id="lockName" placeholder="اسمك" value="إبراهيم" autocomplete="off" style="letter-spacing:normal;text-align:center"></div>
-    <div class="lk-rolelbl">اختر دورك</div>
-    <div class="lk-roles" id="lockRoles">
-      <button type="button" class="role-chip on" data-role="manager">👔 مدير</button>
-      <button type="button" class="role-chip" data-role="cashier">💵 كاشير</button>
-      <button type="button" class="role-chip" data-role="worker">🧽 عامل</button>
-    </div>
-    <div class="lk-field"><input type="password" id="lockInput" inputmode="numeric" placeholder="كود الدخول"></div>
-    <button class="btn-primary lk-btn" id="lockEnter" style="width:100%">دخول</button>
-    <div class="lk-foot">نظافة · عناية · ثقة</div>
-  </div>
-</div>
+    <section id="about" class="cards">
+      <article class="card">
+        <div class="card-ic">⚡</div>
+        <h3>سريع وخفيف</h3>
+        <p>HTML و CSS و JavaScript فقط — بلا أدوات بناء، يعمل مباشرة في المتصفح.</p>
+      </article>
+      <article class="card">
+        <div class="card-ic">📱</div>
+        <h3>يعمل على الجوال</h3>
+        <p>تصميم متجاوب يدعم الوضعين الفاتح والداكن ودعم كامل للعربية (RTL).</p>
+      </article>
+      <article class="card">
+        <div class="card-ic">🧩</div>
+        <h3>قابل للتوسّع</h3>
+        <p>بنية بسيطة ونظيفة يسهل إضافة الميزات إليها خطوة بخطوة.</p>
+      </article>
+    </section>
+  </main>
 
-<!-- Business / Branch selector (after login, when the user has more than one) -->
-<div id="bizSelector">
-  <div class="bz-shell">
-    <div class="bz-head"><h2>اختر النشاط</h2><p>لديك أكثر من نشاط — اختر الذي تريد العمل عليه.</p></div>
-    <div class="bz-list" id="bizList"></div>
-    <button type="button" class="bz-add" id="bizAddBtn">➕ إضافة نشاط / فرع</button>
-  </div>
-</div>
+  <footer class="app-footer">
+    <span id="year"></span> · تطبيق جديد
+  </footer>
 
-<!-- Fullscreen customer-facing queue board (TV mode) -->
-<div id="queueScreen" class="q-screen"><div id="queueBody" class="q-wrap"></div></div>
-
-<!-- Business Setup Wizard (Release 5) -->
-<div id="setupScreen">
-  <div class="su-shell">
-    <div class="su-top" id="suTop">
-      <div class="su-progress"><div class="su-bar" id="suBar"></div></div>
-      <div class="su-step-lbl" id="suStepLbl"></div>
-    </div>
-    <div class="su-body" id="setupBody"></div>
-    <div class="su-nav" id="suNav">
-      <button type="button" class="mini" id="suBack">رجوع</button>
-      <button type="button" class="btn-primary" id="suNext">التالي</button>
-    </div>
-  </div>
-</div>
-
-<!-- root -->
-<script src="assets/js/app.namespace.js"></script>
-<!-- config + store -->
-<script src="assets/js/config/app.js"></script>
-<script src="assets/js/config/constants.js"></script>
-<script src="assets/js/config/features.js"></script>
-<script src="assets/js/config/business.js"></script>
-<script src="assets/js/config/accounting.js"></script>
-<script src="assets/js/config/inventory.js"></script>
-<script src="assets/js/config/pos.js"></script>
-<script src="assets/js/config/industry.js"></script>
-<script src="assets/js/config/membership.js"></script>
-<script src="assets/js/state.js"></script>
-<!-- core (pure domain) -->
-<script src="assets/js/core/domain.js"></script>
-<script src="assets/js/core/accounting.js"></script>
-<script src="assets/js/core/inventory.js"></script>
-<script src="assets/js/core/pos.js"></script>
-<script src="assets/js/core/crm.js"></script>
-<script src="assets/js/core/ops.js"></script>
-<script src="assets/js/core/search.js"></script>
-<script src="assets/js/core/reports.js"></script>
-<script src="assets/js/core/industry.js"></script>
-<script src="assets/js/core/membership.js"></script>
-<!-- repositories (persistence ports + adapters) -->
-<script src="assets/js/repositories/persistence.js"></script>
-<script src="assets/js/repositories/state-facade.js"></script>
-<!-- services (use-cases) -->
-<script src="assets/js/services/index.js"></script>
-<script src="assets/js/services/car-wash.js"></script>
-<script src="assets/js/services/accounting.js"></script>
-<script src="assets/js/services/inventory.js"></script>
-<script src="assets/js/services/pos.js"></script>
-<script src="assets/js/services/crm.js"></script>
-<script src="assets/js/services/audit.js"></script>
-<script src="assets/js/services/industry.js"></script>
-<script src="assets/js/services/membership.js"></script>
-<script src="assets/js/services/reception.js"></script>
-<!-- ui (presentation primitives) -->
-<script src="assets/js/ui/theme.js"></script>
-<script src="assets/js/ui/nav.js"></script>
-<script src="assets/js/ui/photos.js"></script>
-<script src="assets/js/ui/qrcode.js"></script>
-<script src="assets/js/ui/export.js"></script>
-<!-- pages (per-screen render + wiring) -->
-<script src="assets/js/pages/dashboard.js"></script>
-<script src="assets/js/pages/orders.js"></script>
-<script src="assets/js/pages/customers.js"></script>
-<script src="assets/js/pages/reports.js"></script>
-<script src="assets/js/pages/settings.js"></script>
-<script src="assets/js/pages/features.js"></script>
-<script src="assets/js/pages/setup.js"></script>
-<script src="assets/js/pages/subscription.js"></script>
-<script src="assets/js/pages/accounting.js"></script>
-<script src="assets/js/pages/inventory.js"></script>
-<script src="assets/js/pages/pos.js"></script>
-<script src="assets/js/pages/crm.js"></script>
-<script src="assets/js/pages/ops.js"></script>
-<script src="assets/js/pages/queue.js"></script>
-<script src="assets/js/pages/welcome.js"></script>
-<script src="assets/js/pages/business-settings.js"></script>
-<!-- composition root (must load last) -->
-<script src="assets/js/app.js"></script>
+  <script src="assets/js/app.js"></script>
 </body>
 </html>
