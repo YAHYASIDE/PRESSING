@@ -434,6 +434,16 @@
   #cloudBtn.synced{background:var(--ready)}
   #cloudBtn.pending{background:var(--unpaid);animation:cpulse .9s infinite}
   #cloudBtn.offline{background:#888}
+  .notif-badge{position:absolute;top:-4px;left:-4px;min-width:17px;height:17px;padding:0 4px;border-radius:9px;background:var(--unpaid);color:#fff;font-size:.66rem;font-weight:800;display:flex;align-items:center;justify-content:center;line-height:1}
+  #notifBtn{position:relative}
+  .nt-row{display:flex;align-items:flex-start;gap:10px;padding:11px 4px;border-bottom:1px solid var(--line)}
+  .nt-row.worker{background:var(--wash-bg,#fdf1de)}
+  .nt-ic{font-size:1.1rem;flex:none}
+  .nt-main{flex:1;min-width:0}
+  .nt-main b{font-weight:800;font-size:.92rem}
+  .nt-main .nt-by{font-size:.78rem;color:var(--brand);font-weight:700}
+  .nt-main .nt-meta{font-size:.72rem;color:var(--muted)}
+  .nt-empty{color:var(--muted);text-align:center;padding:26px 8px}
   @keyframes cpulse{0%,100%{opacity:1}50%{opacity:.5}}
 </style>
 </head>
@@ -447,6 +457,7 @@
         <p>سيارات • أفرشة — نموذج تجريبي</p>
       </div>
     </div>
+    <button class="theme-btn" id="notifBtn" title="إشعارات العمّال" aria-label="الإشعارات" style="display:none;position:relative">🔔<span id="notifBadge" class="notif-badge" style="display:none">0</span></button>
     <button class="theme-btn" id="settingsBtn" title="الإعدادات" aria-label="الإعدادات"></button>
     <button class="theme-btn" id="themeBtn" title="الوضع الليلي" aria-label="الوضع الليلي"></button>
   </header>
@@ -465,6 +476,16 @@
     <div id="wsBody"></div>
     <div class="modal-actions" style="margin-top:6px">
       <button class="mini" id="wsClose" style="flex:1">إغلاق</button>
+    </div>
+  </div>
+</div>
+<div id="notifModal" class="modal">
+  <div class="modal-box" style="max-width:440px">
+    <h3>إشعارات العمّال</h3>
+    <div id="notifBody" style="max-height:60vh;overflow-y:auto"></div>
+    <div class="modal-actions" style="margin-top:8px">
+      <button class="btn-primary" id="notifSeenBtn" style="flex:1">تحديد الكل كمقروء</button>
+      <button class="mini" id="notifClose">إغلاق</button>
     </div>
   </div>
 </div>
@@ -1414,6 +1435,7 @@ function screenReports(){
 /* ================= Render + events ================= */
 function render(){
   renderNav();
+  updateNotifBadge();
   const map={dashboard:screenDashboard,cars:screenCars,carpets:screenCarpets,expenses:screenExpenses,reports:screenReports};
   document.getElementById("main").innerHTML=`<div class="screen">${(map[state.tab]||screenDashboard)()}</div>`;
   bindScreen();
@@ -1477,6 +1499,7 @@ function bindScreen(){
         const opDate=chosenDateIso(carDateV);
         state.carOps.push({id:uid(),no:carNo(vehicle),vehicle,wash:document.getElementById("carWash").value,price:free?0:price,
           plate,phone,country,free,by:currentUser,paid:!deferred,paidDate:deferred?null:opDate,note:"",photosBefore:[...pendingCarBefore],photosAfter:[...pendingCarAfter],date:opDate});
+        logActivity("غسيل سيارة", vehicle+(plate?(" · "+plate):"")+" · "+fmt(free?0:price)+" "+CUR+(deferred?" (آجل)":""));
         pendingCarBefore.length=0; pendingCarAfter.length=0;
         if(free) toast("🎁 غسلة مجانية — اكتملت البطاقة");
         else if(deferred) toast("تم الحفظ — دفع مؤجّل (غير مدفوع)");
@@ -1531,6 +1554,7 @@ function bindScreen(){
         state.carpetOrders.push({id:uid(),no:orderNo(state.orderSeq,d),
           customer:cpcust, phone:cpph, country:cpcountry, by:currentUser,
           type,count,unit,price:unit*count,status:"wash",paid:false,photos:[...pendingCpPhotos],date:d});
+        logActivity("طلب أفرشة", type+" ×"+count+" · "+fmt(unit*count)+" "+CUR);
         pendingCpPhotos.length=0;
         toast("تمت إضافة الطلب"); render();
       };
@@ -1550,6 +1574,7 @@ function bindScreen(){
         return;
       }
       o.status=nextStatus;
+      logActivity("حالة أفرشة", (o.type||"")+" → "+(nextStatus==="done"?"تم التسليم":nextStatus==="ready"?"جاهز":nextStatus));
       let notify=false;
       if(o.status==="done"){ o.deliveredDate=iso(new Date()); toast("تم التسليم"); }
       else if(o.status==="ready"){ toast("الطلب جاهز"); notify=!!o.phone; }
@@ -1565,7 +1590,7 @@ function bindScreen(){
   });
   document.querySelectorAll("[data-del-order]").forEach(b=>b.onclick=()=>{
     const o=state.carpetOrders.find(x=>x.id===b.dataset.delOrder);
-    const doDel=()=>{ tomb(b.dataset.delOrder); state.carpetOrders=state.carpetOrders.filter(x=>x.id!==b.dataset.delOrder); toast("تم الحذف"); render(); };
+    const doDel=()=>{ logActivity("حذف طلب أفرشة", (o&&o.type)||""); tomb(b.dataset.delOrder); state.carpetOrders=state.carpetOrders.filter(x=>x.id!==b.dataset.delOrder); toast("تم الحذف"); render(); };
     requireCode(doDel, SECRET_CODE, "كود الحذف", "حذف الطلب يتطلب كود الحذف.");
   });
 
@@ -1580,6 +1605,7 @@ function bindScreen(){
       const expDateV=(document.getElementById("expDate")||{}).value||todayStr();
       const doAdd=()=>{
         state.expenses.push({id:uid(),amount,category:document.getElementById("expCat").value,reason,date:chosenDateIso(expDateV)});
+        logActivity("مصروف", (document.getElementById("expCat").value||"")+" · "+fmt(amount)+" "+CUR);
         toast("تمت إضافة المصروف"); render();
       };
       doAdd();
@@ -1698,8 +1724,8 @@ function bindHold(el, cb, ms){
   el.addEventListener("pointercancel",clear);
   el.addEventListener("click",(e)=>{ e.preventDefault(); e.stopPropagation(); });
 }
-function toggleCancelCar(id){ const o=state.carOps.find(x=>x.id===id); if(o){ o.cancelled=!o.cancelled; toast(o.cancelled?"تم إلغاء العملية 🚫":"أُلغي الإلغاء"); render(); } }
-function toggleCancelOrder(id){ const o=state.carpetOrders.find(x=>x.id===id); if(o){ o.cancelled=!o.cancelled; toast(o.cancelled?"تم إلغاء الطلب 🚫":"أُلغي الإلغاء"); render(); } }
+function toggleCancelCar(id){ const o=state.carOps.find(x=>x.id===id); if(o){ o.cancelled=!o.cancelled; logActivity(o.cancelled?"إلغاء غسيل":"تراجع عن إلغاء", (o.vehicle||"")+(o.plate?(" · "+o.plate):"")); toast(o.cancelled?"تم إلغاء العملية 🚫":"أُلغي الإلغاء"); render(); } }
+function toggleCancelOrder(id){ const o=state.carpetOrders.find(x=>x.id===id); if(o){ o.cancelled=!o.cancelled; logActivity(o.cancelled?"إلغاء طلب أفرشة":"تراجع عن إلغاء", (o.type||"")+" ×"+(o.count||1)); toast(o.cancelled?"تم إلغاء الطلب 🚫":"أُلغي الإلغاء"); render(); } }
 function requireCode(cb, expected, title, desc){
   _codeCb=cb; _codeExpected=expected||SECRET_CODE;
   const t=document.getElementById("codeTitle"); if(t) t.textContent=title||"أدخل الكود";
@@ -1900,6 +1926,31 @@ document.getElementById("themeBtn").onclick=()=>{ state.dark=!state.dark; applyT
 function applyHeaderIcons(){
   const sb=document.getElementById("settingsBtn"); if(sb) sb.innerHTML=svg(I.gear);
 }
+function updateNotifBadge(){
+  const btn=document.getElementById("notifBtn"), bad=document.getElementById("notifBadge");
+  if(!btn) return;
+  if(currentRole==="owner"){ btn.style.display="";
+    const n=unseenActivity().length;
+    if(bad){ if(n>0){ bad.style.display=""; bad.textContent=n>99?"99+":String(n); } else bad.style.display="none"; }
+  } else { btn.style.display="none"; }
+}
+const ACT_IC={ "غسيل سيارة":"🚗","طلب أفرشة":"🧺","مصروف":"💸","حالة أفرشة":"📦","تحصيل دفع":"💵","تسجيل دخول":"🔑","تسجيل عامل جديد":"🆕","إلغاء غسيل":"🚫","إلغاء طلب أفرشة":"🚫","حذف طلب أفرشة":"🗑️" };
+function openNotif(){
+  const body=document.getElementById("notifBody"); if(!body) return;
+  const E=s=>String(s==null?"":s).replace(/</g,"&lt;");
+  const list=(state.activity||[]).slice().reverse().slice(0,150);
+  const seenTs=state.notifSeenTs||0;
+  body.innerHTML = list.length ? list.map(a=>{
+    const unseen=a.byRole==="worker" && (a.ts||0)>seenTs;
+    return `<div class="nt-row ${a.byRole==="worker"?"worker":""}">
+      <span class="nt-ic">${ACT_IC[a.action]||"•"}</span>
+      <span class="nt-main"><b>${E(a.action)}${a.detail?" — "+E(a.detail):""}</b>
+        <div class="nt-by">${a.byRole==="worker"?"👷 ":"👔 "}${E(a.byName)||"—"}${unseen?' <span style="color:var(--unpaid)">● جديد</span>':''}</div>
+        <div class="nt-meta">${ymd(a.ts)} ${timeStr(a.ts)}</div></span></div>`;
+  }).join("") : `<div class="nt-empty">لا توجد إشعارات بعد.</div>`;
+  document.getElementById("notifModal").style.display="flex";
+  state.notifSeenTs=Date.now(); save(); updateNotifBadge();
+}
 
 /* ---- backup ---- */
 function exportData(){
@@ -2035,6 +2086,9 @@ function openSettings(){
   document.getElementById("settingsModal").style.display="flex";
 };
 document.getElementById("setClose").onclick=()=>document.getElementById("settingsModal").style.display="none";
+{ const nb=document.getElementById("notifBtn"); if(nb) nb.onclick=openNotif;
+  const nc=document.getElementById("notifClose"); if(nc) nc.onclick=()=>document.getElementById("notifModal").style.display="none";
+  const ns=document.getElementById("notifSeenBtn"); if(ns) ns.onclick=()=>{ markNotifSeen(); document.getElementById("notifModal").style.display="none"; }; }
 let _editCtx=null;
 function openEditCar(id){
   const o=state.carOps.find(x=>x.id===id); if(!o) return; _editCtx={type:"car",id};
@@ -2103,7 +2157,7 @@ document.getElementById("dvCancel").onclick=()=>{ document.getElementById("deliv
 let _payCtx=null;
 document.getElementById("payOk").onclick=()=>{
   if(_payCtx){ const list=_payCtx.type==="car"?state.carOps:state.carpetOrders; const o=list.find(x=>x.id===_payCtx.id);
-    if(o){ const dv=document.getElementById("payDate").value||ymd(new Date()); o.paid=true; o.paidDate=chosenDateIso(dv); toast("تم تحصيل الدفع"); } }
+    if(o){ const dv=document.getElementById("payDate").value||ymd(new Date()); o.paid=true; o.paidDate=chosenDateIso(dv); logActivity("تحصيل دفع", (_payCtx.type==="car"?((o.vehicle||"")+(o.plate?(" · "+o.plate):"")):((o.type||"")+" ×"+(o.count||1)))+" · "+fmt(o.price||0)+" "+CUR); toast("تم تحصيل الدفع"); } }
   document.getElementById("payModal").style.display="none"; _payCtx=null; render();
 };
 document.getElementById("payCancel").onclick=()=>{ document.getElementById("payModal").style.display="none"; _payCtx=null; };
