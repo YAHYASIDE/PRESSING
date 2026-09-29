@@ -284,6 +284,13 @@
 
   .set-sec{border:1px solid var(--line);border-radius:12px;padding:13px;margin-bottom:12px}
   .set-title{font-weight:800;font-size:.9rem;margin-bottom:9px}
+  .set-inp{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:10px;background:var(--input);color:var(--ink);font-size:.92rem;margin-bottom:8px}
+  .wk-row{display:flex;align-items:center;gap:8px;padding:8px 4px;border-bottom:1px solid var(--line)}
+  .wk-row b{flex:1;font-weight:700;font-size:.9rem}
+  .wk-row.off{opacity:.5}
+  .wk-badge{font-size:.7rem;padding:2px 8px;border-radius:999px;background:var(--ready-bg);color:var(--ready);font-weight:800}
+  .wk-badge.off{background:var(--unpaid-bg);color:var(--unpaid)}
+  .wk-btn{font-size:.72rem;padding:4px 9px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer;font-weight:700}
   .set-row{display:flex;gap:8px;flex-wrap:wrap}
   .sw{display:flex;align-items:center;gap:8px;font-weight:700;font-size:.88rem;cursor:pointer}
   .modal-box input[type=password],.modal-box input[type=text]{width:100%}
@@ -562,6 +569,19 @@
     <div class="set-sec">
       <div class="set-title">سجلّ الدخول (آخر 20)</div>
       <div id="loginLog" class="hint" style="max-height:150px;overflow-y:auto;line-height:1.9"></div>
+    </div>
+    <div class="set-sec">
+      <div class="set-title">👷 العمّال المسجّلون</div>
+      <div id="workersAdmin"></div>
+      <div class="hint" style="margin-top:6px">العمّال يسجّلون أنفسهم من شاشة الدخول (رابط «عامل جديد؟ سجّل هنا»). يمكنك تعطيل أو حذف أي حساب هنا.</div>
+    </div>
+    <div class="set-sec">
+      <div class="set-title">🤖 إشعارات Telegram (اختياري)</div>
+      <label class="sw" style="margin-bottom:9px"><input type="checkbox" id="tgEnabled"> تفعيل الإشعارات على Telegram</label>
+      <input type="text" id="tgToken" class="set-inp" placeholder="Bot Token (من BotFather)" autocomplete="off">
+      <input type="text" id="tgChat" class="set-inp" placeholder="Chat ID (رقم محادثتك مع البوت)" inputmode="numeric" autocomplete="off">
+      <div class="set-row"><button class="mini" id="tgTest">📤 إرسال رسالة تجريبية</button></div>
+      <div class="hint" style="margin-top:8px;line-height:1.8">الخطوات: ١) راسِل <b>@BotFather</b> وأنشئ بوتًا لتحصل على <b>Token</b>. ٢) ابدأ محادثة مع بوتك ثم راسِل <b>@userinfobot</b> لتعرف <b>Chat ID</b>. ٣) الصق الاثنين هنا وفعّل الخيار. عندها تصلك رسالة فورية عند كل عملية يقوم بها عامل.</div>
     </div>
     <div class="set-sec">
       <div class="set-title">أسعار استهلاك العدّاد</div>
@@ -1951,6 +1971,20 @@ function openNotif(){
   document.getElementById("notifModal").style.display="flex";
   state.notifSeenTs=Date.now(); save(); updateNotifBadge();
 }
+function renderWorkersAdmin(){
+  const host=document.getElementById("workersAdmin"); if(!host) return;
+  const E=s=>String(s==null?"":s).replace(/</g,"&lt;");
+  const list=state.users||[];
+  host.innerHTML = list.length ? list.map(u=>`
+    <div class="wk-row ${u.active===false?'off':''}">
+      <b>${E(u.name)}</b>
+      <span class="wk-badge ${u.active===false?'off':''}">${u.active===false?'معطّل':'نشط'}</span>
+      <button class="wk-btn" data-wk-toggle="${u.id}">${u.active===false?'تفعيل':'تعطيل'}</button>
+      <button class="wk-btn" data-wk-del="${u.id}" style="color:var(--unpaid)">حذف</button>
+    </div>`).join("") : `<div class="hint">لا يوجد عمّال مسجّلون بعد.</div>`;
+  host.querySelectorAll("[data-wk-toggle]").forEach(b=>b.onclick=()=>{ const u=(state.users||[]).find(x=>x.id===b.dataset.wkToggle); if(u){ u.active=(u.active===false); save(); renderWorkersAdmin(); toast(u.active===false?"عُطّل الحساب":"فُعّل الحساب"); } });
+  host.querySelectorAll("[data-wk-del]").forEach(b=>b.onclick=()=>{ const u=(state.users||[]).find(x=>x.id===b.dataset.wkDel); if(u && confirm("حذف حساب العامل «"+u.name+"»؟")){ tomb(u.id); state.users=(state.users||[]).filter(x=>x.id!==b.dataset.wkDel); save(); renderWorkersAdmin(); toast("تم الحذف"); } });
+}
 
 /* ---- backup ---- */
 function exportData(){
@@ -2078,6 +2112,11 @@ function openSettings(){
   document.getElementById("tarWaterSet").value=state.tariff.water||0;
   document.getElementById("thanksSet").value=state.thanksMsg||"";
   document.getElementById("adMsgSet").value=state.adMsg||"";
+  { const tg=(state.notify&&state.notify.telegram)||{};
+    const a=document.getElementById("tgEnabled"); if(a) a.checked=!!tg.enabled;
+    const b=document.getElementById("tgToken"); if(b) b.value=tg.token||"";
+    const c=document.getElementById("tgChat"); if(c) c.value=tg.chatId||""; }
+  renderWorkersAdmin();
   const palRow=document.getElementById("palRow");
   if(palRow){
     palRow.innerHTML=PALETTES.map(pl=>`<button class="pal-sw ${state.palette===pl.k?'on':''}" data-pal="${pl.k}" style="background:linear-gradient(135deg,${pl.b},${pl.b2})" title="${pl.name}"><span>${pl.name}</span></button>`).join("");
@@ -2088,7 +2127,14 @@ function openSettings(){
 document.getElementById("setClose").onclick=()=>document.getElementById("settingsModal").style.display="none";
 { const nb=document.getElementById("notifBtn"); if(nb) nb.onclick=openNotif;
   const nc=document.getElementById("notifClose"); if(nc) nc.onclick=()=>document.getElementById("notifModal").style.display="none";
-  const ns=document.getElementById("notifSeenBtn"); if(ns) ns.onclick=()=>{ markNotifSeen(); document.getElementById("notifModal").style.display="none"; }; }
+  const ns=document.getElementById("notifSeenBtn"); if(ns) ns.onclick=()=>{ markNotifSeen(); document.getElementById("notifModal").style.display="none"; };
+  const tt=document.getElementById("tgTest"); if(tt) tt.onclick=()=>{
+    const token=document.getElementById("tgToken").value.trim(), chatId=document.getElementById("tgChat").value.trim();
+    if(!token||!chatId) return toast("أدخل التوكن و Chat ID أولًا");
+    toast("جارٍ الإرسال…");
+    fetch("https://api.telegram.org/bot"+encodeURIComponent(token)+"/sendMessage",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({chat_id:chatId,text:"✅ رسالة تجريبية من تطبيق مغاسيل صداقة — الإشعارات تعمل."})})
+      .then(r=>r.json()).then(j=>{ toast(j&&j.ok?"تم الإرسال ✅ — تحقّق من Telegram":"فشل الإرسال — راجع التوكن والمعرّف"); }).catch(()=>toast("تعذّر الاتصال بـ Telegram — تحقّق من الإنترنت"));
+  }; }
 let _editCtx=null;
 function openEditCar(id){
   const o=state.carOps.find(x=>x.id===id); if(!o) return; _editCtx={type:"car",id};
@@ -2172,6 +2218,9 @@ document.getElementById("setSave").onclick=()=>{
   state.tariff.water=+document.getElementById("tarWaterSet").value||0;
   state.thanksMsg=document.getElementById("thanksSet").value.trim();
   state.adMsg=document.getElementById("adMsgSet").value.trim();
+  if(!state.notify) state.notify={telegram:{}};
+  state.notify.telegram={ enabled:document.getElementById("tgEnabled").checked,
+    token:document.getElementById("tgToken").value.trim(), chatId:document.getElementById("tgChat").value.trim() };
   unlocked=true; // owner just set it, stays unlocked this session
   save(); document.getElementById("settingsModal").style.display="none"; toast("تم حفظ الإعدادات");
 };
