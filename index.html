@@ -579,10 +579,11 @@
   <div class="lock-box">
     <img id="lockLogo" src="" alt="">
     <h3>مغاسيل صداقة</h3>
-    <p>أدخل اسمك وكود الدخول</p>
+    <p id="lockModeHint">دخول الموظفين — أدخل اسمك وكودك.</p>
     <input type="text" id="lockName" placeholder="اسمك" value="إبراهيم" autocomplete="off" style="letter-spacing:normal;text-align:center">
     <input type="password" id="lockInput" inputmode="numeric" placeholder="كود الدخول">
     <button class="btn-primary" id="lockEnter" style="width:100%">دخول</button>
+    <div id="lockModeLink" onclick="toggleLockMode()" style="margin-top:12px;font-size:.85rem;color:#fff;opacity:.9;cursor:pointer;text-decoration:underline">عامل جديد؟ سجّل هنا</div>
   </div>
 </div>
 
@@ -653,7 +654,11 @@ const state = {
   workers:[],
   carOps:[],
   carpetOrders:[],
-  expenses:[]
+  expenses:[],
+  users:[],                 /* حسابات العمّال: {id,name,pin,active,createdAt} */
+  activity:[],              /* سجلّ النشاط: {id,ts,byName,byRole,action,detail} */
+  notifSeenTs:0,            /* آخر وقت شاهد فيه المالك الإشعارات */
+  notify:{ telegram:{ enabled:false, token:"", chatId:"" } }
 };
 
 /* order numbers for seed */
@@ -1732,6 +1737,30 @@ function save(){ saveLocal(); updateCloudBtn("pending"); L_pending_push=true; if
 function load(){ try{ const d=localStorage.getItem(LS_KEY); if(d) Object.assign(state, JSON.parse(d)); }catch(e){} }
 function tomb(id){ if(!state.deleted) state.deleted={}; state.deleted["rec:"+id]=Date.now(); }
 function tombCust(k){ if(!state.deleted) state.deleted={}; state.deleted["cust:"+k]=Date.now(); }
+/* ===== المستخدمون (مالك/عمّال) + سجلّ النشاط + إشعارات المالك ===== */
+function ownerPin(){ return (state.lock&&state.lock.pin)||"0707"; }
+function findWorker(name,pin){ return (state.users||[]).find(u=>u.active!==false && u.name===(name||"").trim() && u.pin===(pin||"").trim()); }
+function logActivity(action, detail){
+  try{
+    if(!state.activity) state.activity=[];
+    const a={ id:uid(), ts:Date.now(), byName:currentUser||"—", byRole:currentRole||"owner", action:action||"", detail:detail||"" };
+    state.activity.push(a);
+    if(state.activity.length>400) state.activity=state.activity.slice(-400);
+    if(a.byRole==="worker") notifyTelegram("🔔 "+a.byName+" — "+a.action+(a.detail?": "+a.detail:""));
+  }catch(e){}
+}
+function unseenActivity(){ const t=state.notifSeenTs||0; return (state.activity||[]).filter(a=>a.byRole==="worker" && (a.ts||0)>t); }
+function markNotifSeen(){ state.notifSeenTs=Date.now(); save(); render(); }
+function notifyTelegram(text){
+  try{
+    const t=(state.notify&&state.notify.telegram)||{};
+    if(!t.enabled || !t.token || !t.chatId) return;
+    fetch("https://api.telegram.org/bot"+encodeURIComponent(t.token)+"/sendMessage",{
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({ chat_id:t.chatId, text:text, disable_web_page_preview:true })
+    }).catch(()=>{});
+  }catch(e){}
+}
 function mergeById(localArr, remoteArr, del){
   const out=new Map();
   (remoteArr||[]).forEach(r=>{ if(r&&r.id && !del["rec:"+r.id]) out.set(r.id,r); });
@@ -1747,7 +1776,9 @@ function applyRemote(remote){
   _applyingRemote=true;
   const unmigrated = (remote.codesV!==3);
   const L={ carOps:state.carOps||[], carpetOrders:state.carpetOrders||[], expenses:state.expenses||[],
-            workers:state.workers||[], meters:state.meters||[], logins:state.logins||[], customers:state.customers||{} };
+            workers:state.workers||[], meters:state.meters||[], logins:state.logins||[], customers:state.customers||{},
+            users:state.users||[], activity:state.activity||[] };
+  const localSeenTs=state.notifSeenTs||0;
   const localDel=state.deleted||{};
   const pm={};
   L.carOps.forEach(o=>{ if(o.photos&&o.photos.length) pm["op"+o.id]=o.photos; });
@@ -1760,6 +1791,9 @@ function applyRemote(remote){
   state.workers=mergeById(L.workers, remote.workers, state.deleted);
   state.meters=mergeById(L.meters, remote.meters, state.deleted);
   state.logins=mergeById(L.logins, remote.logins, state.deleted).sort((a,b)=>new Date(a.date)-new Date(b.date)).slice(-200);
+  state.users=mergeById(L.users, remote.users, state.deleted);
+  state.activity=mergeById(L.activity, remote.activity, state.deleted).sort((a,b)=>(a.ts||0)-(b.ts||0)).slice(-400);
+  state.notifSeenTs=Math.max(localSeenTs, remote.notifSeenTs||0);
   const cs=Object.assign({}, remote.customers||{});
   Object.keys(L.customers).forEach(k=>{ if(!cs[k]) cs[k]=L.customers[k]; });
   Object.keys(state.deleted).forEach(k=>{ if(k.slice(0,5)==="cust:") delete cs[k.slice(5)]; });
@@ -1897,7 +1931,7 @@ function resetAllData(){
 }
 
 /* ---- lock ---- */
-let unlocked=false, currentUser="";
+let unlocked=false, currentUser="", currentRole="", currentUserId="";
 function applyLock(){
   const ls=document.getElementById("lockScreen");
   if(state.lock&&state.lock.enabled&&!unlocked){ document.getElementById("lockLogo").src=LOGO; ls.style.display="flex"; setTimeout(()=>{const i=document.getElementById("lockName"); if(i)i.focus();},60); }
@@ -2106,25 +2140,54 @@ document.getElementById("receiptPrint").onclick=printReceipt;
     if(away>limit) relock();
   });
   window.addEventListener("pageshow",(e)=>{ if(e.persisted) relock(); });
-  const doEnter=()=>{
-    const nm=document.getElementById("lockName").value.trim();
-    const v=document.getElementById("lockInput").value.trim();
-    if(nm.length<2) return toast("أدخل اسمك أولًا");
-    if(v!==(state.lock&&state.lock.pin)) return toast("كود الدخول غير صحيح");
-    currentUser=nm;
+  const enterSession=(nm,role,uidv)=>{
+    currentUser=nm; currentRole=role; currentUserId=uidv||"";
     if(!state.logins) state.logins=[];
-    state.logins.push({id:uid(),name:nm,date:iso(new Date())});
+    state.logins.push({id:uid(),name:nm,role:role,date:iso(new Date())});
     if(state.logins.length>200) state.logins=state.logins.slice(-200);
     unlocked=true;
     document.getElementById("lockInput").value=""; document.getElementById("lockName").value="إبراهيم";
     save(); applyLock(); render();
-    toast("أهلًا "+nm);
-    // push immediately so workers/data are safe in cloud right after login
     setTimeout(()=>{ try{ if(window.cloudReady) window.cloudPush(cloudCopy()); }catch(e){} }, 800);
   };
-  document.getElementById("lockEnter").onclick=doEnter;
+  const doEnter=()=>{
+    const nm=document.getElementById("lockName").value.trim();
+    const v=document.getElementById("lockInput").value.trim();
+    if(nm.length<2) return toast("أدخل اسمك أولًا");
+    let role="", uidv="";
+    if(v===ownerPin()){ role="owner"; }
+    else { const w=findWorker(nm,v); if(w){ role="worker"; uidv=w.id; } }
+    if(!role) return toast("كود الدخول غير صحيح");
+    enterSession(nm,role,uidv);
+    if(role==="worker") logActivity("تسجيل دخول","");
+    toast("أهلًا "+nm);
+  };
+  window.registerWorker=()=>{
+    const nm=document.getElementById("lockName").value.trim();
+    const v=document.getElementById("lockInput").value.trim();
+    if(nm.length<2) return toast("أدخل اسمك");
+    if(v.length<4) return toast("اختر كودًا (4 أرقام على الأقل)");
+    if(v===ownerPin()) return toast("هذا كود المالك — اختر كودًا مختلفًا");
+    if((state.users||[]).some(u=>u.name===nm && u.active!==false)) return toast("الاسم مستخدم — سجّل الدخول أو غيّر الاسم");
+    const w={ id:uid(), name:nm, pin:v, role:"worker", active:true, createdAt:iso(new Date()) };
+    state.users=state.users||[]; state.users.push(w);
+    enterSession(nm,"worker",w.id);
+    logActivity("تسجيل عامل جديد","");
+    toast("تم تسجيلك — أهلًا "+nm);
+  };
+  window._lockMode="login";
+  window.toggleLockMode=()=>{
+    window._lockMode = window._lockMode==="login" ? "register" : "login";
+    const reg=(window._lockMode==="register");
+    document.getElementById("lockEnter").textContent = reg?"تسجيل والدخول":"دخول";
+    document.getElementById("lockModeHint").textContent = reg?"تسجيل عامل جديد — أدخل اسمك واختر كودًا خاصًا بك.":"دخول الموظفين — أدخل اسمك وكودك.";
+    document.getElementById("lockModeLink").textContent = reg?"لديك حساب؟ سجّل الدخول":"عامل جديد؟ سجّل هنا";
+    document.getElementById("lockInput").placeholder = reg?"اختر كودك الخاص":"كود الدخول";
+  };
+  const lockAction=()=>{ (window._lockMode==="register") ? window.registerWorker() : doEnter(); };
+  document.getElementById("lockEnter").onclick=lockAction;
   document.getElementById("lockName").addEventListener("keydown",e=>{ if(e.key==="Enter") document.getElementById("lockInput").focus(); });
-  document.getElementById("lockInput").addEventListener("keydown",e=>{ if(e.key==="Enter") doEnter(); });
+  document.getElementById("lockInput").addEventListener("keydown",e=>{ if(e.key==="Enter") lockAction(); });
 })();
 
 load();
@@ -2135,6 +2198,11 @@ function runMigrations(){
   if(state.codesV!==3){ state.lock={enabled:true,pin:"0707"}; if(!state.meterPin) state.meterPin="070752"; state.codesV=3; changed=true; }
   if(!state.deleted) state.deleted={};
   if(!state.logins) state.logins=[];
+  if(!state.users) state.users=[];
+  if(!state.activity) state.activity=[];
+  if(typeof state.notifSeenTs!=="number") state.notifSeenTs=0;
+  if(!state.notify) state.notify={telegram:{enabled:false,token:"",chatId:""}};
+  if(!state.notify.telegram) state.notify.telegram={enabled:false,token:"",chatId:""};
   ensureCarNos();
   return changed;
 }
