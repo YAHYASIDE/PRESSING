@@ -996,8 +996,14 @@ function screenDashboard(){
     {label:"مصروفات عامة",val:genT,icon:I.wallet,bg:"var(--wash-bg)",c:"var(--wash)"},
     {label:"العدّادات",val:utilT,icon:I.bolt,bg:"var(--unpaid-bg)",c:"var(--unpaid)"}
   ];
+  const duesCar=state.carOps.filter(o=>!o.cancelled&&o.paid===false);
+  const duesRug=state.carpetOrders.filter(o=>!o.cancelled&&!o.paid);
+  const duesLnd=(state.laundryOrders||[]).filter(o=>!o.cancelled&&!o.paid);
+  const duesCount=duesCar.length+duesRug.length+duesLnd.length;
+  const duesAmt=sum(duesCar,o=>o.price)+sum(duesRug,o=>o.price)+sum(duesLnd,o=>o.price);
   const M=[
     {label:`ربح ${periodLabel}`,val:money(profit),ic:I.profit,bg:"var(--chip)",c:"var(--brand)"},
+    {label:"مستحقّات غير مدفوعة",val:money(duesAmt),ic:I.wallet,bg:"var(--unpaid-bg)",c:"var(--unpaid)",sub:`${duesCount} طلب (سيارات+سجاد+ملابس)`},
     {label:"طلبات سجاد قيد الغسيل",val:washing,ic:I.clock,bg:"var(--wash-bg)",c:"var(--wash)",sub:`بقيمة ${money(washingAmt)}`},
     {label:"ملابس قيد العمل",val:lndActive,ic:I.fabric,bg:"var(--ready-bg)",c:"var(--ready)",sub:`بقيمة ${money(lndActiveAmt)}`}
   ];
