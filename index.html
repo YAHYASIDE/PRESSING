@@ -1593,7 +1593,7 @@ function bindScreen(){
         }, SECRET_CODE, "كود تسليم غير مدفوع", "تسليم طلب غير مدفوع يتطلّب الكود.");
         return;
       }
-      o.status=nextStatus;
+      o.status=nextStatus; o.editedAt=iso(new Date());
       logActivity("حالة أفرشة", (o.type||"")+" → "+(nextStatus==="done"?"تم التسليم":nextStatus==="ready"?"جاهز":nextStatus));
       let notify=false;
       if(o.status==="done"){ o.deliveredDate=iso(new Date()); toast("تم التسليم"); }
@@ -1605,7 +1605,7 @@ function bindScreen(){
   document.querySelectorAll("[data-pay]").forEach(b=>b.onclick=()=>{
     const o=state.carpetOrders.find(x=>x.id===b.dataset.pay);
     if(!o) return;
-    if(o.paid){ gateDay(o.date,()=>requireCode(()=>{ o.paid=false; delete o.paidDate; toast("أُلغي الدفع"); render(); }, SECRET_CODE, "كود الحذف", "إلغاء الدفع يتطلب كود الحذف.")); }
+    if(o.paid){ gateDay(o.date,()=>requireCode(()=>{ o.paid=false; delete o.paidDate; o.editedAt=iso(new Date()); logActivity("إلغاء دفع",(o.type||o.vehicle||"")); toast("أُلغي الدفع"); render(); }, SECRET_CODE, "كود الحذف", "إلغاء الدفع يتطلب كود الحذف.")); }
     else { _payCtx={type:"order",id:o.id}; const pd=document.getElementById("payDate"); if(pd) pd.value=ymd(new Date()); document.getElementById("payModal").style.display="flex"; }
   });
   document.querySelectorAll("[data-del-order]").forEach(b=>b.onclick=()=>{
@@ -1744,8 +1744,8 @@ function bindHold(el, cb, ms){
   el.addEventListener("pointercancel",clear);
   el.addEventListener("click",(e)=>{ e.preventDefault(); e.stopPropagation(); });
 }
-function toggleCancelCar(id){ const o=state.carOps.find(x=>x.id===id); if(o){ o.cancelled=!o.cancelled; logActivity(o.cancelled?"إلغاء غسيل":"تراجع عن إلغاء", (o.vehicle||"")+(o.plate?(" · "+o.plate):"")); toast(o.cancelled?"تم إلغاء العملية 🚫":"أُلغي الإلغاء"); render(); } }
-function toggleCancelOrder(id){ const o=state.carpetOrders.find(x=>x.id===id); if(o){ o.cancelled=!o.cancelled; logActivity(o.cancelled?"إلغاء طلب أفرشة":"تراجع عن إلغاء", (o.type||"")+" ×"+(o.count||1)); toast(o.cancelled?"تم إلغاء الطلب 🚫":"أُلغي الإلغاء"); render(); } }
+function toggleCancelCar(id){ const o=state.carOps.find(x=>x.id===id); if(o){ o.cancelled=!o.cancelled; o.editedAt=iso(new Date()); logActivity(o.cancelled?"إلغاء غسيل":"تراجع عن إلغاء", (o.vehicle||"")+(o.plate?(" · "+o.plate):"")); toast(o.cancelled?"تم إلغاء العملية 🚫":"أُلغي الإلغاء"); render(); } }
+function toggleCancelOrder(id){ const o=state.carpetOrders.find(x=>x.id===id); if(o){ o.cancelled=!o.cancelled; o.editedAt=iso(new Date()); logActivity(o.cancelled?"إلغاء طلب أفرشة":"تراجع عن إلغاء", (o.type||"")+" ×"+(o.count||1)); toast(o.cancelled?"تم إلغاء الطلب 🚫":"أُلغي الإلغاء"); render(); } }
 function requireCode(cb, expected, title, desc){
   _codeCb=cb; _codeExpected=expected||SECRET_CODE;
   const t=document.getElementById("codeTitle"); if(t) t.textContent=title||"أدخل الكود";
@@ -2180,7 +2180,7 @@ document.getElementById("editSave").onclick=()=>{
   toast("تم حفظ التعديل"); render();
 };
 let _dvId=null;
-function completeUnpaidDelivery(o){ o.status="done"; o.deliveredDate=iso(new Date()); toast("تم التسليم — غير مدفوع (دَين)"); render(); }
+function completeUnpaidDelivery(o){ o.status="done"; o.deliveredDate=iso(new Date()); o.editedAt=iso(new Date()); logActivity("تسليم غير مدفوع",(o.type||"")+" ×"+(o.count||1)); toast("تم التسليم — غير مدفوع (دَين)"); render(); }
 function openDeliverInfo(o){
   _dvId=o.id;
   document.getElementById("dvName").value=o.customer||"";
@@ -2203,7 +2203,7 @@ document.getElementById("dvCancel").onclick=()=>{ document.getElementById("deliv
 let _payCtx=null;
 document.getElementById("payOk").onclick=()=>{
   if(_payCtx){ const list=_payCtx.type==="car"?state.carOps:state.carpetOrders; const o=list.find(x=>x.id===_payCtx.id);
-    if(o){ const dv=document.getElementById("payDate").value||ymd(new Date()); o.paid=true; o.paidDate=chosenDateIso(dv); logActivity("تحصيل دفع", (_payCtx.type==="car"?((o.vehicle||"")+(o.plate?(" · "+o.plate):"")):((o.type||"")+" ×"+(o.count||1)))+" · "+fmt(o.price||0)+" "+CUR); toast("تم تحصيل الدفع"); } }
+    if(o){ const dv=document.getElementById("payDate").value||ymd(new Date()); o.paid=true; o.paidDate=chosenDateIso(dv); o.editedAt=iso(new Date()); logActivity("تحصيل دفع", (_payCtx.type==="car"?((o.vehicle||"")+(o.plate?(" · "+o.plate):"")):((o.type||"")+" ×"+(o.count||1)))+" · "+fmt(o.price||0)+" "+CUR); toast("تم تحصيل الدفع"); } }
   document.getElementById("payModal").style.display="none"; _payCtx=null; render();
 };
 document.getElementById("payCancel").onclick=()=>{ document.getElementById("payModal").style.display="none"; _payCtx=null; };
