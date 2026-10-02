@@ -5,7 +5,7 @@
    - Cross-origin requests (Firebase / Google Fonts / Firestore) are never
      intercepted — they manage their own networking and offline behaviour.
 */
-const VERSION = "1.4.0";
+const VERSION = "1.5.0";
 const CACHE = "sadaqa-" + VERSION;
 const CORE = [
   "./",
