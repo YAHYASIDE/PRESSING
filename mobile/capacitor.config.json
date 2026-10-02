@@ -1,0 +1,9 @@
+{
+  "appId": "com.sadaqa.laundry",
+  "appName": "مغاسيل صداقة",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https",
+    "url": "https://yahyaside.github.io/PRESSING/"
+  }
+}

@@ -1,0 +1,107 @@
+name: Build Android APK
+
+# Packages the app as an installable Android APK (Capacitor WebView shell that
+# loads the live GitHub Pages site). Each successful build REPLACES the APK on
+# the fixed `app-latest` pre-release, so the download link never changes.
+#
+# NOTE: enable GitHub Pages (Settings ▸ Pages ▸ Source: GitHub Actions) first —
+# the shell loads the Pages URL in mobile/capacitor.config.json.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "index.html"
+      - "manifest.webmanifest"
+      - "sw.js"
+      - "assets/**"
+      - "mobile/**"
+      - ".github/workflows/android.yml"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Ensure Android SDK cmdline-tools + required packages
+        run: |
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-$HOME/android-sdk}}"
+          SDKMANAGER="$(find "$SDK_ROOT" -maxdepth 4 -name sdkmanager -type f 2>/dev/null | sort -V | tail -1)"
+          if [ -z "$SDKMANAGER" ]; then
+            echo "No existing sdkmanager under $SDK_ROOT - downloading cmdline-tools"
+            mkdir -p "$SDK_ROOT/cmdline-tools"
+            curl -sSL -o /tmp/cmdline-tools.zip \
+              https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
+            unzip -q /tmp/cmdline-tools.zip -d "$SDK_ROOT/cmdline-tools"
+            mv "$SDK_ROOT/cmdline-tools/cmdline-tools" "$SDK_ROOT/cmdline-tools/latest"
+            SDKMANAGER="$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
+          fi
+          echo "Using sdkmanager: $SDKMANAGER"
+          echo "ANDROID_HOME=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$SDK_ROOT" >> "$GITHUB_ENV"
+          yes | "$SDKMANAGER" --licenses > /dev/null || true
+          "$SDKMANAGER" "platforms;android-34" "build-tools;34.0.0"
+
+      - name: Install Capacitor
+        working-directory: mobile
+        run: npm install
+
+      - name: Assemble the web assets into the Capacitor shell
+        working-directory: mobile
+        run: |
+          rm -rf www && mkdir -p www
+          cp ../index.html www/
+          cp ../manifest.webmanifest www/
+          cp ../sw.js www/
+          cp -r ../assets www/assets
+
+      - name: Scaffold the native Android project
+        working-directory: mobile
+        run: npx cap add android
+
+      - name: Sync web assets + config into the Android project
+        working-directory: mobile
+        run: npx cap sync android
+
+      - name: Build the debug APK
+        working-directory: mobile/android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
+
+      - name: Rename APK
+        run: |
+          cp mobile/android/app/build/outputs/apk/debug/app-debug.apk \
+             Sadaqa-Laundry.apk
+
+      - name: Publish to the fixed app-latest pre-release
+        uses: ncipollo/release-action@v1
+        with:
+          tag: app-latest
+          name: "مغاسيل صداقة — أحدث تطبيق (APK)"
+          body: |
+            أحدث نسخة من تطبيق مغاسيل صداقة (بناء تلقائي من ${{ github.sha }}).
+            نزّل الملف وثبّته على هاتف Android. يحمّل الموقع المباشر ويعمل دون
+            إنترنت بعد أول فتح. للتحديث لاحقًا: اضغط «تحديث التطبيق الآن» داخل
+            التطبيق، أو أعد تنزيل أحدث APK من هنا.
+          prerelease: true
+          allowUpdates: true
+          replacesArtifacts: true
+          removeArtifacts: false
+          artifacts: Sadaqa-Laundry.apk
+          artifactContentType: application/vnd.android.package-archive
+          token: ${{ secrets.GITHUB_TOKEN }}

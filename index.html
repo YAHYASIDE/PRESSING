@@ -2,8 +2,19 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>إدارة المغسلتين — نموذج تجريبي</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>مغاسيل صداقة</title>
+<!-- PWA: installable phone app -->
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#0f9d8f">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="صداقة">
+<meta name="application-name" content="مغاسيل صداقة">
+<link rel="icon" type="image/png" sizes="192x192" href="assets/icon-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="assets/icon-512.png">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
@@ -543,6 +554,17 @@
 <div id="settingsModal" class="modal">
   <div class="modal-box">
     <h3>الإعدادات</h3>
+    <div class="set-sec">
+      <div class="set-title">📱 التطبيق والتحديث</div>
+      <div class="set-row" style="flex-wrap:wrap;gap:8px">
+        <button class="mini" id="btnInstall" style="display:none">⬇️ تثبيت التطبيق على الهاتف</button>
+        <button class="mini" id="btnUpdate">🔄 تحديث التطبيق الآن</button>
+      </div>
+      <div class="hint" style="margin-top:8px;line-height:1.8">
+        الإصدار الحالي: <b id="appVer">—</b> · الحالة: <b id="appMode">—</b><br>
+        بعد كل تعديل جديد نرفعه، اضغط <b>«تحديث التطبيق الآن»</b> ليجلب أحدث نسخة. يعمل دون إنترنت بعد أول فتح.
+      </div>
+    </div>
     <div class="set-sec"><div class="set-title">المزامنة السحابية</div>حالة الاتصال: <b id="cloudStat">جارٍ الاتصال…</b></div>
     <div class="set-sec"><div class="set-title">لون التطبيق</div><div class="pal-row" id="palRow"></div></div>
     <div class="set-sec">
@@ -604,7 +626,7 @@
       <button class="btn-primary" id="setSave" style="flex:1">حفظ</button>
       <button class="mini" id="setClose">إغلاق</button>
     </div>
-    <div class="hint" style="text-align:center;margin-top:10px;opacity:.8">الإصدار: 2026‑07‑19 · إصلاح ظهور القفل</div>
+    <div class="hint" style="text-align:center;margin-top:10px;opacity:.8">مغاسيل صداقة · إصدار <span id="appVerFoot">—</span></div>
   </div>
 </div>
 <div id="receiptModal" class="modal">
@@ -2592,6 +2614,86 @@ setTimeout(()=>{ if(!window.cloudReady){ const el=document.getElementById("cloud
       try { const remote = JSON.parse(snap.data().data); if (window.onCloudState) window.onCloudState(remote); } catch(e){}
     }, (err) => { if (window.onCloudError) window.onCloudError(err); });
   } catch(e){ console.error("cloud init failed", e); if (window.onCloudError) window.onCloudError(e); }
+</script>
+
+<!-- Update banner (shown when a new version is ready) -->
+<div id="updateBanner" style="display:none;position:fixed;left:12px;right:12px;bottom:12px;z-index:9999;background:#0f9d8f;color:#fff;border-radius:14px;padding:12px 14px;box-shadow:0 8px 28px rgba(0,0,0,.28);display:none;align-items:center;gap:10px;font-weight:700">
+  <span style="flex:1">✨ يتوفّر إصدار جديد من التطبيق</span>
+  <button id="updateNow" style="background:#fff;color:#0f9d8f;border:none;border-radius:10px;padding:8px 14px;font-weight:800;cursor:pointer">تحديث الآن</button>
+  <button id="updateLater" style="background:transparent;color:#fff;border:1px solid rgba(255,255,255,.6);border-radius:10px;padding:8px 10px;cursor:pointer">لاحقًا</button>
+</div>
+
+<!-- PWA: service-worker registration + update/install wiring -->
+<script>
+(function(){
+  var APP_VERSION = "1.0.1";
+  function $(id){ return document.getElementById(id); }
+  function setText(id,t){ var el=$(id); if(el) el.textContent=t; }
+
+  var standalone = (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) || window.navigator.standalone === true;
+  setText("appVer", APP_VERSION);
+  setText("appVerFoot", APP_VERSION);
+  setText("appMode", standalone ? "مثبّت كتطبيق 📱" : "يعمل في المتصفح");
+
+  var reg = null, reloading = false;
+  function doReload(){ if(reloading) return; reloading = true; window.location.reload(); }
+
+  function showBanner(show){ var b=$("updateBanner"); if(b) b.style.display = show ? "flex" : "none"; }
+
+  function applyWaiting(){
+    if(reg && reg.waiting){ reg.waiting.postMessage("SKIP_WAITING"); return true; }
+    return false;
+  }
+
+  // Wire the banner + settings buttons (DOM is ready — script is at end of body).
+  var un=$("updateNow"); if(un) un.onclick=function(){ showBanner(false); if(!applyWaiting()) doReload(); };
+  var ul=$("updateLater"); if(ul) ul.onclick=function(){ showBanner(false); };
+  var bu=$("btnUpdate"); if(bu) bu.onclick=function(){
+    if(typeof toast==="function") toast("جارٍ البحث عن تحديث…");
+    if(!("serviceWorker" in navigator) || !reg){ doReload(); return; }
+    reg.update().then(function(){
+      setTimeout(function(){
+        if(applyWaiting()){ /* controllerchange will reload */ }
+        else { if(typeof toast==="function") toast("أنت على أحدث إصدار ✓"); }
+      }, 900);
+    }).catch(function(){ doReload(); });
+  };
+
+  // Install prompt (Add to home screen)
+  var deferredPrompt=null;
+  window.addEventListener("beforeinstallprompt", function(e){
+    e.preventDefault(); deferredPrompt=e;
+    var bi=$("btnInstall"); if(bi) bi.style.display="inline-flex";
+  });
+  var bi=$("btnInstall"); if(bi) bi.onclick=function(){
+    if(!deferredPrompt){ if(typeof toast==="function") toast("افتح قائمة المتصفح ثم «تثبيت التطبيق»"); return; }
+    deferredPrompt.prompt();
+    deferredPrompt.userChoice.finally(function(){ deferredPrompt=null; var b=$("btnInstall"); if(b) b.style.display="none"; });
+  };
+  window.addEventListener("appinstalled", function(){ setText("appMode","مثبّت كتطبيق 📱"); if(typeof toast==="function") toast("تم تثبيت التطبيق 🎉"); });
+
+  // Register the service worker (only on secure contexts; not file://)
+  if("serviceWorker" in navigator && (location.protocol==="https:" || location.hostname==="localhost" || location.hostname==="127.0.0.1")){
+    navigator.serviceWorker.register("sw.js").then(function(r){
+      reg = r;
+      if(r.waiting && navigator.serviceWorker.controller){ showBanner(true); }
+      r.addEventListener("updatefound", function(){
+        var sw = r.installing;
+        if(!sw) return;
+        sw.addEventListener("statechange", function(){
+          if(sw.state==="installed" && navigator.serviceWorker.controller){ showBanner(true); }
+        });
+      });
+    }).catch(function(e){ console.warn("SW register failed", e); });
+
+    navigator.serviceWorker.addEventListener("controllerchange", doReload);
+
+    // Check for updates when the app regains focus.
+    document.addEventListener("visibilitychange", function(){
+      if(document.visibilityState==="visible" && reg){ reg.update().catch(function(){}); }
+    });
+  }
+})();
 </script>
 </body>
 </html>

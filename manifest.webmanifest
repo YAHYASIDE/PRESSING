@@ -1,0 +1,19 @@
+{
+  "name": "مغاسيل صداقة",
+  "short_name": "صداقة",
+  "description": "إدارة مغاسل صداقة — سيارات وسجاد وملابس، دخل ومصاريف وتقارير، مع مزامنة سحابية.",
+  "lang": "ar",
+  "dir": "rtl",
+  "start_url": "./?app=1",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0f9d8f",
+  "theme_color": "#0f9d8f",
+  "categories": ["business", "productivity"],
+  "icons": [
+    { "src": "assets/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "assets/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "assets/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
