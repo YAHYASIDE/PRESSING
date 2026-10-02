@@ -491,6 +491,7 @@
   .store-stat .s .v{font-size:1.2rem;font-weight:800}
   .store-stat .s .l{font-size:.74rem;color:var(--muted);font-weight:700;margin-top:2px}
   .big-balance{font-size:2rem;font-weight:800;color:var(--brand);margin-top:4px}
+  .del-btn{color:var(--unpaid);border-color:#f0cccc;background:var(--unpaid-bg)}
 </style>
 </head>
 <body>
@@ -514,7 +515,6 @@
   </div>
 </div>
 <div id="toast"></div>
-<button id="cloudBtn" onclick="cloudBtnTap()" title="حالة المزامنة — اضغط للتحديث">☁</button>
 <div id="lightbox" onclick="this.style.display='none'"><img alt=""></div>
 <div id="wsModal" class="modal">
   <div class="modal-box" style="max-width:420px">
@@ -635,6 +635,14 @@
       <div class="set-title">👷 العمّال المسجّلون</div>
       <div id="workersAdmin"></div>
       <div class="hint" style="margin-top:6px">العمّال يسجّلون أنفسهم من شاشة الدخول (رابط «عامل جديد؟ سجّل هنا»). يمكنك تعطيل أو حذف أي حساب هنا.</div>
+    </div>
+    <div class="set-sec">
+      <div class="set-title">👔 حسابات المديرين</div>
+      <div class="field"><label>اسم المدير</label><input type="text" id="mgrName" placeholder="اسم المدير" autocomplete="off"></div>
+      <div class="field"><label>كلمة المرور</label><input type="text" id="mgrPass" placeholder="كلمة مرور المدير" autocomplete="off"></div>
+      <button class="mini" id="mgrCreate">➕ إنشاء حساب مدير</button>
+      <div id="managersAdmin" style="margin-top:10px"></div>
+      <div class="hint" style="margin-top:6px">المدير يرى كل شيء (ومنها التقارير والإشعارات) بصلاحيات كاملة تقريبًا كالمالك، ويدخل باسمه وكلمة مروره من شاشة الدخول. يمكنك تعطيل أو حذف أي حساب هنا.</div>
     </div>
     <div class="set-sec">
       <div class="set-title">🤖 إشعارات Telegram (اختياري)</div>
@@ -770,6 +778,7 @@ const state = {
   storeSeq:0, storePurSeq:0,
   storeSub:"pos", storeProdSearch:"", storeSaleSearch:"", storeCustSearch:"", storeSaleFilter:"all",
   users:[],                 /* حسابات العمّال: {id,name,pin,active,createdAt} */
+  managers:[],              /* حسابات المديرين: {id,name,pass,active,createdAt} */
   activity:[],              /* سجلّ النشاط: {id,ts,byName,byRole,action,detail} */
   notifSeenTs:0,            /* آخر وقت شاهد فيه المالك الإشعارات */
   notify:{ telegram:{ enabled:false, token:"", chatId:"" } }
@@ -1202,12 +1211,12 @@ function screenCars(){
   let custList=Object.values(state.customers).sort((a,b)=>new Date(b.lastVisit||0)-new Date(a.lastVisit||0));
   if(cq) custList=custList.filter(c=>(c.plate||"").includes(cq));
   const custRows=custList.length?custList.map(c=>`
-    <tr><td><b>${c.plate}</b></td>
+    <tr><td style="white-space:nowrap">${c.phone?`<button class="wa-btn" data-wacust="${c.plate}" title="واتساب" style="width:28px;height:28px;display:inline-grid;vertical-align:middle">${svg(I.whatsapp)}</button> `:""}<button class="icon-btn del-btn" data-del-cust="${c.plate}" title="حذف الزبون">${svg(I.trash)}</button></td>
+      <td><b>${c.plate}</b></td>
       <td>${c.phone||"—"}</td>
       <td class="amt" style="text-align:center;font-weight:800;white-space:nowrap">${c.stamps}/5${c.stamps===4?" 🎁":""}</td>
       <td class="amt" style="text-align:center">${c.totalWashes}</td>
-      <td class="amt" style="text-align:center;color:var(--wash)">${c.freeWashes}</td>
-      <td style="text-align:left;white-space:nowrap">${c.phone?`<button class="wa-btn" data-wacust="${c.plate}" title="واتساب" style="width:28px;height:28px;display:inline-grid;vertical-align:middle">${svg(I.whatsapp)}</button> `:""}<button class="icon-btn" data-del-cust="${c.plate}" title="حذف">${svg(I.trash)}</button></td></tr>`).join("")
+      <td class="amt" style="text-align:center;color:var(--wash)">${c.freeWashes}</td></tr>`).join("")
     :`<tr><td colspan="6"><div class="empty">${svg(I.empty)}لا يوجد زبائن محفوظون بعد — أضف لوحة عند حفظ عملية.</div></td></tr>`;
   return `
     <div class="screen-head"><h2>مغسلة السيارات</h2><span>اختر نوع السيارة فيظهر سعره تلقائيًا</span></div>
@@ -1241,7 +1250,7 @@ function screenCars(){
     <div class="panel" style="margin-top:18px">
       <h3>بطاقات الولاء</h3>
       <input class="search-inp" id="custSearch" type="text" placeholder="بحث بلوحة الزبون" value="${cq}">
-      <div class="tbl-wrap"><table class="tbl"><thead><tr><th>اللوحة</th><th>الهاتف</th><th>الأختام</th><th>الغسلات</th><th>مجانية</th><th></th></tr></thead>
+      <div class="tbl-wrap"><table class="tbl"><thead><tr><th>حذف</th><th>اللوحة</th><th>الهاتف</th><th>الأختام</th><th>الغسلات</th><th>مجانية</th></tr></thead>
       <tbody>${custRows}</tbody></table></div>
     </div>`;
 }
@@ -2621,6 +2630,7 @@ function tombCust(k){ if(!state.deleted) state.deleted={}; state.deleted["cust:"
 /* ===== المستخدمون (مالك/عمّال) + سجلّ النشاط + إشعارات المالك ===== */
 function ownerPin(){ return (state.lock&&state.lock.pin)||"0707"; }
 function findWorker(name,pin){ return (state.users||[]).find(u=>u.active!==false && u.name===(name||"").trim() && u.pin===(pin||"").trim()); }
+function findManager(name,pass){ return (state.managers||[]).find(u=>u.active!==false && u.name===(name||"").trim() && u.pass===(pass||"").trim()); }
 function logActivity(action, detail){
   try{
     if(!state.activity) state.activity=[];
@@ -2634,7 +2644,7 @@ function unseenActivity(){ const t=state.notifSeenTs||0; return (state.activity|
 let _lastAlertTs=0;
 function beep(){ try{ const AC=window.AudioContext||window.webkitAudioContext; if(!AC) return; const c=new AC(),o=c.createOscillator(),g=c.createGain(); o.type="sine";o.frequency.value=880;o.connect(g);g.connect(c.destination); g.gain.setValueAtTime(0.001,c.currentTime); g.gain.exponentialRampToValueAtTime(0.25,c.currentTime+0.02); g.gain.exponentialRampToValueAtTime(0.001,c.currentTime+0.45); o.start();o.stop(c.currentTime+0.47);}catch(e){} }
 function maybeAlertNewActivity(){
-  if(currentRole!=="owner" || !unlocked) return;
+  if((currentRole!=="owner" && currentRole!=="manager") || !unlocked) return;
   const news=(state.activity||[]).filter(a=>a.byRole==="worker" && (a.ts||0)>_lastAlertTs);
   if(news.length){ _lastAlertTs=Math.max.apply(null, news.map(a=>a.ts||0));
     beep(); try{ if(navigator.vibrate) navigator.vibrate(200); }catch(e){}
@@ -2668,7 +2678,7 @@ function applyRemote(remote){
   const unmigrated = (remote.codesV!==3);
   const L={ carOps:state.carOps||[], carpetOrders:state.carpetOrders||[], expenses:state.expenses||[],
             workers:state.workers||[], meters:state.meters||[], logins:state.logins||[], customers:state.customers||{},
-            users:state.users||[], activity:state.activity||[], laundryOrders:state.laundryOrders||[] };
+            users:state.users||[], managers:state.managers||[], activity:state.activity||[], laundryOrders:state.laundryOrders||[] };
   const localLndPrices=Object.assign({}, state.laundryPrices||{});
   const localSeenTs=state.notifSeenTs||0;
   const localDel=state.deleted||{};
@@ -2684,6 +2694,7 @@ function applyRemote(remote){
   state.meters=mergeById(L.meters, remote.meters, state.deleted);
   state.logins=mergeById(L.logins, remote.logins, state.deleted).sort((a,b)=>new Date(a.date)-new Date(b.date)).slice(-200);
   state.users=mergeById(L.users, remote.users, state.deleted);
+  state.managers=mergeById(L.managers, remote.managers, state.deleted);
   state.laundryOrders=mergeById(L.laundryOrders, remote.laundryOrders, state.deleted);
   state.laundryPrices=Object.assign({}, remote.laundryPrices||{}, localLndPrices);
   // ====== المتجر: دمج بالمعرّف مع الصور المحلية ======
@@ -2807,7 +2818,7 @@ function applyHeaderIcons(){
 function updateNotifBadge(){
   const btn=document.getElementById("notifBtn"), bad=document.getElementById("notifBadge");
   if(!btn) return;
-  if(currentRole==="owner"){ btn.style.display="";
+  if(currentRole==="owner"||currentRole==="manager"){ btn.style.display="";
     const n=unseenActivity().length;
     if(bad){ if(n>0){ bad.style.display=""; bad.textContent=n>99?"99+":String(n); } else bad.style.display="none"; }
   } else { btn.style.display="none"; }
@@ -2842,6 +2853,34 @@ function renderWorkersAdmin(){
     </div>`).join("") : `<div class="hint">لا يوجد عمّال مسجّلون بعد.</div>`;
   host.querySelectorAll("[data-wk-toggle]").forEach(b=>b.onclick=()=>{ const u=(state.users||[]).find(x=>x.id===b.dataset.wkToggle); if(u){ u.active=(u.active===false); save(); renderWorkersAdmin(); toast(u.active===false?"عُطّل الحساب":"فُعّل الحساب"); } });
   host.querySelectorAll("[data-wk-del]").forEach(b=>b.onclick=()=>{ const u=(state.users||[]).find(x=>x.id===b.dataset.wkDel); if(u && confirm("حذف حساب العامل «"+u.name+"»؟")){ tomb(u.id); state.users=(state.users||[]).filter(x=>x.id!==b.dataset.wkDel); save(); renderWorkersAdmin(); toast("تم الحذف"); } });
+}
+function renderManagersAdmin(){
+  const host=document.getElementById("managersAdmin"); if(!host) return;
+  const E=s=>String(s==null?"":s).replace(/</g,"&lt;");
+  const list=state.managers||[];
+  host.innerHTML = list.length ? list.map(u=>`
+    <div class="wk-row ${u.active===false?'off':''}">
+      <b>${E(u.name)}</b>
+      <span class="wk-badge ${u.active===false?'off':''}">${u.active===false?'معطّل':'نشط'}</span>
+      <button class="wk-btn" data-mg-toggle="${u.id}">${u.active===false?'تفعيل':'تعطيل'}</button>
+      <button class="wk-btn" data-mg-del="${u.id}" style="color:var(--unpaid)">حذف</button>
+    </div>`).join("") : `<div class="hint">لا يوجد مديرون بعد.</div>`;
+  host.querySelectorAll("[data-mg-toggle]").forEach(b=>b.onclick=()=>{ const u=(state.managers||[]).find(x=>x.id===b.dataset.mgToggle); if(u){ u.active=(u.active===false); u.editedAt=iso(new Date()); save(); renderManagersAdmin(); toast(u.active===false?"عُطّل الحساب":"فُعّل الحساب"); } });
+  host.querySelectorAll("[data-mg-del]").forEach(b=>b.onclick=()=>{ const u=(state.managers||[]).find(x=>x.id===b.dataset.mgDel); if(u && confirm("حذف حساب المدير «"+u.name+"»؟")){ tomb(u.id); state.managers=(state.managers||[]).filter(x=>x.id!==b.dataset.mgDel); save(); renderManagersAdmin(); toast("تم الحذف"); } });
+}
+function createManager(){
+  const nm=(document.getElementById("mgrName").value||"").trim();
+  const pass=(document.getElementById("mgrPass").value||"").trim();
+  if(nm.length<2) return toast("أدخل اسم المدير");
+  if(pass.length<4) return toast("كلمة المرور 4 أحرف على الأقل");
+  if(pass===ownerPin()) return toast("لا تستخدم كود المالك — اختر كلمة مختلفة");
+  if((state.managers||[]).some(u=>u.name===nm && u.active!==false)) return toast("الاسم مستخدم بالفعل");
+  state.managers=state.managers||[];
+  state.managers.push({id:uid(),name:nm,pass,role:"manager",active:true,createdAt:iso(new Date()),editedAt:iso(new Date())});
+  save(); renderManagersAdmin();
+  document.getElementById("mgrName").value=""; document.getElementById("mgrPass").value="";
+  logActivity("إنشاء حساب مدير",nm);
+  toast("تم إنشاء حساب المدير «"+nm+"»");
 }
 
 /* ---- backup ---- */
@@ -3000,6 +3039,8 @@ function openSettings(){
     const b=document.getElementById("tgToken"); if(b) b.value=tg.token||"";
     const c=document.getElementById("tgChat"); if(c) c.value=tg.chatId||""; }
   renderWorkersAdmin();
+  renderManagersAdmin();
+  { const mc=document.getElementById("mgrCreate"); if(mc) mc.onclick=createManager; }
   const palRow=document.getElementById("palRow");
   if(palRow){
     palRow.innerHTML=PALETTES.map(pl=>`<button class="pal-sw ${state.palette===pl.k?'on':''}" data-pal="${pl.k}" style="background:linear-gradient(135deg,${pl.b},${pl.b2})" title="${pl.name}"><span>${pl.name}</span></button>`).join("");
@@ -3143,10 +3184,11 @@ document.getElementById("receiptPrint").onclick=printReceipt;
     if(nm.length<2) return toast("أدخل اسمك أولًا");
     let role="", uidv="";
     if(v===ownerPin()){ role="owner"; }
-    else { const w=findWorker(nm,v); if(w){ role="worker"; uidv=w.id; } }
-    if(!role) return toast("كود الدخول غير صحيح");
+    else { const m=findManager(nm,v); if(m){ role="manager"; uidv=m.id; }
+      else { const w=findWorker(nm,v); if(w){ role="worker"; uidv=w.id; } } }
+    if(!role) return toast("بيانات الدخول غير صحيحة");
     enterSession(nm,role,uidv);
-    if(role==="worker") logActivity("تسجيل دخول","");
+    if(role==="worker"||role==="manager") logActivity("تسجيل دخول","");
     toast("أهلًا "+nm);
   };
   window.registerWorker=()=>{
@@ -3186,6 +3228,7 @@ function runMigrations(){
   if(!state.deleted) state.deleted={};
   if(!state.logins) state.logins=[];
   if(!state.users) state.users=[];
+  if(!state.managers) state.managers=[];
   if(!state.laundryOrders) state.laundryOrders=[];
   if(!state.laundryPrices) state.laundryPrices={};
   if(typeof state.lndSeq!=="number") state.lndSeq=(state.laundryOrders||[]).length;
@@ -3257,7 +3300,7 @@ setTimeout(()=>{ if(!window.cloudReady){ const el=document.getElementById("cloud
 <!-- PWA: service-worker registration + update/install wiring -->
 <script>
 (function(){
-  var APP_VERSION = "1.3.0";
+  var APP_VERSION = "1.4.0";
   function $(id){ return document.getElementById(id); }
   function setText(id,t){ var el=$(id); if(el) el.textContent=t; }
 
