@@ -463,6 +463,34 @@
   .nt-main .nt-meta{font-size:.72rem;color:var(--muted)}
   .nt-empty{color:var(--muted);text-align:center;padding:26px 8px}
   @keyframes cpulse{0%,100%{opacity:1}50%{opacity:.5}}
+  /* ===== المتجر ===== */
+  .store-pos{align-items:start}
+  .pos-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:10px}
+  .pos-prod{display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px;border:1px solid var(--line);border-radius:14px;background:var(--surface);cursor:pointer;text-align:center;transition:transform .08s}
+  .pos-prod:active{transform:scale(.96)}
+  .pos-prod.oos{opacity:.5}
+  .pos-img{width:62px;height:62px;border-radius:12px;background:var(--soft);display:flex;align-items:center;justify-content:center;overflow:hidden}
+  .pos-img img{width:100%;height:100%;object-fit:cover}
+  .pos-img svg{width:28px;height:28px;color:var(--muted)}
+  .pos-nm{font-weight:700;font-size:.8rem;line-height:1.2}
+  .pos-pr{font-weight:800;color:var(--brand)}
+  .pos-st{font-size:.68rem;color:var(--muted)}
+  .pos-st.low{color:var(--unpaid);font-weight:800}
+  .pos-cart h3{margin-top:0}
+  .cart-list{max-height:40vh;overflow-y:auto}
+  .cart-row{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--line)}
+  .cart-nm{flex:1;font-weight:600;font-size:.86rem}
+  .cart-q{display:flex;align-items:center;gap:9px}
+  .qbtn{width:28px;height:28px;border:1px solid var(--line);background:var(--soft);border-radius:8px;font-size:1.1rem;font-weight:800;line-height:1;color:var(--ink)}
+  .cart-lt{font-weight:800;min-width:56px;text-align:left}
+  .prod-card-img{width:54px;height:54px;border-radius:10px;object-fit:cover;background:var(--soft);flex:none;color:var(--muted)}
+  .prod-img-box{width:92px;height:92px;border:1px dashed var(--line);border-radius:14px;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative;background:var(--soft)}
+  .prod-img-box img{width:100%;height:100%;object-fit:cover}
+  .store-stat{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:14px}
+  .store-stat .s{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px}
+  .store-stat .s .v{font-size:1.2rem;font-weight:800}
+  .store-stat .s .l{font-size:.74rem;color:var(--muted);font-weight:700;margin-top:2px}
+  .big-balance{font-size:2rem;font-weight:800;color:var(--brand);margin-top:4px}
 </style>
 </head>
 <body>
@@ -527,6 +555,17 @@
     <div class="modal-actions" style="margin-top:6px">
       <button class="btn-primary" id="payOk" style="flex:1">تأكيد التحصيل</button>
       <button class="mini" id="payCancel">إلغاء</button>
+    </div>
+  </div>
+</div>
+<div id="storePayModal" class="modal">
+  <div class="modal-box">
+    <h3 id="storePayTitle">تحصيل دفعة</h3>
+    <p id="storePayHint" class="hint"></p>
+    <div class="field"><label>المبلغ المحصَّل</label><input id="storePayAmt" type="number" min="0" value="0"></div>
+    <div class="modal-actions" style="margin-top:6px">
+      <button class="btn-primary" id="storePayOk" style="flex:1">تأكيد التحصيل</button>
+      <button class="mini" id="storePayCancel">إلغاء</button>
     </div>
   </div>
 </div>
@@ -722,6 +761,14 @@ const state = {
   laundryPrices:{},         /* أسعار مُتعلَّمة: {"نوع|خدمة": سعر} */
   lndSeq:0,
   lndSearch:"", lndFilter:"all",
+  /* ====== المتجر (نقطة بيع ومخزون) ====== */
+  storeProducts:[],         /* {id,name,image,category,buyPrice,sellPrice,stock,minStock,unit,by,editedAt} */
+  storeSales:[],            /* فواتير بيع: {id,no,customerId,customerName,items:[{productId,name,qty,price}],total,paidAmount,paid,date,by,editedAt,cancelled} */
+  storePurchases:[],        /* مشتريات: {id,no,supplier,items:[{productId,name,qty,cost}],total,paid,date,by,editedAt,cancelled} */
+  storeCustomers:[],        /* {id,name,phone,country,isLaundry,note,by,editedAt} */
+  storeCash:[],             /* حركات الصندوق: {id,type:"in"|"out",amount,reason,customerId,ref,date,by,editedAt} */
+  storeSeq:0, storePurSeq:0,
+  storeSub:"pos", storeProdSearch:"", storeSaleSearch:"", storeCustSearch:"", storeSaleFilter:"all",
   users:[],                 /* حسابات العمّال: {id,name,pin,active,createdAt} */
   activity:[],              /* سجلّ النشاط: {id,ts,byName,byRole,action,detail} */
   notifSeenTs:0,            /* آخر وقت شاهد فيه المالك الإشعارات */
@@ -873,7 +920,15 @@ const I={
   moon:'<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>',
   sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M19.1 4.9l-1.4 1.4M6.3 17.7l-1.4 1.4"/>',
   camera:'<path d="M4 8h3l1.5-2h7L17 8h3v11H4z"/><circle cx="12" cy="13" r="3.2"/>',
-  whatsapp:'<path d="M20.5 3.5A11 11 0 0 0 3 17l-1.2 4.7 4.8-1.2A11 11 0 1 0 20.5 3.5z"/><path d="M8.6 7.8c-.3 0-.6 0-.8.5-.3.5-.9 1.3-.9 2.4s.9 2.6 1 2.8c.1.2 1.7 2.9 4.4 3.9 2.2.8 2.7.7 3.2.6.5 0 1.4-.6 1.6-1.2.2-.6.2-1 .1-1.2l-1.7-.8c-.2-.1-.4-.1-.6.1l-.6.8c-.1.2-.3.2-.5.1a6 6 0 0 1-2.8-2.5c-.1-.2 0-.4.1-.5l.5-.6c.1-.2.1-.3 0-.5l-.7-1.9c-.2-.4-.4-.4-.6-.4z"/>'
+  whatsapp:'<path d="M20.5 3.5A11 11 0 0 0 3 17l-1.2 4.7 4.8-1.2A11 11 0 1 0 20.5 3.5z"/><path d="M8.6 7.8c-.3 0-.6 0-.8.5-.3.5-.9 1.3-.9 2.4s.9 2.6 1 2.8c.1.2 1.7 2.9 4.4 3.9 2.2.8 2.7.7 3.2.6.5 0 1.4-.6 1.6-1.2.2-.6.2-1 .1-1.2l-1.7-.8c-.2-.1-.4-.1-.6.1l-.6.8c-.1.2-.3.2-.5.1a6 6 0 0 1-2.8-2.5c-.1-.2 0-.4.1-.5l.5-.6c.1-.2.1-.3 0-.5l-.7-1.9c-.2-.4-.4-.4-.6-.4z"/>',
+  shop:'<path d="M4 9h16l-1-4H5z"/><path d="M4 9v11h16V9"/><path d="M4 9a2.5 2 0 0 0 5 0 2.5 2 0 0 0 5 0 2.5 2 0 0 0 5 0"/><path d="M9 20v-5h6v5"/>',
+  cart:'<circle cx="9" cy="20" r="1.4"/><circle cx="17" cy="20" r="1.4"/><path d="M2 3h2l2.4 12h11.2L21 7H6"/>',
+  box:'<path d="M3 7.5 12 3l9 4.5v9L12 21 3 16.5z"/><path d="M3 7.5 12 12l9-4.5M12 12v9"/>',
+  usertag:'<circle cx="9" cy="8" r="3.2"/><path d="M3 20a6 6 0 0 1 12 0"/><path d="M16 8h5v5l-5 5"/><circle cx="18.5" cy="10.5" r=".8"/>',
+  cash:'<rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.6"/><path d="M6 9v6M18 9v6"/>',
+  plus:'<path d="M12 5v14M5 12h14"/>',
+  minus:'<path d="M5 12h14"/>',
+  edit:'<path d="M4 20h4L18.5 9.5a2.1 2.1 0 0 0-3-3L5 17v3z"/><path d="M13.5 6.5l3 3"/>'
 };
 const svg=(p,color="currentColor")=>`<svg viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
 
@@ -896,6 +951,8 @@ function loyaltyCardHTML(plate){
 
 /* ================= Photos ================= */
 let pendingCarBefore=[], pendingCarAfter=[], pendingCpPhotos=[];
+/* ================= المتجر: حالة مؤقتة ================= */
+let storeCart=[], purCart=[], pendingProdImg="", _editProdId=null, _editCustId=null, _storePayCtx=null;
 function readAndCompress(file,cb){
   const r=new FileReader();
   r.onload=()=>{ const img=new Image();
@@ -936,11 +993,13 @@ function recThumbs(photos){
 function renderNav(){
   const unpaid=state.carpetOrders.filter(o=>o.status!=="done").length;
   const lndUnpaid=(state.laundryOrders||[]).filter(o=>!o.cancelled&&o.status!=="done").length;
+  const storeLow=(state.storeProducts||[]).filter(p=>!p.archived && (+p.stock||0)<=(+p.minStock||0) && (+p.minStock||0)>0).length;
   let items=[
     {id:"dashboard",label:"الرئيسية",icon:I.home},
     {id:"cars",label:"السيارات",icon:I.car},
     {id:"laundry",label:"الملابس",icon:I.fabric,badge:lndUnpaid},
     {id:"carpets",label:"السجاد",icon:I.rug,badge:unpaid},
+    {id:"store",label:"المتجر",icon:I.shop,badge:storeLow},
     {id:"expenses",label:"المصروفات",icon:I.wallet},
     {id:"reports",label:"التقارير",icon:I.chart}
   ];
@@ -1322,6 +1381,445 @@ function screenLaundry(){
       </div>
     </div>`;
 }
+/* ================= المتجر: مساعدات ================= */
+function storeProd(id){ return (state.storeProducts||[]).find(p=>p.id===id); }
+function storeCust(id){ return (state.storeCustomers||[]).find(c=>c.id===id); }
+function storeSale(id){ return (state.storeSales||[]).find(s=>s.id===id); }
+function storePurch(id){ return (state.storePurchases||[]).find(p=>p.id===id); }
+function storeInvNo(dateISO){ const d=new Date(dateISO), prefix="S"+d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"; let max=0; (state.storeSales||[]).forEach(o=>{ if(typeof o.no==="string"&&o.no.startsWith(prefix)){ const s=parseInt(o.no.slice(prefix.length),10); if(s>max)max=s; } }); const seq=max+1; if((state.storeSeq||0)<seq) state.storeSeq=seq; return prefix+String(seq).padStart(3,"0"); }
+function storePurNo(dateISO){ const d=new Date(dateISO), prefix="P"+d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"; let max=0; (state.storePurchases||[]).forEach(o=>{ if(typeof o.no==="string"&&o.no.startsWith(prefix)){ const s=parseInt(o.no.slice(prefix.length),10); if(s>max)max=s; } }); const seq=max+1; if((state.storePurSeq||0)<seq) state.storePurSeq=seq; return prefix+String(seq).padStart(3,"0"); }
+function saleOutstanding(s){ return s.cancelled?0:Math.max(0,(+s.total||0)-(+s.paidAmount||0)); }
+function custBalance(id){ return sum((state.storeSales||[]).filter(s=>!s.cancelled&&s.customerId===id),s=>saleOutstanding(s)); }
+function cashIn(f){ return sum((state.storeCash||[]).filter(m=>m.type==="in"&&f(m.date)),m=>+m.amount||0); }
+function cashOut(f){ return sum((state.storeCash||[]).filter(m=>m.type==="out"&&f(m.date)),m=>+m.amount||0); }
+function cashboxBalance(){ return cashIn(()=>true)-cashOut(()=>true); }
+function storeSalesIncome(f){ return sum((state.storeSales||[]).filter(s=>!s.cancelled&&f(s.date)),s=>+s.total||0); }
+function storePurchaseCost(f){ return sum((state.storePurchases||[]).filter(p=>!p.cancelled&&f(p.date)),p=>+p.total||0); }
+function storeProfit(f){ let g=0; (state.storeSales||[]).filter(s=>!s.cancelled&&f(s.date)).forEach(s=>{ (s.items||[]).forEach(it=>{ const p=storeProd(it.productId); const cost=p?(+p.buyPrice||0):0; g+=((+it.price||0)-cost)*(+it.qty||0); }); }); return g; }
+function totalReceivables(){ return sum((state.storeSales||[]).filter(s=>!s.cancelled),s=>saleOutstanding(s)); }
+function cartTotal(){ return sum(storeCart,i=>(+i.price||0)*(+i.qty||0)); }
+function addCashMove(type,amount,reason,customerId,ref){ state.storeCash.push({id:uid(),type,amount:+amount||0,reason:reason||"",customerId:customerId||null,ref:ref||null,date:iso(new Date()),by:currentUser,editedAt:iso(new Date())}); }
+function allocatePayment(customerId,amount){ let left=+amount||0; const sales=(state.storeSales||[]).filter(s=>!s.cancelled&&s.customerId===customerId&&saleOutstanding(s)>0).sort((a,b)=>new Date(a.date)-new Date(b.date)); for(const s of sales){ if(left<=0)break; const out=saleOutstanding(s); const pay=Math.min(out,left); s.paidAmount=(+s.paidAmount||0)+pay; if(saleOutstanding(s)<=0)s.paid=true; s.editedAt=iso(new Date()); left-=pay; } return (+amount||0)-left; }
+function addToCart(pid){ const p=storeProd(pid); if(!p) return; if((+p.stock||0)<=0) return toast("لا يوجد مخزون"); const ex=storeCart.find(i=>i.productId===pid); const cur=ex?ex.qty:0; if(cur+1>(+p.stock||0)) return toast("تجاوزت المخزون المتاح ("+fmt(+p.stock||0)+")"); if(ex) ex.qty++; else storeCart.push({productId:pid,name:p.name,price:+p.sellPrice||0,qty:1}); render(); }
+function changeQty(pid,d){ const i=storeCart.find(x=>x.productId===pid); if(!i) return; const p=storeProd(pid); i.qty+=d; if(i.qty<=0){ storeCart=storeCart.filter(x=>x.productId!==pid); } else if(p&&i.qty>(+p.stock||0)){ i.qty=(+p.stock||0); toast("الحد الأقصى للمخزون"); } render(); }
+function restoreSaleStock(s){ (s.items||[]).forEach(it=>{ const p=storeProd(it.productId); if(p) p.stock=(+p.stock||0)+(+it.qty||0); }); }
+function cancelSale(s){ if(s.cancelled) return; s.cancelled=true; s.editedAt=iso(new Date()); restoreSaleStock(s); if((+s.paidAmount||0)>0){ addCashMove("out",s.paidAmount,"إلغاء فاتورة "+s.no,s.customerId,s.id); } logActivity("إلغاء فاتورة متجر",(s.no||"")+" · "+money(s.total)+" "+CUR); toast("أُلغيت الفاتورة"); render(); }
+
+/* ================= المتجر: الشاشات ================= */
+function screenStore(){
+  const subs=[
+    {k:"pos",t:"نقطة البيع",icon:I.cart},
+    {k:"products",t:"المواد",icon:I.box},
+    {k:"sales",t:"المبيعات",icon:I.income},
+    {k:"purchases",t:"المشتريات",icon:I.expense},
+    {k:"customers",t:"الزبائن",icon:I.usertag},
+    {k:"cashbox",t:"الصندوق",icon:I.cash}
+  ].map(s=>`<button data-ssub="${s.k}" class="${state.storeSub===s.k?'on':''}">${svg(s.icon)}${s.t}</button>`).join("");
+  const body = state.storeSub==="products"?storeScreenProducts()
+    : state.storeSub==="sales"?storeScreenSales()
+    : state.storeSub==="purchases"?storeScreenPurchases()
+    : state.storeSub==="customers"?storeScreenCustomers()
+    : state.storeSub==="cashbox"?storeScreenCashbox()
+    : storeScreenPOS();
+  return `
+    <div class="screen-head"><h2>المتجر</h2><span>بيع ومخزون وصندوق — ويتعامل مع المغاسل</span></div>
+    <div class="seg">${subs}</div>
+    ${body}`;
+}
+function storeScreenPOS(){
+  const q=(state.storeProdSearch||"").trim();
+  let prods=(state.storeProducts||[]).filter(p=>!p.archived);
+  if(q) prods=prods.filter(p=>(p.name||"").includes(q)||(p.category||"").includes(q));
+  const custs=(state.storeCustomers||[]);
+  const custOpts=`<option value="">— زبون نقدي —</option>`+custs.map(c=>`<option value="${c.id}">${c.name}${c.isLaundry?" (مغسلة)":""}${custBalance(c.id)>0?" — دين "+money(custBalance(c.id)):""}</option>`).join("");
+  const grid=prods.length?prods.map(p=>{
+    const low=(+p.stock||0)<=(+p.minStock||0)&&(+p.minStock||0)>0, out=(+p.stock||0)<=0;
+    return `<button type="button" class="pos-prod ${out?'oos':''}" data-add="${p.id}" ${out?'disabled':''}>
+      <div class="pos-img">${p.image?`<img src="${p.image}">`:svg(I.box)}</div>
+      <div class="pos-nm">${p.name||'—'}</div>
+      <div class="pos-pr">${money(p.sellPrice)}</div>
+      <div class="pos-st ${low?'low':''}">${out?'نفد':'المخزون: '+fmt(+p.stock||0)}</div>
+    </button>`;
+  }).join(""):`<div class="panel empty" style="grid-column:1/-1">${svg(I.empty)}لا توجد مواد. أضِفها من تبويب «المواد».</div>`;
+  const cart=storeCart.map(i=>`
+    <div class="cart-row">
+      <div class="cart-nm">${i.name}</div>
+      <div class="cart-q"><button class="qbtn" data-cdec="${i.productId}">−</button><b>${i.qty}</b><button class="qbtn" data-cinc="${i.productId}">+</button></div>
+      <div class="cart-lt">${money(i.price*i.qty)}</div>
+      <button class="icon-btn" data-crm="${i.productId}">✕</button>
+    </div>`).join("");
+  const total=cartTotal();
+  return `
+    <div class="cols store-pos">
+      <div>
+        <input class="search-inp" id="posSearch" type="text" placeholder="بحث عن مادة" value="${q}">
+        <div class="pos-grid">${grid}</div>
+      </div>
+      <div class="panel pos-cart">
+        <h3>السلة</h3>
+        <div class="field"><label>الزبون</label><select id="posCust">${custOpts}</select></div>
+        <div class="cart-list">${cart||`<div class="hint" style="padding:10px 0">اضغط على مادة لإضافتها إلى السلة.</div>`}</div>
+        <div class="total-line"><span>الإجمالي</span><b>${money(total)} ${CUR}</b></div>
+        <div class="set-row" style="gap:8px;margin-top:8px">
+          <button class="btn-primary" id="posSellCash" style="flex:1" ${storeCart.length?'':'disabled'}>بيع نقدًا</button>
+          <button class="mini" id="posSellCredit" ${storeCart.length?'':'disabled'}>بيع بالدين</button>
+        </div>
+        ${storeCart.length?`<button class="mini" id="posClear" style="margin-top:8px;width:100%">تفريغ السلة</button>`:``}
+        <div class="hint" style="margin-top:8px">«بالدين» يتطلّب اختيار زبون ويُضاف إلى حسابه.</div>
+      </div>
+    </div>`;
+}
+function storeScreenProducts(){
+  const q=(state.storeProdSearch||"").trim();
+  let list=(state.storeProducts||[]).filter(p=>!p.archived);
+  if(q) list=list.filter(p=>(p.name||"").includes(q)||(p.category||"").includes(q));
+  const editing=_editProdId?storeProd(_editProdId):null;
+  const img=pendingProdImg||(editing&&editing.image)||"";
+  const cats=[...new Set((state.storeProducts||[]).map(p=>(p.category||"").trim()).filter(Boolean))];
+  const catList=cats.map(c=>`<option value="${c}"></option>`).join("");
+  const cards=list.length?list.slice().reverse().map(p=>{
+    const low=(+p.stock||0)<=(+p.minStock||0)&&(+p.minStock||0)>0, margin=(+p.sellPrice||0)-(+p.buyPrice||0);
+    return `<div class="order">
+      <div style="display:flex;gap:10px;align-items:center">
+        ${p.image?`<img class="prod-card-img" src="${p.image}">`:`<div class="prod-card-img" style="display:flex;align-items:center;justify-content:center">${svg(I.box)}</div>`}
+        <div style="flex:1">
+          <div class="cust">${p.name||'—'}${p.category?` <span class="badge b-done">${p.category}</span>`:''}</div>
+          <div class="meta">بيع: <b>${money(p.sellPrice)}</b> · شراء: ${money(p.buyPrice)} · ربح/وحدة: ${money(margin)}</div>
+          <div class="meta" style="${low?'color:var(--unpaid);font-weight:800':''}">المخزون: ${fmt(+p.stock||0)} ${p.unit||''}${low?' ⚠️ منخفض':''}</div>
+        </div>
+      </div>
+      <div class="order-acts-sub" style="margin-top:8px">
+        <button class="icon-btn" data-prod-edit="${p.id}" title="تعديل">${svg(I.edit)}</button>
+        <button class="icon-btn" data-prod-del="${p.id}" title="حذف">${svg(I.trash)}</button>
+      </div>
+    </div>`;
+  }).join(""):`<div class="panel empty" style="grid-column:1/-1">${svg(I.empty)}لا توجد مواد بعد.</div>`;
+  return `
+    <div class="cols">
+      <div class="panel">
+        <h3>${editing?'تعديل مادة':'مادة جديدة'}</h3>
+        <div class="field"><label>صورة المادة</label><div id="prodImgBox" class="prod-img-box">${img?`<img src="${img}"><button type="button" class="thumb-x" id="prodImgRm">×</button>`:`<label class="photo-add" style="margin:0"><input type="file" id="prodImgInp" accept="image/*" capture="environment" style="display:none">${svg(I.camera)}<span>صورة</span></label>`}</div></div>
+        <div class="field"><label>اسم المادة <span style="color:var(--unpaid)">*</span></label><input id="prodName" type="text" value="${editing?(editing.name||'').replace(/"/g,'&quot;'):''}" placeholder="مثال: شامبو سجاد"></div>
+        <div class="field"><label>الفئة</label><input id="prodCat" list="prodCatList" type="text" value="${editing?(editing.category||'').replace(/"/g,'&quot;'):''}" placeholder="مثال: منظفات"><datalist id="prodCatList">${catList}</datalist></div>
+        <div class="row2">
+          <div class="field"><label>سعر الشراء</label><input id="prodBuy" type="number" min="0" value="${editing?(+editing.buyPrice||0):0}"></div>
+          <div class="field"><label>سعر البيع</label><input id="prodSell" type="number" min="0" value="${editing?(+editing.sellPrice||0):0}"></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>المخزون</label><input id="prodStock" type="number" min="0" value="${editing?(+editing.stock||0):0}"></div>
+          <div class="field"><label>حد التنبيه</label><input id="prodMin" type="number" min="0" value="${editing?(+editing.minStock||0):0}"></div>
+        </div>
+        <div class="field"><label>الوحدة</label><input id="prodUnit" type="text" value="${editing?(editing.unit||'').replace(/"/g,'&quot;'):''}" placeholder="مثال: لتر، حبة، كيس"></div>
+        <button class="btn-primary" id="prodSave">${editing?'حفظ التعديل':'إضافة المادة'}</button>
+        ${editing?`<button class="mini" id="prodCancelEdit" style="width:100%;margin-top:8px">إلغاء التعديل</button>`:''}
+      </div>
+      <div>
+        <input class="search-inp" id="storeProdSearch" type="text" placeholder="بحث عن مادة" value="${q}">
+        <div class="grid orders">${cards}</div>
+      </div>
+    </div>`;
+}
+function storeScreenSales(){
+  const q=(state.storeSaleSearch||"").trim();
+  const f=state.storeSaleFilter||"all";
+  let list=(state.storeSales||[]).slice();
+  if(f==="unpaid") list=list.filter(s=>!s.cancelled&&saleOutstanding(s)>0);
+  else if(f==="paid") list=list.filter(s=>!s.cancelled&&saleOutstanding(s)<=0);
+  else if(f==="today") list=list.filter(s=>isToday(s.date));
+  if(q) list=list.filter(s=>((s.no||"").includes(q))||((s.customerName||"").includes(q)));
+  const chips=[{k:"all",t:"الكل"},{k:"unpaid",t:"غير مدفوع"},{k:"paid",t:"مدفوع"},{k:"today",t:"اليوم"}].map(c=>`<button class="chip ${f===c.k?'on':''}" data-sfilter="${c.k}">${c.t}</button>`).join("");
+  const cards=list.length?list.slice().reverse().map(s=>{
+    const out=saleOutstanding(s), items=(s.items||[]).map(i=>`${i.name} ×${i.qty}`).join("، ");
+    return `<div class="order ${s.cancelled?'cancelled':''}">
+      <div class="no">${s.no}</div>
+      <div class="cust">${s.customerName||'زبون نقدي'}</div>
+      <div class="meta">${items}</div>
+      <div class="order-dates">🗓️ ${ymd(s.date)} ${timeStr(s.date)}${s.by?` — ${s.by}`:''}</div>
+      <div class="badges">
+        ${s.cancelled?'<span class="badge badge-cancel">ملغاة 🚫</span>':''}
+        ${out>0?`<span class="badge b-unpaid">متبقٍ ${money(out)}</span>`:'<span class="badge b-paid">مدفوعة</span>'}
+      </div>
+      <div class="price">${money(s.total)} ${CUR}</div>
+      <div class="order-acts-sub">
+        ${(!s.cancelled&&out>0)?`<button class="mini act-pay" data-sale-pay="${s.id}">تحصيل</button>`:''}
+        <button class="icon-btn" data-sale-receipt="${s.id}" title="إيصال">🧾</button>
+        ${!s.cancelled?`<button class="icon-btn cancel-btn" data-sale-cancel="${s.id}" title="إلغاء (اضغط مطوّلًا)">🚫</button>`:''}
+        <button class="icon-btn" data-sale-del="${s.id}" title="حذف">${svg(I.trash)}</button>
+      </div>
+    </div>`;
+  }).join(""):`<div class="panel empty" style="grid-column:1/-1">${svg(I.empty)}لا توجد فواتير ضمن هذا التصنيف.</div>`;
+  return `
+    <div class="store-stat"><div class="s"><div class="v" style="color:var(--unpaid)">${money(totalReceivables())}</div><div class="l">إجمالي المستحقّات على الزبائن</div></div></div>
+    <input class="search-inp" id="storeSaleSearch" type="text" placeholder="بحث برقم الفاتورة أو الزبون" value="${q}">
+    <div class="chips">${chips}</div>
+    <div class="grid orders">${cards}</div>`;
+}
+function storeScreenPurchases(){
+  const prods=(state.storeProducts||[]).filter(p=>!p.archived);
+  const prodOpts=`<option value="">— اختر مادة —</option>`+prods.map(p=>`<option value="${p.id}">${p.name} (مخزون ${fmt(+p.stock||0)})</option>`).join("");
+  const cart=purCart.map((i,idx)=>`<div class="cart-row"><div class="cart-nm">${i.name} ×${i.qty}</div><div class="cart-lt">${money(i.cost*i.qty)}</div><button class="icon-btn" data-pur-rm="${idx}">✕</button></div>`).join("");
+  const total=sum(purCart,i=>i.cost*i.qty);
+  const list=(state.storePurchases||[]).slice().reverse().slice(0,40).map(p=>`<div class="order ${p.cancelled?'cancelled':''}">
+    <div class="no">${p.no}</div>
+    <div class="cust">${p.supplier||'مورّد'}</div>
+    <div class="meta">${(p.items||[]).map(i=>`${i.name} ×${i.qty}`).join('، ')}</div>
+    <div class="order-dates">🗓️ ${ymd(p.date)} ${timeStr(p.date)}${p.by?` — ${p.by}`:''}</div>
+    <div class="badges">${p.paid?'<span class="badge b-paid">مدفوعة</span>':'<span class="badge b-unpaid">غير مدفوعة</span>'}</div>
+    <div class="price">${money(p.total)} ${CUR}</div>
+    <div class="order-acts-sub"><button class="icon-btn" data-pur-del="${p.id}" title="حذف">${svg(I.trash)}</button></div>
+  </div>`).join("")||`<div class="panel empty" style="grid-column:1/-1">${svg(I.empty)}لا توجد مشتريات.</div>`;
+  return `
+    <div class="cols">
+      <div class="panel">
+        <h3>شراء / توريد</h3>
+        <div class="field"><label>المورّد</label><input id="purSupplier" type="text" placeholder="اسم المورّد"></div>
+        <div class="field"><label>المادة</label><select id="purProd">${prodOpts}</select></div>
+        <div class="row2">
+          <div class="field"><label>الكمية</label><input id="purQty" type="number" min="1" value="1"></div>
+          <div class="field"><label>سعر الشراء/وحدة</label><input id="purCost" type="number" min="0" value="0"></div>
+        </div>
+        <button class="mini" id="purAdd" style="width:100%">➕ أضف إلى الفاتورة</button>
+        <div class="cart-list" style="margin-top:10px">${cart||`<div class="hint">أضِف المواد المشتراة. (أضِف المادة من تبويب «المواد» أولًا.)</div>`}</div>
+        <div class="total-line"><span>الإجمالي</span><b>${money(total)} ${CUR}</b></div>
+        <label class="sw" style="margin:8px 0"><input type="checkbox" id="purPaid" checked> مدفوعة نقدًا (تُخصم من الصندوق)</label>
+        <button class="btn-primary" id="purSave" ${purCart.length?'':'disabled'}>تسجيل الشراء</button>
+        <div class="hint" style="margin-top:6px">يزيد المخزون تلقائيًا ويُحدِّث سعر الشراء.</div>
+      </div>
+      <div><div class="grid orders">${list}</div></div>
+    </div>`;
+}
+function storeScreenCustomers(){
+  const q=(state.storeCustSearch||"").trim();
+  let list=(state.storeCustomers||[]);
+  if(q) list=list.filter(c=>((c.name||"").includes(q))||((c.phone||"").includes(q)));
+  const editing=_editCustId?storeCust(_editCustId):null;
+  const cards=list.length?list.slice().reverse().map(c=>{
+    const bal=custBalance(c.id);
+    return `<div class="order">
+      <div class="cust">${c.name}${c.isLaundry?' <span class="badge b-done">مغسلة 🧺</span>':''}</div>
+      ${c.phone?`<div class="meta">📞 ${c.phone}</div>`:''}
+      ${c.note?`<div class="meta">${c.note}</div>`:''}
+      <div class="price" style="color:${bal>0?'var(--unpaid)':'var(--ready)'}">${bal>0?('مستحقّ عليه: '+money(bal)+' '+CUR):'لا يوجد دين'}</div>
+      <div class="order-acts-sub">
+        ${bal>0?`<button class="mini act-pay" data-scust-pay="${c.id}">تحصيل دفعة</button>`:''}
+        <button class="icon-btn" data-scust-stmt="${c.id}" title="كشف حساب">📄</button>
+        <button class="icon-btn" data-scust-edit="${c.id}" title="تعديل">${svg(I.edit)}</button>
+        <button class="icon-btn" data-scust-del="${c.id}" title="حذف">${svg(I.trash)}</button>
+      </div>
+    </div>`;
+  }).join(""):`<div class="panel empty" style="grid-column:1/-1">${svg(I.empty)}لا يوجد زبائن بعد.</div>`;
+  return `
+    <div class="cols">
+      <div class="panel">
+        <h3>${editing?'تعديل زبون':'زبون جديد'}</h3>
+        <div class="field"><label>الاسم <span style="color:var(--unpaid)">*</span></label><input id="scustName" type="text" value="${editing?(editing.name||'').replace(/"/g,'&quot;'):''}" placeholder="اسم الزبون أو المغسلة"></div>
+        <div class="field"><label>الهاتف</label><div class="phone-row"><select id="scustCountry" class="cc-select">${countryOpts(editing&&editing.country)}</select><input id="scustPhone" class="phone-inp" type="tel" inputmode="numeric" maxlength="9" value="${editing?(editing.phone||''):''}" placeholder="رقم الهاتف"></div></div>
+        <label class="sw" style="margin:8px 0"><input type="checkbox" id="scustIsLaundry" ${editing&&editing.isLaundry?'checked':''}> هذا الزبون مغسلة (شريك)</label>
+        <div class="field"><label>ملاحظة</label><input id="scustNote" type="text" value="${editing?(editing.note||'').replace(/"/g,'&quot;'):''}" placeholder="اختياري"></div>
+        <button class="btn-primary" id="scustSave">${editing?'حفظ':'إضافة الزبون'}</button>
+        ${editing?`<button class="mini" id="scustCancelEdit" style="width:100%;margin-top:8px">إلغاء التعديل</button>`:''}
+      </div>
+      <div>
+        <input class="search-inp" id="storeCustSearch" type="text" placeholder="بحث عن زبون" value="${q}">
+        <div class="grid orders">${cards}</div>
+      </div>
+    </div>`;
+}
+function storeScreenCashbox(){
+  const _t=ymd(new Date());
+  const periodTxt=(state.dateFrom===state.dateTo)?(state.dateFrom===_t?"اليوم":state.dateFrom):`${state.dateFrom} ← ${state.dateTo}`;
+  const F=(d)=>inRange(d);
+  const moves=(state.storeCash||[]).filter(m=>inRange(m.date)).slice().reverse().slice(0,60).map(m=>`
+    <tr><td>${ymd(m.date)}<div style="font-size:.7rem;color:var(--muted)">${timeStr(m.date)}</div></td>
+      <td><span class="badge ${m.type==='in'?'b-paid':'b-unpaid'}">${m.type==='in'?'وارد':'صادر'}</span></td>
+      <td>${m.reason||'—'}</td>
+      <td class="amt" style="color:${m.type==='in'?'var(--ready)':'var(--unpaid)'}">${m.type==='in'?'+':'−'}${money(m.amount)}</td>
+      <td style="text-align:left"><button class="icon-btn" data-cash-del="${m.id}" title="حذف">${svg(I.trash)}</button></td></tr>`).join("")||`<tr><td colspan="5"><div class="empty">${svg(I.empty)}لا توجد حركات في هذه الفترة.</div></td></tr>`;
+  return `
+    <div class="panel" style="text-align:center;margin-bottom:14px">
+      <div class="l" style="color:var(--muted);font-weight:700">رصيد الصندوق الحالي</div>
+      <div class="big-balance">${money(cashboxBalance())} ${CUR}</div>
+    </div>
+    <div class="store-stat">
+      <div class="s"><div class="v" style="color:var(--ready)">${money(storeSalesIncome(F))}</div><div class="l">مبيعات (${periodTxt})</div></div>
+      <div class="s"><div class="v" style="color:var(--unpaid)">${money(storePurchaseCost(F))}</div><div class="l">مشتريات</div></div>
+      <div class="s"><div class="v" style="color:var(--brand)">${money(storeProfit(F))}</div><div class="l">ربح تقديري</div></div>
+      <div class="s"><div class="v" style="color:var(--ready)">${money(cashIn(F))}</div><div class="l">وارد الصندوق</div></div>
+      <div class="s"><div class="v" style="color:var(--unpaid)">${money(cashOut(F))}</div><div class="l">صادر الصندوق</div></div>
+      <div class="s"><div class="v" style="color:var(--unpaid)">${money(totalReceivables())}</div><div class="l">مستحقّات على الزبائن</div></div>
+    </div>
+    <div class="panel">
+      <h3>حركة يدوية على الصندوق</h3>
+      <div class="row2">
+        <div class="field"><label>المبلغ</label><input id="cashAmt" type="number" min="0" value="0"></div>
+        <div class="field"><label>البيان</label><input id="cashReason" type="text" placeholder="سبب الإيداع/السحب"></div>
+      </div>
+      <div class="set-row" style="gap:8px">
+        <button class="btn-primary" id="cashInBtn" style="flex:1">إيداع +</button>
+        <button class="mini" id="cashOutBtn">سحب −</button>
+      </div>
+    </div>
+    <div class="panel" style="margin-top:14px">
+      <h3>حركات الصندوق (${periodTxt})</h3>
+      <div class="tbl-wrap"><table class="tbl"><thead><tr><th>التاريخ</th><th>النوع</th><th>البيان</th><th>المبلغ</th><th></th></tr></thead><tbody>${moves}</tbody></table></div>
+    </div>`;
+}
+
+/* ================= المتجر: إجراءات ================= */
+function doSell(isCash){
+  if(!storeCart.length) return toast("السلة فارغة");
+  const custSel=document.getElementById("posCust");
+  const customerId=custSel?custSel.value:"";
+  const cust=customerId?storeCust(customerId):null;
+  if(!isCash && !cust) return toast("البيع بالدين يتطلّب اختيار زبون");
+  for(const i of storeCart){ const p=storeProd(i.productId); if(!p) return toast("مادة غير موجودة"); if(i.qty>(+p.stock||0)) return toast("المخزون غير كافٍ لـ "+p.name); }
+  const total=cartTotal(), d=iso(new Date());
+  const items=storeCart.map(i=>({productId:i.productId,name:i.name,qty:i.qty,price:i.price}));
+  const paidAmount=isCash?total:0;
+  const sale={id:uid(),no:storeInvNo(d),customerId:customerId||null,customerName:cust?cust.name:"زبون نقدي",items,total,paidAmount,paid:isCash,date:d,by:currentUser,editedAt:d};
+  state.storeSales.push(sale);
+  items.forEach(it=>{ const p=storeProd(it.productId); if(p){ p.stock=(+p.stock||0)-it.qty; p.editedAt=iso(new Date()); } });
+  if(isCash && total>0) addCashMove("in",total,"بيع فاتورة "+sale.no,customerId,sale.id);
+  logActivity("بيع متجر", sale.no+" · "+money(total)+" "+CUR+(isCash?" (نقدًا)":" (دين · "+sale.customerName+")"));
+  storeCart=[];
+  toast(isCash?"تم البيع نقدًا ✓":"تم تسجيل البيع بالدين ✓");
+  render();
+}
+function doProdSave(){
+  const name=(document.getElementById("prodName").value||"").trim();
+  if(!name) return toast("أدخل اسم المادة");
+  const buy=+document.getElementById("prodBuy").value||0, sell=+document.getElementById("prodSell").value||0;
+  const stock=+document.getElementById("prodStock").value||0, minStock=+document.getElementById("prodMin").value||0;
+  const cat=(document.getElementById("prodCat").value||"").trim(), unit=(document.getElementById("prodUnit").value||"").trim();
+  const image=pendingProdImg||(_editProdId?((storeProd(_editProdId)||{}).image||""):"");
+  if(_editProdId){ const p=storeProd(_editProdId); if(p){ p.name=name;p.category=cat;p.buyPrice=buy;p.sellPrice=sell;p.stock=stock;p.minStock=minStock;p.unit=unit;p.image=image;p.editedAt=iso(new Date()); logActivity("تعديل مادة",name); toast("تم حفظ التعديل"); } _editProdId=null; pendingProdImg=""; }
+  else { state.storeProducts.push({id:uid(),name,category:cat,buyPrice:buy,sellPrice:sell,stock,minStock,unit,image,by:currentUser,editedAt:iso(new Date())}); logActivity("مادة جديدة",name+" · بيع "+money(sell)); toast("تمت إضافة المادة"); pendingProdImg=""; }
+  render();
+}
+function doPurSave(){
+  if(!purCart.length) return toast("أضِف موادًا للفاتورة");
+  const supplier=(document.getElementById("purSupplier").value||"").trim();
+  const paid=document.getElementById("purPaid").checked;
+  const total=sum(purCart,i=>i.cost*i.qty), d=iso(new Date());
+  const items=purCart.map(i=>({productId:i.productId,name:i.name,qty:i.qty,cost:i.cost}));
+  const pur={id:uid(),no:storePurNo(d),supplier,items,total,paid,date:d,by:currentUser,editedAt:d};
+  state.storePurchases.push(pur);
+  items.forEach(it=>{ const p=storeProd(it.productId); if(p){ p.stock=(+p.stock||0)+it.qty; p.buyPrice=it.cost; p.editedAt=iso(new Date()); } });
+  if(paid && total>0) addCashMove("out",total,"شراء "+pur.no+(supplier?(" — "+supplier):""),null,pur.id);
+  logActivity("شراء متجر", pur.no+" · "+money(total)+" "+CUR);
+  purCart=[]; toast("تم تسجيل الشراء ✓"); render();
+}
+function doStoreCustSave(){
+  const name=(document.getElementById("scustName").value||"").trim();
+  if(!name) return toast("أدخل اسم الزبون");
+  const phone=(document.getElementById("scustPhone").value||"").trim();
+  const country=document.getElementById("scustCountry").value;
+  const isLaundry=document.getElementById("scustIsLaundry").checked;
+  const note=(document.getElementById("scustNote").value||"").trim();
+  if(phone && !validPhone(phone)) return toast("رقم الهاتف يجب أن يكون 8 أرقام");
+  if(_editCustId){ const c=storeCust(_editCustId); if(c){ c.name=name;c.phone=phone;c.country=country;c.isLaundry=isLaundry;c.note=note;c.editedAt=iso(new Date()); toast("تم الحفظ"); } _editCustId=null; }
+  else { state.storeCustomers.push({id:uid(),name,phone,country,isLaundry,note,by:currentUser,editedAt:iso(new Date())}); logActivity("زبون متجر جديد",name+(isLaundry?" (مغسلة)":"")); toast("تمت الإضافة"); }
+  render();
+}
+function openSaleReceipt(s){
+  const rows=(s.items||[]).map(i=>`<div class="rcpt-row"><span>${i.name} ×${i.qty}</span><b>${money(i.price*i.qty)}</b></div>`).join("");
+  const out=saleOutstanding(s);
+  document.getElementById("receiptContent").innerHTML=`
+    <div class="rcpt">
+      <div class="rcpt-head"><b>مغاسيل صداقة — المتجر</b><div>فاتورة بيع</div></div>
+      <div class="rcpt-row"><span>رقم الفاتورة</span><b>${s.no}</b></div>
+      <div class="rcpt-row"><span>الزبون</span><b>${s.customerName||'زبون نقدي'}</b></div>
+      <div class="rcpt-row"><span>التاريخ</span><b>${ymd(s.date)} ${timeStr(s.date)}</b></div>
+      <div style="border-top:1px dashed #ccc;margin:6px 0"></div>
+      ${rows}
+      <div class="rcpt-total"><span>الإجمالي</span><b>${money(s.total)} ${CUR}</b></div>
+      ${out>0?`<div class="rcpt-row"><span>المدفوع</span><b>${money(s.paidAmount||0)}</b></div><div class="rcpt-row"><span>المتبقّي</span><b style="color:#d64545">${money(out)}</b></div>`:`<div class="rcpt-row"><span>الحالة</span><b>مدفوعة</b></div>`}
+      <div class="rcpt-foot">شكرًا لتعاملكم معنا 🌟</div>
+    </div>`;
+  document.getElementById("receiptModal").style.display="flex";
+}
+function openCustStatement(c){
+  const sales=(state.storeSales||[]).filter(s=>s.customerId===c.id).slice().reverse();
+  const pays=(state.storeCash||[]).filter(m=>m.type==="in"&&m.customerId===c.id).slice().reverse();
+  const salesRows=sales.length?sales.map(s=>`<div class="rcpt-row"><span>${s.no} ${s.cancelled?'(ملغاة)':''}</span><b>${money(s.total)}${saleOutstanding(s)>0?' · متبقٍ '+money(saleOutstanding(s)):''}</b></div>`).join(""):'<div class="hint">لا مبيعات</div>';
+  const payRows=pays.length?pays.map(m=>`<div class="rcpt-row"><span>${ymd(m.date)} — ${m.reason||'دفعة'}</span><b style="color:#2e9e6b">${money(m.amount)}</b></div>`).join(""):'<div class="hint">لا دفعات</div>';
+  document.getElementById("receiptContent").innerHTML=`
+    <div class="rcpt">
+      <div class="rcpt-head"><b>كشف حساب — ${c.name}</b><div>${c.isLaundry?'مغسلة شريكة':'زبون المتجر'}</div></div>
+      <div style="font-weight:800;margin:6px 0">الفواتير</div>${salesRows}
+      <div style="font-weight:800;margin:8px 0 6px">الدفعات المحصّلة</div>${payRows}
+      <div class="rcpt-total"><span>الرصيد المستحقّ</span><b style="color:#d64545">${money(custBalance(c.id))} ${CUR}</b></div>
+    </div>`;
+  document.getElementById("receiptModal").style.display="flex";
+}
+function openStorePay(maxAmt,title){
+  const t=document.getElementById("storePayTitle"); if(t) t.textContent=title||"تحصيل دفعة";
+  const inp=document.getElementById("storePayAmt"); if(inp) inp.value=maxAmt||0;
+  const hint=document.getElementById("storePayHint"); if(hint) hint.textContent="المستحقّ: "+money(maxAmt||0)+" "+CUR;
+  document.getElementById("storePayModal").style.display="flex";
+}
+function confirmStorePay(){
+  if(!_storePayCtx){ document.getElementById("storePayModal").style.display="none"; return; }
+  const amt=+document.getElementById("storePayAmt").value||0;
+  if(!(amt>0)){ toast("أدخل مبلغًا"); return; }
+  if(_storePayCtx.kind==="sale"){
+    const s=storeSale(_storePayCtx.id);
+    if(s){ const pay=Math.min(amt,saleOutstanding(s)); s.paidAmount=(+s.paidAmount||0)+pay; if(saleOutstanding(s)<=0)s.paid=true; s.editedAt=iso(new Date()); addCashMove("in",pay,"تحصيل فاتورة "+s.no,s.customerId,s.id); logActivity("تحصيل متجر",s.no+" · "+money(pay)+" "+CUR); toast("تم التحصيل ✓"); }
+  } else if(_storePayCtx.kind==="cust"){
+    const c=storeCust(_storePayCtx.id);
+    if(c){ const bal=custBalance(c.id); const pay=Math.min(amt,bal); const allocated=allocatePayment(c.id,pay); addCashMove("in",allocated,"تحصيل من "+c.name,c.id,null); logActivity("تحصيل متجر","من "+c.name+" · "+money(allocated)+" "+CUR); toast("تم تحصيل "+money(allocated)+" ✓"); }
+  }
+  document.getElementById("storePayModal").style.display="none"; _storePayCtx=null; render();
+}
+function bindStore(){
+  if(state.tab!=="store") return;
+  document.querySelectorAll("[data-ssub]").forEach(b=>b.onclick=()=>{ state.storeSub=b.dataset.ssub; render(); });
+  const ps=document.getElementById("posSearch"); if(ps) ps.oninput=()=>{ state.storeProdSearch=ps.value; _refocus="posSearch"; render(); };
+  const pps=document.getElementById("storeProdSearch"); if(pps) pps.oninput=()=>{ state.storeProdSearch=pps.value; _refocus="storeProdSearch"; render(); };
+  const sss=document.getElementById("storeSaleSearch"); if(sss) sss.oninput=()=>{ state.storeSaleSearch=sss.value; _refocus="storeSaleSearch"; render(); };
+  const scs=document.getElementById("storeCustSearch"); if(scs) scs.oninput=()=>{ state.storeCustSearch=scs.value; _refocus="storeCustSearch"; render(); };
+  document.querySelectorAll("[data-sfilter]").forEach(b=>b.onclick=()=>{ state.storeSaleFilter=b.dataset.sfilter; render(); });
+  // POS
+  document.querySelectorAll("[data-add]").forEach(b=>b.onclick=()=>addToCart(b.dataset.add));
+  document.querySelectorAll("[data-cinc]").forEach(b=>b.onclick=()=>changeQty(b.dataset.cinc,1));
+  document.querySelectorAll("[data-cdec]").forEach(b=>b.onclick=()=>changeQty(b.dataset.cdec,-1));
+  document.querySelectorAll("[data-crm]").forEach(b=>b.onclick=()=>{ storeCart=storeCart.filter(i=>i.productId!==b.dataset.crm); render(); });
+  const pc=document.getElementById("posClear"); if(pc) pc.onclick=()=>{ storeCart=[]; render(); };
+  const sellCash=document.getElementById("posSellCash"); if(sellCash) sellCash.onclick=()=>doSell(true);
+  const sellCredit=document.getElementById("posSellCredit"); if(sellCredit) sellCredit.onclick=()=>doSell(false);
+  // Products
+  const pimgInp=document.getElementById("prodImgInp"); if(pimgInp) pimgInp.onchange=(e)=>{ const f=e.target.files[0]; if(f) readAndCompress(f,(url)=>{ pendingProdImg=url; render(); }); };
+  const pimgRm=document.getElementById("prodImgRm"); if(pimgRm) pimgRm.onclick=()=>{ pendingProdImg=""; if(_editProdId){ const p=storeProd(_editProdId); if(p) p.image=""; } render(); };
+  const prodSave=document.getElementById("prodSave"); if(prodSave) prodSave.onclick=doProdSave;
+  const prodCancel=document.getElementById("prodCancelEdit"); if(prodCancel) prodCancel.onclick=()=>{ _editProdId=null; pendingProdImg=""; render(); };
+  document.querySelectorAll("[data-prod-edit]").forEach(b=>b.onclick=()=>{ _editProdId=b.dataset.prodEdit; pendingProdImg=""; render(); });
+  document.querySelectorAll("[data-prod-del]").forEach(b=>b.onclick=()=>{ const p=storeProd(b.dataset.prodDel); requireCode(()=>{ logActivity("حذف مادة",(p&&p.name)||""); tomb(b.dataset.prodDel); state.storeProducts=state.storeProducts.filter(x=>x.id!==b.dataset.prodDel); toast("تم الحذف"); render(); }, SECRET_CODE, "كود الحذف", "حذف المادة يتطلب الكود."); });
+  // Sales
+  document.querySelectorAll("[data-sale-pay]").forEach(b=>b.onclick=()=>{ const s=storeSale(b.dataset.salePay); if(s){ _storePayCtx={kind:"sale",id:s.id}; openStorePay(saleOutstanding(s),"تحصيل فاتورة "+s.no); } });
+  document.querySelectorAll("[data-sale-receipt]").forEach(b=>b.onclick=()=>{ const s=storeSale(b.dataset.saleReceipt); if(s) openSaleReceipt(s); });
+  document.querySelectorAll("[data-sale-cancel]").forEach(b=>bindHold(b,()=>{ const s=storeSale(b.dataset.saleCancel); if(!s)return; requireCode(()=>cancelSale(s), SECRET_CODE, "كود الإلغاء", "إلغاء الفاتورة يتطلب الكود."); },800));
+  document.querySelectorAll("[data-sale-del]").forEach(b=>b.onclick=()=>{ const s=storeSale(b.dataset.saleDel); requireCode(()=>{ if(s&&!s.cancelled) restoreSaleStock(s); logActivity("حذف فاتورة متجر",(s&&s.no)||""); tomb(b.dataset.saleDel); state.storeSales=state.storeSales.filter(x=>x.id!==b.dataset.saleDel); toast("تم الحذف"); render(); }, SECRET_CODE, "كود الحذف", "حذف الفاتورة يتطلب الكود."); });
+  // Purchases
+  const purAdd=document.getElementById("purAdd"); if(purAdd) purAdd.onclick=()=>{ const pid=document.getElementById("purProd").value; const qty=+document.getElementById("purQty").value; const cost=+document.getElementById("purCost").value; const p=storeProd(pid); if(!p) return toast("اختر مادة"); if(!(qty>0)) return toast("كمية غير صحيحة"); if(!(cost>=0)) return toast("سعر غير صحيح"); purCart.push({productId:pid,name:p.name,qty,cost}); render(); };
+  document.querySelectorAll("[data-pur-rm]").forEach(b=>b.onclick=()=>{ purCart.splice(+b.dataset.purRm,1); render(); });
+  const purSave=document.getElementById("purSave"); if(purSave) purSave.onclick=doPurSave;
+  document.querySelectorAll("[data-pur-del]").forEach(b=>b.onclick=()=>{ const p=storePurch(b.dataset.purDel); requireCode(()=>{ logActivity("حذف شراء",(p&&p.no)||""); tomb(b.dataset.purDel); state.storePurchases=state.storePurchases.filter(x=>x.id!==b.dataset.purDel); toast("تم الحذف"); render(); }, SECRET_CODE, "كود الحذف", "حذف الشراء يتطلب الكود."); });
+  // Customers
+  const scSave=document.getElementById("scustSave"); if(scSave) scSave.onclick=doStoreCustSave;
+  const scCancel=document.getElementById("scustCancelEdit"); if(scCancel) scCancel.onclick=()=>{ _editCustId=null; render(); };
+  document.querySelectorAll("[data-scust-edit]").forEach(b=>b.onclick=()=>{ _editCustId=b.dataset.scustEdit; render(); });
+  document.querySelectorAll("[data-scust-del]").forEach(b=>b.onclick=()=>{ const c=storeCust(b.dataset.scustDel); requireCode(()=>{ logActivity("حذف زبون متجر",(c&&c.name)||""); tomb(b.dataset.scustDel); state.storeCustomers=state.storeCustomers.filter(x=>x.id!==b.dataset.scustDel); toast("تم الحذف"); render(); }, SECRET_CODE, "كود الحذف", "حذف الزبون يتطلب الكود."); });
+  document.querySelectorAll("[data-scust-pay]").forEach(b=>b.onclick=()=>{ const c=storeCust(b.dataset.scustPay); if(c){ _storePayCtx={kind:"cust",id:c.id}; openStorePay(custBalance(c.id),"تحصيل من "+c.name); } });
+  document.querySelectorAll("[data-scust-stmt]").forEach(b=>b.onclick=()=>{ const c=storeCust(b.dataset.scustStmt); if(c) openCustStatement(c); });
+  // Cashbox
+  const ci=document.getElementById("cashInBtn"); if(ci) ci.onclick=()=>{ const a=+document.getElementById("cashAmt").value||0; const r=(document.getElementById("cashReason").value||"").trim(); if(!(a>0)) return toast("أدخل مبلغًا"); addCashMove("in",a,r||"إيداع يدوي"); logActivity("إيداع صندوق",money(a)+" "+CUR); toast("تم الإيداع"); render(); };
+  const co=document.getElementById("cashOutBtn"); if(co) co.onclick=()=>{ const a=+document.getElementById("cashAmt").value||0; const r=(document.getElementById("cashReason").value||"").trim(); if(!(a>0)) return toast("أدخل مبلغًا"); addCashMove("out",a,r||"سحب يدوي"); logActivity("سحب صندوق",money(a)+" "+CUR); toast("تم السحب"); render(); };
+  document.querySelectorAll("[data-cash-del]").forEach(b=>b.onclick=()=>{ requireCode(()=>{ tomb(b.dataset.cashDel); state.storeCash=state.storeCash.filter(x=>x.id!==b.dataset.cashDel); toast("تم الحذف"); render(); }, SECRET_CODE, "كود الحذف", "حذف حركة الصندوق يتطلب الكود."); });
+  // store pay modal buttons
+  const spOk=document.getElementById("storePayOk"); if(spOk) spOk.onclick=confirmStorePay;
+  const spCancel=document.getElementById("storePayCancel"); if(spCancel) spCancel.onclick=()=>{ document.getElementById("storePayModal").style.display="none"; _storePayCtx=null; };
+}
+
 function screenExpenses(){
   const seg=[
     {k:"general",t:"مصروفات عامة",icon:I.wallet},
@@ -1597,7 +2095,7 @@ function screenReports(){
 function render(){
   renderNav();
   updateNotifBadge();
-  const map={dashboard:screenDashboard,cars:screenCars,laundry:screenLaundry,carpets:screenCarpets,expenses:screenExpenses,reports:screenReports};
+  const map={dashboard:screenDashboard,cars:screenCars,laundry:screenLaundry,carpets:screenCarpets,store:screenStore,expenses:screenExpenses,reports:screenReports};
   document.getElementById("main").innerHTML=`<div class="screen">${(map[state.tab]||screenDashboard)()}</div>`;
   bindScreen();
 }
@@ -1838,6 +2336,9 @@ function bindScreen(){
   document.querySelectorAll("[data-lnd-wa]").forEach(b=>b.onclick=()=>{ const o=(state.laundryOrders||[]).find(x=>x.id===b.dataset.lndWa); if(o) openLndWa(o); });
   document.querySelectorAll("[data-lnd-receipt]").forEach(b=>b.onclick=()=>{ const o=(state.laundryOrders||[]).find(x=>x.id===b.dataset.lndReceipt); if(o) openLndReceipt(o); });
 
+  // store (المتجر)
+  bindStore();
+
   // expenses
   const es=document.getElementById("expSave");
   if(es){
@@ -1993,7 +2494,7 @@ function meterCode(){ return (state.meterPin&&state.meterPin.trim())?state.meter
 
 /* ============ persistence + theme + logo ============ */
 const LS_KEY="sadaqa_laundry_v1";
-const CLOUD_OMIT=["tab","expSub","carpetFilter","cpSearch","custSearch","expSearch","carSearch","lndSearch","lndFilter","dateFrom","dateTo","dark","palette"];
+const CLOUD_OMIT=["tab","expSub","carpetFilter","cpSearch","custSearch","expSearch","carSearch","lndSearch","lndFilter","storeSub","storeProdSearch","storeSaleSearch","storeCustSearch","storeSaleFilter","dateFrom","dateTo","dark","palette"];
 let _applyingRemote=false, _pushT=null;
 let L_pending_push=false;
 function saveLocal(){ try{ state._savedAt=Date.now(); localStorage.setItem(LS_KEY, JSON.stringify(state)); }catch(e){} }
@@ -2076,6 +2577,15 @@ function applyRemote(remote){
   state.users=mergeById(L.users, remote.users, state.deleted);
   state.laundryOrders=mergeById(L.laundryOrders, remote.laundryOrders, state.deleted);
   state.laundryPrices=Object.assign({}, remote.laundryPrices||{}, localLndPrices);
+  // ====== المتجر: دمج بالمعرّف مع الصور المحلية ======
+  const Lstore={ storeProducts:state.storeProducts||[], storeSales:state.storeSales||[], storePurchases:state.storePurchases||[], storeCustomers:state.storeCustomers||[], storeCash:state.storeCash||[] };
+  const spm={}; Lstore.storeProducts.forEach(p=>{ if(p.image) spm[p.id]=p.image; });
+  state.storeProducts=mergeById(Lstore.storeProducts, remote.storeProducts, state.deleted);
+  state.storeSales=mergeById(Lstore.storeSales, remote.storeSales, state.deleted);
+  state.storePurchases=mergeById(Lstore.storePurchases, remote.storePurchases, state.deleted);
+  state.storeCustomers=mergeById(Lstore.storeCustomers, remote.storeCustomers, state.deleted);
+  state.storeCash=mergeById(Lstore.storeCash, remote.storeCash, state.deleted);
+  (state.storeProducts||[]).forEach(p=>{ if(!p.image && spm[p.id]) p.image=spm[p.id]; });
   state.activity=mergeById(L.activity, remote.activity, state.deleted).sort((a,b)=>(a.ts||0)-(b.ts||0)).slice(-400);
   state.notifSeenTs=Math.max(localSeenTs, remote.notifSeenTs||0);
   const cs=Object.assign({}, remote.customers||{});
@@ -2570,6 +3080,18 @@ function runMigrations(){
   if(!state.laundryOrders) state.laundryOrders=[];
   if(!state.laundryPrices) state.laundryPrices={};
   if(typeof state.lndSeq!=="number") state.lndSeq=(state.laundryOrders||[]).length;
+  if(!state.storeProducts) state.storeProducts=[];
+  if(!state.storeSales) state.storeSales=[];
+  if(!state.storePurchases) state.storePurchases=[];
+  if(!state.storeCustomers) state.storeCustomers=[];
+  if(!state.storeCash) state.storeCash=[];
+  if(typeof state.storeSeq!=="number") state.storeSeq=(state.storeSales||[]).length;
+  if(typeof state.storePurSeq!=="number") state.storePurSeq=(state.storePurchases||[]).length;
+  if(!state.storeSub) state.storeSub="pos";
+  if(typeof state.storeProdSearch!=="string") state.storeProdSearch="";
+  if(typeof state.storeSaleSearch!=="string") state.storeSaleSearch="";
+  if(typeof state.storeCustSearch!=="string") state.storeCustSearch="";
+  if(!state.storeSaleFilter) state.storeSaleFilter="all";
   if(!state.activity) state.activity=[];
   if(typeof state.notifSeenTs!=="number") state.notifSeenTs=0;
   if(!state.notify) state.notify={telegram:{enabled:false,token:"",chatId:""}};
@@ -2626,7 +3148,7 @@ setTimeout(()=>{ if(!window.cloudReady){ const el=document.getElementById("cloud
 <!-- PWA: service-worker registration + update/install wiring -->
 <script>
 (function(){
-  var APP_VERSION = "1.0.1";
+  var APP_VERSION = "1.1.0";
   function $(id){ return document.getElementById(id); }
   function setText(id,t){ var el=$(id); if(el) el.textContent=t; }
 
