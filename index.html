@@ -1070,6 +1070,8 @@ function screenDashboard(){
   const inc=carsInc+rugsInc+lndInc;
   const genT=manualExp(F), utilT=utilityCost(F), wagesT=wagesRange();
   const exp=genT+utilT+wagesT, profit=inc-exp;
+  const intPurchT=storeToLaundryPurch(F), storeMarginT=storeProfit(F);
+  const laundryProfit=profit-intPurchT, groupProfit=laundryProfit+storeMarginT;
   const washingList=state.carpetOrders.filter(o=>o.status==="wash"&&F(o.date));
   const washing=washingList.length, washingAmt=sum(washingList,o=>o.price);
   const lndActiveList=(state.laundryOrders||[]).filter(o=>!o.cancelled&&o.status!=="done"&&(laundryPending(o)||F(o.date)));
@@ -1092,7 +1094,9 @@ function screenDashboard(){
   const duesCount=duesCar.length+duesRug.length+duesLnd.length;
   const duesAmt=sum(duesCar,o=>o.price)+sum(duesRug,o=>o.price)+sum(duesLnd,o=>o.price);
   const M=[
-    {label:`ربح ${periodLabel}`,val:money(profit),ic:I.profit,bg:"var(--chip)",c:"var(--brand)"},
+    {label:`الربح المجمّع ${periodLabel}`,val:money(groupProfit),ic:I.profit,bg:"var(--chip)",c:"var(--brand)",sub:`مغسلة ${money(laundryProfit)} + متجر ${money(storeMarginT)}`},
+    {label:`ربح المغسلة ${periodLabel}`,val:money(laundryProfit),ic:I.fabric,bg:"var(--ready-bg)",c:"var(--ready)"},
+    {label:`ربح المتجر ${periodLabel}`,val:money(storeMarginT),ic:I.shop,bg:"var(--wash-bg)",c:"var(--wash)"},
     {label:"مستحقّات غير مدفوعة",val:money(duesAmt),ic:I.wallet,bg:"var(--unpaid-bg)",c:"var(--unpaid)",sub:`${duesCount} طلب (سيارات+سجاد+ملابس)`},
     {label:"طلبات سجاد قيد الغسيل",val:washing,ic:I.clock,bg:"var(--wash-bg)",c:"var(--wash)",sub:`بقيمة ${money(washingAmt)}`},
     {label:"ملابس قيد العمل",val:lndActive,ic:I.fabric,bg:"var(--ready-bg)",c:"var(--ready)",sub:`بقيمة ${money(lndActiveAmt)}`}
@@ -1397,6 +1401,9 @@ function storeSalesIncome(f){ return sum((state.storeSales||[]).filter(s=>!s.can
 function storePurchaseCost(f){ return sum((state.storePurchases||[]).filter(p=>!p.cancelled&&f(p.date)),p=>+p.total||0); }
 function storeProfit(f){ let g=0; (state.storeSales||[]).filter(s=>!s.cancelled&&f(s.date)).forEach(s=>{ (s.items||[]).forEach(it=>{ const p=storeProd(it.productId); const cost=p?(+p.buyPrice||0):0; g+=((+it.price||0)-cost)*(+it.qty||0); }); }); return g; }
 function totalReceivables(){ return sum((state.storeSales||[]).filter(s=>!s.cancelled),s=>saleOutstanding(s)); }
+function isLaundryCustomer(id){ const c=storeCust(id); return !!(c&&c.isLaundry); }
+/* مشتريات المغسلة من المتجر (بيع داخلي) خلال الفترة — تُعامَل مصروفًا على المغسلة */
+function storeToLaundryPurch(f){ return sum((state.storeSales||[]).filter(s=>!s.cancelled&&isLaundryCustomer(s.customerId)&&f(s.date)),s=>+s.total||0); }
 function cartTotal(){ return sum(storeCart,i=>(+i.price||0)*(+i.qty||0)); }
 function addCashMove(type,amount,reason,customerId,ref){ state.storeCash.push({id:uid(),type,amount:+amount||0,reason:reason||"",customerId:customerId||null,ref:ref||null,date:iso(new Date()),by:currentUser,editedAt:iso(new Date())}); }
 function allocatePayment(customerId,amount){ let left=+amount||0; const sales=(state.storeSales||[]).filter(s=>!s.cancelled&&s.customerId===customerId&&saleOutstanding(s)>0).sort((a,b)=>new Date(a.date)-new Date(b.date)); for(const s of sales){ if(left<=0)break; const out=saleOutstanding(s); const pay=Math.min(out,left); s.paidAmount=(+s.paidAmount||0)+pay; if(saleOutstanding(s)<=0)s.paid=true; s.editedAt=iso(new Date()); left-=pay; } return (+amount||0)-left; }
@@ -2043,6 +2050,15 @@ function screenReports(){
   const diff=mInc-lmInc, pct=lmInc>0?Math.round(diff/lmInc*100):(mInc>0?100:0);
   const days=[]; for(let i=6;i>=0;i--){const d=new Date(now);d.setDate(d.getDate()-i);const ds=ymd(d);const F=(x)=>ymd(x)===ds;days.push({label:d.toLocaleDateString("ar",{weekday:"short"}),inc:carIncome(F)+carpetIncome(F)+laundryIncome(F)});}
   const maxD=Math.max(...days.map(x=>x.inc),1);
+  // ===== الربح الموحّد (الفترة المختارة) =====
+  const UF=(d)=>inRange(d);
+  const uLndInc=carIncome(UF)+carpetIncome(UF)+laundryIncome(UF);
+  const uGen=manualExp(UF), uUtil=utilityCost(UF), uWages=wagesRange(), uIntPurch=storeToLaundryPurch(UF);
+  const uLndProfit=uLndInc-(uGen+uUtil+uWages+uIntPurch);
+  const uStoreSales=storeSalesIncome(UF), uStoreExt=uStoreSales-uIntPurch, uStoreMargin=storeProfit(UF);
+  const uGroup=uLndProfit+uStoreMargin;
+  const _ut=ymd(new Date());
+  const uPeriod=(state.dateFrom===state.dateTo)?(state.dateFrom===_ut?"اليوم":state.dateFrom):`${state.dateFrom} ← ${state.dateTo}`;
   const card=(t,d,m,c)=>`
     <div class="panel"><h3>${t}</h3>
       <div style="display:flex;justify-content:space-between;margin-bottom:8px">
@@ -2052,6 +2068,30 @@ function screenReports(){
     </div>`;
   return `
     <div class="screen-head"><h2>التقارير</h2><span>ملخص الأداء</span><button class="mini no-print" id="reportPrint" style="margin-inline-start:auto">طباعة التقرير</button></div>
+    <div class="panel" style="margin-bottom:16px">
+      <h3>💰 الربح الموحّد (${uPeriod})</h3>
+      <div class="store-stat" style="margin-bottom:12px">
+        <div class="s"><div class="v" style="color:var(--brand)">${money(uGroup)}</div><div class="l">الربح المجمّع (مغسلة + متجر)</div></div>
+        <div class="s"><div class="v" style="color:var(--ready)">${money(uLndProfit)}</div><div class="l">ربح المغسلة</div></div>
+        <div class="s"><div class="v" style="color:var(--wash)">${money(uStoreMargin)}</div><div class="l">ربح المتجر</div></div>
+      </div>
+      <div class="tbl-wrap"><table class="tbl"><tbody>
+        <tr><td colspan="2" style="font-weight:800;color:var(--teal)">🧺 المغسلة</td></tr>
+        <tr><td>الدخل (سيارات + سجاد + ملابس)</td><td class="amt" style="text-align:left">${money(uLndInc)}</td></tr>
+        <tr><td>− رواتب العمّال</td><td class="amt" style="text-align:left;color:var(--unpaid)">${money(uWages)}</td></tr>
+        <tr><td>− مصروفات عامة</td><td class="amt" style="text-align:left;color:var(--unpaid)">${money(uGen)}</td></tr>
+        <tr><td>− عدّادات (كهرباء/ماء)</td><td class="amt" style="text-align:left;color:var(--unpaid)">${money(uUtil)}</td></tr>
+        <tr><td>− مواد من المتجر (داخلي)</td><td class="amt" style="text-align:left;color:var(--unpaid)">${money(uIntPurch)}</td></tr>
+        <tr><td><b>= ربح المغسلة</b></td><td class="amt" style="text-align:left;font-weight:800;color:var(--ready)">${money(uLndProfit)}</td></tr>
+        <tr><td colspan="2" style="font-weight:800;color:var(--wash);padding-top:10px">🏪 المتجر</td></tr>
+        <tr><td>مبيعات المتجر (إجمالي)</td><td class="amt" style="text-align:left">${money(uStoreSales)}</td></tr>
+        <tr><td>— منها بيع داخلي للمغسلة</td><td class="amt" style="text-align:left;color:var(--muted)">${money(uIntPurch)}</td></tr>
+        <tr><td>— منها بيع لزبائن من الخارج</td><td class="amt" style="text-align:left">${money(uStoreExt)}</td></tr>
+        <tr><td><b>= ربح المتجر (هامش البيع)</b></td><td class="amt" style="text-align:left;font-weight:800;color:var(--wash)">${money(uStoreMargin)}</td></tr>
+        <tr style="border-top:2px solid var(--line)"><td style="font-weight:800;font-size:1.02rem">الربح المجمّع للمجموعة</td><td class="amt" style="text-align:left;font-weight:800;color:var(--brand);font-size:1.05rem">${money(uGroup)}</td></tr>
+      </tbody></table></div>
+      <div class="hint" style="margin-top:8px">البيع الداخلي للمغسلة يظهر دخلًا للمتجر ومصروفًا على المغسلة فيتعادل في الإجمالي؛ فيبقى الربح الحقيقي = (أرباح زبائن الخارج + خدمات المغسلة) − التكاليف الخارجية.</div>
+    </div>
     <div class="grid metrics" style="margin-bottom:16px">
       ${card("الدخل",dInc,mInc,"var(--ready)")}
       ${card("المصروفات",dExp,mExp,"var(--unpaid)")}
@@ -3148,7 +3188,7 @@ setTimeout(()=>{ if(!window.cloudReady){ const el=document.getElementById("cloud
 <!-- PWA: service-worker registration + update/install wiring -->
 <script>
 (function(){
-  var APP_VERSION = "1.1.0";
+  var APP_VERSION = "1.2.0";
   function $(id){ return document.getElementById(id); }
   function setText(id,t){ var el=$(id); if(el) el.textContent=t; }
 
