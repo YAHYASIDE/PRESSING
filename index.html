@@ -1673,6 +1673,22 @@ function storeScreenCashbox(){
 }
 
 /* ================= المتجر: إجراءات ================= */
+function commitStoreSale(customerId, cust, items, isCash){
+  const its=items.map(i=>({productId:i.productId,name:i.name,qty:+i.qty||0,price:+i.price||0}));
+  const total=sum(its,i=>i.price*i.qty), d=iso(new Date());
+  const sale={id:uid(),no:storeInvNo(d),customerId:customerId||null,customerName:cust?cust.name:"زبون نقدي",items:its,total,paidAmount:isCash?total:0,paid:isCash,date:d,by:currentUser,editedAt:d};
+  state.storeSales.push(sale);
+  its.forEach(it=>{ const p=storeProd(it.productId); if(p){ p.stock=(+p.stock||0)-it.qty; p.editedAt=iso(new Date()); } });
+  if(isCash && total>0) addCashMove("in",total,"بيع فاتورة "+sale.no,customerId,sale.id);
+  logActivity("بيع متجر", sale.no+" · "+money(total)+" "+CUR+(isCash?" (نقدًا)":" (دين · "+sale.customerName+")"));
+  return sale;
+}
+function ensureLaundryCustomer(){
+  const lc=(state.storeCustomers||[]).filter(c=>c.isLaundry);
+  if(lc.length) return lc[0];
+  const c={id:uid(),name:"المغسلة",isLaundry:true,by:currentUser,editedAt:iso(new Date())};
+  state.storeCustomers.push(c); return c;
+}
 function doSell(isCash){
   if(!storeCart.length) return toast("السلة فارغة");
   const custSel=document.getElementById("posCust");
@@ -1680,17 +1696,26 @@ function doSell(isCash){
   const cust=customerId?storeCust(customerId):null;
   if(!isCash && !cust) return toast("البيع بالدين يتطلّب اختيار زبون");
   for(const i of storeCart){ const p=storeProd(i.productId); if(!p) return toast("مادة غير موجودة"); if(i.qty>(+p.stock||0)) return toast("المخزون غير كافٍ لـ "+p.name); }
-  const total=cartTotal(), d=iso(new Date());
-  const items=storeCart.map(i=>({productId:i.productId,name:i.name,qty:i.qty,price:i.price}));
-  const paidAmount=isCash?total:0;
-  const sale={id:uid(),no:storeInvNo(d),customerId:customerId||null,customerName:cust?cust.name:"زبون نقدي",items,total,paidAmount,paid:isCash,date:d,by:currentUser,editedAt:d};
-  state.storeSales.push(sale);
-  items.forEach(it=>{ const p=storeProd(it.productId); if(p){ p.stock=(+p.stock||0)-it.qty; p.editedAt=iso(new Date()); } });
-  if(isCash && total>0) addCashMove("in",total,"بيع فاتورة "+sale.no,customerId,sale.id);
-  logActivity("بيع متجر", sale.no+" · "+money(total)+" "+CUR+(isCash?" (نقدًا)":" (دين · "+sale.customerName+")"));
+  commitStoreSale(customerId, cust, storeCart.map(i=>({productId:i.productId,name:i.name,qty:i.qty,price:i.price})), isCash);
   storeCart=[];
   toast(isCash?"تم البيع نقدًا ✓":"تم تسجيل البيع بالدين ✓");
   render();
+}
+function doStoreMatSale(){
+  const prods=(state.storeProducts||[]).filter(p=>!p.archived);
+  if(!prods.length) return toast("أضِف موادًا في المتجر أولًا");
+  const pid=document.getElementById("smProd").value;
+  const p=storeProd(pid); if(!p) return toast("اختر مادة");
+  const qty=+document.getElementById("smQty").value||0, price=+document.getElementById("smPrice").value||0;
+  if(!(qty>0)) return toast("أدخل كمية صحيحة");
+  if(qty>(+p.stock||0)) return toast("المخزون غير كافٍ ("+fmt(+p.stock||0)+")");
+  const paid=document.getElementById("smPaid").checked;
+  const lc=(state.storeCustomers||[]).filter(c=>c.isLaundry);
+  let cust;
+  if(lc.length>1){ const sel=document.getElementById("smCust"); cust=storeCust(sel?sel.value:lc[0].id)||lc[0]; }
+  else cust=ensureLaundryCustomer();
+  commitStoreSale(cust.id, cust, [{productId:pid,name:p.name,qty,price}], paid);
+  toast("تم تسجيل سحب المواد ✓"); render();
 }
 function doProdSave(){
   const name=(document.getElementById("prodName").value||"").trim();
@@ -1830,10 +1855,11 @@ function bindStore(){
 function screenExpenses(){
   const seg=[
     {k:"general",t:"مصروفات عامة",icon:I.wallet},
+    {k:"storemat",t:"مواد من المتجر",icon:I.box},
     {k:"meters",t:"العدادات",icon:I.bolt},
     {k:"workers",t:"العمّال",icon:I.worker}
   ].map(s=>`<button data-sub="${s.k}" class="${state.expSub===s.k?'on':''}">${svg(s.icon)}${s.t}</button>`).join("");
-  const body = state.expSub==="meters"?expMeters() : state.expSub==="workers"?expWorkers() : expGeneral();
+  const body = state.expSub==="meters"?expMeters() : state.expSub==="workers"?expWorkers() : state.expSub==="storemat"?expStoreMaterials() : expGeneral();
   return `
     <div class="screen-head"><h2>المصروفات</h2><span>الكهرباء والماء بالعدّاد، والرواتب باليومية</span></div>
     <div class="seg">${seg}</div>
@@ -1897,6 +1923,39 @@ function expGeneral(){
     })()}`;
 }
 
+function expStoreMaterials(){
+  const prods=(state.storeProducts||[]).filter(p=>!p.archived);
+  const laundryCusts=(state.storeCustomers||[]).filter(c=>c.isLaundry);
+  const _t=ymd(new Date());
+  const periodTxt=(state.dateFrom===state.dateTo)?(state.dateFrom===_t?"اليوم":state.dateFrom):`${state.dateFrom} ← ${state.dateTo}`;
+  if(!prods.length) return `<div class="panel empty">${svg(I.empty)}أضِف موادًا في تبويب «المتجر ▸ المواد» أولًا، ثم ارجع هنا لتسجيل سحب المغسلة.</div>`;
+  const prodOpts=prods.map((p,i)=>`<option value="${p.id}" data-pr="${+p.sellPrice||0}">${p.name} (${money(p.sellPrice)} · مخزون ${fmt(+p.stock||0)})</option>`).join("");
+  const custOpts=laundryCusts.map(c=>`<option value="${c.id}">${c.name}</option>`).join("");
+  const start=+prods[0].sellPrice||0;
+  const recent=(state.storeSales||[]).filter(s=>!s.cancelled&&isLaundryCustomer(s.customerId)).slice().reverse().slice(0,30);
+  const rows=recent.length?recent.map(s=>`<tr><td>${ymd(s.date)}<div style="font-size:.7rem;color:var(--muted)">${timeStr(s.date)}</div></td><td>${(s.items||[]).map(i=>i.name+' ×'+i.qty).join('، ')}</td><td class="amt">${money(s.total)}</td><td>${s.paid?'<span class="badge b-paid">نقدًا</span>':'<span class="badge b-unpaid">دين</span>'}</td></tr>`).join(""):`<tr><td colspan="4"><div class="empty">${svg(I.empty)}لا سحوبات بعد.</div></td></tr>`;
+  return `
+    <div class="cols">
+      <div class="panel">
+        <h3>🧺 سحب مواد للمغسلة (زر سريع)</h3>
+        <div class="hint" style="margin-bottom:10px">يُسجَّل بيعًا داخليًا من المتجر للمغسلة: يُنقص المخزون، ويظهر دخلًا للمتجر ومصروفًا على المغسلة في الربح الموحّد.</div>
+        ${laundryCusts.length>1?`<div class="field"><label>المغسلة</label><select id="smCust">${custOpts}</select></div>`:''}
+        <div class="field"><label>المادة</label><select id="smProd">${prodOpts}</select></div>
+        <div class="row2">
+          <div class="field"><label>الكمية</label><input id="smQty" type="number" min="1" value="1"></div>
+          <div class="field"><label>السعر/وحدة</label><input id="smPrice" type="number" min="0" value="${start}"></div>
+        </div>
+        <div class="total-line"><span>الإجمالي</span><b><span id="smTotal">${start}</span> ${CUR}</b></div>
+        <label class="sw" style="margin:8px 0"><input type="checkbox" id="smPaid"> دفعت المغسلة نقدًا الآن (وإلا يُسجَّل دينًا)</label>
+        <button class="btn-primary" id="smSave">تسجيل السحب</button>
+      </div>
+      <div class="panel">
+        <h3>سحوبات المغسلة من المتجر</h3>
+        <div class="tbl-wrap"><table class="tbl"><thead><tr><th>التاريخ</th><th>المواد</th><th>المبلغ</th><th>الدفع</th></tr></thead><tbody>${rows}</tbody></table></div>
+        <div class="sum-row"><span>إجمالي مواد المغسلة (${periodTxt})</span><span class="big">${money(storeToLaundryPurch(d=>inRange(d)))} ${CUR}</span></div>
+      </div>
+    </div>`;
+}
 function expMeters(){
   const list=sortedMeters();
   const recent=list[list.length-1]||null;
@@ -2401,6 +2460,16 @@ function bindScreen(){
 
   // expenses sub-tabs
   document.querySelectorAll("[data-sub]").forEach(b=>b.onclick=()=>{state.expSub=b.dataset.sub;render();});
+
+  // store materials quick-sell (المصاريف ▸ مواد من المتجر)
+  const smProd=document.getElementById("smProd"), smQty=document.getElementById("smQty"), smPrice=document.getElementById("smPrice"), smTotal=document.getElementById("smTotal");
+  if(smProd){
+    const smRecalc=()=>{ if(smTotal) smTotal.textContent=fmt((+smPrice.value||0)*(+smQty.value||0)); };
+    smProd.onchange=()=>{ const opt=smProd.options[smProd.selectedIndex]; const pr=opt?+opt.dataset.pr||0:0; if(smPrice) smPrice.value=pr; smRecalc(); };
+    if(smQty) smQty.oninput=smRecalc;
+    if(smPrice) smPrice.oninput=smRecalc;
+    const smSave=document.getElementById("smSave"); if(smSave) smSave.onclick=doStoreMatSale;
+  }
 
   // meters
   const ms=document.getElementById("meterSave");
@@ -3188,7 +3257,7 @@ setTimeout(()=>{ if(!window.cloudReady){ const el=document.getElementById("cloud
 <!-- PWA: service-worker registration + update/install wiring -->
 <script>
 (function(){
-  var APP_VERSION = "1.2.0";
+  var APP_VERSION = "1.3.0";
   function $(id){ return document.getElementById(id); }
   function setText(id,t){ var el=$(id); if(el) el.textContent=t; }
 
