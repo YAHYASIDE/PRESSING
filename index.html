@@ -619,8 +619,13 @@
         <label class="mini" style="cursor:pointer">استيراد<input type="file" id="fileImport" accept="application/json,.json" style="display:none"></label>
       </div>
       <div class="set-row" style="margin-top:9px">
+        <button class="mini" id="btnResetFin" style="background:#fff3e0;color:#c77800;border-color:#f0dcae;font-weight:800">🧹 تصفير الحسابات (بدء من جديد)</button>
+      </div>
+      <div class="hint" style="margin:6px 0 10px">يحذف كل العمليات والأرباح والخسائر (سيارات، سجاد، ملابس، مصروفات، عدّادات، ومبيعات/مشتريات/صندوق المتجر والسجلّ) ويبدأ من الصفر — <b>ويُبقي</b> المواد والأسعار والأصناف والحسابات والزبائن.</div>
+      <div class="set-row" style="margin-top:4px">
         <button class="mini" id="btnReset" style="background:var(--unpaid-bg);color:var(--unpaid);border-color:#f0cccc">مسح كل البيانات نهائيًا</button>
       </div>
+      <div class="hint" style="margin-top:6px">يمسح <b>كل شيء</b> نهائيًا (حتى المواد والحسابات) — للبدء من مستودع فارغ تمامًا.</div>
     </div>
     <div class="set-sec">
       <div class="set-title">كود فتح التطبيق (دائمًا مفعّل)</div>
@@ -2960,6 +2965,25 @@ function resetAllData(){
   toast("تم مسح كل البيانات");
   render();
 }
+function resetFinancials(){
+  const D=state.deleted||(state.deleted={});
+  const tombArr=(arr)=>{ (arr||[]).forEach(o=>{ if(o&&o.id) D["rec:"+o.id]=Date.now(); }); };
+  tombArr(state.carOps); tombArr(state.carpetOrders); tombArr(state.laundryOrders);
+  tombArr(state.expenses); tombArr(state.meters);
+  tombArr(state.storeSales); tombArr(state.storePurchases); tombArr(state.storeCash);
+  tombArr(state.activity);
+  state.carOps=[]; state.carpetOrders=[]; state.laundryOrders=[];
+  state.expenses=[]; state.meters=[];
+  state.storeSales=[]; state.storePurchases=[]; state.storeCash=[];
+  state.activity=[];
+  state.orderSeq=0; state.carSeq={}; state.lndSeq=0; state.storeSeq=0; state.storePurSeq=0;
+  Object.keys(state.customers||{}).forEach(k=>{ const c=state.customers[k]; if(c){ c.stamps=0; c.totalWashes=0; c.freeWashes=0; } });
+  state.notifSeenTs=Date.now();
+  saveLocal();
+  try{ if(window.cloudReady) window.cloudPush(cloudCopy()); }catch(e){}
+  toast("تم تصفير الحسابات — بدأنا من جديد ✓");
+  render();
+}
 
 /* ---- lock ---- */
 let unlocked=false, currentUser="", currentRole="", currentUserId="";
@@ -3184,6 +3208,7 @@ document.getElementById("payCancel").onclick=()=>{ document.getElementById("payM
 document.getElementById("btnExport").onclick=exportData;
 document.getElementById("fileImport").onchange=(e)=>{ if(e.target.files[0]) importData(e.target.files[0]); };
 document.getElementById("btnReset").onclick=()=>{ if(confirm("سيتم مسح كل البيانات (الطلبات، الزبائن، المصروفات، العمّال، العدّادات) من هذا الجهاز والسحابة نهائيًا. هل أنت متأكد؟")){ resetAllData(); document.getElementById("settingsModal").style.display="none"; } };
+document.getElementById("btnResetFin").onclick=()=>{ if(confirm("تصفير كل الأرباح والخسائر والعمليات (سيارات، سجاد، ملابس، مصروفات، عدّادات، ومبيعات المتجر ومشترياته وصندوقه والسجلّ) والبدء من جديد.\n\nيبقى: المواد والأسعار والأصناف والحسابات والزبائن.\n\nهل أنت متأكد؟")){ requireCode(()=>{ resetFinancials(); document.getElementById("settingsModal").style.display="none"; }, SECRET_CODE, "كود التصفير", "تصفير الحسابات يتطلّب كود التحقق."); } };
 document.getElementById("setSave").onclick=()=>{
   const pin=document.getElementById("lockPinSet").value.trim()||"0707";
   state.lock={enabled:true,pin:pin};
@@ -3352,7 +3377,7 @@ setTimeout(()=>{ if(!window.cloudReady){ const el=document.getElementById("cloud
 <!-- PWA: service-worker registration + update/install wiring -->
 <script>
 (function(){
-  var APP_VERSION = "1.5.0";
+  var APP_VERSION = "1.6.0";
   function $(id){ return document.getElementById(id); }
   function setText(id,t){ var el=$(id); if(el) el.textContent=t; }
 
