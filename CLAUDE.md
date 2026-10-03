@@ -165,6 +165,12 @@ mobile/package.json            # اعتماديات Capacitor
 
 ## 7) ملاحظات تطوير واختبار
 
+- **Skill المشروع:** `.claude/skills/pressing-app/SKILL.md` — طريقة العمل الكاملة
+  (متى تسأل المالك، قواعد سلامة البيانات، الاختبار، النشر). يُحمَّل تلقائيًا في
+  جلسات Claude Code القادمة على هذا المستودع.
+- **الاختبار بأمر واحد:** `bash tests/run.sh` (فحص الصياغة + تطابق الإصدار + كل
+  حزم `tests/e2e/*.test.js`). يفشل عند أي انهيار أو خطأ كونسول أو فحص يخالف
+  `(expect …)`. أضِف حزمة لكل ميزة جديدة.
 - خادم محلي: `python3 -m http.server 8123` ثم افتح `http://localhost:8123/`.
   (الـ Service Worker يعمل على `localhost` و`https` فقط، لا على `file://`.)
 - اختبار سريع بـ Playwright متوفّر (Chromium في `/opt/node22/lib/node_modules`).
