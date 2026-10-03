@@ -1091,6 +1091,27 @@ function sendReport2(){
   try{ if(navigator.share){ navigator.share({text}).catch(()=>{}); return; } }catch(e){}
   window.open("https://wa.me/?text="+encodeURIComponent(text),"_blank");
 }
+function datePreset(k,t){
+  const now=new Date(); const today=ymd(now);
+  const yd=new Date(now); yd.setDate(yd.getDate()-1);
+  const ws=new Date(now); ws.setDate(ws.getDate()-6);
+  const mS=ymd(new Date(now.getFullYear(),now.getMonth(),1));
+  let on=false;
+  if(k==="today") on=state.dateFrom===today&&state.dateTo===today;
+  else if(k==="yesterday") on=state.dateFrom===ymd(yd)&&state.dateTo===ymd(yd);
+  else if(k==="week") on=state.dateFrom===ymd(ws)&&state.dateTo===today;
+  else if(k==="month") on=state.dateFrom===mS&&state.dateTo===today;
+  else if(k==="all") on=state.dateFrom==="1970-01-01"&&state.dateTo===today;
+  return `<button class="chip ${on?'on':''}" data-preset="${k}">${t}</button>`;
+}
+function dateBarHTML(){
+  const today=ymd(new Date());
+  return `<div class="datebar">
+    <div class="date-field"><label>من</label><input type="date" id="dateFrom" value="${state.dateFrom}" max="${today}"></div>
+    <div class="date-field"><label>إلى</label><input type="date" id="dateTo" value="${state.dateTo}" max="${today}"></div>
+    <div class="date-presets">${datePreset("today","اليوم")}${datePreset("yesterday","أمس")}${datePreset("week","آخر 7 أيام")}${datePreset("month","هذا الشهر")}${datePreset("all","الكل")}</div>
+  </div>`;
+}
 function screenDashboard(){
   const F=(iso)=>inRange(iso);
   const carsInc=carIncome(F), rugsInc=carpetIncome(F), lndInc=laundryIncome(F);
@@ -1160,11 +1181,7 @@ function screenDashboard(){
       </div>`;
   return `
     <div class="screen-head"><h2>الصفحة الرئيسية</h2><span>${periodLabel==="اليوم"?new Date().toLocaleDateString("ar-u-nu-latn",{weekday:"long",day:"numeric",month:"long"}):`${state.dateFrom} ← ${state.dateTo}`}</span></div>
-    <div class="datebar">
-      <div class="date-field"><label>من</label><input type="date" id="dateFrom" value="${state.dateFrom}" max="${today}"></div>
-      <div class="date-field"><label>إلى</label><input type="date" id="dateTo" value="${state.dateTo}" max="${today}"></div>
-      <div class="date-presets">${preset("today","اليوم")}${preset("yesterday","أمس")}${preset("month","هذا الشهر")}${preset("all","الكل")}</div>
-    </div>
+    ${dateBarHTML()}
     <div class="report-btns">
       <button class="mini" id="sendReport">📤 التقرير الكامل</button>
       <button class="mini" id="sendReport2">📤 تقرير الدخل (− مصروفات عامة)</button>
@@ -1238,6 +1255,7 @@ function screenCars(){
     :`<tr><td colspan="6"><div class="empty">${svg(I.empty)}لا يوجد زبائن محفوظون بعد — أضف لوحة عند حفظ عملية.</div></td></tr>`;
   return `
     <div class="screen-head"><h2>مغسلة السيارات</h2><span>اختر نوع السيارة فيظهر سعره تلقائيًا</span></div>
+    ${dateBarHTML()}
     <div class="cols">
       <div class="panel car-sky">
         <h3>عملية جديدة</h3>
@@ -1316,6 +1334,7 @@ function screenCarpets(){
   const startUnit=state.piecePrices[firstP];
   return `
     <div class="screen-head"><h2>مغسلة السجاد والأفرشة</h2><span>رقم الطلب يُنشأ تلقائيًا</span></div>
+    ${dateBarHTML()}
     <div class="cols">
       <div class="panel">
         <h3>طلب جديد</h3>
@@ -1386,6 +1405,7 @@ function screenLaundry(){
   const startUnit=laundryDefaultPrice(firstT,firstS);
   return `
     <div class="screen-head"><h2>مغسلة الملابس</h2><span>غسيل وكي — رقم الطلب تلقائي</span></div>
+    ${dateBarHTML()}
     <div class="cols">
       <div class="panel">
         <h3>طلب جديد</h3>
@@ -1459,6 +1479,7 @@ function screenStore(){
   return `
     <div class="screen-head"><h2>المتجر</h2><span>بيع ومخزون وصندوق — ويتعامل مع المغاسل</span></div>
     <div class="seg">${subs}</div>
+    ${(state.storeSub==="sales"||state.storeSub==="cashbox")?dateBarHTML():""}
     ${body}`;
 }
 function storeScreenPOS(){
@@ -1890,6 +1911,7 @@ function screenExpenses(){
   const body = state.expSub==="meters"?expMeters() : state.expSub==="workers"?expWorkers() : state.expSub==="storemat"?expStoreMaterials() : expGeneral();
   return `
     <div class="screen-head"><h2>المصروفات</h2><span>الكهرباء والماء بالعدّاد، والرواتب باليومية</span></div>
+    ${dateBarHTML()}
     <div class="seg">${seg}</div>
     ${body}`;
 }
@@ -2239,6 +2261,7 @@ function bindScreen(){
       const t=new Date(), todayS=ymd(t);
       if(bp.dataset.preset==="today"){ state.dateFrom=state.dateTo=todayS; }
       else if(bp.dataset.preset==="yesterday"){ const yd=new Date(t); yd.setDate(yd.getDate()-1); state.dateFrom=state.dateTo=ymd(yd); }
+      else if(bp.dataset.preset==="week"){ const ws=new Date(t); ws.setDate(ws.getDate()-6); state.dateFrom=ymd(ws); state.dateTo=todayS; }
       else if(bp.dataset.preset==="month"){ state.dateFrom=ymd(new Date(t.getFullYear(),t.getMonth(),1)); state.dateTo=todayS; }
       else if(bp.dataset.preset==="all"){ state.dateFrom="1970-01-01"; state.dateTo=todayS; }
       render();
@@ -2638,8 +2661,12 @@ function saveLocal(){ try{ state._savedAt=Date.now(); localStorage.setItem(LS_KE
 function cloudCopy(){
   const c={}; for(const k in state){ if(CLOUD_OMIT.includes(k)) continue; c[k]=state[k]; }
   const j=JSON.parse(JSON.stringify(c));
+  // Keep the single Firestore document small (<<1MB) so writes never fail:
+  // strip heavy base64 images from the synced copy. They stay in localStorage,
+  // and applyRemote re-attaches each device's local images after merge.
   (j.carOps||[]).forEach(o=>{ delete o.photos; });
   (j.carpetOrders||[]).forEach(o=>{ delete o.photos; });
+  (j.storeProducts||[]).forEach(p=>{ delete p.image; });
   return j;
 }
 function save(){ saveLocal(); updateCloudBtn("pending"); L_pending_push=true; if(window.cloudReady && !_applyingRemote){ clearTimeout(_pushT); _pushT=setTimeout(()=>{ try{ window.cloudPush(cloudCopy()); L_pending_push=false; }catch(e){ updateCloudBtn("offline"); } }, 600); } }
@@ -2804,7 +2831,8 @@ window.onCloudReady=()=>{ const el=document.getElementById("cloudStat"); if(el){
 window.onCloudEmpty=()=>{ try{ if(window.cloudReady) window.cloudPush(cloudCopy()); }catch(e){} };
 window.onCloudError=()=>{ const el=document.getElementById("cloudStat"); if(el){ el.textContent="غير متصل (يعمل محليًا)"; el.style.color="var(--muted)"; } updateCloudBtn("offline"); };
 window.onCloudPushOk=()=>{ const el=document.getElementById("cloudStat"); if(el){ el.textContent="متصل ☁ — آخر مزامنة "+timeStr(new Date()); el.style.color="var(--ready)"; } updateCloudBtn("synced"); };
-window.onCloudPushErr=(e)=>{ const el=document.getElementById("cloudStat"); if(el){ el.textContent="⚠️ فشل رفع البيانات للسحابة — راجع إعدادات Firebase"; el.style.color="var(--unpaid)"; } updateCloudBtn("pending"); };
+let _lastPushErrToast=0;
+window.onCloudPushErr=(e)=>{ const el=document.getElementById("cloudStat"); if(el){ el.textContent="⚠️ فشل حفظ البيانات في السحابة — لم تُحفظ! "+((e&&e.message)||""); el.style.color="var(--unpaid)"; } updateCloudBtn("offline"); const now=Date.now(); if(now-_lastPushErrToast>8000){ _lastPushErrToast=now; try{ toast("⚠️ تعذّر حفظ البيانات في السحابة — تحقّق من الاتصال"); }catch(_){} } };
 const PALETTES=[
   {k:"teal",  name:"أخضر سماوي", b:"#0f9d8f", b2:"#16b8a6"},
   {k:"aqua",  name:"فيروزي",     b:"#0e8fa8", b2:"#22b6cf"},
@@ -3273,7 +3301,7 @@ document.getElementById("receiptPrint").onclick=printReceipt;
     if(v.length<4) return toast("اختر كودًا (4 أرقام على الأقل)");
     if(v===ownerPin()) return toast("هذا كود المالك — اختر كودًا مختلفًا");
     if((state.users||[]).some(u=>u.name===nm && u.active!==false)) return toast("الاسم مستخدم — سجّل الدخول أو غيّر الاسم");
-    const w={ id:uid(), name:nm, pin:v, role:"worker", active:true, createdAt:iso(new Date()) };
+    const w={ id:uid(), name:nm, pin:v, role:"worker", active:true, createdAt:iso(new Date()), editedAt:iso(new Date()) };
     state.users=state.users||[]; state.users.push(w);
     enterSession(nm,"worker",w.id);
     logActivity("تسجيل عامل جديد","");
@@ -3377,7 +3405,7 @@ setTimeout(()=>{ if(!window.cloudReady){ const el=document.getElementById("cloud
 <!-- PWA: service-worker registration + update/install wiring -->
 <script>
 (function(){
-  var APP_VERSION = "1.6.0";
+  var APP_VERSION = "1.7.0";
   function $(id){ return document.getElementById(id); }
   function setText(id,t){ var el=$(id); if(el) el.textContent=t; }
 
