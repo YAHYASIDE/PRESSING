@@ -706,7 +706,7 @@
     <img id="lockLogo" src="" alt="">
     <h3>مغاسيل صداقة</h3>
     <p id="lockModeHint">دخول الموظفين — أدخل اسمك وكودك.</p>
-    <input type="text" id="lockName" placeholder="اسمك" value="إبراهيم" autocomplete="off" style="letter-spacing:normal;text-align:center">
+    <input type="text" id="lockName" placeholder="اكتب اسمك هنا" value="" autocomplete="off" style="letter-spacing:normal;text-align:center">
     <input type="password" id="lockInput" inputmode="numeric" placeholder="كود الدخول">
     <button class="btn-primary" id="lockEnter" style="width:100%">دخول</button>
     <div id="lockModeLink" onclick="toggleLockMode()" style="margin-top:12px;font-size:.85rem;color:#fff;opacity:.9;cursor:pointer;text-decoration:underline">عامل جديد؟ سجّل هنا</div>
@@ -3276,7 +3276,7 @@ document.getElementById("receiptPrint").onclick=printReceipt;
     state.logins.push({id:uid(),name:nm,role:role,date:iso(new Date())});
     if(state.logins.length>200) state.logins=state.logins.slice(-200);
     unlocked=true;
-    document.getElementById("lockInput").value=""; document.getElementById("lockName").value="إبراهيم";
+    document.getElementById("lockInput").value=""; document.getElementById("lockName").value="";
     _lastAlertTs=Date.now();
     save(); applyLock(); render();
     setTimeout(()=>{ try{ if(window.cloudReady) window.cloudPush(cloudCopy()); }catch(e){} }, 800);
@@ -3405,7 +3405,7 @@ setTimeout(()=>{ if(!window.cloudReady){ const el=document.getElementById("cloud
 <!-- PWA: service-worker registration + update/install wiring -->
 <script>
 (function(){
-  var APP_VERSION = "1.7.0";
+  var APP_VERSION = "1.7.1";
   function $(id){ return document.getElementById(id); }
   function setText(id,t){ var el=$(id); if(el) el.textContent=t; }
 
