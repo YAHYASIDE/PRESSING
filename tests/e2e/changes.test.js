@@ -48,6 +48,7 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
   await page.click('#setClose').catch(()=>{}); await page.waitForTimeout(200);
   await page.evaluate(()=>{ unlocked=false; currentUser=""; currentRole=""; applyLock(); });
   await page.waitForTimeout(300);
+  if(await page.isVisible('#lockSwitch')) await page.click('#lockSwitch'); // آخر اسم محفوظ — «تغيير» لكتابة اسم آخر
   await page.fill('#lockName','سالم المدير'); await page.fill('#lockInput','1234'); await page.click('#lockEnter'); await page.waitForTimeout(500);
   const role = await page.evaluate(()=>currentRole);
   log('logged in role (expect manager):', role);

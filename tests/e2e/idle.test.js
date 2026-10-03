@@ -31,8 +31,11 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
   log('after reload (stale 61min) lock shown:', await lockVisible(), '(expect true)');
 
   // login again, then simulate idle fire via lockNow()
-  await page.fill('#lockName','مالك'); await page.fill('#lockInput','0707'); await page.click('#lockEnter'); await page.waitForTimeout(400);
-  log('re-login lock hidden:', !(await lockVisible()));
+  // the last name is remembered on this device: only the code is needed
+  log('remembered last user shown: '+(await page.isVisible('#lockWho'))+' (expect true) | name field hidden: '+!(await page.isVisible('#lockName'))+' (expect true)');
+  log('remembered name is مالك: '+((await page.textContent('#lockWhoName')).trim()==='مالك')+' (expect true)');
+  await page.fill('#lockInput','0707'); await page.click('#lockEnter'); await page.waitForTimeout(400);
+  log('re-login with code only: '+!(await lockVisible())+' (expect true)');
   await page.evaluate(()=>lockNow()); await page.waitForTimeout(300);
   log('after lockNow() lock shown:', await lockVisible(), '(expect true)');
   const sessAfterLock = await page.evaluate(()=>localStorage.getItem('sadaqa_session'));

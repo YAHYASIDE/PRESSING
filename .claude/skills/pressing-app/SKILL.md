@@ -69,7 +69,7 @@ manager (`state.managers`, name+password), worker (`state.users`, name+PIN).
   single Firestore document must stay far below 1 MB or every write fails);
   `applyRemote` re-attaches local images. Keep it that way for any new images.
 - **Per-device secrets/preferences stay local** (`sadaqa_session`, `sadaqa_bio`,
-  `sadaqa_rcpt_w`) — never put them in `state`.
+  `sadaqa_rcpt_w`, `sadaqa_last_users`) — never put them in `state`.
 - **Deletes vs. restores:** a tombstone only kills a record whose `editedAt` is not
   newer (`isDead`). Restoring/reviving a record = re-add it with a fresh `editedAt`.
 - **Backups/restore never delete.** Restoring a daily backup or a JSON file only adds
@@ -105,7 +105,8 @@ bash tests/run.sh store contacts_bio   # only some suites
 
 - For every feature/fix, add or extend a suite in `tests/e2e/<name>.test.js`,
   copying an existing one's pattern: log in with `#lockName/#lockInput/#lockEnter`
-  (owner PIN `0707`), drive the UI or seed `state` via `page.evaluate`, print
+  (owner PIN `0707`; if a name is already remembered on the lock screen, click
+  `#lockSwitch` before filling `#lockName`), drive the UI or seed `state` via `page.evaluate`, print
   checks as `label: <bool> (expect true)`, and end with the `ERRORS: NONE ✅` line.
   The runner fails on crashes, console errors, or any check that disagrees with
   its `(expect …)`.

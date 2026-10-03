@@ -347,12 +347,64 @@
   .search-inp:focus{outline:none;border-color:var(--brand-2);box-shadow:0 0 0 3px rgba(28,110,164,.15)}
   .order-actions{flex-wrap:wrap}
   a.mini{text-decoration:none;display:inline-flex;align-items:center;justify-content:center}
-  #lockScreen{display:flex;position:fixed;inset:0;background:linear-gradient(160deg,var(--brand),var(--brand-2));z-index:130;align-items:center;justify-content:center;padding:24px}
-  .lock-box{background:var(--surface);border-radius:18px;padding:26px 22px;max-width:320px;width:100%;text-align:center;box-shadow:0 20px 50px rgba(0,0,0,.3)}
-  .lock-box img{width:76px;height:76px;border-radius:50%;margin-bottom:12px}
-  .lock-box h3{margin:0 0 4px;font-size:1.2rem;font-weight:800;color:var(--brand)}
-  .lock-box p{margin:0 0 16px;font-size:.85rem;color:var(--muted)}
-  .lock-box input{width:100%;padding:13px;border:1px solid var(--line);border-radius:12px;background:var(--input);color:var(--ink);font-size:1.2rem;text-align:center;letter-spacing:4px;margin-bottom:14px}
+  /* ===== شاشة الدخول ===== */
+  #lockScreen{display:flex;position:fixed;inset:0;z-index:130;align-items:center;justify-content:center;padding:64px 16px 24px;overflow-y:auto;overflow-x:hidden;
+    background:radial-gradient(120% 70% at 100% 0%,var(--brand-2) 0%,transparent 60%),radial-gradient(90% 60% at 0% 100%,var(--teal) 0%,transparent 65%),linear-gradient(165deg,var(--brand),#082c47)}
+  .lock-bg{position:fixed;inset:0;pointer-events:none;overflow:hidden}
+  .lock-bg span{position:absolute;bottom:-140px;border-radius:50%;border:1px solid rgba(255,255,255,.28);
+    background:radial-gradient(circle at 32% 28%,rgba(255,255,255,.6),rgba(255,255,255,.1) 45%,rgba(255,255,255,.03) 70%);animation:lockBubble linear infinite}
+  .lock-bg span:nth-child(1){left:6%;width:46px;height:46px;animation-duration:13s}
+  .lock-bg span:nth-child(2){left:22%;width:22px;height:22px;animation-duration:9s;animation-delay:-4s}
+  .lock-bg span:nth-child(3){left:38%;width:70px;height:70px;animation-duration:17s;animation-delay:-8s}
+  .lock-bg span:nth-child(4){left:58%;width:30px;height:30px;animation-duration:11s;animation-delay:-2s}
+  .lock-bg span:nth-child(5){left:74%;width:56px;height:56px;animation-duration:15s;animation-delay:-11s}
+  .lock-bg span:nth-child(6){left:88%;width:18px;height:18px;animation-duration:8s;animation-delay:-6s}
+  .lock-bg span:nth-child(7){left:48%;width:14px;height:14px;animation-duration:10s;animation-delay:-1s}
+  .lock-bg span:nth-child(8){left:12%;width:34px;height:34px;animation-duration:12s;animation-delay:-9s}
+  @keyframes lockBubble{0%{transform:translate(0,0)}50%{transform:translate(18px,-60vh)}100%{transform:translate(-6px,-125vh)}}
+  @keyframes lockIn{from{opacity:0;transform:translateY(18px) scale(.98)}to{opacity:1;transform:none}}
+  @keyframes lockShake{10%,90%{transform:translateX(-2px)}20%,80%{transform:translateX(4px)}30%,50%,70%{transform:translateX(-7px)}40%,60%{transform:translateX(7px)}}
+  .lock-box{position:relative;margin:auto 0;background:var(--surface);border-radius:26px;padding:60px 22px 18px;max-width:360px;width:100%;text-align:center;
+    box-shadow:0 30px 70px rgba(0,0,0,.38),0 0 0 1px rgba(255,255,255,.08);animation:lockIn .45s ease both}
+  .lock-box.shake{animation:lockShake .45s ease}
+  .lock-logo-ring{position:absolute;top:-48px;left:50%;transform:translateX(-50%);width:96px;height:96px;border-radius:50%;padding:4px;
+    background:linear-gradient(135deg,#fff,var(--brand-2) 55%,var(--teal));box-shadow:0 12px 30px rgba(0,0,0,.32)}
+  .lock-logo-ring img{width:100%;height:100%;border-radius:50%;object-fit:cover;background:#fff;display:block}
+  .lock-box h3{margin:0;font-size:1.35rem;font-weight:900;color:var(--brand);letter-spacing:.2px}
+  body.dark .lock-box h3{color:var(--ink)}
+  .lock-greet{margin:4px 0 2px;font-size:.92rem;font-weight:800;color:var(--teal)}
+  .lock-date{font-size:.76rem;color:var(--muted);font-weight:700;margin-bottom:14px}
+  .lock-box p{margin:0 0 14px;font-size:.84rem;color:var(--muted)}
+  .lock-who{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:18px;background:var(--soft);border:1px solid var(--line);margin-bottom:12px;text-align:right}
+  .lock-av{width:46px;height:46px;flex:none;border-radius:50%;display:grid;place-items:center;font-weight:900;font-size:1.25rem;color:#fff;
+    background:linear-gradient(135deg,var(--brand),var(--teal));box-shadow:0 4px 12px rgba(0,0,0,.18)}
+  .lock-who-t{flex:1;min-width:0}
+  .lock-who-t small{display:block;color:var(--muted);font-size:.74rem;font-weight:700}
+  .lock-who-t b{display:block;font-size:1.08rem;color:var(--ink);font-weight:900;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .lock-switch{flex:none;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:6px 12px;font-weight:800;font-size:.76rem;color:var(--brand-2);cursor:pointer;font-family:inherit}
+  .lock-recent{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin:-2px 0 12px}
+  .lock-recent:empty{display:none}
+  .lock-chip{display:inline-flex;align-items:center;gap:6px;padding:4px 10px 4px 4px;border-radius:999px;background:var(--chip);border:1px solid var(--line);
+    font-weight:800;font-size:.8rem;cursor:pointer;color:var(--ink);font-family:inherit}
+  .lock-chip i{font-style:normal;width:24px;height:24px;border-radius:50%;display:grid;place-items:center;background:var(--brand-2);color:#fff;font-size:.74rem}
+  .lock-field{position:relative;margin-bottom:12px}
+  .lock-field input{width:100%;padding:14px 46px;border:1.5px solid var(--line);border-radius:15px;background:var(--input);color:var(--ink);
+    font-size:1.05rem;text-align:center;font-family:inherit;transition:border-color .2s,box-shadow .2s}
+  .lock-field input:focus{outline:none;border-color:var(--brand-2);box-shadow:0 0 0 4px rgba(28,110,164,.18)}
+  #lockInput{letter-spacing:7px;font-size:1.3rem;font-weight:800}
+  #lockInput::placeholder{letter-spacing:normal;font-size:.98rem;font-weight:600}
+  .lf-ic{position:absolute;right:14px;top:50%;transform:translateY(-50%);display:grid;place-items:center;color:var(--muted);pointer-events:none}
+  .lf-ic svg{width:20px;height:20px}
+  .lf-eye{position:absolute;left:8px;top:50%;transform:translateY(-50%);background:none;border:0;cursor:pointer;padding:8px;color:var(--muted);display:grid;place-items:center}
+  .lf-eye svg{width:20px;height:20px}
+  .lock-btn{width:100%;padding:14px;border:none;border-radius:15px;font-size:1.08rem;font-weight:900;color:#fff;cursor:pointer;font-family:inherit;
+    background:linear-gradient(135deg,var(--brand),var(--brand-2));box-shadow:0 10px 22px rgba(18,80,124,.35);transition:transform .12s,box-shadow .2s}
+  .lock-btn:active{transform:scale(.98)}
+  .lock-or{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:.74rem;font-weight:700;margin:12px 0 0}
+  .lock-or::before,.lock-or::after{content:"";flex:1;height:1px;background:var(--line)}
+  .lock-link{margin-top:14px;font-size:.84rem;font-weight:800;color:var(--brand-2);cursor:pointer;background:none;border:0;font-family:inherit}
+  .lock-foot{margin-top:12px;padding-top:10px;border-top:1px dashed var(--line);font-size:.72rem;color:var(--muted);font-weight:700}
+  @media (prefers-reduced-motion:reduce){ .lock-bg span{animation:none;display:none} .lock-box{animation:none} }
   .chart7{display:flex;align-items:flex-end;gap:8px;height:150px;padding-top:10px}
   .c7col{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:4px;height:100%}
   .c7bar{width:60%;min-height:3px;background:linear-gradient(var(--brand-2),var(--brand));border-radius:6px 6px 0 0;transition:height .3s}
@@ -488,7 +540,6 @@
   #wsBody .tbl-wrap{max-height:46vh;overflow-y:auto}
   #wsBody td{font-size:.8rem}
 
-  #lockName{width:100%;padding:12px;border:1px solid var(--line);border-radius:11px;background:var(--input);color:var(--ink);font-size:1rem;margin-bottom:10px}
 
   #cloudBtn{position:fixed;top:14px;left:14px;z-index:120;width:40px;height:40px;border-radius:50%;border:none;font-size:1.1rem;cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,.25);transition:background .3s;background:var(--muted);color:#fff;display:flex;align-items:center;justify-content:center;padding:0;line-height:1}
   #cloudBtn.synced{background:var(--ready)}
@@ -534,7 +585,7 @@
   .store-stat .s .l{font-size:.74rem;color:var(--muted);font-weight:700;margin-top:2px}
   .big-balance{font-size:2rem;font-weight:800;color:var(--brand);margin-top:4px}
   .del-btn{color:var(--unpaid);border-color:#f0cccc;background:var(--unpaid-bg)}
-  .btn-bio{width:100%;margin-top:10px;padding:12px;border-radius:12px;border:1.5px solid rgba(255,255,255,.75);background:rgba(255,255,255,.14);color:#fff;font-weight:800;font-size:1rem;cursor:pointer;font-family:inherit}
+  .btn-bio{width:100%;margin-top:10px;padding:13px;border-radius:15px;border:1.5px solid var(--brand-2);background:transparent;color:var(--brand-2);font-weight:900;font-size:1rem;cursor:pointer;font-family:inherit}
   .cat-group{margin-bottom:14px;padding:10px;border:1px solid var(--line);border-radius:12px;background:var(--soft)}
   .cat-row{display:flex;align-items:center;gap:7px;padding:5px 0;border-bottom:1px solid var(--line)}
   .cat-row:last-child{border-bottom:none}
@@ -772,15 +823,25 @@
   </div>
 </div>
 <div id="lockScreen">
-  <div class="lock-box">
-    <img id="lockLogo" src="" alt="">
-    <h3>مغاسيل صداقة</h3>
+  <div class="lock-bg" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
+  <div class="lock-box" id="lockBox">
+    <div class="lock-logo-ring"><img id="lockLogo" src="" alt=""></div>
+    <h3 id="lockShop">مغاسيل صداقة</h3>
+    <div class="lock-greet" id="lockGreet">أهلًا بك</div>
+    <div class="lock-date" id="lockDate"></div>
+    <div class="lock-who" id="lockWho" style="display:none">
+      <div class="lock-av" id="lockAv"></div>
+      <div class="lock-who-t"><small id="lockWhoHint">أهلًا بعودتك 👋</small><b id="lockWhoName"></b></div>
+      <button type="button" class="lock-switch" id="lockSwitch">تغيير</button>
+    </div>
     <p id="lockModeHint">دخول الموظفين — أدخل اسمك وكودك.</p>
-    <input type="text" id="lockName" placeholder="اكتب اسمك هنا" value="" autocomplete="off" style="letter-spacing:normal;text-align:center">
-    <input type="password" id="lockInput" inputmode="numeric" placeholder="كود الدخول">
-    <button class="btn-primary" id="lockEnter" style="width:100%">دخول</button>
+    <div class="lock-recent" id="lockRecent"></div>
+    <div class="lock-field" id="lockNameWrap"><span class="lf-ic" id="lfUser"></span><input type="text" id="lockName" placeholder="اكتب اسمك هنا" value="" autocomplete="off" enterkeyhint="next"></div>
+    <div class="lock-field"><span class="lf-ic" id="lfLock"></span><input type="password" id="lockInput" inputmode="numeric" placeholder="كود الدخول" autocomplete="off" enterkeyhint="go"><button type="button" class="lf-eye" id="lockEye" aria-label="إظهار الكود"></button></div>
+    <button class="lock-btn" id="lockEnter">دخول</button>
     <button class="btn-bio" id="lockBio" type="button" style="display:none">👆 الدخول بالبصمة</button>
-    <div id="lockModeLink" onclick="toggleLockMode()" style="margin-top:12px;font-size:.85rem;color:#fff;opacity:.9;cursor:pointer;text-decoration:underline">عامل جديد؟ سجّل هنا</div>
+    <button type="button" class="lock-link" id="lockModeLink" onclick="toggleLockMode()">عامل جديد؟ سجّل هنا</button>
+    <div class="lock-foot">🔒 بياناتك محفوظة · إصدار <span id="lockVer">—</span></div>
   </div>
 </div>
 <div id="bioOffer" style="display:none;position:fixed;left:12px;right:12px;bottom:84px;z-index:9998;background:#1c6ea4;color:#fff;border-radius:14px;padding:12px 14px;box-shadow:0 8px 28px rgba(0,0,0,.28);align-items:center;gap:10px;font-weight:700">
@@ -3884,14 +3945,38 @@ function maybeOfferBio(){
   bioAvailable().then(ok=>{ if(!ok||!unlocked) return; const el=document.getElementById("bioOffer"); if(el) el.style.display="flex"; });
 }
 function hideBioOffer(){ const el=document.getElementById("bioOffer"); if(el) el.style.display="none"; }
+/* ---- تذكّر آخر من دخل على هذا الجهاز (محلي فقط، غير مُزامن) ---- */
+function lastUsers(){ try{ const a=JSON.parse(localStorage.getItem("sadaqa_last_users")||"[]"); return Array.isArray(a)?a.filter(x=>typeof x==="string"&&x.trim()).slice(0,4):[]; }catch(e){ return []; } }
+function rememberUser(nm){ nm=(nm||"").trim(); if(!nm) return; const a=[nm,...lastUsers().filter(x=>x!==nm)].slice(0,4); try{ localStorage.setItem("sadaqa_last_users",JSON.stringify(a)); }catch(e){} }
+function forgetUser(nm){ try{ localStorage.setItem("sadaqa_last_users",JSON.stringify(lastUsers().filter(x=>x!==nm))); }catch(e){} }
+let _lockEditName=false;
+function lockGreeting(){ const h=new Date().getHours(); return h<5?"مساء الخير 🌙":h<12?"صباح الخير ☀️":h<17?"نهارك سعيد 🌤️":"مساء الخير 🌙"; }
+function lockFocus(){ setTimeout(()=>{ const nm=document.getElementById("lockName"), pin=document.getElementById("lockInput"); const t=(document.getElementById("lockNameWrap").style.display==="none"||(nm&&nm.value.trim()))?pin:nm; if(t) t.focus(); },80); }
+function renderLockUser(){
+  const reg=window._lockMode==="register", users=lastUsers(), last=users[0]||"";
+  const who=document.getElementById("lockWho"), wrap=document.getElementById("lockNameWrap"), inp=document.getElementById("lockName"), hint=document.getElementById("lockModeHint"), rec=document.getElementById("lockRecent");
+  if(!who||!wrap) return;
+  const showWho=!!last && !reg && !_lockEditName;
+  who.style.display=showWho?"flex":"none"; wrap.style.display=showWho?"none":"";
+  if(hint) hint.style.display=showWho?"none":"";
+  if(showWho){ inp.value=last; document.getElementById("lockWhoName").textContent=last; document.getElementById("lockAv").textContent=last.trim().charAt(0); }
+  const others=reg?[]:users.filter(u=>!(showWho&&u===last));
+  rec.innerHTML=others.map(u=>`<button type="button" class="lock-chip" data-lock-user="${_esc(u)}"><i>${_esc(u.trim().charAt(0))}</i>${_esc(u)}</button>`).join("");
+  rec.querySelectorAll("[data-lock-user]").forEach(b=>b.onclick=()=>{ rememberUser(b.dataset.lockUser); _lockEditName=false; renderLockUser(); lockFocus(); });
+}
 function applyLock(){
   const ls=document.getElementById("lockScreen");
   if(state.lock&&state.lock.enabled&&!unlocked){
+    const wasHidden=ls.style.display!=="flex";
     document.getElementById("lockLogo").src=LOGO; ls.style.display="flex";
+    if(wasHidden){ _lockEditName=false; const si=(typeof shopInfo==="function")?shopInfo():{name:"مغاسيل صداقة"};
+      document.getElementById("lockShop").textContent=si.name; document.getElementById("lockGreet").textContent=lockGreeting();
+      document.getElementById("lockDate").textContent=new Date().toLocaleDateString("ar-u-nu-latn",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
+      renderLockUser(); }
     const b=bioLoad(), bb=document.getElementById("lockBio");
     if(bb){ if(b){ bb.style.display=""; bb.textContent="👆 الدخول بالبصمة — "+b.u; } else bb.style.display="none"; }
     if(b && !_bioTried){ _bioTried=true; setTimeout(()=>{ if(!unlocked) bioLogin(); },350); }
-    else if(!b) setTimeout(()=>{const i=document.getElementById("lockName"); if(i)i.focus();},60);
+    else if(!b && wasHidden) lockFocus();
   }
   else { ls.style.display="none"; _bioTried=false; }
 }
@@ -4197,12 +4282,13 @@ document.getElementById("rcptTestBtn").onclick=()=>{ setRcptWidth(document.getEl
   window.addEventListener("pageshow",(e)=>{ if(e.persisted){ const s=loadSession(); if(s && s.u && (Date.now()-(s.ts||0) < IDLE_MS)){ restoreSession(); render(); } else lockNow(); } });
   const enterSession=(nm,role,uidv,viaBio)=>{
     currentUser=nm; currentRole=role; currentUserId=uidv||"";
+    rememberUser(nm);
     if(!state.logins) state.logins=[];
     state.logins.push({id:uid(),name:nm,role:role,date:iso(new Date())});
     if(state.logins.length>200) state.logins=state.logins.slice(-200);
     unlocked=true;
     saveSession(); armIdle();
-    document.getElementById("lockInput").value=""; document.getElementById("lockName").value="";
+    document.getElementById("lockInput").value=""; document.getElementById("lockName").value=""; document.getElementById("lockInput").type="password";
     _lastAlertTs=Date.now();
     save(); applyLock(); render();
     setTimeout(()=>{ try{ if(window.cloudReady) window.cloudPush(cloudCopy()); }catch(e){} }, 800);
@@ -4220,7 +4306,7 @@ document.getElementById("rcptTestBtn").onclick=()=>{ setRcptWidth(document.getEl
     if(v===ownerPin()){ role="owner"; }
     else { const m=findManager(nm,v); if(m){ role="manager"; uidv=m.id; }
       else { const w=findWorker(nm,v); if(w){ role="worker"; uidv=w.id; } } }
-    if(!role) return toast("بيانات الدخول غير صحيحة");
+    if(!role){ const bx=document.getElementById("lockBox"); if(bx){ bx.classList.remove("shake"); void bx.offsetWidth; bx.classList.add("shake"); } try{ navigator.vibrate&&navigator.vibrate(120); }catch(e){} document.getElementById("lockInput").select(); return toast("بيانات الدخول غير صحيحة"); }
     enterSession(nm,role,uidv);
     if(role==="worker"||role==="manager") logActivity("تسجيل دخول","");
     toast("أهلًا "+nm);
@@ -4246,7 +4332,17 @@ document.getElementById("rcptTestBtn").onclick=()=>{ setRcptWidth(document.getEl
     document.getElementById("lockModeHint").textContent = reg?"تسجيل عامل جديد — أدخل اسمك واختر كودًا خاصًا بك.":"دخول الموظفين — أدخل اسمك وكودك.";
     document.getElementById("lockModeLink").textContent = reg?"لديك حساب؟ سجّل الدخول":"عامل جديد؟ سجّل هنا";
     document.getElementById("lockInput").placeholder = reg?"اختر كودك الخاص":"كود الدخول";
+    if(reg) document.getElementById("lockName").value="";
+    renderLockUser(); lockFocus();
   };
+  { const ic=(d)=>`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
+    const EYE='<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>', EYE_OFF='<path d="M3 3l18 18"/><path d="M10.6 5.1A10.4 10.4 0 0 1 12 5c6.4 0 10 7 10 7a17 17 0 0 1-3.2 4.1M6.1 6.1C3.4 8 2 12 2 12s3.6 7 10 7c1.7 0 3.2-.5 4.5-1.2"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/>';
+    document.getElementById("lfUser").innerHTML=ic('<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/>');
+    document.getElementById("lfLock").innerHTML=ic('<rect x="4" y="10" width="16" height="11" rx="2.5"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/>');
+    const eye=document.getElementById("lockEye"), pin=document.getElementById("lockInput");
+    eye.innerHTML=ic(EYE); eye.onclick=()=>{ const show=pin.type==="password"; pin.type=show?"text":"password"; eye.innerHTML=ic(show?EYE_OFF:EYE); eye.setAttribute("aria-label",show?"إخفاء الكود":"إظهار الكود"); pin.focus(); };
+    document.getElementById("lockSwitch").onclick=()=>{ _lockEditName=true; const n=document.getElementById("lockName"); n.value=""; renderLockUser(); setTimeout(()=>n.focus(),50); };
+  }
   const lockAction=()=>{ (window._lockMode==="register") ? window.registerWorker() : doEnter(); };
   document.getElementById("lockEnter").onclick=lockAction;
   document.getElementById("lockName").addEventListener("keydown",e=>{ if(e.key==="Enter") document.getElementById("lockInput").focus(); });
@@ -4358,13 +4454,14 @@ setTimeout(()=>{ if(!window.cloudReady){ const el=document.getElementById("cloud
 <!-- PWA: service-worker registration + update/install wiring -->
 <script>
 (function(){
-  var APP_VERSION = "2.0.0";
+  var APP_VERSION = "2.1.0";
   function $(id){ return document.getElementById(id); }
   function setText(id,t){ var el=$(id); if(el) el.textContent=t; }
 
   var standalone = (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) || window.navigator.standalone === true;
   setText("appVer", APP_VERSION);
   setText("appVerFoot", APP_VERSION);
+  setText("lockVer", APP_VERSION);
   setText("appMode", standalone ? "مثبّت كتطبيق 📱" : "يعمل في المتصفح");
 
   var reg = null, reloading = false;
