@@ -73,6 +73,13 @@ jobs:
         working-directory: mobile
         run: npx cap add android
 
+      - name: Allow the camera (barcode scanner in the store)
+        working-directory: mobile/android
+        run: |
+          M=app/src/main/AndroidManifest.xml
+          grep -q 'android.permission.CAMERA' "$M" || sed -i 's#</manifest>#    <uses-permission android:name="android.permission.CAMERA" />\n</manifest>#' "$M"
+          grep -n 'permission' "$M"
+
       - name: Sync web assets + config into the Android project
         working-directory: mobile
         run: npx cap sync android

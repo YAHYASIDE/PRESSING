@@ -45,7 +45,7 @@ function names, and why past decisions were made). This skill is the *how*.
 Architecture in one breath: a global `state` object; `render()` →
 `renderNav()` + the screen from the `map` in `render()` (`dashboard, cars,
 laundry, carpets, store, contacts, expenses, reports`) → `bindScreen()`, which
-wires handlers (sub-binders: `bindStore()`, `bindContacts()`). `save()` writes
+wires handlers (sub-binders: `bindStore()`, `bindContacts()`, `bindReports()`). `save()` writes
 localStorage and debounces `cloudPush(cloudCopy())`; Firestore `onSnapshot`
 calls `applyRemote(remote)`, which merges by id. Roles: owner (master PIN),
 manager (`state.managers`, name+password), worker (`state.users`, name+PIN).
@@ -68,8 +68,16 @@ manager (`state.managers`, name+password), worker (`state.users`, name+PIN).
 - **Never sync base64 images.** `cloudCopy()` strips photos/product images (the
   single Firestore document must stay far below 1 MB or every write fails);
   `applyRemote` re-attaches local images. Keep it that way for any new images.
-- **Per-device secrets stay local** (`sadaqa_session`, `sadaqa_bio`) — never put
-  them in `state`.
+- **Per-device secrets/preferences stay local** (`sadaqa_session`, `sadaqa_bio`,
+  `sadaqa_rcpt_w`) — never put them in `state`.
+- **Deletes vs. restores:** a tombstone only kills a record whose `editedAt` is not
+  newer (`isDead`). Restoring/reviving a record = re-add it with a fresh `editedAt`.
+- **Backups/restore never delete.** Restoring a daily backup or a JSON file only adds
+  missing records (`restoreMissing`). Keep any new restore path additive.
+- A synced **map** (not array) also needs a local capture before `Object.assign` and a
+  merge after it (see `debtReminded`, `customers`).
+- Receipts: build them with `rcptHeader(sub)` + rows + `rcptFooter(extra)` so they get
+  the shop info and the thermal print layout.
 - Form values that must survive a `render()` (e.g. a field typed before an
   "add item" click) need a draft variable (see `purSupDraft`).
 

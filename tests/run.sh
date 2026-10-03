@@ -45,8 +45,8 @@ for t in "${suites[@]}"; do
   echo "$out" | grep -q "CRASH" && bad="crash"
   echo "$out" | grep -qE "NONE ✅" || bad="${bad:-console errors}"
   mism="$(printf '%s\n' "$out" | node -e '
-let s=require("fs").readFileSync(0,"utf8"); const re=/:\s*(true|false)\s*\((?:expect|want) (true|false)\)/;
-for(const line of s.split("\n")){ const m=line.match(re); if(m && m[1]!==m[2]) console.log(line); }')"
+let s=require("fs").readFileSync(0,"utf8"); const re=/:\s*(true|false)\s*\((?:expect|want) (true|false)\)/g;
+for(const line of s.split("\n")){ for(const m of line.matchAll(re)){ if(m[1]!==m[2]){ console.log(line); break; } } }')"
   [ -n "$mism" ] && bad="${bad:+$bad, }failed checks"
   if [ -n "$bad" ]; then echo "FAIL     $t ($bad)"; echo "$out" | sed 's/^/    /' | tail -25; fail=1
   else echo "PASS     $t"; fi
