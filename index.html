@@ -3015,6 +3015,23 @@ function resetFinancials(){
 
 /* ---- lock ---- */
 let unlocked=false, currentUser="", currentRole="", currentUserId="";
+/* ---- جلسة الدخول: لا يُقفل التطبيق إلا بعد 60 دقيقة من عدم النشاط ---- */
+const SESSION_KEY="sadaqa_session", IDLE_MS=60*60*1000;
+let _idleTimer=null, _lastSessWrite=0;
+function loadSession(){ try{ const d=localStorage.getItem(SESSION_KEY); return d?JSON.parse(d):null; }catch(e){ return null; } }
+function saveSession(){ try{ localStorage.setItem(SESSION_KEY, JSON.stringify({u:currentUser,r:currentRole,uid:currentUserId,ts:Date.now()})); }catch(e){} }
+function clearSession(){ try{ localStorage.removeItem(SESSION_KEY); }catch(e){} }
+function armIdle(){ clearTimeout(_idleTimer); _idleTimer=setTimeout(lockNow, IDLE_MS); }
+function lockNow(){ unlocked=false; currentUser=""; currentRole=""; currentUserId=""; clearTimeout(_idleTimer); clearSession(); applyLock(); render(); }
+function touchSession(){ if(!unlocked) return; const now=Date.now(); if(now-_lastSessWrite>15000){ _lastSessWrite=now; saveSession(); } armIdle(); }
+function restoreSession(){ const s=loadSession(); if(s && s.u && (Date.now()-(s.ts||0) < IDLE_MS)){ currentUser=s.u; currentRole=s.r||"owner"; currentUserId=s.uid||""; unlocked=true; saveSession(); armIdle(); return true; } clearSession(); return false; }
+["pointerdown","keydown","touchstart","click"].forEach(ev=>document.addEventListener(ev, touchSession, {passive:true, capture:true}));
+document.addEventListener("visibilitychange", ()=>{
+  if(document.hidden) return;
+  const s=loadSession();
+  if(unlocked){ if(!s || (Date.now()-(s.ts||0) >= IDLE_MS)) lockNow(); else touchSession(); }
+  else if(restoreSession()) render();
+});
 function applyLock(){
   const ls=document.getElementById("lockScreen");
   if(state.lock&&state.lock.enabled&&!unlocked){ document.getElementById("lockLogo").src=LOGO; ls.style.display="flex"; setTimeout(()=>{const i=document.getElementById("lockName"); if(i)i.focus();},60); }
@@ -3254,28 +3271,16 @@ document.getElementById("setSave").onclick=()=>{
 document.getElementById("receiptClose").onclick=()=>document.getElementById("receiptModal").style.display="none";
 document.getElementById("receiptPrint").onclick=printReceipt;
 (function(){
-  // نعرف متى فتح التطبيق نفسه واتساب/المشاركة، حتى لا يُقفل عند العودة القريبة منها
-  const _open=window.open;
-  window.open=function(){ window._extNav=Date.now(); return _open.apply(window,arguments); };
-  const _share=navigator.share?navigator.share.bind(navigator):null;
-  if(_share) navigator.share=function(){ window._extNav=Date.now(); return _share.apply(navigator,arguments); };
-  window._hiddenAt=0;
-  const relock=()=>{ unlocked=false; currentUser=""; applyLock(); };
-  document.addEventListener("visibilitychange",()=>{
-    if(document.hidden){ window._hiddenAt=Date.now(); return; }
-    const away = window._hiddenAt ? (Date.now()-window._hiddenAt) : 0;
-    const leftForApp = window._extNav && (window._hiddenAt - window._extNav < 5000);
-    const limit = leftForApp ? 5*60*1000 : 30*1000;
-    window._hiddenAt=0;
-    if(away>limit) relock();
-  });
-  window.addEventListener("pageshow",(e)=>{ if(e.persisted) relock(); });
+  // القفل يعتمد على عدم النشاط لمدة 60 دقيقة (انظر touchSession/lockNow/restoreSession).
+  // عند استعادة الصفحة من ذاكرة المتصفح نُعيد فحص المهلة.
+  window.addEventListener("pageshow",(e)=>{ if(e.persisted){ const s=loadSession(); if(s && s.u && (Date.now()-(s.ts||0) < IDLE_MS)){ restoreSession(); render(); } else lockNow(); } });
   const enterSession=(nm,role,uidv)=>{
     currentUser=nm; currentRole=role; currentUserId=uidv||"";
     if(!state.logins) state.logins=[];
     state.logins.push({id:uid(),name:nm,role:role,date:iso(new Date())});
     if(state.logins.length>200) state.logins=state.logins.slice(-200);
     unlocked=true;
+    saveSession(); armIdle();
     document.getElementById("lockInput").value=""; document.getElementById("lockName").value="";
     _lastAlertTs=Date.now();
     save(); applyLock(); render();
@@ -3362,6 +3367,7 @@ state.lock={enabled:true, pin:(state.lock&&state.lock.pin)||"0707"};
 applyPalette();
 applyTheme();
 applyHeaderIcons();
+restoreSession();
 applyLock();
 render();
 setTimeout(()=>{ if(!window.cloudReady){ const el=document.getElementById("cloudStat"); if(el){ el.textContent="غير متصل (يعمل محليًا)"; el.style.color="var(--muted)"; } updateCloudBtn("offline"); } },6000);
@@ -3405,7 +3411,7 @@ setTimeout(()=>{ if(!window.cloudReady){ const el=document.getElementById("cloud
 <!-- PWA: service-worker registration + update/install wiring -->
 <script>
 (function(){
-  var APP_VERSION = "1.7.1";
+  var APP_VERSION = "1.8.0";
   function $(id){ return document.getElementById(id); }
   function setText(id,t){ var el=$(id); if(el) el.textContent=t; }
 
