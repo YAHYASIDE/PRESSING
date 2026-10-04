@@ -318,6 +318,17 @@
   .rcpt-logo{width:64px;height:64px;object-fit:contain;display:block;margin:0 auto 6px}
   .rcpt-sub{margin-top:6px;font-weight:800;color:var(--ink)!important;font-size:.9rem!important}
   .rcpt-sec{font-weight:800;margin:12px 0 2px;color:var(--brand);font-size:.92rem}
+  .inv-add{width:100%;margin:2px 0 8px;font-weight:800;border-style:dashed!important;color:var(--brand-2)}
+  .inv-box{background:var(--soft);border:1px solid var(--line);border-radius:12px;padding:8px 10px;margin-bottom:8px}
+  .inv-title{font-weight:800;font-size:.82rem;margin-bottom:4px}
+  .inv-line{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px dashed var(--line);font-size:.86rem}
+  .inv-line span{flex:1;font-weight:700} .inv-line small{color:var(--muted);font-weight:600}
+  .inv-sum{display:flex;justify-content:space-between;padding-top:6px;font-weight:800;color:var(--brand)}
+  .inv-x{width:26px;height:26px;flex:none;border-radius:50%;border:1px solid var(--line);background:var(--surface);color:var(--unpaid);cursor:pointer;font-weight:800;line-height:1;padding:0}
+  .ed-line{display:flex;gap:5px;align-items:center;margin-bottom:6px}
+  .ed-line select,.ed-line input{min-width:0;padding:7px 6px;border:1px solid var(--line);border-radius:9px;background:var(--input);color:var(--ink);font-size:.82rem}
+  .modal-box .ed-line input{letter-spacing:normal!important;text-align:center;font-size:.86rem!important;padding:7px 4px!important}
+  .ed-line .edl-type{flex:2} .ed-line .edl-svc{flex:1.6} .ed-line .edl-count{flex:0 0 52px} .ed-line .edl-unit{flex:0 0 74px}
   .rcpt-printed{margin-top:4px;font-weight:600;opacity:.75;font-size:.72rem}
   .rcpt-head small{font-weight:700;color:var(--muted)}
   .rcpt-no{text-align:center;font-size:1.35rem;font-weight:900;letter-spacing:1px;border:2px dashed var(--line);border-radius:10px;padding:4px;margin:2px 0 8px;direction:ltr}
@@ -668,7 +679,7 @@
   </div>
 </div>
 <div id="editModal" class="modal">
-  <div class="modal-box">
+  <div class="modal-box" style="max-width:460px">
     <h3>تعديل</h3>
     <div id="editBody"></div>
     <div class="modal-actions" style="margin-top:6px">
@@ -987,7 +998,7 @@ function vehicleCounts(f){
 function carpetCounts(f){
   const c={};
   Object.keys(state.piecePrices).forEach(t=>c[t]=0);
-  state.carpetOrders.filter(o=>!o.cancelled&&f(o.date)).forEach(o=>{ if(c[o.type]!==undefined)c[o.type]++; });
+  state.carpetOrders.filter(o=>!o.cancelled&&f(o.date)).forEach(o=>{ orderItems(o).forEach(i=>{ if(c[i.type]!==undefined)c[i.type]++; }); });
   return c;
 }
 function carIncome(f){return sum(state.carOps.filter(o=>!o.cancelled&&o.paid!==false&&f(o.paidDate||o.date)),o=>o.price);}
@@ -1045,6 +1056,65 @@ function laundryFlow(service){ if(service==="كي") return ["iron","ready","done
 function laundryFirstStatus(service){ return laundryFlow(service)[0]; }
 function laundryNext(o){ const fl=laundryFlow(o.service); const i=fl.indexOf(o.status); return (i>=0 && i<fl.length-1)?fl[i+1]:null; }
 function laundryDefaultPrice(type,service){ const k=type+"|"+service; return (state.laundryPrices&&state.laundryPrices[k])||0; }
+/* ===== طلب متعدد الأصناف (فاتورة واحدة): o.items=[{type,service?,count,unit,price}] ===== */
+function orderItems(o){ return (Array.isArray(o.items)&&o.items.length)?o.items:[{type:o.type,service:o.service,count:+o.count||1,unit:+o.unit||0,price:+o.price||0}]; }
+function isMultiOrder(o){ return Array.isArray(o.items)&&o.items.length>1; }
+function orderLabel(o,withSvc,sep){ if(!isMultiOrder(o)) return `${o.type} × ${o.count}`+(withSvc&&o.service?` — ${o.service}`:""); return o.items.map(i=>`${i.type} ×${i.count}`+(withSvc&&i.service?` (${i.service})`:"")).join(sep||"، "); }
+function combinedService(lines){ const sv=[...new Set(lines.map(l=>l.service).filter(Boolean))]; return sv.length===1?sv[0]:"غسيل وكي"; }
+function buildOrderFromLines(lines,kind){
+  const L=lines.map(l=>{ const count=Math.max(1,+l.count||1), unit=+l.unit||0; const x={type:l.type,count,unit,price:unit*count}; if(kind==="lnd") x.service=l.service||"غسيل وكي"; return x; });
+  const price=sum(L,l=>l.price), count=sum(L,l=>l.count);
+  if(L.length===1){ const r={items:null,type:L[0].type,count:L[0].count,unit:L[0].unit,price:L[0].price}; if(kind==="lnd") r.service=L[0].service; return r; }
+  const r={items:L,type:[...new Set(L.map(l=>l.type))].join("، "),count,unit:Math.round(price/count),price}; if(kind==="lnd") r.service=combinedService(L); return r;
+}
+function applyLinesToOrder(o,lines,kind){ const b=buildOrderFromLines(lines,kind); Object.assign(o,b); if(!b.items) delete o.items; }
+function rcptItemsHTML(o,withSvc){
+  if(!isMultiOrder(o)) return `<div class="rcpt-row"><span>النوع</span><b>${_esc(o.type)} × ${o.count}</b></div>`+(withSvc?`<div class="rcpt-row"><span>الخدمة</span><b>${_esc(o.service)}</b></div>`:"");
+  return `<div class="rcpt-sec">الأصناف (${o.count} قطعة)</div>`+o.items.map(i=>`<div class="rcpt-row rcpt-item"><span>${_esc(i.type)}${withSvc&&i.service?` — ${_esc(i.service)}`:""}<small>${i.count} × ${money(i.unit)}</small></span><b>${money(i.price)}</b></div>`).join("");
+}
+// مسودة الأصناف في نموذج الطلب الجديد (تبقى بعد إعادة الرسم حتى الحفظ)
+const invDraft={cp:[],lnd:[]}, invDirty={cp:false,lnd:false};
+function invDraftHTML(kind){
+  const d=invDraft[kind]; if(!d.length) return "";
+  return `<div class="inv-box"><div class="inv-title">🧾 أصناف هذه الفاتورة (${d.length})</div>${d.map((l,i)=>`<div class="inv-line"><span>${_esc(l.type)} ×${l.count}${l.service?` <small>(${_esc(l.service)})</small>`:""}</span><b>${fmt(l.price)}</b><button type="button" class="inv-x" data-inv-x="${kind}:${i}" title="حذف الصنف">✕</button></div>`).join("")}
+    <div class="inv-sum"><span>المجموع حتى الآن</span><b>${fmt(sum(d,l=>l.price))} ${CUR}</b></div>
+    <div class="hint" style="margin-top:4px">أضف صنفًا آخر، أو اضغط «حفظ الفاتورة». الصنف الظاهر في الأعلى يُضاف تلقائيًا إن عدّلته.</div></div>`;
+}
+function invSaveLabel(kind){ const n=invDraft[kind].length; return n?`💾 حفظ الفاتورة (${n+(invDirty[kind]?1:0)} أصناف)`:"إضافة الطلب"; }
+function refreshInvDraft(kind){
+  const box=document.getElementById(kind+"Lines"); if(box) box.innerHTML=invDraftHTML(kind);
+  const sv=document.getElementById(kind+"Save"); if(sv) sv.textContent=invSaveLabel(kind);
+  document.querySelectorAll("[data-inv-x]").forEach(b=>b.onclick=()=>{ const [k,i]=b.dataset.invX.split(":"); invDraft[k].splice(+i,1); refreshInvDraft(k); });
+}
+// محرّر أصناف في نافذة التعديل
+function _typeList(kind){ return kind==="lnd"?((state.laundryTypes&&state.laundryTypes.length)?state.laundryTypes:LAUNDRY_TYPES):Object.keys(state.piecePrices||{}); }
+function _defUnit(kind,type,svc){ return kind==="lnd"?laundryDefaultPrice(type,svc):(+((state.piecePrices||{})[type])||0); }
+function edLineHTML(kind,it){
+  const types=_typeList(kind).slice(); if(it.type&&!types.includes(it.type)) types.unshift(it.type);
+  const tOpts=types.map(t=>`<option value="${_esc(t)}" ${t===it.type?"selected":""}>${_esc(t)}</option>`).join("");
+  const sOpts=kind==="lnd"?LAUNDRY_SERVICES.map(x=>`<option value="${x}" ${x===it.service?"selected":""}>${x}</option>`).join(""):"";
+  return `<div class="ed-line"><select class="edl-type">${tOpts}</select>${kind==="lnd"?`<select class="edl-svc">${sOpts}</select>`:""}
+    <input class="edl-count" type="number" min="1" value="${+it.count||1}" title="العدد"><input class="edl-unit" type="number" min="0" value="${+it.unit||0}" title="سعر القطعة"><button type="button" class="inv-x edl-x" title="حذف">✕</button></div>`;
+}
+function itemsEditorHTML(kind,o){
+  return `<div class="field"><label>الأصناف <small style="font-weight:600">(النوع${kind==="lnd"?" · الخدمة":""} · العدد · سعر القطعة)</small></label><div id="edLines">${orderItems(o).map(it=>edLineHTML(kind,it)).join("")}</div>
+    <button type="button" class="mini" id="edAddLine" style="width:100%;margin-top:6px">➕ صنف آخر</button></div>
+    <div class="total-line"><span>الإجمالي</span><b id="edTotal">0</b></div>`;
+}
+function bindItemsEditor(kind){
+  const box=document.getElementById("edLines"); if(!box) return;
+  const recalc=()=>{ let t=0; box.querySelectorAll(".ed-line").forEach(r=>{ t+=(+r.querySelector(".edl-count").value||0)*(+r.querySelector(".edl-unit").value||0); }); document.getElementById("edTotal").textContent=fmt(t)+" "+CUR; };
+  const wire=()=>{ box.querySelectorAll(".ed-line").forEach(r=>{
+    r.querySelectorAll("input").forEach(i=>i.oninput=recalc);
+    const ts=r.querySelector(".edl-type"), ss=r.querySelector(".edl-svc");
+    const upd=()=>{ const d=_defUnit(kind,ts.value,ss?ss.value:""); if(d>0) r.querySelector(".edl-unit").value=d; recalc(); };
+    ts.onchange=upd; if(ss) ss.onchange=upd;
+    r.querySelector(".edl-x").onclick=()=>{ if(box.querySelectorAll(".ed-line").length<=1) return toast("يجب أن يبقى صنف واحد على الأقل"); r.remove(); recalc(); };
+  }); };
+  document.getElementById("edAddLine").onclick=()=>{ const t=_typeList(kind)[0]||"", sv=kind==="lnd"?LAUNDRY_SERVICES[0]:""; box.insertAdjacentHTML("beforeend",edLineHTML(kind,{type:t,service:sv,count:1,unit:_defUnit(kind,t,sv)})); wire(); recalc(); };
+  wire(); recalc();
+}
+function readItemsEditor(kind){ return [...document.querySelectorAll("#edLines .ed-line")].map(r=>({type:r.querySelector(".edl-type").value,service:r.querySelector(".edl-svc")?r.querySelector(".edl-svc").value:undefined,count:+r.querySelector(".edl-count").value||0,unit:+r.querySelector(".edl-unit").value||0})); }
 function laundryIncome(f){ return sum((state.laundryOrders||[]).filter(o=>!o.cancelled&&o.paid&&f(o.paidDate||o.deliveredDate||o.date)),o=>o.price); }
 function laundryPending(o){ return !o.cancelled && (o.status!=="done" || !o.paid); }
 /* رقم طلب ملابس مقاوم للتصادم بين الأجهزة: يُشتق من أعلى رقم موجود في نفس الشهر */
@@ -1461,7 +1531,7 @@ function screenCarpets(){
     <div class="order s-${st.cls} ${os.cls==="st-red"?"alert-red":""} ${o.cancelled?"cancelled":""}">
       <div class="no">${o.no}</div>
       <div class="cust"><span class="state-dot ${os.cls}" title="${os.cls==="st-red"?"مكتمل وغير مدفوع":os.cls==="st-green"?"مدفوع":"قيد الانتظار"}"></span>${o.customer||"عميل"}</div>
-      <div class="meta">${o.type} × ${o.count}</div>
+      <div class="meta">${_esc(orderLabel(o,false," · "))}${isMultiOrder(o)?` <span class="badge b-done">${o.count} قطعة</span>`:""}</div>
       <div class="order-dates">🗓️ سُجّل: ${ymd(o.date)} ${timeStr(o.date)}${o.by?` — بواسطة ${o.by}`:""}${o.editedAt?`<br>✏️ آخر تعديل: ${ymd(o.editedAt)} ${timeStr(o.editedAt)}`:""}</div>
       <div class="badges">
         ${o.cancelled?'<span class="badge badge-cancel">ملغى 🚫</span>':''}
@@ -1503,10 +1573,12 @@ function screenCarpets(){
           <div class="field"><label>العدد</label><input id="cpCount" type="number" min="1" value="1"></div>
         </div>
         <div class="total-line"><span>الإجمالي</span><b><span id="cpTotal">${startUnit}</span></b></div>
-        <div class="hint" style="margin:-6px 0 12px">آخر سعر تُدخله لأي نوع يصبح سعره الافتراضي تلقائيًا.</div>
+        <button type="button" class="mini inv-add" id="cpAddLine">➕ أضف هذا الصنف للفاتورة وأكمل بصنف آخر</button>
+        <div id="cpLines">${invDraftHTML("cp")}</div>
+        <div class="hint" style="margin:0 0 10px">آخر سعر تُدخله لأي نوع يصبح سعره الافتراضي تلقائيًا.</div>
         <div class="field"><label>صور الفرشة (اختياري)</label><div class="photos" id="cpPhotoStrip"></div></div>
         <div class="field"><label>التاريخ</label><input id="cpDate" type="date" value="${ymd(new Date())}" max="${ymd(new Date())}"></div>
-        <button class="btn-primary" id="cpSave">إضافة الطلب</button>
+        <button class="btn-primary" id="cpSave">${invSaveLabel("cp")}</button>
       </div>
       <div>
         <input class="search-inp" id="cpSearch" type="text" placeholder="بحث بالاسم أو رقم الطلب أو الهاتف" value="${q}">
@@ -1532,7 +1604,7 @@ function screenLaundry(){
     <div class="order s-${st.cls} ${os.cls==="st-red"?"alert-red":""} ${o.cancelled?"cancelled":""}">
       <div class="no">${o.no}</div>
       <div class="cust"><span class="state-dot ${os.cls}"></span>${o.customer||"عميل"}</div>
-      <div class="meta">${o.type} × ${o.count} — <b>${o.service}</b></div>
+      <div class="meta">${isMultiOrder(o)?`${_esc(orderLabel(o,true," · "))} <span class="badge b-done">${o.count} قطعة</span>`:`${_esc(o.type)} × ${o.count} — <b>${_esc(o.service)}</b>`}</div>
       <div class="order-dates">🗓️ سُجّل: ${ymd(o.date)} ${timeStr(o.date)}${o.by?` — بواسطة ${o.by}`:""}${o.editedAt?`<br>✏️ آخر تعديل: ${ymd(o.editedAt)} ${timeStr(o.editedAt)}`:""}</div>
       <div class="badges">
         ${o.cancelled?'<span class="badge badge-cancel">ملغى 🚫</span>':''}
@@ -1547,6 +1619,7 @@ function screenLaundry(){
       <div class="order-acts-sub">
         <button class="wa-btn" data-lnd-wa="${o.id}" title="إرسال الحالة عبر واتساب">${svg(I.whatsapp)}</button>
         <button class="icon-btn" data-lnd-receipt="${o.id}" title="إيصال">🧾</button>
+        <button class="icon-btn" data-lnd-edit="${o.id}" title="تعديل">✏️</button>
         <button class="icon-btn cancel-btn ${o.cancelled?'on':''}" data-lnd-cancel="${o.id}" title="${o.cancelled?'إلغاء الإلغاء (مطوّل)':'إلغاء الطلب (اضغط مطوّلًا)'}">🚫</button>
         <button class="icon-btn" data-lnd-del="${o.id}" title="حذف">${svg(I.trash)}</button>
       </div>
@@ -1575,9 +1648,11 @@ function screenLaundry(){
           <div class="field"><label>العدد</label><input id="lndCount" type="number" min="1" value="1"></div>
         </div>
         <div class="total-line"><span>الإجمالي</span><b><span id="lndTotal">${startUnit}</span></b></div>
-        <div class="hint" style="margin:-6px 0 12px">آخر سعر تُدخله لكل (نوع + خدمة) يصبح افتراضيًا.</div>
+        <button type="button" class="mini inv-add" id="lndAddLine">➕ أضف هذا الصنف للفاتورة وأكمل بصنف آخر</button>
+        <div id="lndLines">${invDraftHTML("lnd")}</div>
+        <div class="hint" style="margin:0 0 10px">آخر سعر تُدخله لكل (نوع + خدمة) يصبح افتراضيًا.</div>
         <div class="field"><label>التاريخ</label><input id="lndDate" type="date" value="${ymd(new Date())}" max="${ymd(new Date())}"></div>
-        <button class="btn-primary" id="lndSave">إضافة الطلب</button>
+        <button class="btn-primary" id="lndSave">${invSaveLabel("lnd")}</button>
       </div>
       <div>
         <input class="search-inp" id="lndSearch" type="text" placeholder="بحث بالاسم أو رقم الطلب أو الهاتف" value="${q}">
@@ -2492,8 +2567,8 @@ function openDirStatement(c){
   const row=(d,lbl,price,paid)=>`<div class="rcpt-row"><span>${ymd(d)} — ${lbl}</span><b>${money(price)}${paid?'':' <span style="color:#d64545">(غير مدفوع)</span>'}</b></div>`;
   const rows=[
     ...a.cars.map(o=>({d:o.date,h:row(o.date,"غسيل "+(o.vehicle||"")+(o.plate?(" "+o.plate):""),o.price,o.paid!==false)})),
-    ...a.rugs.map(o=>({d:o.date,h:row(o.date,"سجاد "+(o.type||"")+" ×"+(o.count||1),o.price,o.paid)})),
-    ...a.lnd.map(o=>({d:o.date,h:row(o.date,"ملابس "+(o.type||"")+" ×"+(o.count||1),o.price,o.paid)})),
+    ...a.rugs.map(o=>({d:o.date,h:row(o.date,"سجاد "+orderLabel(o),o.price,o.paid)})),
+    ...a.lnd.map(o=>({d:o.date,h:row(o.date,"ملابس "+orderLabel(o),o.price,o.paid)})),
     ...a.sales.map(s=>({d:s.date,h:`<div class="rcpt-row"><span>${ymd(s.date)} — فاتورة متجر ${s.no}</span><b>${money(s.total)}${saleOutstanding(s)>0?` <span style="color:#d64545">(متبقٍ ${money(saleOutstanding(s))})</span>`:''}</b></div>`}))
   ].sort((x,y)=>(y.d||"").localeCompare(x.d||"")).map(x=>x.h).join("")||'<div class="hint">لا تعاملات بعد.</div>';
   document.getElementById("receiptContent").innerHTML=`
@@ -3103,33 +3178,37 @@ function bindScreen(){
         cpC=document.getElementById("cpCount"), cpT=document.getElementById("cpTotal");
   const recalc=()=>{ if(cpT) cpT.textContent=fmt((+cpP.value||0)*(+cpC.value||0)); };
   if(ct){
+    const cpMark=()=>{ invDirty.cp=true; const sv=document.getElementById("cpSave"); if(sv) sv.textContent=invSaveLabel("cp"); };
     document.querySelectorAll("[data-ppick]").forEach(btn=>btn.onclick=()=>{
       document.querySelectorAll("[data-ppick]").forEach(x=>x.classList.remove("on"));
       btn.classList.add("on");
       ct.value=btn.dataset.ppick;
-      cpP.value=state.piecePrices[ct.value]||0; recalc();
+      cpP.value=state.piecePrices[ct.value]||0; recalc(); cpMark();
     });
-    cpP.oninput=recalc; cpC.oninput=recalc;
+    cpP.oninput=()=>{ recalc(); cpMark(); }; cpC.oninput=()=>{ recalc(); cpMark(); };
+    const cpLine=()=>({type:ct.value,count:+cpC.value,unit:+cpP.value,price:(+cpP.value||0)*(+cpC.value||0)});
+    refreshInvDraft("cp");
+    document.getElementById("cpAddLine").onclick=()=>{ const l=cpLine(); if(!(l.unit>0)) return toast("أدخل سعرًا صحيحًا"); if(!(l.count>0)) return toast("أدخل عددًا صحيحًا");
+      invDraft.cp.push(l); invDirty.cp=false; cpC.value=1; recalc(); refreshInvDraft("cp"); toast("➕ "+l.type+" ×"+l.count+" — اختر الصنف التالي"); };
     bindPhotoStrip("cpPhotoStrip",pendingCpPhotos,"cp");
     const doCpSave=()=>{
-      const unit=+cpP.value, count=+cpC.value, type=ct.value;
       const cpph=document.getElementById("cpPhone").value.trim();
       const cpcountry=document.getElementById("cpCountry").value;
       const cpcust=document.getElementById("cpCust").value.trim();
       if(!cpcust && !cpph) return toast("أدخل اسم الزبون أو رقمه");
-      if(!(unit>0)) return toast("أدخل سعرًا صحيحًا");
-      if(!(count>0)) return toast("أدخل عددًا صحيحًا");
+      const lines=invDraft.cp.slice();
+      if(!lines.length || invDirty.cp){ const l=cpLine(); if(!(l.unit>0)) return toast("أدخل سعرًا صحيحًا"); if(!(l.count>0)) return toast("أدخل عددًا صحيحًا"); lines.push(l); }
       if(!validPhone(cpph)) return toast("رقم الهاتف يجب أن يكون 8 أرقام");
       const cpDateV=(document.getElementById("cpDate")||{}).value||todayStr();
       const commit=()=>{
-        state.piecePrices[type]=unit;
+        lines.forEach(l=>{ state.piecePrices[l.type]=+l.unit; });
         state.orderSeq++;
         const d=chosenDateIso(cpDateV);
-        state.carpetOrders.push({id:uid(),no:orderNo(state.orderSeq,d),
-          customer:cpcust, phone:cpph, country:cpcountry, by:currentUser,
-          type,count,unit,price:unit*count,status:"wash",paid:false,photos:[...pendingCpPhotos],date:d});
-        logActivity("طلب أفرشة", type+" ×"+count+" · "+fmt(unit*count)+" "+CUR);
-        pendingCpPhotos.length=0;
+        const o={id:uid(),no:orderNo(state.orderSeq,d), customer:cpcust, phone:cpph, country:cpcountry, by:currentUser,
+          status:"wash",paid:false,photos:[...pendingCpPhotos],date:d};
+        applyLinesToOrder(o,lines,"cp"); state.carpetOrders.push(o);
+        logActivity("طلب أفرشة", orderLabel(o)+" · "+fmt(o.price)+" "+CUR);
+        pendingCpPhotos.length=0; invDraft.cp=[]; invDirty.cp=false;
         toast("تمت إضافة الطلب"); render();
       };
       gateDate(cpDateV, commit);
@@ -3180,35 +3259,39 @@ function bindScreen(){
       document.querySelectorAll("[data-lndtype]").forEach(x=>x.classList.remove("on"));
       btn.classList.add("on");
       lndType.value=btn.dataset.lndtype;
-      lndSyncPrice();
+      lndSyncPrice(); lndMark();
     });
-    if(lndSvc) lndSvc.onchange=lndSyncPrice;
-    if(lndP) lndP.oninput=lndRecalc;
-    if(lndC) lndC.oninput=lndRecalc;
+    const lndMark=()=>{ invDirty.lnd=true; const sv=document.getElementById("lndSave"); if(sv) sv.textContent=invSaveLabel("lnd"); };
+    if(lndSvc) lndSvc.onchange=()=>{ lndSyncPrice(); lndMark(); };
+    if(lndP) lndP.oninput=()=>{ lndRecalc(); lndMark(); };
+    if(lndC) lndC.oninput=()=>{ lndRecalc(); lndMark(); };
+    const lndLine=()=>({type:lndType.value,service:lndSvc.value,count:+lndC.value,unit:+lndP.value,price:(+lndP.value||0)*(+lndC.value||0)});
+    refreshInvDraft("lnd");
+    document.getElementById("lndAddLine").onclick=()=>{ const l=lndLine(); if(!(l.unit>0)) return toast("أدخل سعرًا صحيحًا"); if(!(l.count>0)) return toast("أدخل عددًا صحيحًا");
+      invDraft.lnd.push(l); invDirty.lnd=false; lndC.value=1; lndRecalc(); refreshInvDraft("lnd"); toast("➕ "+l.type+" ×"+l.count+" — اختر الصنف التالي"); };
     const doLndSave=()=>{
-      const unit=+lndP.value, count=+lndC.value, type=lndType.value, service=lndSvc.value;
       const ph=document.getElementById("lndPhone").value.trim();
       const country=document.getElementById("lndCountry").value;
       const cust=document.getElementById("lndCust").value.trim();
       if(!cust && !ph) return toast("أدخل اسم العميل أو رقمه");
-      if(!(unit>0)) return toast("أدخل سعرًا صحيحًا");
-      if(!(count>0)) return toast("أدخل عددًا صحيحًا");
+      const lines=invDraft.lnd.slice();
+      if(!lines.length || invDirty.lnd){ const l=lndLine(); if(!(l.unit>0)) return toast("أدخل سعرًا صحيحًا"); if(!(l.count>0)) return toast("أدخل عددًا صحيحًا"); lines.push(l); }
       if(!validPhone(ph)) return toast("رقم الهاتف يجب أن يكون 8 أرقام");
       const dateV=(document.getElementById("lndDate")||{}).value||todayStr();
       const commit=()=>{
-        state.laundryPrices[type+"|"+service]=unit;
+        lines.forEach(l=>{ state.laundryPrices[l.type+"|"+l.service]=+l.unit; });
         const d=chosenDateIso(dateV);
-        const status=laundryFirstStatus(service);
-        state.laundryOrders.push({id:uid(),no:laundryNextNo(d),
-          customer:cust, phone:ph, country, by:currentUser,
-          type, service, count, unit, price:unit*count, status, paid:false, date:d});
-        logActivity("طلب ملابس", type+" ×"+count+" ("+service+") · "+fmt(unit*count)+" "+CUR);
+        const o={id:uid(),no:laundryNextNo(d), customer:cust, phone:ph, country, by:currentUser, paid:false, date:d};
+        applyLinesToOrder(o,lines,"lnd"); o.status=laundryFirstStatus(o.service); state.laundryOrders.push(o);
+        logActivity("طلب ملابس", orderLabel(o,true)+" · "+fmt(o.price)+" "+CUR);
+        invDraft.lnd=[]; invDirty.lnd=false;
         toast("تمت إضافة الطلب"); render();
       };
       gateDate(dateV, commit);
     };
     bindHold(document.getElementById("lndSave"), doLndSave, 1000);
   }
+  document.querySelectorAll("[data-lnd-edit]").forEach(b=>b.onclick=()=>{ const o=(state.laundryOrders||[]).find(x=>x.id===b.dataset.lndEdit); if(!o)return; gateDay(o.date,()=>openEditLnd(o.id)); });
   document.querySelectorAll("[data-lnd-status]").forEach(b=>b.onclick=()=>{
     const o=(state.laundryOrders||[]).find(x=>x.id===b.dataset.lndStatus);
     if(!o) return;
@@ -3997,7 +4080,7 @@ function openReceipt(o){
       <div class="rcpt-row"><span>التاريخ</span><b>${ymd(o.date)} ${timeStr(o.date)}</b></div>
       <div class="rcpt-row"><span>العميل</span><b>${_esc(o.customer||"-")}</b></div>
       ${o.phone?`<div class="rcpt-row"><span>الهاتف</span><b>${_esc(o.phone)}</b></div>`:""}
-      <div class="rcpt-row"><span>النوع</span><b>${_esc(o.type)} × ${o.count}</b></div>
+      ${rcptItemsHTML(o,false)}
       <div class="rcpt-row"><span>الحالة</span><b>${STATUS[o.status]?STATUS[o.status].label:o.status}</b></div>
       <div class="rcpt-total"><span>الإجمالي</span><b>${money(o.price)} ${CUR}</b></div>
       <div class="rcpt-paid ${o.paid?'ok':'no'}">${o.paid?"✔ مدفوع":"✖ غير مدفوع"}</div>
@@ -4101,7 +4184,7 @@ function openWaCust(c){
 function waStatusMsg(o){
   const st=o.status==="ready"?"جاهز للاستلام":o.status==="done"?"تم التسليم":"قيد الغسيل";
   const pay=o.paid?"مدفوع":`المبلغ المستحق: ${money(o.price)}`;
-  return `${waHead()}\n${o.type} × ${o.count}\nرقم الطلب: ${o.no}\nالحالة: ${st}\n${pay}\n${waFoot()}`;
+  return `${waHead()}\n${orderLabel(o,false,"\n")}\nرقم الطلب: ${o.no}\nالحالة: ${st}\n${pay}\n${waFoot()}`;
 }
 function openWa(o){
   const ph=waPhone(o);
@@ -4110,7 +4193,7 @@ function openWa(o){
 }
 function waLink(o){
   const phone=(o.phone||"").replace(/[^0-9]/g,"");
-  const msg=`مغاسيل صداقة%0Aطلبك رقم ${o.no} (${o.type} × ${o.count})%0Aالحالة: ${STATUS[o.status].label}%0Aالإجمالي: ${money(o.price)}${o.paid?" (مدفوع)":""}`;
+  const msg=`مغاسيل صداقة%0Aطلبك رقم ${o.no} (${encodeURIComponent(orderLabel(o))})%0Aالحالة: ${STATUS[o.status].label}%0Aالإجمالي: ${money(o.price)}${o.paid?" (مدفوع)":""}`;
   return `https://wa.me/${phone}?text=${msg}`;
 }
 function lndStatusLabel(o){ return (LSTATUS[o.status]&&LSTATUS[o.status].label)||o.status; }
@@ -4119,7 +4202,7 @@ function openLndWa(o){
   if(!ph){ toast("لا يوجد رقم هاتف لهذا الزبون"); return; }
   const st=o.status==="ready"?"جاهز للاستلام":o.status==="done"?"تم التسليم":lndStatusLabel(o);
   const pay=o.paid?"مدفوع":`المبلغ المستحق: ${money(o.price)}`;
-  const text=`${waHead()}\nملابس — ${o.service}\n${o.type} × ${o.count}\nرقم الطلب: ${o.no}\nالحالة: ${st}\n${pay}\n${waFoot()}`;
+  const text=`${waHead()}\n${isMultiOrder(o)?"ملابس:\n"+orderLabel(o,true,"\n"):"ملابس — "+o.service+"\n"+o.type+" × "+o.count}\nرقم الطلب: ${o.no}\nالحالة: ${st}\n${pay}\n${waFoot()}`;
   window.open(`https://wa.me/${ph}?text=${encodeURIComponent(text)}`,"_blank");
 }
 function openLndReceipt(o){
@@ -4130,8 +4213,7 @@ function openLndReceipt(o){
       <div class="rcpt-row"><span>التاريخ</span><b>${ymd(o.date)} ${timeStr(o.date)}</b></div>
       <div class="rcpt-row"><span>العميل</span><b>${_esc(o.customer||"-")}</b></div>
       ${o.phone?`<div class="rcpt-row"><span>الهاتف</span><b>${_esc(o.phone)}</b></div>`:""}
-      <div class="rcpt-row"><span>النوع</span><b>${_esc(o.type)} × ${o.count}</b></div>
-      <div class="rcpt-row"><span>الخدمة</span><b>${_esc(o.service)}</b></div>
+      ${rcptItemsHTML(o,true)}
       <div class="rcpt-row"><span>الحالة</span><b>${lndStatusLabel(o)}</b></div>
       <div class="rcpt-total"><span>الإجمالي</span><b>${money(o.price)} ${CUR}</b></div>
       <div class="rcpt-paid ${o.paid?'ok':'no'}">${o.paid?"✔ مدفوع":"✖ غير مدفوع"}</div>
@@ -4200,13 +4282,17 @@ function openEditCar(id){
 }
 function openEditOrder(id){
   const o=state.carpetOrders.find(x=>x.id===id); if(!o) return; _editCtx={type:"order",id};
-  const typeOpts=Object.keys(state.piecePrices).map(t=>`<option value="${t}" ${t===o.type?"selected":""}>${t}</option>`).join("");
   document.getElementById("editBody").innerHTML=`
-    <div class="field"><label>النوع</label><select id="edType">${typeOpts}</select></div>
-    <div class="field"><label>العدد</label><input id="edCount" type="number" min="1" value="${o.count}"></div>
-    <div class="field"><label>سعر الوحدة</label><input id="edUnit" type="number" min="0" value="${o.unit}"></div>
-    <div class="field"><label>اسم الزبون</label><input id="edCust" type="text" value="${(o.customer||"").replace(/"/g,"&quot;")}"></div>`;
-  document.getElementById("editModal").style.display="flex";
+    <div class="field"><label>اسم الزبون</label><input id="edCust" type="text" value="${_esc(o.customer||"")}"></div>
+    ${itemsEditorHTML("cp",o)}`;
+  document.getElementById("editModal").style.display="flex"; bindItemsEditor("cp");
+}
+function openEditLnd(id){
+  const o=(state.laundryOrders||[]).find(x=>x.id===id); if(!o) return; _editCtx={type:"lnd",id};
+  document.getElementById("editBody").innerHTML=`
+    <div class="field"><label>اسم الزبون</label><input id="edCust" type="text" value="${_esc(o.customer||"")}"></div>
+    ${itemsEditorHTML("lnd",o)}`;
+  document.getElementById("editModal").style.display="flex"; bindItemsEditor("lnd");
 }
 document.getElementById("editClose").onclick=()=>{ document.getElementById("editModal").style.display="none"; _editCtx=null; };
 document.getElementById("editSave").onclick=()=>{
@@ -4219,13 +4305,17 @@ document.getElementById("editSave").onclick=()=>{
     o.price=+document.getElementById("edPrice").value||0;
     o.editedAt=iso(new Date());
   } else {
-    const o=state.carpetOrders.find(x=>x.id===_editCtx.id); if(!o) return;
-    o.type=document.getElementById("edType").value;
-    o.count=Math.max(1,+document.getElementById("edCount").value||1);
-    o.unit=+document.getElementById("edUnit").value||0;
-    o.price=o.unit*o.count;
+    const kind=_editCtx.type==="lnd"?"lnd":"cp";
+    const o=kind==="lnd"?(state.laundryOrders||[]).find(x=>x.id===_editCtx.id):state.carpetOrders.find(x=>x.id===_editCtx.id); if(!o) return;
+    const lines=readItemsEditor(kind);
+    if(!lines.length) return toast("أضف صنفًا واحدًا على الأقل");
+    if(lines.some(l=>!(l.count>0))) return toast("أدخل عددًا صحيحًا لكل صنف");
+    if(lines.some(l=>!(l.unit>0))) return toast("أدخل سعرًا صحيحًا لكل صنف");
+    applyLinesToOrder(o,lines,kind);
+    if(kind==="lnd" && !laundryFlow(o.service).includes(o.status)) o.status=laundryFirstStatus(o.service);
     o.customer=document.getElementById("edCust").value.trim();
     o.editedAt=iso(new Date());
+    logActivity(kind==="lnd"?"تعديل طلب ملابس":"تعديل طلب أفرشة",(o.no||"")+" · "+orderLabel(o)+" · "+fmt(o.price)+" "+CUR);
   }
   document.getElementById("editModal").style.display="none"; _editCtx=null;
   toast("تم حفظ التعديل"); render();
@@ -4461,7 +4551,7 @@ setTimeout(()=>{ if(!window.cloudReady){ const el=document.getElementById("cloud
 <!-- PWA: service-worker registration + update/install wiring -->
 <script>
 (function(){
-  var APP_VERSION = "2.2.0";
+  var APP_VERSION = "2.3.0";
   function $(id){ return document.getElementById(id); }
   function setText(id,t){ var el=$(id); if(el) el.textContent=t; }
 
