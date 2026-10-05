@@ -309,6 +309,12 @@
   .modal-box input[type=password],.modal-box input[type=text]{width:100%}
   .rcpt{font-family:inherit;color:#111}
   body.dark .rcpt{color:var(--ink)}
+  /* نسخة الصورة: دائمًا فاتحة بعرض ثابت */
+  .rcpt.rcpt-snap{width:380px;padding:18px 18px 14px;background:#fff;color:#111;border-radius:0;
+    --bg:#ffffff; --surface:#ffffff; --ink:#152534; --muted:#5c6f7e; --line:#cfd9e2; --soft:#f1f6fa; --chip:#e9f0f6;
+    --ready:#1f9d63; --ready-bg:#e4f6ec; --unpaid:#d64545; --unpaid-bg:#fbeaea; --input:#f7fafc}
+  .rcpt-snap .rcpt-head b{color:var(--brand)}
+  .rcpt-imgview img{display:block;width:100%;height:auto;border:1px solid var(--line);border-radius:10px;background:#fff}
   .rcpt-head{text-align:center;margin-bottom:12px}
   .rcpt-head b{font-size:1.2rem;color:var(--brand)}
   .rcpt-head div{font-size:.82rem;color:var(--muted)}
@@ -830,7 +836,8 @@
   <div class="modal-box" id="receiptBox">
     <div id="receiptContent"></div>
     <div class="modal-actions no-print" style="margin-top:14px">
-      <button class="btn-primary" id="receiptPrint" style="flex:1">طباعة</button>
+      <button class="btn-primary" id="receiptPrint" style="flex:1;white-space:nowrap;padding-inline:8px">🖨️ طباعة</button>
+      <button class="btn-primary" id="receiptImg" style="flex:1.3;white-space:nowrap;padding-inline:8px;background:var(--teal)">📤 إرسال صورة</button>
       <button class="mini" id="receiptClose">إغلاق</button>
     </div>
   </div>
@@ -4106,6 +4113,59 @@ function printReceipt(){
   window.print();
   setTimeout(()=>{ b.classList.remove("printing-receipt","rcpt-w58","rcpt-w80","rcpt-wa4"); st.textContent=""; },400);
 }
+/* ---- إرسال الإيصال كصورة (فاتورة PNG) — مكتبة html-to-image محلية في assets/vendor ---- */
+let _h2iLoading=null;
+function loadHtmlToImage(){ if(window.htmlToImage) return Promise.resolve(); if(!_h2iLoading) _h2iLoading=loadScript("assets/vendor/html-to-image.js").catch(e=>{ _h2iLoading=null; throw e; }); return _h2iLoading; }
+async function receiptImageBlob(){
+  const node=document.querySelector("#receiptContent .rcpt"); if(!node) throw new Error("no receipt");
+  await loadHtmlToImage();
+  const fontCss=await receiptFontCSS();
+  node.classList.add("rcpt-snap");
+  try{
+    // fontEmbedCSS يمنع المكتبة من قراءة أوراق الأنماط الخارجية بنفسها (نمرّر خط Tajawal جاهزًا أو لا شيء)
+    const opts={pixelRatio:2, backgroundColor:"#ffffff", cacheBust:false, fontEmbedCSS:fontCss, filter:(n)=>!(n.classList&&n.classList.contains("no-print"))};
+    return await window.htmlToImage.toBlob(node,opts);
+  } finally { node.classList.remove("rcpt-snap"); }
+}
+// خط Tajawal كـ data URLs ليظهر داخل الصورة (يُحمَّل مرة ويُحفظ في الذاكرة؛ دون إنترنت تُستخدم خطوط الجهاز)
+let _rcptFontCss=null;
+async function receiptFontCSS(){
+  if(_rcptFontCss) return _rcptFontCss;
+  try{
+    const link=document.querySelector('link[href*="fonts.googleapis.com/css2"]'); if(!link) return "";
+    let css=await (await fetch(link.href)).text();
+    const urls=[...new Set((css.match(/url\((https:[^)]+)\)/g)||[]).map(u=>u.slice(4,-1)))];
+    for(const u of urls){ const b=await (await fetch(u)).blob(); const d=await new Promise((r,j)=>{ const fr=new FileReader(); fr.onload=()=>r(fr.result); fr.onerror=j; fr.readAsDataURL(b); }); css=css.split(u).join(d); }
+    _rcptFontCss=css; return css;
+  }catch(e){ return ""; }
+}
+function showReceiptImage(url){
+  const box=document.getElementById("receiptContent");
+  const prev=box.innerHTML; window._rcptPrevHTML=prev;
+  box.innerHTML=`<div class="rcpt-imgview"><img id="rcptImgOut" src="${url}" alt="فاتورة"><div class="hint" style="margin-top:8px;text-align:center">اضغط مطوّلًا على الصورة لحفظها أو مشاركتها، أو استخدم زر التنزيل.</div>
+    <div style="display:flex;gap:8px;margin-top:8px"><a class="btn-primary" id="rcptImgDl" href="${url}" download="فاتورة.png" style="flex:1;text-align:center;text-decoration:none">⬇️ تنزيل الصورة</a><button class="mini" id="rcptImgBack" type="button">رجوع</button></div></div>`;
+  document.getElementById("rcptImgBack").onclick=()=>{ box.innerHTML=window._rcptPrevHTML||prev; };
+}
+async function shareReceiptImage(){
+  const btn=document.getElementById("receiptImg"); const old=btn?btn.textContent:"";
+  if(!document.querySelector("#receiptContent .rcpt")) return;
+  if(btn){ btn.disabled=true; btn.textContent="⏳ جارٍ التجهيز…"; }
+  try{
+    const blob=await receiptImageBlob(); if(!blob) throw new Error("empty");
+    window._lastReceiptBlob=blob;
+    const noEl=document.querySelector("#receiptContent .rcpt-no"); const no=noEl?noEl.textContent.trim():ymd(new Date());
+    const name=("فاتورة-"+no).replace(/[\\/:*?"<>|\s]+/g,"-")+".png";
+    const file=new File([blob],name,{type:"image/png"});
+    const text=shopInfo().name+(noEl?(" — فاتورة "+no):"");
+    let shared=false;
+    try{ if(navigator.canShare && navigator.canShare({files:[file]})){ await navigator.share({files:[file],text}); shared=true; } }
+    catch(e){ if(e&&e.name==="AbortError") shared=true; }
+    if(!shared){ const url=URL.createObjectURL(blob); showReceiptImage(url); const dl=document.getElementById("rcptImgDl"); if(dl) dl.download=name; }
+    logActivity("إرسال فاتورة كصورة", no);
+  }catch(e){
+    toast("تعذّر تجهيز الصورة — حاول مرة أخرى");
+  }finally{ if(btn){ btn.disabled=false; btn.textContent=old||"📤 إرسال صورة"; } }
+}
 function openCarReceipt(o){
   const c=o.plate&&state.customers?state.customers[o.plate]:null;
   document.getElementById("receiptContent").innerHTML=`
@@ -4372,6 +4432,7 @@ document.getElementById("setSave").onclick=()=>{
 };
 document.getElementById("receiptClose").onclick=()=>document.getElementById("receiptModal").style.display="none";
 document.getElementById("receiptPrint").onclick=printReceipt;
+document.getElementById("receiptImg").onclick=shareReceiptImage;
 document.getElementById("rcptTestBtn").onclick=()=>{ setRcptWidth(document.getElementById("rcptWidthSet").value); openTestReceipt(); };
 (function(){
   // القفل يعتمد على عدم النشاط لمدة 60 دقيقة (انظر touchSession/lockNow/restoreSession).
@@ -4551,7 +4612,7 @@ setTimeout(()=>{ if(!window.cloudReady){ const el=document.getElementById("cloud
 <!-- PWA: service-worker registration + update/install wiring -->
 <script>
 (function(){
-  var APP_VERSION = "2.3.0";
+  var APP_VERSION = "2.4.0";
   function $(id){ return document.getElementById(id); }
   function setText(id,t){ var el=$(id); if(el) el.textContent=t; }
 

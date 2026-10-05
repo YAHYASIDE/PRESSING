@@ -96,6 +96,12 @@
   `buildOrderFromLines`/`applyLinesToOrder`, `rcptItemsHTML`. خدمة الملابس المختلطة = «غسيل وكي»
   (`combinedService`). التعديل ✏️ (سجاد `openEditOrder`، ملابس `openEditLnd` جديد) بمحرّر أصناف
   (`itemsEditorHTML`/`bindItemsEditor`/`readItemsEditor`): إضافة/حذف صنف وتغيير العدد والسعر والخدمة.
+- **إرسال الإيصال كصورة (2.4.0):** زر «📤 إرسال صورة» بجانب «طباعة» في نافذة أي إيصال/كشف
+  (`shareReceiptImage`). يحوّل `#receiptContent .rcpt` إلى PNG (عرض 380px × 2) بمكتبة
+  **html-to-image** المحلية `assets/vendor/html-to-image.js` (MIT، تُحمَّل عند الحاجة `loadHtmlToImage`،
+  ومُخزّنة في الـ SW فتعمل دون إنترنت). الصورة دائمًا فاتحة (`.rcpt-snap`) ويُضمَّن خط Tajawal
+  (`receiptFontCSS` → `fontEmbedCSS`؛ دون إنترنت تُستخدم خطوط الجهاز). المشاركة عبر
+  `navigator.share({files})` (واتساب…)، وإن لم تتوفّر تُعرض الصورة مع زر «تنزيل» (ضغط مطوّل للحفظ).
 - **قاعدة الحذف والاستعادة (2.0.0):** السجلّ يُعتبر محذوفًا فقط إذا كان وقت الـ tombstone
   ≥ `editedAt` للسجلّ (`isDead` في `mergeById`). لذلك السجلّ المُستعاد (editedAt جديد) يعود
   على كل الأجهزة. `tomb(id)` يضع وقتًا = max(الآن، editedAt+1) لتفادي فرق ساعات الأجهزة.
