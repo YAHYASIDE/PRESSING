@@ -102,6 +102,17 @@
   ومُخزّنة في الـ SW فتعمل دون إنترنت). الصورة دائمًا فاتحة (`.rcpt-snap`) ويُضمَّن خط Tajawal
   (`receiptFontCSS` → `fontEmbedCSS`؛ دون إنترنت تُستخدم خطوط الجهاز). المشاركة عبر
   `navigator.share({files})` (واتساب…)، وإن لم تتوفّر تُعرض الصورة مع زر «تنزيل» (ضغط مطوّل للحفظ).
+- **طرق الدفع (2.5.0):** `PAY_METHODS` = كاش / بنكيلي / مصرفي / سداد. الحقل `payMethod` (رمز:
+  cash/bankily/masrvi/sedad؛ غيابه = كاش للسجلات القديمة، `normPM`) على: السيارات (عند الحفظ)،
+  تحصيل السجاد/الملابس/السيارات (`#payPm` في `payModal`)، حركات الصندوق `storeCash` (بيع POS `#posPm`،
+  تحصيل/تسديد `#storePayPm`، شراء `#purPm`، سحب المغسلة `#smPm`، حركة يدوية `#cashPm`)، والمصروفات
+  (`#expPm`). المكوّن: `pmPickerHTML(id,label)` + `bindPmPickers` + `pmVal`/`pmReset`، والاختيار يبقى بعد
+  إعادة الرسم (`_pmDraft`). الحساب: `payBreakdown(F)` → لكل طريقة {lnd, store, inc, out, net} (البيع
+  الداخلي للمغسلة مستثنى). يظهر في: التقارير (`payBreakdownHTML`)، شريط الرئيسية، تقفيل اليوم (صافي
+  الكاش)، الصندوق (رصيد كل طريقة)، شارات البطاقات والإيصالات (`pmTag`). إلغاء الدفع يحذف `payMethod`.
+- **تبويب «الديون» في المتجر (2.5.0):** `storeScreenDebts` — المدينون (لنا: `debtors()` عبر
+  `contactsDebts(true)`) والدائنون (علينا: `creditors()` = موردون برصيد) مع تسديد/كشف/اتصال
+  (`bindDebtsUI`، `state.debtView` في `CLOUD_OMIT`).
 - **قاعدة الحذف والاستعادة (2.0.0):** السجلّ يُعتبر محذوفًا فقط إذا كان وقت الـ tombstone
   ≥ `editedAt` للسجلّ (`isDead` في `mergeById`). لذلك السجلّ المُستعاد (editedAt جديد) يعود
   على كل الأجهزة. `tomb(id)` يضع وقتًا = max(الآن، editedAt+1) لتفادي فرق ساعات الأجهزة.

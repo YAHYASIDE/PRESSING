@@ -324,6 +324,14 @@
   .rcpt-logo{width:64px;height:64px;object-fit:contain;display:block;margin:0 auto 6px}
   .rcpt-sub{margin-top:6px;font-weight:800;color:var(--ink)!important;font-size:.9rem!important}
   .rcpt-sec{font-weight:800;margin:12px 0 2px;color:var(--brand);font-size:.92rem}
+  .pm-pick{display:flex;gap:5px;flex-wrap:wrap}
+  .pm-opt{flex:1 1 0;min-width:68px;padding:7px 6px;border:1.5px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);font-weight:800;font-size:.8rem;cursor:pointer;font-family:inherit;white-space:nowrap}
+  .pm-opt.on{border-color:var(--brand);background:var(--brand);color:#fff}
+  .pm-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:8px}
+  .pm-chip{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:6px 4px;text-align:center;box-shadow:var(--shadow)}
+  .pm-chip span{display:block;font-size:.7rem;font-weight:700;color:var(--muted)}
+  .pm-chip b{display:block;font-size:.9rem}
+  .pm-chip.cash b{color:var(--ready)}
   .inv-add{width:100%;margin:2px 0 8px;font-weight:800;border-style:dashed!important;color:var(--brand-2)}
   .inv-box{background:var(--soft);border:1px solid var(--line);border-radius:12px;padding:8px 10px;margin-bottom:8px}
   .inv-title{font-weight:800;font-size:.82rem;margin-bottom:4px}
@@ -667,6 +675,7 @@
     <h3>تحصيل الدفع</h3>
     <p>تاريخ الدفعة — يُحسب الدخل في هذا اليوم:</p>
     <input id="payDate" type="date">
+    <div class="field pm-field"><label>طريقة الدفع</label><div class="pm-pick" id="payPm" data-val="cash"><button type="button" class="pm-opt on" data-pm="cash">💵 كاش</button><button type="button" class="pm-opt" data-pm="bankily">🏦 بنكيلي</button><button type="button" class="pm-opt" data-pm="masrvi">🏦 مصرفي</button><button type="button" class="pm-opt" data-pm="sedad">🏦 سداد</button></div></div>
     <div class="modal-actions" style="margin-top:6px">
       <button class="btn-primary" id="payOk" style="flex:1">تأكيد التحصيل</button>
       <button class="mini" id="payCancel">إلغاء</button>
@@ -678,6 +687,7 @@
     <h3 id="storePayTitle">تحصيل دفعة</h3>
     <p id="storePayHint" class="hint"></p>
     <div class="field"><label>المبلغ</label><input id="storePayAmt" type="number" min="0" value="0"></div>
+    <div class="field pm-field"><label>طريقة الدفع</label><div class="pm-pick" id="storePayPm" data-val="cash"><button type="button" class="pm-opt on" data-pm="cash">💵 كاش</button><button type="button" class="pm-opt" data-pm="bankily">🏦 بنكيلي</button><button type="button" class="pm-opt" data-pm="masrvi">🏦 مصرفي</button><button type="button" class="pm-opt" data-pm="sedad">🏦 سداد</button></div></div>
     <div class="modal-actions" style="margin-top:6px">
       <button class="btn-primary" id="storePayOk" style="flex:1">تأكيد التحصيل</button>
       <button class="mini" id="storePayCancel">إلغاء</button>
@@ -1416,6 +1426,7 @@ function screenDashboard(){
       <button class="mini" id="sendReport2">📤 تقرير الدخل (− مصروفات عامة)</button>
       ${currentRole!=="worker"?`<button class="mini" id="openClosing" style="background:var(--brand);color:#fff;border-color:var(--brand)">🧾 تقفيل اليوم</button>`:""}
     </div>
+    ${(()=>{ const r=payBreakdown(F); return `<div class="pm-strip">${PAY_METHODS.map(m=>`<div class="pm-chip ${m.k}"><span>${m.ic} ${m.t}</span><b>${money(r[m.k].inc)}</b></div>`).join("")}</div>`; })()}
     <div class="grid metrics">
       ${breakdown(`دخل ${periodLabel} حسب النوع`,incItems,{label:`إجمالي دخل ${periodLabel}`,val:inc})}
       ${breakdown(`مصروف ${periodLabel} حسب النوع`,expItems,{label:`إجمالي مصروف ${periodLabel}`,val:exp})}
@@ -1453,7 +1464,7 @@ function screenCars(){
       <div class="cc-main">
         ${VEH_IMG[o.vehicle]?`<img class="cc-img" src="${VEH_IMG[o.vehicle]}" alt="">`:`<span class="cc-ic">${svg(vehIcon(o.vehicle))}</span>`}
         <div class="cc-info">
-          <div class="cc-veh"><b>${o.vehicle}</b>${o.cancelled?'<span class="badge badge-cancel">ملغى 🚫</span>':''}${o.free?'<span class="badge b-wash">مجاني 🎁</span>':''}${o.paid===false?'<span class="badge b-unpaid">غير مدفوع</span>':''}</div>
+          <div class="cc-veh"><b>${o.vehicle}</b>${o.cancelled?'<span class="badge badge-cancel">ملغى 🚫</span>':''}${o.free?'<span class="badge b-wash">مجاني 🎁</span>':''}${o.paid===false?'<span class="badge b-unpaid">غير مدفوع</span>':(pmTag(o)?`<span class="badge b-paid">${pmLabel(o.payMethod)}</span>`:'')}</div>
           <div class="cc-sub">${o.wash}${o.plate?` • ${o.plate}`:""}${o.by?` • بواسطة ${o.by}`:""}</div>
         </div>
       </div>
@@ -1503,6 +1514,7 @@ function screenCars(){
         <div class="field"><label>صور قبل الغسيل</label><div class="photos" id="carBeforeStrip"></div></div>
         <div class="field"><label>صور بعد الغسيل</label><div class="photos" id="carAfterStrip"></div></div>
         <div class="field"><label>التاريخ</label><input id="carDate" type="date" value="${ymd(new Date())}" max="${ymd(new Date())}"></div>
+        ${pmPickerHTML("carPm","طريقة الدفع")}
         <label style="display:flex;align-items:center;gap:8px;font-size:.88rem;font-weight:600;margin:4px 0 12px;cursor:pointer"><input type="checkbox" id="carDeferred" style="width:18px;height:18px"> دفع مؤجّل (غير مدفوع — يُحصّل لاحقًا)</label>
         <button class="btn-primary" id="carSave">حفظ العملية</button>
       </div>
@@ -1543,7 +1555,7 @@ function screenCarpets(){
       <div class="badges">
         ${o.cancelled?'<span class="badge badge-cancel">ملغى 🚫</span>':''}
         <span class="badge b-${st.cls}">${st.label}</span>
-        ${o.paid?'<span class="badge b-paid">مدفوع</span>':'<span class="badge b-unpaid">غير مدفوع</span>'}
+        ${o.paid?`<span class="badge b-paid">مدفوع${pmTag(o)}</span>`:'<span class="badge b-unpaid">غير مدفوع</span>'}
       </div>
       <div class="price">${money(o.price)}</div>
       ${recThumbs(o.photos)}
@@ -1616,7 +1628,7 @@ function screenLaundry(){
       <div class="badges">
         ${o.cancelled?'<span class="badge badge-cancel">ملغى 🚫</span>':''}
         <span class="badge b-${st.cls}">${st.label}</span>
-        ${o.paid?'<span class="badge b-paid">مدفوع</span>':'<span class="badge b-unpaid">غير مدفوع</span>'}
+        ${o.paid?`<span class="badge b-paid">مدفوع${pmTag(o)}</span>`:'<span class="badge b-unpaid">غير مدفوع</span>'}
       </div>
       <div class="price">${money(o.price)}</div>
       <div class="order-acts-main">
@@ -1773,7 +1785,7 @@ function sendDebtReminder(key){
   logActivity("تذكير دين",(d.name||d.phone)+" · "+money(d.total)+" "+CUR);
   save(); window.open(`https://wa.me/${ph}?text=${encodeURIComponent(debtMessage(d))}`,"_blank"); render();
 }
-function contactsDebts(){
+function contactsDebts(noStats){
   const E=_esc, q=(state.contactSearch||"").trim();
   let list=debtors(); const all=list;
   if(q) list=list.filter(d=>(d.name||"").includes(q)||(d.phone||"").includes(q));
@@ -1798,11 +1810,11 @@ function contactsDebts(){
     </div>`; }).join(""):`<div class="panel empty" style="grid-column:1/-1">${svg(I.empty)}${q?"لا يوجد مدين مطابق للبحث.":"لا توجد ديون على الزبائن 🎉"}</div>`;
   const pay=totalPayables();
   return `
-    <div class="store-stat">
+    ${noStats?"":`<div class="store-stat">
       <div class="s"><div class="v" style="color:var(--unpaid)">${money(sum(all,d=>d.total))}</div><div class="l">إجمالي الديون على الزبائن</div></div>
       <div class="s"><div class="v">${all.length}</div><div class="l">زبون مدين</div></div>
       <div class="s"><div class="v" style="color:var(--wash)">${money(pay)}</div><div class="l">علينا للموردين</div></div>
-    </div>
+    </div>`}
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
       <input class="search-inp" id="contactSearch" type="text" placeholder="بحث بالاسم أو الهاتف" value="${E(q)}" style="flex:1;margin:0">
       <select id="debtSort" style="max-width:170px"><option value="amt">الأكبر مبلغًا</option><option value="old" ${sortOld?"selected":""}>الأقدم أولًا</option></select>
@@ -1839,7 +1851,7 @@ function periodSummary(from,to){
     from,to, cars,rugs,lnd, lndInc, gen,util,wages,intPurch, lndExp, lndProfit,
     storeSales, storeExt:storeSales-intPurch, storeMargin, storeCredit:sum(sales,s=>saleOutstanding(s)),
     purchases:storePurchaseCost(F), cashIn:cashIn(F), cashOut:cashOut(F),
-    group:lndProfit+storeMargin,
+    group:lndProfit+storeMargin, pay:payBreakdown(F),
     nCars:(state.carOps||[]).filter(o=>!o.cancelled&&F(o.date)).length,
     nRugs:(state.carpetOrders||[]).filter(o=>!o.cancelled&&F(o.date)).length,
     nLnd:(state.laundryOrders||[]).filter(o=>!o.cancelled&&F(o.date)).length,
@@ -1866,6 +1878,9 @@ function closingRows(s){
     ["h","🏪 المتجر"],
     ["r","المبيعات ("+s.nSales+" فاتورة)",s.storeSales],["r","منها بالدين (لم يُحصَّل)",s.storeCredit],["r","هامش الربح",s.storeMargin],
     ["r","المشتريات",s.purchases],["r","وارد الصندوق",s.cashIn],["r","صادر الصندوق",s.cashOut],["t","رصيد الصندوق الآن",cashboxBalance()],
+    ["h","💳 الدخل حسب طريقة الدفع"],
+    ...PAY_METHODS.map(m=>["r",m.ic+" "+m.t+(s.pay[m.k].out?" (صرف "+money(s.pay[m.k].out)+")":""),s.pay[m.k].inc]),
+    ["t","💵 صافي الكاش لهذا اليوم",s.pay.cash.net],
     ["h","📌 الديون (حتى الآن)"],
     ["r","على زبائن الخدمات",allServiceDues()],["r","على زبائن المتجر",totalReceivables()],["r","علينا للموردين",totalPayables()],
     ["r","غير مدفوع سُجّل في هذا اليوم",s.newUnpaid],
@@ -1899,12 +1914,50 @@ function openClosing(day){
   };
 }
 function cartTotal(){ return sum(storeCart,i=>(+i.price||0)*(+i.qty||0)); }
-function addCashMove(type,amount,reason,customerId,ref){ state.storeCash.push({id:uid(),type,amount:+amount||0,reason:reason||"",customerId:customerId||null,ref:ref||null,date:iso(new Date()),by:currentUser,editedAt:iso(new Date())}); }
+function addCashMove(type,amount,reason,customerId,ref,method){ state.storeCash.push({id:uid(),type,amount:+amount||0,reason:reason||"",customerId:customerId||null,ref:ref||null,payMethod:normPM(method),date:iso(new Date()),by:currentUser,editedAt:iso(new Date())}); }
+/* ================= طرق الدفع: كاش + تطبيقات بنكية ================= */
+const PAY_METHODS=[{k:"cash",t:"كاش",ic:"💵"},{k:"bankily",t:"بنكيلي",ic:"🏦"},{k:"masrvi",t:"مصرفي",ic:"🏦"},{k:"sedad",t:"سداد",ic:"🏦"}];
+function normPM(k){ return PAY_METHODS.some(m=>m.k===k)?k:"cash"; }
+function pmLabel(k){ const m=PAY_METHODS.find(x=>x.k===normPM(k)); return m.t; }
+function pmTag(o){ const k=normPM(o&&o.payMethod); return k==="cash"?"":" · "+pmLabel(k); }
+const _pmDraft={};
+function pmPickerHTML(id,label){ const sel=normPM(_pmDraft[id]); return `<div class="field pm-field">${label===false?"":`<label>${label||"طريقة الدفع"}</label>`}<div class="pm-pick" id="${id}" data-val="${sel}">${PAY_METHODS.map(m=>`<button type="button" class="pm-opt ${m.k===sel?'on':''}" data-pm="${m.k}">${m.ic} ${m.t}</button>`).join("")}</div></div>`; }
+function bindPmPickers(root){ (root||document).querySelectorAll(".pm-pick").forEach(w=>w.querySelectorAll("[data-pm]").forEach(b=>b.onclick=()=>{ w.dataset.val=b.dataset.pm; _pmDraft[w.id]=b.dataset.pm; w.querySelectorAll("[data-pm]").forEach(x=>x.classList.toggle("on",x===b)); })); }
+function pmVal(id){ const w=document.getElementById(id); return normPM(w&&w.dataset.val); }
+function pmReset(id){ delete _pmDraft[id]; const w=document.getElementById(id); if(w){ w.dataset.val="cash"; w.querySelectorAll("[data-pm]").forEach(x=>x.classList.toggle("on",x.dataset.pm==="cash")); } }
+// الدخل والصرف حسب طريقة الدفع لفترة F(date). البيع الداخلي للمغسلة (تحويل داخلي) مستثنى.
+function payBreakdown(F){
+  const r={}; PAY_METHODS.forEach(m=>r[m.k]={lnd:0,store:0,out:0});
+  const at=(k)=>r[normPM(k)];
+  (state.carOps||[]).forEach(o=>{ if(!o.cancelled&&o.paid!==false&&(+o.price||0)>0&&F(o.paidDate||o.date)) at(o.payMethod).lnd+=+o.price||0; });
+  (state.carpetOrders||[]).forEach(o=>{ if(!o.cancelled&&o.paid&&F(o.paidDate||o.deliveredDate||o.date)) at(o.payMethod).lnd+=+o.price||0; });
+  (state.laundryOrders||[]).forEach(o=>{ if(!o.cancelled&&o.paid&&F(o.paidDate||o.deliveredDate||o.date)) at(o.payMethod).lnd+=+o.price||0; });
+  const internal=new Set((state.storeCustomers||[]).filter(c=>c.isLaundry).map(c=>c.id));
+  (state.storeCash||[]).forEach(m=>{ if(!F(m.date)) return; if(m.customerId&&internal.has(m.customerId)) return; if(m.type==="in") at(m.payMethod).store+=+m.amount||0; else at(m.payMethod).out+=+m.amount||0; });
+  (state.expenses||[]).forEach(e=>{ if(F(e.date)) at(e.payMethod).out+=+e.amount||0; });
+  PAY_METHODS.forEach(m=>{ const x=r[m.k]; x.inc=x.lnd+x.store; x.net=x.inc-x.out; });
+  return r;
+}
+function payBreakdownHTML(F,title){
+  const r=payBreakdown(F), T={lnd:0,store:0,inc:0,out:0,net:0};
+  PAY_METHODS.forEach(m=>Object.keys(T).forEach(k=>T[k]+=r[m.k][k]));
+  const bank=PAY_METHODS.filter(m=>m.k!=="cash").reduce((a,m)=>a+r[m.k].inc,0);
+  const rows=PAY_METHODS.map(m=>{ const x=r[m.k]; return `<tr><td style="white-space:nowrap"><b>${m.ic} ${m.t}</b></td><td class="amt" style="text-align:left">${money(x.lnd)}</td><td class="amt" style="text-align:left">${money(x.store)}</td><td class="amt" style="text-align:left;font-weight:800">${money(x.inc)}</td><td class="amt" style="text-align:left;color:var(--unpaid)">${money(x.out)}</td><td class="amt" style="text-align:left;font-weight:800;color:${x.net<0?'var(--unpaid)':'var(--ready)'}">${money(x.net)}</td></tr>`; }).join("");
+  return `<div class="panel" style="margin-bottom:12px" id="payBreakPanel"><h3>💳 ${title||"الدخل حسب طريقة الدفع"}</h3>
+    <div class="store-stat" style="margin-bottom:8px">
+      <div class="s"><div class="v" style="color:var(--ready)">${money(r.cash.inc)}</div><div class="l">💵 دخل كاش</div></div>
+      <div class="s"><div class="v" style="color:var(--brand)">${money(bank)}</div><div class="l">🏦 دخل التطبيقات البنكية</div></div>
+      <div class="s"><div class="v">${money(T.inc)}</div><div class="l">إجمالي الدخل</div></div>
+    </div>
+    <div class="tbl-wrap"><table class="tbl"><thead><tr><th>الطريقة</th><th style="text-align:left">المغسلة</th><th style="text-align:left">المتجر</th><th style="text-align:left">الدخل</th><th style="text-align:left">المصروف</th><th style="text-align:left">الصافي</th></tr></thead>
+    <tbody>${rows}<tr style="border-top:2px solid var(--line);font-weight:800"><td>المجموع</td><td class="amt" style="text-align:left">${money(T.lnd)}</td><td class="amt" style="text-align:left">${money(T.store)}</td><td class="amt" style="text-align:left">${money(T.inc)}</td><td class="amt" style="text-align:left">${money(T.out)}</td><td class="amt" style="text-align:left">${money(T.net)}</td></tr></tbody></table></div>
+    <div class="hint" style="margin-top:6px">«الصافي» لكل طريقة = ما دخل بها − ما صُرف بها (مصروفات، مشتريات، تسديد موردين). صافي الكاش = ما يجب أن يكون في اليد من حركات هذه الفترة. البيع الداخلي للمغسلة غير محسوب لأنه تحويل داخلي.</div></div>`;
+}
 function allocatePayment(customerId,amount){ let left=+amount||0; const sales=(state.storeSales||[]).filter(s=>!s.cancelled&&s.customerId===customerId&&saleOutstanding(s)>0).sort((a,b)=>new Date(a.date)-new Date(b.date)); for(const s of sales){ if(left<=0)break; const out=saleOutstanding(s); const pay=Math.min(out,left); s.paidAmount=(+s.paidAmount||0)+pay; if(saleOutstanding(s)<=0)s.paid=true; s.editedAt=iso(new Date()); left-=pay; } return (+amount||0)-left; }
 function addToCart(pid){ const p=storeProd(pid); if(!p) return; if((+p.stock||0)<=0) return toast("لا يوجد مخزون"); const ex=storeCart.find(i=>i.productId===pid); const cur=ex?ex.qty:0; if(cur+1>(+p.stock||0)) return toast("تجاوزت المخزون المتاح ("+fmt(+p.stock||0)+")"); if(ex) ex.qty++; else storeCart.push({productId:pid,name:p.name,price:+p.sellPrice||0,qty:1}); render(); }
 function changeQty(pid,d){ const i=storeCart.find(x=>x.productId===pid); if(!i) return; const p=storeProd(pid); i.qty+=d; if(i.qty<=0){ storeCart=storeCart.filter(x=>x.productId!==pid); } else if(p&&i.qty>(+p.stock||0)){ i.qty=(+p.stock||0); toast("الحد الأقصى للمخزون"); } render(); }
 function restoreSaleStock(s){ (s.items||[]).forEach(it=>{ const p=storeProd(it.productId); if(p) p.stock=(+p.stock||0)+(+it.qty||0); }); }
-function cancelSale(s){ if(s.cancelled) return; s.cancelled=true; s.editedAt=iso(new Date()); restoreSaleStock(s); if((+s.paidAmount||0)>0){ addCashMove("out",s.paidAmount,"إلغاء فاتورة "+s.no,s.customerId,s.id); } logActivity("إلغاء فاتورة متجر",(s.no||"")+" · "+money(s.total)+" "+CUR); toast("أُلغيت الفاتورة"); render(); }
+function cancelSale(s){ if(s.cancelled) return; s.cancelled=true; s.editedAt=iso(new Date()); restoreSaleStock(s); if((+s.paidAmount||0)>0){ const mv=(state.storeCash||[]).find(m=>m.type==="in"&&m.ref===s.id); addCashMove("out",s.paidAmount,"إلغاء فاتورة "+s.no,s.customerId,s.id,mv&&mv.payMethod); } logActivity("إلغاء فاتورة متجر",(s.no||"")+" · "+money(s.total)+" "+CUR); toast("أُلغيت الفاتورة"); render(); }
 
 /* ================= المتجر: الشاشات ================= */
 function screenStore(){
@@ -1914,6 +1967,7 @@ function screenStore(){
     {k:"sales",t:"المبيعات",icon:I.income},
     {k:"purchases",t:"المشتريات",icon:I.expense},
     {k:"customers",t:"الزبائن",icon:I.usertag},
+    {k:"debts",t:"الديون",icon:I.wallet},
     {k:"cashbox",t:"الصندوق",icon:I.cash}
   ].map(s=>`<button data-ssub="${s.k}" class="${state.storeSub===s.k?'on':''}">${svg(s.icon)}${s.t}</button>`).join("");
   const body = state.storeSub==="products"?storeScreenProducts()
@@ -1921,12 +1975,60 @@ function screenStore(){
     : state.storeSub==="purchases"?storeScreenPurchases()
     : state.storeSub==="customers"?storeScreenCustomers()
     : state.storeSub==="cashbox"?storeScreenCashbox()
+    : state.storeSub==="debts"?storeScreenDebts()
     : storeScreenPOS();
   return `
     <div class="screen-head"><h2>المتجر</h2><span>بيع ومخزون وصندوق — ويتعامل مع المغاسل</span></div>
     <div class="seg">${subs}</div>
     ${(state.storeSub==="sales"||state.storeSub==="cashbox")?dateBarHTML():""}
     ${body}`;
+}
+/* ================= الديون: المدينون (لنا) والدائنون (علينا) ================= */
+function creditors(){
+  return (state.suppliers||[]).map(s=>{ const ps=supplierPurchases(s).filter(p=>purOutstanding(p)>0); const oldest=ps.map(p=>p.date).sort()[0]||"";
+    return {s,bal:supplierBalance(s),n:ps.length,oldest,days:oldest?Math.max(0,Math.floor((Date.now()-new Date(oldest))/864e5)):0}; })
+    .filter(x=>x.bal>0).sort((a,b)=>b.bal-a.bal);
+}
+function storeScreenDebts(){
+  const E=_esc, dv=debtors(), cr=creditors();
+  const owed=sum(dv,d=>d.total), owe=sum(cr,c=>c.bal);
+  const view=state.debtView==="cred"?"cred":"debt";
+  const crCards=cr.length?cr.map(({s,bal,n,days})=>{ const tl=telLink(s.phone,s.country); return `
+    <div class="order">
+      <div class="cust">${E(s.name)}${s.category?` <span class="badge b-done">${E(s.category)}</span>`:""}</div>
+      ${s.phone?`<div class="meta">📞 ${E(s.phone)}</div>`:""}
+      <div class="price" style="color:var(--wash)">${money(bal)} ${CUR}</div>
+      <div class="meta">${n} فاتورة شراء غير مسدّدة · أقدمها منذ <b>${days}</b> يوم</div>
+      <div class="order-acts-sub">
+        <button class="mini act-pay" data-sp-pay="${s.id}">💸 تسديد</button>
+        ${tl?`<a class="mini" href="${tl}" style="text-decoration:none">📞 اتصال</a>`:""}
+        <button class="icon-btn" data-sp-stmt="${s.id}" title="كشف حساب">📄</button>
+      </div>
+    </div>`; }).join(""):`<div class="panel empty" style="grid-column:1/-1">${svg(I.empty)}لا توجد ديون علينا للموردين 🎉</div>`;
+  return `
+    <div class="store-stat">
+      <div class="s"><div class="v" style="color:var(--unpaid)">${money(owed)}</div><div class="l">لنا عند الزبائن (${dv.length} مدين)</div></div>
+      <div class="s"><div class="v" style="color:var(--wash)">${money(owe)}</div><div class="l">علينا للموردين (${cr.length} دائن)</div></div>
+      <div class="s"><div class="v" style="color:${owed-owe<0?'var(--unpaid)':'var(--ready)'}">${money(owed-owe)}</div><div class="l">الصافي (لنا − علينا)</div></div>
+    </div>
+    <div class="seg" style="margin-bottom:10px">
+      <button data-debtview="debt" class="${view==="debt"?"on":""}">📥 المدينون — لنا (${dv.length})</button>
+      <button data-debtview="cred" class="${view==="cred"?"on":""}">📤 الدائنون — علينا (${cr.length})</button>
+    </div>
+    ${view==="cred"?`<div class="hint" style="margin-bottom:8px">الموردون الذين اشترينا منهم بالدين. «تسديد» يخصم من الصندوق بطريقة الدفع التي تختارها.</div><div class="grid orders">${crCards}</div>`
+      :contactsDebts(true)}`;
+}
+function bindDebtsUI(){
+  document.querySelectorAll("[data-debtview]").forEach(b=>b.onclick=()=>{ state.debtView=b.dataset.debtview; render(); });
+  document.querySelectorAll("[data-debt-wa]").forEach(b=>b.onclick=()=>sendDebtReminder(b.dataset.debtWa));
+  const dso=document.getElementById("debtSort"); if(dso) dso.onchange=()=>{ state.debtSort=dso.value; render(); };
+  const cs=document.getElementById("contactSearch"); if(cs) cs.oninput=()=>{ state.contactSearch=cs.value; _refocus="contactSearch"; render(); };
+  document.querySelectorAll("[data-dc-pay]").forEach(b=>b.onclick=()=>{ const c=storeCust(b.dataset.dcPay); if(c){ _storePayCtx={kind:"cust",id:c.id}; openStorePay(custBalance(c.id),"تحصيل من "+c.name); } });
+  document.querySelectorAll("[data-dc-stmt]").forEach(b=>b.onclick=()=>{ const c=storeCust(b.dataset.dcStmt); if(c) openDirStatement(c); });
+  document.querySelectorAll("[data-sp-pay]").forEach(b=>b.onclick=()=>{ const s=supplierById(b.dataset.spPay); if(s){ _storePayCtx={kind:"supplier",id:s.id}; openStorePay(supplierBalance(s),"تسديد للمورّد "+s.name); } });
+  document.querySelectorAll("[data-sp-stmt]").forEach(b=>b.onclick=()=>{ const s=supplierById(b.dataset.spStmt); if(s) openSupplierStatement(s); });
+  const spOk=document.getElementById("storePayOk"); if(spOk) spOk.onclick=confirmStorePay;
+  const spCancel=document.getElementById("storePayCancel"); if(spCancel) spCancel.onclick=()=>{ document.getElementById("storePayModal").style.display="none"; _storePayCtx=null; pmReset("storePayPm"); };
 }
 /* ================= الباركود: كاميرا + قارئ USB/بلوتوث ================= */
 function findByBarcode(code){ code=String(code||"").trim(); if(!code) return null; return (state.storeProducts||[]).find(p=>!p.archived&&(p.barcode||"").trim()===code)||null; }
@@ -2061,8 +2163,9 @@ function storeScreenPOS(){
         <div class="field"><label>الزبون</label><select id="posCust">${custOpts}</select></div>
         <div class="cart-list">${cart||`<div class="hint" style="padding:10px 0">اضغط على مادة لإضافتها إلى السلة.</div>`}</div>
         <div class="total-line"><span>الإجمالي</span><b>${money(total)} ${CUR}</b></div>
+        ${pmPickerHTML("posPm","الدفع عبر")}
         <div class="set-row" style="gap:8px;margin-top:8px">
-          <button class="btn-primary" id="posSellCash" style="flex:1" ${storeCart.length?'':'disabled'}>بيع نقدًا</button>
+          <button class="btn-primary" id="posSellCash" style="flex:1" ${storeCart.length?'':'disabled'}>بيع مدفوع</button>
           <button class="mini" id="posSellCredit" ${storeCart.length?'':'disabled'}>بيع بالدين</button>
         </div>
         ${storeCart.length?`<button class="mini" id="posClear" style="margin-top:8px;width:100%">تفريغ السلة</button>`:``}
@@ -2184,7 +2287,8 @@ function storeScreenPurchases(){
         <button class="mini" id="purAdd" style="width:100%">➕ أضف إلى الفاتورة</button>
         <div class="cart-list" style="margin-top:10px">${cart||`<div class="hint">أضِف المواد المشتراة. (أضِف المادة من تبويب «المواد» أولًا.)</div>`}</div>
         <div class="total-line"><span>الإجمالي</span><b>${money(total)} ${CUR}</b></div>
-        <label class="sw" style="margin:8px 0"><input type="checkbox" id="purPaid" ${purPaidDraft?'checked':''}> مدفوعة نقدًا (تُخصم من الصندوق) — وإلا تُسجَّل دينًا للمورّد</label>
+        <label class="sw" style="margin:8px 0"><input type="checkbox" id="purPaid" ${purPaidDraft?'checked':''}> مدفوعة الآن (تُخصم من الصندوق) — وإلا تُسجَّل دينًا للمورّد</label>
+        ${pmPickerHTML("purPm","دُفعت عبر")}
         <button class="btn-primary" id="purSave" ${purCart.length?'':'disabled'}>تسجيل الشراء</button>
         <div class="hint" style="margin-top:6px">يزيد المخزون تلقائيًا ويُحدِّث سعر الشراء.</div>
       </div>
@@ -2235,13 +2339,14 @@ function storeScreenCashbox(){
   const moves=(state.storeCash||[]).filter(m=>inRange(m.date)).slice().reverse().slice(0,60).map(m=>`
     <tr><td>${ymd(m.date)}<div style="font-size:.7rem;color:var(--muted)">${timeStr(m.date)}</div></td>
       <td><span class="badge ${m.type==='in'?'b-paid':'b-unpaid'}">${m.type==='in'?'وارد':'صادر'}</span></td>
-      <td>${m.reason||'—'}</td>
+      <td>${m.reason||'—'}<div style="font-size:.7rem;color:var(--muted)">${pmLabel(m.payMethod)}</div></td>
       <td class="amt" style="color:${m.type==='in'?'var(--ready)':'var(--unpaid)'}">${m.type==='in'?'+':'−'}${money(m.amount)}</td>
       <td style="text-align:left"><button class="icon-btn" data-cash-del="${m.id}" title="حذف">${svg(I.trash)}</button></td></tr>`).join("")||`<tr><td colspan="5"><div class="empty">${svg(I.empty)}لا توجد حركات في هذه الفترة.</div></td></tr>`;
   return `
     <div class="panel" style="text-align:center;margin-bottom:14px">
       <div class="l" style="color:var(--muted);font-weight:700">رصيد الصندوق الحالي</div>
       <div class="big-balance">${money(cashboxBalance())} ${CUR}</div>
+      <div class="pm-strip" style="margin:8px 0 0">${PAY_METHODS.map(m=>{ const b=sum((state.storeCash||[]).filter(x=>normPM(x.payMethod)===m.k),x=>x.type==="in"?(+x.amount||0):-(+x.amount||0)); return `<div class="pm-chip ${m.k}"><span>${m.ic} ${m.t}</span><b>${money(b)}</b></div>`; }).join("")}</div>
     </div>
     <div class="store-stat">
       <div class="s"><div class="v" style="color:var(--ready)">${money(storeSalesIncome(F))}</div><div class="l">مبيعات (${periodTxt})</div></div>
@@ -2257,6 +2362,7 @@ function storeScreenCashbox(){
         <div class="field"><label>المبلغ</label><input id="cashAmt" type="number" min="0" value="0"></div>
         <div class="field"><label>البيان</label><input id="cashReason" type="text" placeholder="سبب الإيداع/السحب"></div>
       </div>
+      ${pmPickerHTML("cashPm","الحساب")}
       <div class="set-row" style="gap:8px">
         <button class="btn-primary" id="cashInBtn" style="flex:1">إيداع +</button>
         <button class="mini" id="cashOutBtn">سحب −</button>
@@ -2269,14 +2375,14 @@ function storeScreenCashbox(){
 }
 
 /* ================= المتجر: إجراءات ================= */
-function commitStoreSale(customerId, cust, items, isCash){
+function commitStoreSale(customerId, cust, items, isCash, method){
   const its=items.map(i=>({productId:i.productId,name:i.name,qty:+i.qty||0,price:+i.price||0}));
   const total=sum(its,i=>i.price*i.qty), d=iso(new Date());
   const sale={id:uid(),no:storeInvNo(d),customerId:customerId||null,customerName:cust?cust.name:"زبون نقدي",items:its,total,paidAmount:isCash?total:0,paid:isCash,date:d,by:currentUser,editedAt:d};
   state.storeSales.push(sale);
   its.forEach(it=>{ const p=storeProd(it.productId); if(p){ p.stock=(+p.stock||0)-it.qty; p.editedAt=iso(new Date()); } });
-  if(isCash && total>0) addCashMove("in",total,"بيع فاتورة "+sale.no,customerId,sale.id);
-  logActivity("بيع متجر", sale.no+" · "+money(total)+" "+CUR+(isCash?" (نقدًا)":" (دين · "+sale.customerName+")"));
+  if(isCash){ sale.payMethod=normPM(method); if(total>0) addCashMove("in",total,"بيع فاتورة "+sale.no,customerId,sale.id,method); }
+  logActivity("بيع متجر", sale.no+" · "+money(total)+" "+CUR+(isCash?" ("+pmLabel(method)+")":" (دين · "+sale.customerName+")"));
   return sale;
 }
 function ensureLaundryCustomer(){
@@ -2292,9 +2398,10 @@ function doSell(isCash){
   const cust=customerId?storeCust(customerId):null;
   if(!isCash && !cust) return toast("البيع بالدين يتطلّب اختيار زبون");
   for(const i of storeCart){ const p=storeProd(i.productId); if(!p) return toast("مادة غير موجودة"); if(i.qty>(+p.stock||0)) return toast("المخزون غير كافٍ لـ "+p.name); }
-  commitStoreSale(customerId, cust, storeCart.map(i=>({productId:i.productId,name:i.name,qty:i.qty,price:i.price})), isCash);
-  storeCart=[];
-  toast(isCash?"تم البيع نقدًا ✓":"تم تسجيل البيع بالدين ✓");
+  const method=pmVal("posPm");
+  commitStoreSale(customerId, cust, storeCart.map(i=>({productId:i.productId,name:i.name,qty:i.qty,price:i.price})), isCash, method);
+  storeCart=[]; if(isCash) delete _pmDraft.posPm;
+  toast(isCash?"تم البيع ✓ ("+pmLabel(method)+")":"تم تسجيل البيع بالدين ✓");
   render();
 }
 function doStoreMatSale(){
@@ -2310,7 +2417,7 @@ function doStoreMatSale(){
   let cust;
   if(lc.length>1){ const sel=document.getElementById("smCust"); cust=storeCust(sel?sel.value:lc[0].id)||lc[0]; }
   else cust=ensureLaundryCustomer();
-  commitStoreSale(cust.id, cust, [{productId:pid,name:p.name,qty,price}], paid);
+  commitStoreSale(cust.id, cust, [{productId:pid,name:p.name,qty,price}], paid, pmVal("smPm")); delete _pmDraft.smPm;
   toast("تم تسجيل سحب المواد ✓"); render();
 }
 function doProdSave(){
@@ -2337,7 +2444,7 @@ function doPurSave(){
   const pur={id:uid(),no:storePurNo(d),supplier,supplierId:sup?sup.id:null,items,total,paid,paidAmount:paid?total:0,date:d,by:currentUser,editedAt:d};
   state.storePurchases.push(pur);
   items.forEach(it=>{ const p=storeProd(it.productId); if(p){ p.stock=(+p.stock||0)+it.qty; p.buyPrice=it.cost; p.editedAt=iso(new Date()); } });
-  if(paid && total>0) addCashMove("out",total,"شراء "+pur.no+(supplier?(" — "+supplier):""),null,pur.id);
+  if(paid){ pur.payMethod=pmVal("purPm"); if(total>0) addCashMove("out",total,"شراء "+pur.no+(supplier?(" — "+supplier):""),null,pur.id,pur.payMethod); } delete _pmDraft.purPm;
   logActivity("شراء متجر", pur.no+" · "+money(total)+" "+CUR);
   purCart=[]; purSupDraft=""; purPaidDraft=true; toast("تم تسجيل الشراء ✓"); render();
 }
@@ -2365,7 +2472,7 @@ function openSaleReceipt(s){
       <div class="rcpt-sec">الأصناف</div>
       ${rows}
       <div class="rcpt-total"><span>الإجمالي</span><b>${money(s.total)} ${CUR}</b></div>
-      ${out>0?`<div class="rcpt-row"><span>المدفوع</span><b>${money(s.paidAmount||0)}</b></div><div class="rcpt-row"><span>المتبقّي</span><b style="color:#d64545">${money(out)}</b></div>`:`<div class="rcpt-row"><span>الحالة</span><b>مدفوعة</b></div>`}
+      ${out>0?`<div class="rcpt-row"><span>المدفوع</span><b>${money(s.paidAmount||0)}</b></div><div class="rcpt-row"><span>المتبقّي</span><b style="color:#d64545">${money(out)}</b></div>`:`<div class="rcpt-row"><span>الحالة</span><b>مدفوعة${pmTag(s)}</b></div>`}
       ${rcptFooter("شكرًا لتعاملكم معنا 🌟")}
     </div>`;
   document.getElementById("receiptModal").style.display="flex";
@@ -2397,19 +2504,20 @@ function confirmStorePay(){
   if(!(amt>0)){ toast("أدخل مبلغًا"); return; }
   if(_storePayCtx.kind==="sale"){
     const s=storeSale(_storePayCtx.id);
-    if(s){ const pay=Math.min(amt,saleOutstanding(s)); s.paidAmount=(+s.paidAmount||0)+pay; if(saleOutstanding(s)<=0)s.paid=true; s.editedAt=iso(new Date()); addCashMove("in",pay,"تحصيل فاتورة "+s.no,s.customerId,s.id); logActivity("تحصيل متجر",s.no+" · "+money(pay)+" "+CUR); toast("تم التحصيل ✓"); }
+    if(s){ const pay=Math.min(amt,saleOutstanding(s)); s.paidAmount=(+s.paidAmount||0)+pay; if(saleOutstanding(s)<=0)s.paid=true; s.editedAt=iso(new Date()); addCashMove("in",pay,"تحصيل فاتورة "+s.no,s.customerId,s.id,pmVal("storePayPm")); logActivity("تحصيل متجر",s.no+" · "+money(pay)+" "+CUR); toast("تم التحصيل ✓"); }
   } else if(_storePayCtx.kind==="cust"){
     const c=storeCust(_storePayCtx.id);
-    if(c){ const bal=custBalance(c.id); const pay=Math.min(amt,bal); const allocated=allocatePayment(c.id,pay); addCashMove("in",allocated,"تحصيل من "+c.name,c.id,null); logActivity("تحصيل متجر","من "+c.name+" · "+money(allocated)+" "+CUR); toast("تم تحصيل "+money(allocated)+" ✓"); }
+    if(c){ const bal=custBalance(c.id); const pay=Math.min(amt,bal); const allocated=allocatePayment(c.id,pay); addCashMove("in",allocated,"تحصيل من "+c.name,c.id,null,pmVal("storePayPm")); logActivity("تحصيل متجر","من "+c.name+" · "+money(allocated)+" "+CUR); toast("تم تحصيل "+money(allocated)+" ✓"); }
   } else if(_storePayCtx.kind==="supplier"){
     const s=supplierById(_storePayCtx.id);
-    if(s){ const paid=paySupplier(s, Math.min(amt,supplierBalance(s))); if(paid>0){ addCashMove("out",paid,"تسديد للمورّد "+s.name,null,s.id); logActivity("تسديد مورّد",s.name+" · "+money(paid)+" "+CUR); toast("تم تسديد "+money(paid)+" ✓"); } }
+    if(s){ const paid=paySupplier(s, Math.min(amt,supplierBalance(s))); if(paid>0){ addCashMove("out",paid,"تسديد للمورّد "+s.name,null,s.id,pmVal("storePayPm")); logActivity("تسديد مورّد",s.name+" · "+money(paid)+" "+CUR); toast("تم تسديد "+money(paid)+" ✓"); } }
   }
-  document.getElementById("storePayModal").style.display="none"; _storePayCtx=null; render();
+  document.getElementById("storePayModal").style.display="none"; _storePayCtx=null; pmReset("storePayPm"); render();
 }
 function bindStore(){
   if(state.tab!=="store") return;
   document.querySelectorAll("[data-ssub]").forEach(b=>b.onclick=()=>{ state.storeSub=b.dataset.ssub; render(); });
+  if(state.storeSub==="debts") bindDebtsUI();
   const ps=document.getElementById("posSearch"); if(ps){ ps.oninput=()=>{ state.storeProdSearch=ps.value; _refocus="posSearch"; render(); };
     ps.onkeydown=(e)=>{ if(e.key!=="Enter") return; const code=ps.value.trim(); if(!code) return; e.preventDefault(); const p=findByBarcode(code);
       if(p){ state.storeProdSearch=""; _refocus="posSearch"; handleScannedCode(code,"pos"); }
@@ -2455,8 +2563,8 @@ function bindStore(){
   document.querySelectorAll("[data-scust-pay]").forEach(b=>b.onclick=()=>{ const c=storeCust(b.dataset.scustPay); if(c){ _storePayCtx={kind:"cust",id:c.id}; openStorePay(custBalance(c.id),"تحصيل من "+c.name); } });
   document.querySelectorAll("[data-scust-stmt]").forEach(b=>b.onclick=()=>{ const c=storeCust(b.dataset.scustStmt); if(c) openCustStatement(c); });
   // Cashbox
-  const ci=document.getElementById("cashInBtn"); if(ci) ci.onclick=()=>{ const a=+document.getElementById("cashAmt").value||0; const r=(document.getElementById("cashReason").value||"").trim(); if(!(a>0)) return toast("أدخل مبلغًا"); addCashMove("in",a,r||"إيداع يدوي"); logActivity("إيداع صندوق",money(a)+" "+CUR); toast("تم الإيداع"); render(); };
-  const co=document.getElementById("cashOutBtn"); if(co) co.onclick=()=>{ const a=+document.getElementById("cashAmt").value||0; const r=(document.getElementById("cashReason").value||"").trim(); if(!(a>0)) return toast("أدخل مبلغًا"); addCashMove("out",a,r||"سحب يدوي"); logActivity("سحب صندوق",money(a)+" "+CUR); toast("تم السحب"); render(); };
+  const ci=document.getElementById("cashInBtn"); if(ci) ci.onclick=()=>{ const a=+document.getElementById("cashAmt").value||0; const r=(document.getElementById("cashReason").value||"").trim(); if(!(a>0)) return toast("أدخل مبلغًا"); addCashMove("in",a,r||"إيداع يدوي",null,null,pmVal("cashPm")); logActivity("إيداع صندوق",money(a)+" "+CUR); toast("تم الإيداع"); render(); };
+  const co=document.getElementById("cashOutBtn"); if(co) co.onclick=()=>{ const a=+document.getElementById("cashAmt").value||0; const r=(document.getElementById("cashReason").value||"").trim(); if(!(a>0)) return toast("أدخل مبلغًا"); addCashMove("out",a,r||"سحب يدوي",null,null,pmVal("cashPm")); logActivity("سحب صندوق",money(a)+" "+CUR); toast("تم السحب"); render(); };
   document.querySelectorAll("[data-cash-del]").forEach(b=>b.onclick=()=>{ requireCode(()=>{ tomb(b.dataset.cashDel); state.storeCash=state.storeCash.filter(x=>x.id!==b.dataset.cashDel); toast("تم الحذف"); render(); }, SECRET_CODE, "كود الحذف", "حذف حركة الصندوق يتطلب الكود."); });
   // store pay modal buttons
   const spOk=document.getElementById("storePayOk"); if(spOk) spOk.onclick=confirmStorePay;
@@ -2678,7 +2786,7 @@ function expGeneral(){
   const total=manualExp(e=>inRange(e));
   const rows=today.length?today.map(e=>`
     <tr><td>${ymd(e.date)}<div style="font-size:.7rem;color:var(--muted)">${timeStr(e.date)}</div></td><td><span class="badge b-done">${e.category}</span></td>
-      <td>${e.reason||"—"}</td><td class="amt">${money(e.amount)}</td>
+      <td>${e.reason||"—"}${pmTag(e)?`<div style="font-size:.7rem;color:var(--brand)">${pmLabel(e.payMethod)}</div>`:""}</td><td class="amt">${money(e.amount)}</td>
       <td style="text-align:left"><button class="icon-btn" data-del-exp="${e.id}" title="حذف">${svg(I.trash)}</button></td></tr>`).join("")
     :`<tr><td colspan="5"><div class="empty">${svg(I.empty)}لا توجد مصروفات في هذه الفترة.</div></td></tr>`;
   const opts=EXP_CATS.map(c=>`<option value="${c}">${c}</option>`).join("");
@@ -2691,6 +2799,7 @@ function expGeneral(){
         <div class="field"><label>الفئة</label><select id="expCat">${opts}</select></div>
         <div class="field"><label>اسم المصروف <span style="color:var(--unpaid)">*</span></label><input id="expReason" list="expReasonList" type="text" placeholder="مثال: شامبو، مكرونة…" autocomplete="off"><datalist id="expReasonList">${reasonOpts}</datalist></div>
         <div class="field"><label>التاريخ</label><input id="expDate" type="date" value="${ymd(new Date())}" max="${ymd(new Date())}"></div>
+        ${pmPickerHTML("expPm","دُفع عبر")}
         <button class="btn-primary" id="expSave">إضافة مصروف</button>
       </div>
       <div class="panel">
@@ -2751,7 +2860,8 @@ function expStoreMaterials(){
           <div class="field"><label>السعر/وحدة</label><input id="smPrice" type="number" min="0" value="${start}"></div>
         </div>
         <div class="total-line"><span>الإجمالي</span><b><span id="smTotal">${start}</span> ${CUR}</b></div>
-        <label class="sw" style="margin:8px 0"><input type="checkbox" id="smPaid"> دفعت المغسلة نقدًا الآن (وإلا يُسجَّل دينًا)</label>
+        <label class="sw" style="margin:8px 0"><input type="checkbox" id="smPaid"> دفعت المغسلة الآن (وإلا يُسجَّل دينًا)</label>
+        ${pmPickerHTML("smPm","دُفعت عبر")}
         <button class="btn-primary" id="smSave">تسجيل السحب</button>
       </div>
       <div class="panel">
@@ -3044,6 +3154,7 @@ function screenReports(){
       </tbody></table></div>
       <div class="hint" style="margin-top:8px">البيع الداخلي للمغسلة يظهر دخلًا للمتجر ومصروفًا على المغسلة فيتعادل في الإجمالي؛ فيبقى الربح الحقيقي = (أرباح زبائن الخارج + خدمات المغسلة) − التكاليف الخارجية.</div>
     </div>
+    ${payBreakdownHTML(UF,"الدخل حسب طريقة الدفع ("+uPeriod+")")}
     ${monthlyReportHTML()}
     <div class="grid metrics" style="margin-bottom:16px">
       ${card("الدخل",dInc,mInc,"var(--ready)")}
@@ -3153,8 +3264,8 @@ function bindScreen(){
         }
         const opDate=chosenDateIso(carDateV);
         state.carOps.push({id:uid(),no:carNo(vehicle),vehicle,wash:document.getElementById("carWash").value,price:free?0:price,
-          plate,phone,country,free,by:currentUser,paid:!deferred,paidDate:deferred?null:opDate,note:"",photosBefore:[...pendingCarBefore],photosAfter:[...pendingCarAfter],date:opDate});
-        logActivity("غسيل سيارة", vehicle+(plate?(" · "+plate):"")+" · "+fmt(free?0:price)+" "+CUR+(deferred?" (آجل)":""));
+          plate,phone,country,free,by:currentUser,paid:!deferred,paidDate:deferred?null:opDate,payMethod:deferred?null:pmVal("carPm"),note:"",photosBefore:[...pendingCarBefore],photosAfter:[...pendingCarAfter],date:opDate});
+        logActivity("غسيل سيارة", vehicle+(plate?(" · "+plate):"")+" · "+fmt(free?0:price)+" "+CUR+(deferred?" (آجل)":(" ("+pmLabel(pmVal("carPm"))+")"))); delete _pmDraft.carPm;
         pendingCarBefore.length=0; pendingCarAfter.length=0;
         if(free) toast("🎁 غسلة مجانية — اكتملت البطاقة");
         else if(deferred) toast("تم الحفظ — دفع مؤجّل (غير مدفوع)");
@@ -3245,7 +3356,7 @@ function bindScreen(){
   document.querySelectorAll("[data-pay]").forEach(b=>b.onclick=()=>{
     const o=state.carpetOrders.find(x=>x.id===b.dataset.pay);
     if(!o) return;
-    if(o.paid){ gateDay(o.date,()=>requireCode(()=>{ o.paid=false; delete o.paidDate; o.editedAt=iso(new Date()); logActivity("إلغاء دفع",(o.type||o.vehicle||"")); toast("أُلغي الدفع"); render(); }, SECRET_CODE, "كود الحذف", "إلغاء الدفع يتطلب كود الحذف.")); }
+    if(o.paid){ gateDay(o.date,()=>requireCode(()=>{ o.paid=false; delete o.paidDate; delete o.payMethod; o.editedAt=iso(new Date()); logActivity("إلغاء دفع",(o.type||o.vehicle||"")); toast("أُلغي الدفع"); render(); }, SECRET_CODE, "كود الحذف", "إلغاء الدفع يتطلب كود الحذف.")); }
     else { _payCtx={type:"order",id:o.id}; const pd=document.getElementById("payDate"); if(pd) pd.value=ymd(new Date()); document.getElementById("payModal").style.display="flex"; }
   });
   document.querySelectorAll("[data-del-order]").forEach(b=>b.onclick=()=>{
@@ -3324,7 +3435,7 @@ function bindScreen(){
   document.querySelectorAll("[data-lnd-pay]").forEach(b=>b.onclick=()=>{
     const o=(state.laundryOrders||[]).find(x=>x.id===b.dataset.lndPay);
     if(!o) return;
-    if(o.paid){ gateDay(o.date,()=>requireCode(()=>{ o.paid=false; delete o.paidDate; o.editedAt=iso(new Date()); logActivity("إلغاء دفع",(o.type||"")+" (ملابس)"); toast("أُلغي الدفع"); render(); }, SECRET_CODE, "كود الحذف", "إلغاء الدفع يتطلب كود الحذف.")); }
+    if(o.paid){ gateDay(o.date,()=>requireCode(()=>{ o.paid=false; delete o.paidDate; delete o.payMethod; o.editedAt=iso(new Date()); logActivity("إلغاء دفع",(o.type||"")+" (ملابس)"); toast("أُلغي الدفع"); render(); }, SECRET_CODE, "كود الحذف", "إلغاء الدفع يتطلب كود الحذف.")); }
     else { _payCtx={type:"laundry",id:o.id}; const pd=document.getElementById("payDate"); if(pd) pd.value=ymd(new Date()); document.getElementById("payModal").style.display="flex"; }
   });
   document.querySelectorAll("[data-lnd-cancel]").forEach(b=>bindHold(b,()=>{
@@ -3345,6 +3456,7 @@ function bindScreen(){
   bindStore();
   // contacts (الزبائن والموردون)
   bindContacts();
+  bindPmPickers(document.getElementById("main"));
   bindReports();
 
   // expenses
@@ -3357,7 +3469,7 @@ function bindScreen(){
       if(!(amount>0)) return toast("أدخل مبلغًا صحيحًا");
       const expDateV=(document.getElementById("expDate")||{}).value||todayStr();
       const doAdd=()=>{
-        state.expenses.push({id:uid(),amount,category:document.getElementById("expCat").value,reason,date:chosenDateIso(expDateV)});
+        state.expenses.push({id:uid(),amount,category:document.getElementById("expCat").value,reason,payMethod:pmVal("expPm"),date:chosenDateIso(expDateV),by:currentUser,editedAt:iso(new Date())}); delete _pmDraft.expPm;
         logActivity("مصروف", (document.getElementById("expCat").value||"")+" · "+fmt(amount)+" "+CUR);
         toast("تمت إضافة المصروف"); render();
       };
@@ -3512,7 +3624,7 @@ function meterCode(){ return (state.meterPin&&state.meterPin.trim())?state.meter
 
 /* ============ persistence + theme + logo ============ */
 const LS_KEY="sadaqa_laundry_v1";
-const CLOUD_OMIT=["tab","expSub","carpetFilter","cpSearch","custSearch","expSearch","carSearch","lndSearch","lndFilter","storeSub","storeProdSearch","storeSaleSearch","storeCustSearch","storeSaleFilter","contactsSub","contactSearch","supplierSearch","debtSort","dateFrom","dateTo","dark","palette"];
+const CLOUD_OMIT=["tab","expSub","carpetFilter","cpSearch","custSearch","expSearch","carSearch","lndSearch","lndFilter","storeSub","storeProdSearch","storeSaleSearch","storeCustSearch","storeSaleFilter","contactsSub","contactSearch","supplierSearch","debtSort","debtView","dateFrom","dateTo","dark","palette"];
 let _applyingRemote=false, _pushT=null;
 let L_pending_push=false;
 function saveLocal(){ try{ state._savedAt=Date.now(); localStorage.setItem(LS_KEY, JSON.stringify(state)); }catch(e){} }
@@ -4090,7 +4202,7 @@ function openReceipt(o){
       ${rcptItemsHTML(o,false)}
       <div class="rcpt-row"><span>الحالة</span><b>${STATUS[o.status]?STATUS[o.status].label:o.status}</b></div>
       <div class="rcpt-total"><span>الإجمالي</span><b>${money(o.price)} ${CUR}</b></div>
-      <div class="rcpt-paid ${o.paid?'ok':'no'}">${o.paid?"✔ مدفوع":"✖ غير مدفوع"}</div>
+      <div class="rcpt-paid ${o.paid?'ok':'no'}">${o.paid?"✔ مدفوع"+pmTag(o):"✖ غير مدفوع"}</div>
       ${rcptFooter()}
     </div>`;
   document.getElementById("receiptModal").style.display="flex";
@@ -4178,7 +4290,7 @@ function openCarReceipt(o){
       <div class="rcpt-row"><span>نوع الغسيل</span><b>${_esc(o.wash||"-")}</b></div>
       ${o.phone?`<div class="rcpt-row"><span>الهاتف</span><b>${_esc(o.phone)}</b></div>`:""}
       <div class="rcpt-total"><span>الإجمالي</span><b>${o.free?"مجانية 🎁":money(o.price)+" "+CUR}</b></div>
-      ${o.cancelled?`<div class="rcpt-paid no">🚫 ملغاة</div>`:`<div class="rcpt-paid ${o.paid===false?'no':'ok'}">${o.paid===false?"✖ غير مدفوع":"✔ مدفوع"}</div>`}
+      ${o.cancelled?`<div class="rcpt-paid no">🚫 ملغاة</div>`:`<div class="rcpt-paid ${o.paid===false?'no':'ok'}">${o.paid===false?"✖ غير مدفوع":"✔ مدفوع"+pmTag(o)}</div>`}
       ${c&&!o.free?`<div class="rcpt-row"><span>بطاقة الولاء</span><b>${"●".repeat(Math.min(5,c.stamps||0))}${"○".repeat(Math.max(0,5-(c.stamps||0)))}</b></div>`:""}
       ${rcptFooter(state.thanksMsg||"شكرًا لغسلتك عندنا 🌟")}
     </div>`;
@@ -4276,7 +4388,7 @@ function openLndReceipt(o){
       ${rcptItemsHTML(o,true)}
       <div class="rcpt-row"><span>الحالة</span><b>${lndStatusLabel(o)}</b></div>
       <div class="rcpt-total"><span>الإجمالي</span><b>${money(o.price)} ${CUR}</b></div>
-      <div class="rcpt-paid ${o.paid?'ok':'no'}">${o.paid?"✔ مدفوع":"✖ غير مدفوع"}</div>
+      <div class="rcpt-paid ${o.paid?'ok':'no'}">${o.paid?"✔ مدفوع"+pmTag(o):"✖ غير مدفوع"}</div>
       ${rcptFooter()}
     </div>`;
   document.getElementById("receiptModal").style.display="flex";
@@ -4404,10 +4516,11 @@ document.getElementById("dvCancel").onclick=()=>{ document.getElementById("deliv
 let _payCtx=null;
 document.getElementById("payOk").onclick=()=>{
   if(_payCtx){ const list=_payCtx.type==="car"?state.carOps:_payCtx.type==="laundry"?state.laundryOrders:state.carpetOrders; const o=(list||[]).find(x=>x.id===_payCtx.id);
-    if(o){ const dv=document.getElementById("payDate").value||ymd(new Date()); o.paid=true; o.paidDate=chosenDateIso(dv); o.editedAt=iso(new Date()); logActivity("تحصيل دفع", (_payCtx.type==="car"?((o.vehicle||"")+(o.plate?(" · "+o.plate):"")):((o.type||"")+" ×"+(o.count||1)))+" · "+fmt(o.price||0)+" "+CUR); toast("تم تحصيل الدفع"); } }
-  document.getElementById("payModal").style.display="none"; _payCtx=null; render();
+    if(o){ const dv=document.getElementById("payDate").value||ymd(new Date()); o.paid=true; o.paidDate=chosenDateIso(dv); o.payMethod=pmVal("payPm"); o.editedAt=iso(new Date()); logActivity("تحصيل دفع", (_payCtx.type==="car"?((o.vehicle||"")+(o.plate?(" · "+o.plate):"")):((o.type||"")+" ×"+(o.count||1)))+" · "+fmt(o.price||0)+" "+CUR+" ("+pmLabel(o.payMethod)+")"); toast("تم تحصيل الدفع ("+pmLabel(o.payMethod)+")"); } }
+  document.getElementById("payModal").style.display="none"; _payCtx=null; pmReset("payPm"); render();
 };
-document.getElementById("payCancel").onclick=()=>{ document.getElementById("payModal").style.display="none"; _payCtx=null; };
+document.getElementById("payCancel").onclick=()=>{ document.getElementById("payModal").style.display="none"; _payCtx=null; pmReset("payPm"); };
+bindPmPickers(document);
 document.getElementById("btnExport").onclick=exportData;
 document.getElementById("fileImport").onchange=(e)=>{ if(e.target.files[0]) importData(e.target.files[0]); };
 document.getElementById("btnReset").onclick=()=>{ if(confirm("سيتم مسح كل البيانات (الطلبات، الزبائن، المصروفات، العمّال، العدّادات) من هذا الجهاز والسحابة نهائيًا. هل أنت متأكد؟")){ resetAllData(); document.getElementById("settingsModal").style.display="none"; } };
@@ -4612,7 +4725,7 @@ setTimeout(()=>{ if(!window.cloudReady){ const el=document.getElementById("cloud
 <!-- PWA: service-worker registration + update/install wiring -->
 <script>
 (function(){
-  var APP_VERSION = "2.4.0";
+  var APP_VERSION = "2.5.0";
   function $(id){ return document.getElementById(id); }
   function setText(id,t){ var el=$(id); if(el) el.textContent=t; }
 
