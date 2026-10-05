@@ -152,6 +152,16 @@
   «من … إلى …») مع نوع القائمة («السيارات أمس»). `tgSummaryText` (أعداد السيارات/قطع السجاد/قطع
   الملابس/المتجر، الدخل، المصروفات، الربح، كاش/بنكي، الديون) و`tgListText` (قوائم تفصيلية).
   `periodSummary` صار يُرجع `nLndPieces`/`nRugPieces`.
+- **البوت يعمل والتطبيق مغلق (2.8.0):** `.github/workflows/bot.yml` يشغّل `bot/bot.js` كل 5 دقائق
+  (وقد يتأخر GitHub حتى 15 دقيقة). `bot/app-vm.js` يشغّل سكربت التطبيق نفسه داخل Node بواجهة DOM وهمية
+  (Proxy) فتُحسب الردود بنفس دوال التطبيق (`tgHandleText`, `closingText`…) بلا تكرار منطق. `bot.js`:
+  يقرأ `appState/main` عبر Firestore REST (مع تسجيل دخول مجهول عبر Identity Toolkit إن كان مفعّلًا، والمفتاح
+  يُستخرج من `index.html`)، يرد فقط على chat المالك، يترك الرسائل الأحدث من 90 ثانية لجهاز مفتوح، ويحفظ
+  تقدّمه في مستند **`bot/state`** `{lastUpdate, closingSent}` ولا يكتب أبدًا في `appState/main`. يرسل التقفيل
+  التلقائي إن لم يُرسل من أي جهاز. التطبيق يراقب `bot/state` (`window.onBotState`) ويدمج `lastUpdate`
+  (الأكبر) و`closingSent` فلا تتكرر الردود/التقفيل. `firestore.rules` يسمح بـ `bot/{doc}` للمسجّلين.
+  اختبار Node بلا متصفح: `tests/e2e/bot_runner.test.js` (fetch وهمي). ملاحظة GitHub: الجدولة تتوقف
+  إن لم يحدث أي commit لمدة 60 يومًا (يُعاد تفعيلها من صفحة Actions).
 - **قاعدة الحذف والاستعادة (2.0.0):** السجلّ يُعتبر محذوفًا فقط إذا كان وقت الـ tombstone
   ≥ `editedAt` للسجلّ (`isDead` في `mergeById`). لذلك السجلّ المُستعاد (editedAt جديد) يعود
   على كل الأجهزة. `tomb(id)` يضع وقتًا = max(الآن، editedAt+1) لتفادي فرق ساعات الأجهزة.

@@ -1,0 +1,24 @@
+# بوت Telegram — يعمل كل 5 دقائق من GitHub حتى لو كان التطبيق مغلقًا على كل الأجهزة.
+# لا يحتاج أسرارًا: التوكن وChat ID يُقرآن من حالة التطبيق في Firestore (الإعدادات ▸ Telegram).
+name: Telegram bot
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+permissions: {}
+concurrency:
+  group: telegram-bot
+  cancel-in-progress: false
+jobs:
+  reply:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    env:
+      TZ: Africa/Nouakchott
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Read messages and reply
+        run: node bot/bot.js

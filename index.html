@@ -821,6 +821,7 @@
       <div style="border-top:1px dashed var(--line);margin:10px 0 8px"></div>
       <label class="sw" style="margin-bottom:6px"><input type="checkbox" id="tgResponder"> 💬 هذا الجهاز يردّ على أوامر البوت (اليوم / تاريخ / السيارات…)</label>
       <div class="hint" id="tgRespStatus" style="margin-bottom:8px">—</div>
+      <div class="hint" style="margin-bottom:8px">☁️ وإن كان التطبيق مغلقًا على كل الأجهزة، يرد البوت من خادم GitHub تلقائيًا خلال 5–15 دقيقة (ويرسل التقفيل التلقائي أيضًا).</div>
       <div class="hint" style="margin-top:8px;line-height:1.8">الخطوات: 1) راسِل <b>@BotFather</b> وأنشئ بوتًا، والصق <b>Token</b> أعلاه. 2) افتح بوتك في Telegram واضغط <b>Start</b> وأرسل له أي كلمة. 3) اضغط «🔎 جلب تلقائيًا» فيُكتب <b>Chat ID</b> وحده. 4) «إرسال رسالة تجريبية» ثم «حفظ».</div>
     </div>
     <div class="set-sec">
@@ -4774,6 +4775,10 @@ async function tgPoll(){
   }catch(e){} finally{ _tgPolling=false; }
 }
 setInterval(tgPoll, 8000);
+window.onBotState=(b)=>{ if(!b) return; let ch=false; const lu=+b.lastUpdate||0;
+  if(lu>(+state.tgLastUpdate||0)){ state.tgLastUpdate=lu; ch=true; } if(lu>_tgLocalLast) _tgLocalLast=lu;
+  const cs=b.closingSent||{}; state.autoClosingSent=state.autoClosingSent||{}; Object.keys(cs).forEach(k=>{ if(!state.autoClosingSent[k]){ state.autoClosingSent[k]=cs[k]; ch=true; } });
+  if(ch) save(); };
 const TG_TOKEN_RE=/^\d{6,}:[A-Za-z0-9_-]{25,}$/, TG_CHAT_RE=/^-?\d{5,}$/;
 function tgValidate(token,chatId){
   if(!token) return "الصق التوكن أولًا (من @BotFather)";
@@ -5068,6 +5073,8 @@ setTimeout(()=>{ if(!window.cloudReady){ const el=document.getElementById("cloud
       const days = await readIdx(), ids = Object.keys(days).sort().reverse().slice(keep);
       for (const id of ids) { try { await FS.deleteDoc(FS.doc(db, "backups", id)); await FS.updateDoc(idxRef, new FS.FieldPath("days", id), FS.deleteField()); } catch(e){} }
     };
+    // مرآة تقدّم بوت GitHub (bot/state) حتى لا يتكرر الرد/التقفيل بين البوت والأجهزة
+    try{ FS.onSnapshot(FS.doc(db,"bot","state"),(snap)=>{ try{ if(snap.exists()&&window.onBotState) window.onBotState(snap.data()); }catch(e){} },()=>{}); }catch(e){}
     window.cloudReady = true;
     if (window.onCloudReady) window.onCloudReady();
     FS.onSnapshot(ref, (snap) => {
@@ -5088,7 +5095,7 @@ setTimeout(()=>{ if(!window.cloudReady){ const el=document.getElementById("cloud
 <!-- PWA: service-worker registration + update/install wiring -->
 <script>
 (function(){
-  var APP_VERSION = "2.7.0";
+  var APP_VERSION = "2.8.0";
   function $(id){ return document.getElementById(id); }
   function setText(id,t){ var el=$(id); if(el) el.textContent=t; }
 

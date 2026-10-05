@@ -138,3 +138,5 @@ bash tests/run.sh store contacts_bio   # only some suites
   expenses) use a deterministic id (`rec_{id}_{YYYY-MM}`) instead of `uid()`, so
   `mergeById` dedupes them; still respect tombstones.
 - `firestore.rules` holds the security rules; the app signs in anonymously.
+- `bot/app-vm.js` runs the app script in Node: any new top-level DOM call in
+  `index.html` must survive the proxy shim (run `node bot/app-vm.js` to check).

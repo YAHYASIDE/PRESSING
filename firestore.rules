@@ -16,6 +16,10 @@ service cloud.firestore {
     match /backups/{day} {
       allow read, write: if signedIn();
     }
+    // تقدّم بوت Telegram (GitHub Actions) — بلا بيانات حساسة
+    match /bot/{doc} {
+      allow read, write: if signedIn();
+    }
     // كل ما عدا ذلك ممنوع
     match /{document=**} {
       allow read, write: if false;
