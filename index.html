@@ -324,6 +324,14 @@
   .rcpt-logo{width:64px;height:64px;object-fit:contain;display:block;margin:0 auto 6px}
   .rcpt-sub{margin-top:6px;font-weight:800;color:var(--ink)!important;font-size:.9rem!important}
   .rcpt-sec{font-weight:800;margin:12px 0 2px;color:var(--brand);font-size:.92rem}
+  .ov-panel{border-color:var(--unpaid-bg)}
+  .ov-row{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px dashed var(--line);font-size:.86rem}
+  .ov-row:last-of-type{border-bottom:0}
+  .ov-row .ov-main{flex:1;min-width:0}
+  .ov-row.ready .ov-main b{color:var(--ready)} .ov-row.late .ov-main b{color:var(--unpaid)}
+  .cash-count{background:var(--soft);border:1px dashed var(--brand-2);border-radius:12px;padding:10px;margin:10px 0}
+  .cash-count .cc-title{font-weight:800;margin-bottom:4px}
+  .cat-row.off{opacity:.55}
   .pm-pick{display:flex;gap:5px;flex-wrap:wrap}
   .pm-opt{flex:1 1 0;min-width:68px;padding:7px 6px;border:1.5px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);font-weight:800;font-size:.8rem;cursor:pointer;font-family:inherit;white-space:nowrap}
   .pm-opt.on{border-color:var(--brand);background:var(--brand);color:#fff}
@@ -799,7 +807,29 @@
       <input type="text" id="tgToken" class="set-inp" placeholder="Bot Token (من BotFather)" autocomplete="off">
       <input type="text" id="tgChat" class="set-inp" placeholder="Chat ID (رقم محادثتك مع البوت)" inputmode="numeric" autocomplete="off">
       <div class="set-row"><button class="mini" id="tgTest">📤 إرسال رسالة تجريبية</button></div>
+      <div style="border-top:1px dashed var(--line);margin:10px 0 8px"></div>
+      <label class="sw" style="margin-bottom:8px"><input type="checkbox" id="acEnabled"> 🤖 إرسال تقفيل اليوم تلقائيًا على Telegram</label>
+      <div class="row2"><div class="field"><label>الساعة</label><input type="time" id="acTime" value="22:00"></div><div class="field"><label>آخر إرسال</label><div class="hint" id="acLast" style="padding-top:10px">—</div></div></div>
+      <div class="hint">يُرسل من أي جهاز مفتوح عليه التطبيق بعد هذه الساعة (مرّة واحدة لكل يوم). إن كان التطبيق مغلقًا يُرسل عند أول فتح.</div>
       <div class="hint" style="margin-top:8px;line-height:1.8">الخطوات: 1) راسِل <b>@BotFather</b> وأنشئ بوتًا لتحصل على <b>Token</b>. 2) ابدأ محادثة مع بوتك ثم راسِل <b>@userinfobot</b> لتعرف <b>Chat ID</b>. 3) الصق الاثنين هنا وفعّل الخيار. عندها تصلك رسالة فورية عند كل عملية يقوم بها عامل.</div>
+    </div>
+    <div class="set-sec">
+      <div class="set-title">⚠️ تنبيه الطلبات المتأخرة</div>
+      <div class="row2">
+        <div class="field"><label>جاهز ولم يُستلم منذ (أيام)</label><input type="number" id="alReady" min="1" value="3"></div>
+        <div class="field"><label>لم يكتمل منذ (أيام)</label><input type="number" id="alWork" min="1" value="2"></div>
+      </div>
+      <div class="hint">تظهر الطلبات المتأخرة في أعلى الرئيسية مع زر واتساب للزبون.</div>
+    </div>
+    <div class="set-sec">
+      <div class="set-title">📊 تصدير Excel</div>
+      <div class="row2"><div class="field"><label>من</label><input type="date" id="xlFrom"></div><div class="field"><label>إلى</label><input type="date" id="xlTo"></div></div>
+      <button class="mini" id="xlExport" type="button" style="width:100%;font-weight:800">📊 تصدير كل العمليات للفترة (CSV يفتح في Excel)</button>
+    </div>
+    <div class="set-sec">
+      <div class="set-title">🔐 أمان قاعدة البيانات</div>
+      <div class="hint" id="authStatus">—</div>
+      <div class="hint" style="margin-top:6px">القواعد جاهزة في ملف <b>firestore.rules</b> بالمستودع. بعد تفعيل «Anonymous» في Firebase ▸ Authentication ولصق القواعد، لا يقبل الخادم إلا الأجهزة التي سجّلت دخولًا مجهولًا من التطبيق.</div>
     </div>
     <div class="set-sec">
       <div class="set-title">أسعار استهلاك العدّاد</div>
@@ -967,6 +997,9 @@ const state = {
   storeSeq:0, storePurSeq:0,
   storeSub:"pos", storeProdSearch:"", storeSaleSearch:"", storeCustSearch:"", storeSaleFilter:"all",
   suppliers:[],             /* الموردون: {id,name,phone,country,category,note,by,editedAt} */
+  closings:[],              /* جرد الصندوق عند التقفيل: {id,day,expected,actual,diff,note,by,date,editedAt} */
+  recurring:[],             /* مصروفات ثابتة شهرية: {id,name,amount,category,day,payMethod,active,start,by,editedAt} */
+  alerts:{readyDays:3,workDays:2}, autoClosing:{enabled:false,time:"22:00",since:""}, autoClosingSent:{},
   contactsSub:"customers", contactSearch:"", supplierSearch:"",
   users:[],                 /* حسابات العمّال: {id,name,pin,active,createdAt} */
   managers:[],              /* حسابات المديرين: {id,name,pass,active,createdAt} */
@@ -1010,6 +1043,11 @@ function vehicleCounts(f){
     if(o.vehicle==="سيارة صغيرة"||o.vehicle==="سيارة كبيرة")c["سيارات"]++;
     else if(c[o.vehicle]!==undefined)c[o.vehicle]++;
   });
+  return c;
+}
+function laundryCounts(f){
+  const c={}; const LT=(state.laundryTypes&&state.laundryTypes.length)?state.laundryTypes:LAUNDRY_TYPES; LT.forEach(t=>c[t]=0);
+  (state.laundryOrders||[]).filter(o=>!o.cancelled&&f(o.date)).forEach(o=>{ orderItems(o).forEach(i=>{ if(c[i.type]!==undefined) c[i.type]+=+i.count||1; else c["أخرى"]=(c["أخرى"]||0)+(+i.count||1); }); });
   return c;
 }
 function carpetCounts(f){
@@ -1401,6 +1439,9 @@ function screenDashboard(){
   const TINTS=["rgba(16,157,143,.16)","rgba(214,69,69,.13)","rgba(28,110,164,.14)","rgba(230,160,30,.16)","rgba(130,90,200,.14)","rgba(46,158,107,.16)","rgba(200,80,150,.13)","rgba(14,143,168,.15)"];
   vehItems.forEach((v,i)=>{ v.bg=TINTS[i%TINTS.length]; });
   rugItems.forEach((v,i)=>{ v.bg=TINTS[i%TINTS.length]; });
+  const lc=laundryCounts(F), lndItems=Object.keys(lc).filter(t=>lc[t]>0||t!=="أخرى").map(t=>({label:t,count:lc[t]}));
+  lndItems.forEach((v,i)=>{ v.bg=TINTS[i%TINTS.length]; });
+  const lndPieces=sum(lndItems,v=>v.count);
   const preset=(k,t)=>{
     let on=false; const yd=new Date(now); yd.setDate(yd.getDate()-1);
     const mS=ymd(new Date(now.getFullYear(),now.getMonth(),1));
@@ -1426,6 +1467,7 @@ function screenDashboard(){
       <button class="mini" id="sendReport2">📤 تقرير الدخل (− مصروفات عامة)</button>
       ${currentRole!=="worker"?`<button class="mini" id="openClosing" style="background:var(--brand);color:#fff;border-color:var(--brand)">🧾 تقفيل اليوم</button>`:""}
     </div>
+    ${overdueHTML()}
     ${(()=>{ const r=payBreakdown(F); return `<div class="pm-strip">${PAY_METHODS.map(m=>`<div class="pm-chip ${m.k}"><span>${m.ic} ${m.t}</span><b>${money(r[m.k].inc)}</b></div>`).join("")}</div>`; })()}
     <div class="grid metrics">
       ${breakdown(`دخل ${periodLabel} حسب النوع`,incItems,{label:`إجمالي دخل ${periodLabel}`,val:inc})}
@@ -1442,6 +1484,12 @@ function screenDashboard(){
         <div class="veh-head"><span class="label" style="margin:0">أفرشة ${periodLabel} حسب النوع</span></div>
         <div class="veh-grid">
           ${rugItems.map(v=>`<div class="veh-item" style="background:${v.bg}">${PIECE_IMG[v.type]?`<img class="veh-badge" src="${PIECE_IMG[v.type]}" alt="">`:`<span class="vic">${svg(pieceIcon(v.type))}</span>`}<span><span class="vc">${v.count}</span><span class="vl">${v.label}</span></span></div>`).join("")}
+        </div>
+      </div>
+      <div class="metric veh-card">
+        <div class="veh-head"><span class="label" style="margin:0">ملابس ${periodLabel} حسب النوع</span><span class="hint">${lndPieces} قطعة</span></div>
+        <div class="veh-grid">
+          ${lndItems.map(v=>`<div class="veh-item" style="background:${v.bg}"><span class="vic">${svg(I.fabric)}</span><span><span class="vc">${v.count}</span><span class="vl">${v.label}</span></span></div>`).join("")}
         </div>
       </div>
     </div>`;
@@ -1887,6 +1935,148 @@ function closingRows(s){
     ["T","📈 الربح المجمّع",s.group]
   ];
 }
+/* ================= جرد الصندوق عند التقفيل ================= */
+function closingOf(day){ return (state.closings||[]).find(c=>c.day===day&&!c.cancelled)||null; }
+function saveCashCount(day, actual, note){
+  const s=periodSummary(day,day), expected=s.pay.cash.net;
+  let c=closingOf(day); const d=iso(new Date());
+  if(!c){ c={id:uid(),day,date:d}; state.closings.push(c); }
+  Object.assign(c,{expected:Math.round(expected),actual:Math.round(actual),diff:Math.round(actual-expected),note:(note||"").trim(),by:currentUser,editedAt:d});
+  logActivity("جرد الصندوق", day+" · فعلي "+money(c.actual)+" / متوقع "+money(c.expected)+" · "+(c.diff===0?"مطابق ✓":(c.diff>0?"زيادة ":"عجز ")+money(Math.abs(c.diff))));
+  if(c.diff!==0) notifyTelegram("⚠️ جرد الصندوق "+day+"\n"+(c.diff>0?"زيادة":"عجز")+": "+money(Math.abs(c.diff))+" "+CUR+"\nالمتوقع: "+money(c.expected)+" — الفعلي: "+money(c.actual)+"\nبواسطة: "+currentUser+(c.note?("\nملاحظة: "+c.note):""));
+  save(); return c;
+}
+function cashCountText(day){ const c=closingOf(day); if(!c) return ""; return `\n━━━━━━━━━━\n*🧮 جرد الصندوق*\nالمتوقع: ${money(c.expected)}\nالفعلي: ${money(c.actual)}\n*${c.diff===0?"مطابق ✓":(c.diff>0?"زيادة ":"عجز ")+money(Math.abs(c.diff))+" "+CUR}*${c.note?("\n"+c.note):""}\nبواسطة ${c.by||""}`; }
+function closingsReportHTML(){
+  const L=(state.closings||[]).filter(c=>!c.cancelled).slice().sort((a,b)=>b.day.localeCompare(a.day)).slice(0,14);
+  const rows=L.length?L.map(c=>`<tr><td>${c.day}</td><td class="amt" style="text-align:left">${money(c.expected)}</td><td class="amt" style="text-align:left">${money(c.actual)}</td><td class="amt" style="text-align:left;font-weight:800;color:${c.diff===0?'var(--ready)':c.diff>0?'var(--wash)':'var(--unpaid)'}">${c.diff===0?"✓ مطابق":(c.diff>0?"+":"−")+money(Math.abs(c.diff))}</td><td>${_esc(c.by||"")}${c.note?`<div class="hint">${_esc(c.note)}</div>`:""}</td></tr>`).join("")
+    :`<tr><td colspan="5"><div class="hint">لا يوجد جرد بعد — يُسجَّل من «🧾 تقفيل اليوم» في الرئيسية.</div></td></tr>`;
+  const shortTot=sum(L.filter(c=>c.diff<0),c=>-c.diff);
+  return `<div class="panel" style="margin-bottom:12px" id="closingsPanel"><h3>🧮 جرد الصندوق (آخر 14 تقفيلًا)</h3>
+    ${shortTot?`<div class="hint" style="color:var(--unpaid);font-weight:800;margin-bottom:6px">إجمالي العجز في هذه التقفيلات: ${money(shortTot)} ${CUR}</div>`:""}
+    <div class="tbl-wrap"><table class="tbl"><thead><tr><th>اليوم</th><th style="text-align:left">المتوقع</th><th style="text-align:left">الفعلي</th><th style="text-align:left">الفرق</th><th>من</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
+}
+
+/* ================= تقرير العمّال (الإنتاجية) ================= */
+function workerStats(F){
+  const m=new Map(); const get=(n)=>{ n=(n||"").trim()||"غير محدد"; let x=m.get(n); if(!x){ x={name:n,cars:0,carsAmt:0,rugs:0,rugsAmt:0,lnd:0,lndAmt:0,sales:0,salesAmt:0,n:0,amt:0}; m.set(n,x); } return x; };
+  (state.carOps||[]).forEach(o=>{ if(o.cancelled||!F(o.date)) return; const x=get(o.by); x.cars++; x.carsAmt+=+o.price||0; });
+  (state.carpetOrders||[]).forEach(o=>{ if(o.cancelled||!F(o.date)) return; const x=get(o.by); x.rugs++; x.rugsAmt+=+o.price||0; });
+  (state.laundryOrders||[]).forEach(o=>{ if(o.cancelled||!F(o.date)) return; const x=get(o.by); x.lnd++; x.lndAmt+=+o.price||0; });
+  (state.storeSales||[]).forEach(o=>{ if(o.cancelled||!F(o.date)) return; const x=get(o.by); x.sales++; x.salesAmt+=+o.total||0; });
+  return [...m.values()].map(x=>{ x.n=x.cars+x.rugs+x.lnd+x.sales; x.amt=x.carsAmt+x.rugsAmt+x.lndAmt+x.salesAmt; return x; }).filter(x=>x.n>0).sort((a,b)=>b.amt-a.amt);
+}
+function workersReportHTML(F,periodTxt){
+  const W=workerStats(F), max=Math.max(1,...W.map(x=>x.amt));
+  const rows=W.length?W.map((x,i)=>`<tr${i===0?' style="font-weight:800"':''}><td>${i===0?"🏆 ":""}${_esc(x.name)}<div class="bar-track" style="margin-top:4px;height:6px"><div class="bar-fill" style="width:${Math.round(x.amt/max*100)}%;background:var(--brand)"></div></div></td>
+    <td style="text-align:center">${x.cars}</td><td style="text-align:center">${x.rugs}</td><td style="text-align:center">${x.lnd}</td><td style="text-align:center">${x.sales}</td><td style="text-align:center">${x.n}</td><td class="amt" style="text-align:left">${money(x.amt)}</td></tr>`).join("")
+    :`<tr><td colspan="7"><div class="hint">لا عمليات في هذه الفترة.</div></td></tr>`;
+  return `<div class="panel" style="margin-bottom:12px" id="workersPanel"><h3>👷 إنتاجية العمّال (${periodTxt})</h3>
+    <div class="tbl-wrap"><table class="tbl"><thead><tr><th>العامل</th><th>🚗</th><th>🧺</th><th>👕</th><th>🏪</th><th>العمليات</th><th style="text-align:left">المبلغ</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <div class="hint" style="margin-top:6px">يُحسب لكل عامل ما سجّله بنفسه (عمليات وفواتير) في الفترة المختارة، مدفوعًا أو لا.</div></div>`;
+}
+
+/* ================= الطلبات المتأخرة ================= */
+function _daysSince(d){ return Math.max(0,Math.floor((Date.now()-new Date(d))/864e5)); }
+function overdueOrders(){
+  const A=state.alerts||{}, rd=+A.readyDays>0?+A.readyDays:3, wd=+A.workDays>0?+A.workDays:2, out=[];
+  const chk=(o,kind)=>{ if(o.cancelled) return;
+    if(o.status==="ready"){ const days=_daysSince(o.readyDate||o.editedAt||o.date); if(days>=rd) out.push({o,kind,why:"ready",days}); }
+    else if(o.status!=="done"){ const days=_daysSince(o.date); if(days>=wd) out.push({o,kind,why:"late",days}); } };
+  (state.carpetOrders||[]).forEach(o=>chk(o,"rug")); (state.laundryOrders||[]).forEach(o=>chk(o,"lnd"));
+  return out.sort((a,b)=>b.days-a.days);
+}
+function overdueHTML(){
+  const L=overdueOrders(); if(!L.length) return "";
+  const rows=L.slice(0,12).map(({o,kind,why,days})=>`<div class="ov-row ${why}"><div class="ov-main"><b>${_esc(o.no||"")}</b> ${_esc(o.customer||"عميل")} — ${_esc(orderLabel(o))}<div class="hint">${why==="ready"?"جاهز ولم يُستلم":"لم يكتمل بعد"} منذ <b>${days}</b> يوم</div></div>
+    ${o.phone?`<button class="wa-btn" data-ov-wa="${kind}:${o.id}" title="واتساب">${svg(I.whatsapp)}</button>`:""}<button class="mini" data-ov-go="${kind}">فتح</button></div>`).join("");
+  return `<div class="panel ov-panel" style="margin-bottom:10px"><h3 style="color:var(--unpaid)">⚠️ طلبات متأخرة (${L.length})</h3>${rows}${L.length>12?`<div class="hint">و ${L.length-12} أخرى…</div>`:""}
+    <div class="hint" style="margin-top:6px">المهل تُضبط من الإعدادات ▸ «⚠️ تنبيه الطلبات المتأخرة».</div></div>`;
+}
+
+/* ================= مصروفات ثابتة شهرية ================= */
+function recExpId(r,ym){ return "rec_"+r.id+"_"+ym; }
+function applyRecurring(){
+  const R=(state.recurring||[]).filter(r=>r.active!==false); if(!R.length) return 0;
+  const now=new Date(), today=ymd(now), ids=new Set((state.expenses||[]).map(e=>e.id)); let added=0;
+  R.forEach(r=>{
+    const day=Math.min(28,Math.max(1,+r.day||1)), start=(r.start||today).slice(0,7);
+    for(let i=11;i>=0;i--){ const d=new Date(now.getFullYear(),now.getMonth()-i,1); const ym=monthKey(d); if(ym<start) continue;
+      const due=ymd(new Date(d.getFullYear(),d.getMonth(),day)); if(due>today) continue;
+      const id=recExpId(r,ym); if(ids.has(id)||(state.deleted||{})["rec:"+id]) continue;
+      state.expenses.push({id,amount:+r.amount||0,category:r.category||"أخرى",reason:r.name+" ("+monthLabel(ym)+")",payMethod:normPM(r.payMethod),recurringId:r.id,date:iso(new Date(d.getFullYear(),d.getMonth(),day,9,0,0)),by:"تلقائي",editedAt:iso(new Date())});
+      ids.add(id); added++; }
+  });
+  if(added){ logActivity("مصروف ثابت تلقائي", added+" مصروف"); save(); }
+  return added;
+}
+function recurringHTML(){
+  const R=(state.recurring||[]); const tot=sum(R.filter(r=>r.active!==false),r=>+r.amount||0);
+  const rows=R.length?R.map(r=>`<div class="cat-row ${r.active===false?'off':''}"><div style="flex:1;min-width:0"><b class="cat-nm">${_esc(r.name)}</b><div class="hint">${money(r.amount)} · يوم ${+r.day||1} من كل شهر · ${_esc(r.category||"")} · ${pmLabel(r.payMethod)}${r.active===false?' · <span style="color:var(--unpaid)">موقوف</span>':''}</div></div>
+    <button class="wk-btn" data-rec-toggle="${r.id}">${r.active===false?"تشغيل":"إيقاف"}</button><button class="icon-btn del-btn" data-rec-del="${r.id}" title="حذف">${svg(I.trash)}</button></div>`).join("")
+    :`<div class="hint">لا توجد مصروفات ثابتة بعد. مثال: الإيجار، الإنترنت، اشتراك…</div>`;
+  const opts=EXP_CATS.map(c=>`<option value="${c}">${c}</option>`).join("");
+  return `<div class="panel" style="margin-top:12px"><h3>📆 مصروفات ثابتة شهرية <span class="hint" style="font-weight:600">(${money(tot)} / شهر)</span></h3>
+    <div class="hint" style="margin-bottom:8px">تُضاف تلقائيًا إلى المصروفات في يومها من كل شهر، مرّة واحدة فقط ولو فُتح التطبيق من عدة أجهزة.</div>
+    ${rows}
+    <div class="row2" style="margin-top:10px"><div class="field"><label>الاسم</label><input id="recName" type="text" placeholder="مثال: إيجار المحل"></div><div class="field"><label>المبلغ</label><input id="recAmt" type="number" min="0" value="0"></div></div>
+    <div class="row2"><div class="field"><label>الفئة</label><select id="recCat">${opts}</select></div><div class="field"><label>يوم الشهر (1–28)</label><input id="recDay" type="number" min="1" max="28" value="1"></div></div>
+    ${pmPickerHTML("recPm","يُدفع عبر")}
+    <button class="mini" id="recAdd" style="width:100%;font-weight:800">➕ إضافة مصروف ثابت</button></div>`;
+}
+function bindRecurring(){
+  const add=document.getElementById("recAdd"); if(!add) return;
+  add.onclick=()=>{ const name=(document.getElementById("recName").value||"").trim(), amount=+document.getElementById("recAmt").value||0, day=Math.min(28,Math.max(1,+document.getElementById("recDay").value||1));
+    if(!name) return toast("أدخل اسم المصروف"); if(!(amount>0)) return toast("أدخل مبلغًا");
+    state.recurring.push({id:uid(),name,amount,category:document.getElementById("recCat").value,day,payMethod:pmVal("recPm"),active:true,start:ymd(new Date()),by:currentUser,editedAt:iso(new Date())});
+    delete _pmDraft.recPm; logActivity("مصروف ثابت جديد",name+" · "+money(amount)); applyRecurring(); toast("أُضيف — سيُسجَّل تلقائيًا كل شهر"); render(); };
+  document.querySelectorAll("[data-rec-toggle]").forEach(b=>b.onclick=()=>{ const r=state.recurring.find(x=>x.id===b.dataset.recToggle); if(r){ r.active=r.active===false; r.editedAt=iso(new Date()); applyRecurring(); render(); } });
+  document.querySelectorAll("[data-rec-del]").forEach(b=>b.onclick=()=>{ const id=b.dataset.recDel, r=state.recurring.find(x=>x.id===id); requireCode(()=>{ logActivity("حذف مصروف ثابت",(r&&r.name)||""); tomb(id); state.recurring=state.recurring.filter(x=>x.id!==id); toast("تم الحذف"); render(); }, SECRET_CODE, "كود الحذف", "حذف المصروف الثابت يتطلب الكود (المصروفات المسجّلة سابقًا تبقى)."); });
+}
+
+/* ================= تقفيل تلقائي على Telegram ================= */
+function autoClosingTick(){
+  try{
+    const a=state.autoClosing||{}, t=(state.notify&&state.notify.telegram)||{};
+    if(!a.enabled||!t.enabled||!t.token||!t.chatId||!unlocked) return;
+    const now=new Date(), hm=String(now.getHours()).padStart(2,"0")+":"+String(now.getMinutes()).padStart(2,"0");
+    let target=ymd(now); if(hm<(a.time||"22:00")){ const y=new Date(now); y.setDate(y.getDate()-1); target=ymd(y); }
+    if(a.since && target<a.since) return;
+    if((state.autoClosingSent||{})[target]) return;
+    state.autoClosingSent=state.autoClosingSent||{}; state.autoClosingSent[target]=iso(now); save();
+    const rows=closingRows(periodSummary(target,target));
+    const text=("🤖 تقفيل تلقائي\n"+closingText(target,rows)+cashCountText(target)).replace(/\*/g,"");
+    notifyTelegram(text); logActivity("تقفيل تلقائي",target);
+  }catch(e){}
+}
+setInterval(autoClosingTick, 60*1000);
+
+/* ================= تصدير Excel (CSV بترميز يفتحه Excel بالعربية) ================= */
+function csvCell(v){ v=v==null?"":String(v); return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v; }
+function exportCSV(from,to){
+  const F=(x)=>{ if(!x) return false; const d=ymd(x); return d>=from&&d<=to; }, L=[];
+  const sec=(title,head,rows)=>{ L.push(""); L.push(title); L.push(head.map(csvCell).join(",")); rows.forEach(r=>L.push(r.map(csvCell).join(","))); };
+  L.push("sep=,"); L.push(shopInfo().name+" — تصدير من "+from+" إلى "+to+" — "+ymd(new Date())+" "+timeStr(new Date()));
+  sec("السيارات",["التاريخ","رقم","المركبة","الغسيل","اللوحة","الهاتف","السعر","مدفوع","طريقة الدفع","بواسطة"],(state.carOps||[]).filter(o=>F(o.date)).map(o=>[ymd(o.date),o.no,o.vehicle,o.wash,o.plate,o.phone,o.price,o.cancelled?"ملغاة":(o.paid===false?"لا":"نعم"),o.paid===false?"":pmLabel(o.payMethod),o.by]));
+  sec("السجاد والأفرشة",["التاريخ","رقم","الزبون","الهاتف","الأصناف","القطع","السعر","الحالة","مدفوع","طريقة الدفع","بواسطة"],(state.carpetOrders||[]).filter(o=>F(o.date)).map(o=>[ymd(o.date),o.no,o.customer,o.phone,orderLabel(o),o.count,o.price,o.cancelled?"ملغاة":(STATUS[o.status]||{}).label||o.status,o.paid?"نعم":"لا",o.paid?pmLabel(o.payMethod):"",o.by]));
+  sec("الملابس",["التاريخ","رقم","الزبون","الهاتف","الأصناف","القطع","السعر","الحالة","مدفوع","طريقة الدفع","بواسطة"],(state.laundryOrders||[]).filter(o=>F(o.date)).map(o=>[ymd(o.date),o.no,o.customer,o.phone,orderLabel(o,true),o.count,o.price,o.cancelled?"ملغاة":lndStatusLabel(o),o.paid?"نعم":"لا",o.paid?pmLabel(o.payMethod):"",o.by]));
+  sec("مبيعات المتجر",["التاريخ","رقم","الزبون","الأصناف","الإجمالي","المدفوع","المتبقي","طريقة الدفع","بواسطة"],(state.storeSales||[]).filter(o=>F(o.date)).map(o=>[ymd(o.date),o.no,o.customerName,(o.items||[]).map(i=>i.name+" ×"+i.qty).join(" | "),o.total,o.paidAmount||0,o.cancelled?"ملغاة":saleOutstanding(o),o.paid?pmLabel(o.payMethod):"",o.by]));
+  sec("مشتريات المتجر",["التاريخ","رقم","المورّد","الأصناف","الإجمالي","المدفوع","المتبقي","بواسطة"],(state.storePurchases||[]).filter(o=>F(o.date)).map(o=>[ymd(o.date),o.no,o.supplier,(o.items||[]).map(i=>i.name+" ×"+i.qty).join(" | "),o.total,purPaidAmt(o),purOutstanding(o),o.by]));
+  sec("حركات الصندوق",["التاريخ","النوع","البيان","المبلغ","طريقة الدفع","بواسطة"],(state.storeCash||[]).filter(m=>F(m.date)).map(m=>[ymd(m.date),m.type==="in"?"وارد":"صادر",m.reason,m.amount,pmLabel(m.payMethod),m.by]));
+  sec("المصروفات",["التاريخ","الفئة","البيان","المبلغ","طريقة الدفع","بواسطة"],(state.expenses||[]).filter(e=>F(e.date)).map(e=>[ymd(e.date),e.category,e.reason,e.amount,pmLabel(e.payMethod),e.by]));
+  sec("جرد الصندوق",["اليوم","المتوقع","الفعلي","الفرق","ملاحظة","بواسطة"],(state.closings||[]).filter(c=>c.day>=from&&c.day<=to).map(c=>[c.day,c.expected,c.actual,c.diff,c.note,c.by]));
+  const ps=periodSummary(from,to), pb=payBreakdown(F);
+  sec("الملخص",["البند","المبلغ"],[["دخل السيارات",ps.cars],["دخل السجاد",ps.rugs],["دخل الملابس",ps.lnd],["إجمالي دخل المغسلة",ps.lndInc],["العمّال",ps.wages],["مصروفات عامة",ps.gen],["العدّادات",ps.util],["مواد من المتجر",ps.intPurch],["ربح المغسلة",ps.lndProfit],["مبيعات المتجر",ps.storeSales],["هامش المتجر",ps.storeMargin],["الربح المجمّع",ps.group],...PAY_METHODS.map(m=>["دخل "+m.t,pb[m.k].inc])]);
+  return "﻿"+L.join("\r\n");
+}
+async function exportExcel(from,to){
+  from=from||state.dateFrom; to=to||state.dateTo; if(from==="1970-01-01") from="2000-01-01";
+  const csv=exportCSV(from,to), name="sadaqa_"+from+"_"+to+".csv", blob=new Blob([csv],{type:"text/csv;charset=utf-8"});
+  window._lastCsv=csv; logActivity("تصدير Excel",from+" → "+to);
+  try{ const file=new File([blob],name,{type:"text/csv"}); if(navigator.canShare&&navigator.canShare({files:[file]})){ await navigator.share({files:[file],text:shopInfo().name+" — تصدير "+from+" → "+to}); return; } }catch(e){ if(e&&e.name==="AbortError") return; }
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=name; document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },2000);
+  toast("تم تنزيل الملف — يفتح في Excel");
+}
 function closingText(day,rows){
   return `*${shopInfo().name} — تقفيل اليوم*\n📅 ${day}\n━━━━━━━━━━`+rows.map(r=> r[0]==="h"?`\n\n${r[1]}`
     : r[0]==="T"?`\n━━━━━━━━━━\n*${r[1]}: ${money(r[2])} ${CUR}*`
@@ -1903,12 +2093,17 @@ function openClosing(day){
       ${rcptHeader("تقفيل اليوم — "+day)}
       <div class="no-print" style="display:flex;gap:8px;align-items:center;margin-bottom:8px"><input type="date" id="closingDay" value="${day}" max="${ymd(new Date())}" style="flex:1"><button class="mini" id="closingWa">📤 إرسال واتساب</button></div>
       ${body}
+      ${(()=>{ const c=closingOf(day); return c?`<div class="rcpt-sec">🧮 جرد الصندوق</div><div class="rcpt-row"><span>المتوقع</span><b>${money(c.expected)}</b></div><div class="rcpt-row"><span>الفعلي في الدرج</span><b>${money(c.actual)}</b></div><div class="rcpt-paid ${c.diff===0?'ok':'no'}">${c.diff===0?"✔ مطابق":(c.diff>0?"زيادة ":"⚠️ عجز ")+money(Math.abs(c.diff))+" "+CUR}</div>${c.note?`<div class="hint" style="text-align:center">${_esc(c.note)}</div>`:""}<div class="hint" style="text-align:center">بواسطة ${_esc(c.by||"")} · ${ymd(c.editedAt||c.date)} ${timeStr(c.editedAt||c.date)}</div>`:""; })()}
+      ${currentRole!=="worker"?`<div class="no-print cash-count"><div class="cc-title">🧮 جرد الكاش ${closingOf(day)?"(تعديل)":""}</div><div class="hint">الكاش المتوقع من حركات اليوم: <b>${money(s.pay.cash.net)} ${CUR}</b></div>
+        <div class="row2" style="margin-top:6px"><div class="field"><label>الكاش الفعلي في الدرج</label><input id="ccActual" type="number" min="0" value="${closingOf(day)?closingOf(day).actual:""}" placeholder="عدّ الدرج"></div><div class="field"><label>ملاحظة</label><input id="ccNote" type="text" value="${_esc((closingOf(day)||{}).note||"")}" placeholder="اختياري"></div></div>
+        <button class="btn-primary" id="ccSave" style="width:100%">💾 حفظ الجرد</button></div>`:""}
       ${rcptFooter(currentUser?("أعدّه: "+_esc(currentUser)):"")}
     </div>`;
   document.getElementById("receiptModal").style.display="flex";
   const dIn=document.getElementById("closingDay"); if(dIn) dIn.onchange=()=>openClosing(dIn.value||day);
+  const ccs=document.getElementById("ccSave"); if(ccs) ccs.onclick=()=>{ const v=document.getElementById("ccActual").value; if(v===""||!(+v>=0)) return toast("أدخل الكاش الفعلي"); const c=saveCashCount(day,+v,document.getElementById("ccNote").value); toast(c.diff===0?"✔ الصندوق مطابق":(c.diff>0?"زيادة ":"⚠️ عجز ")+money(Math.abs(c.diff))+" "+CUR); openClosing(day); };
   const wa=document.getElementById("closingWa"); if(wa) wa.onclick=()=>{
-    const text=closingText(day,rows); logActivity("تقفيل اليوم",day+" · ربح "+money(s.group)+" "+CUR);
+    const text=closingText(day,rows)+cashCountText(day); logActivity("تقفيل اليوم",day+" · ربح "+money(s.group)+" "+CUR);
     try{ if(navigator.share){ navigator.share({text}).catch(()=>{}); return; } }catch(e){}
     window.open("https://wa.me/?text="+encodeURIComponent(text),"_blank");
   };
@@ -2786,7 +2981,7 @@ function expGeneral(){
   const total=manualExp(e=>inRange(e));
   const rows=today.length?today.map(e=>`
     <tr><td>${ymd(e.date)}<div style="font-size:.7rem;color:var(--muted)">${timeStr(e.date)}</div></td><td><span class="badge b-done">${e.category}</span></td>
-      <td>${e.reason||"—"}${pmTag(e)?`<div style="font-size:.7rem;color:var(--brand)">${pmLabel(e.payMethod)}</div>`:""}</td><td class="amt">${money(e.amount)}</td>
+      <td>${e.reason||"—"}${e.recurringId?' <span class="badge b-done">ثابت</span>':''}${pmTag(e)?`<div style="font-size:.7rem;color:var(--brand)">${pmLabel(e.payMethod)}</div>`:""}</td><td class="amt">${money(e.amount)}</td>
       <td style="text-align:left"><button class="icon-btn" data-del-exp="${e.id}" title="حذف">${svg(I.trash)}</button></td></tr>`).join("")
     :`<tr><td colspan="5"><div class="empty">${svg(I.empty)}لا توجد مصروفات في هذه الفترة.</div></td></tr>`;
   const opts=EXP_CATS.map(c=>`<option value="${c}">${c}</option>`).join("");
@@ -2801,6 +2996,7 @@ function expGeneral(){
         <div class="field"><label>التاريخ</label><input id="expDate" type="date" value="${ymd(new Date())}" max="${ymd(new Date())}"></div>
         ${pmPickerHTML("expPm","دُفع عبر")}
         <button class="btn-primary" id="expSave">إضافة مصروف</button>
+        ${recurringHTML()}
       </div>
       <div class="panel">
         <h3>مصروفات ${periodTxt}</h3>
@@ -3129,7 +3325,7 @@ function screenReports(){
         <span style="color:var(--muted);font-weight:700;font-size:.85rem">هذا الشهر</span><span style="font-weight:800;color:${c}">${money(m)}</span></div>
     </div>`;
   return `
-    <div class="screen-head"><h2>التقارير</h2><span>ملخص الأداء</span><button class="mini no-print" id="reportPrint" style="margin-inline-start:auto">طباعة التقرير</button></div>
+    <div class="screen-head"><h2>التقارير</h2><span>ملخص الأداء</span><button class="mini no-print" id="exportExcel" style="margin-inline-start:auto">📊 Excel</button><button class="mini no-print" id="reportPrint">طباعة</button></div>
     <div class="panel" style="margin-bottom:16px">
       <h3>💰 الربح الموحّد (${uPeriod})</h3>
       <div class="store-stat" style="margin-bottom:12px">
@@ -3155,6 +3351,8 @@ function screenReports(){
       <div class="hint" style="margin-top:8px">البيع الداخلي للمغسلة يظهر دخلًا للمتجر ومصروفًا على المغسلة فيتعادل في الإجمالي؛ فيبقى الربح الحقيقي = (أرباح زبائن الخارج + خدمات المغسلة) − التكاليف الخارجية.</div>
     </div>
     ${payBreakdownHTML(UF,"الدخل حسب طريقة الدفع ("+uPeriod+")")}
+    ${workersReportHTML(UF,uPeriod)}
+    ${closingsReportHTML()}
     ${monthlyReportHTML()}
     <div class="grid metrics" style="margin-bottom:16px">
       ${card("الدخل",dInc,mInc,"var(--ready)")}
@@ -3214,6 +3412,8 @@ function bindScreen(){
     const srb2=document.getElementById("sendReport2"); if(srb2) srb2.onclick=sendReport2;
     const ocl=document.getElementById("openClosing"); if(ocl) ocl.onclick=()=>openClosing(ymd(new Date()));
     const dcb=document.getElementById("dateCustomBtn"); if(dcb) dcb.onclick=()=>{ _dateCustomOpen=!_dateCustomOpen; render(); };
+    document.querySelectorAll("[data-ov-wa]").forEach(b=>b.onclick=()=>{ const [k,id]=b.dataset.ovWa.split(":"); const o=(k==="lnd"?state.laundryOrders:state.carpetOrders).find(x=>x.id===id); if(o){ k==="lnd"?openLndWa(o):openWa(o); } });
+    document.querySelectorAll("[data-ov-go]").forEach(b=>b.onclick=()=>{ state.tab=b.dataset.ovGo==="lnd"?"laundry":"carpets"; if(b.dataset.ovGo==="lnd") state.lndFilter="all"; else state.carpetFilter="all"; render(); });
     document.querySelectorAll("[data-preset]").forEach(bp=>bp.onclick=()=>{
       const t=new Date(), todayS=ymd(t);
       if(bp.dataset.preset==="today"){ state.dateFrom=state.dateTo=todayS; }
@@ -3344,7 +3544,7 @@ function bindScreen(){
         }, SECRET_CODE, "كود تسليم غير مدفوع", "تسليم طلب غير مدفوع يتطلّب الكود.");
         return;
       }
-      o.status=nextStatus; o.editedAt=iso(new Date());
+      o.status=nextStatus; o.editedAt=iso(new Date()); if(nextStatus==="ready") o.readyDate=iso(new Date());
       logActivity("حالة أفرشة", (o.type||"")+" → "+(nextStatus==="done"?"تم التسليم":nextStatus==="ready"?"جاهز":nextStatus));
       let notify=false;
       if(o.status==="done"){ o.deliveredDate=iso(new Date()); toast("تم التسليم"); }
@@ -3423,7 +3623,7 @@ function bindScreen(){
       }, SECRET_CODE, "كود تسليم غير مدفوع", "تسليم طلب غير مدفوع يتطلّب الكود.");
       return;
     }
-    o.status=next; o.editedAt=iso(new Date());
+    o.status=next; o.editedAt=iso(new Date()); if(next==="ready") o.readyDate=iso(new Date());
     logActivity("حالة ملابس", (o.type||"")+" → "+(LSTATUS[next]?LSTATUS[next].label:next));
     let notify=false;
     if(next==="done"){ o.deliveredDate=iso(new Date()); toast("تم التسليم"); }
@@ -3457,6 +3657,7 @@ function bindScreen(){
   // contacts (الزبائن والموردون)
   bindContacts();
   bindPmPickers(document.getElementById("main"));
+  { const xb=document.getElementById("exportExcel"); if(xb) xb.onclick=()=>exportExcel(); }
   bindReports();
 
   // expenses
@@ -3479,6 +3680,7 @@ function bindScreen(){
   document.querySelectorAll("[data-del-exp]").forEach(b=>b.onclick=()=>{
     tomb(b.dataset.delExp); state.expenses=state.expenses.filter(e=>e.id!==b.dataset.delExp); toast("تم الحذف"); render(); });
 
+  bindRecurring();
   // expenses sub-tabs
   document.querySelectorAll("[data-sub]").forEach(b=>b.onclick=()=>{state.expSub=b.dataset.sub;render();});
 
@@ -3641,7 +3843,7 @@ function cloudCopy(){
 }
 function save(){ saveLocal(); updateCloudBtn("pending"); L_pending_push=true; if(window.cloudReady && !_applyingRemote){ clearTimeout(_pushT); _pushT=setTimeout(()=>{ try{ window.cloudPush(cloudCopy()); L_pending_push=false; }catch(e){ updateCloudBtn("offline"); } }, 600); } }
 function load(){ try{ const d=localStorage.getItem(LS_KEY); if(d) Object.assign(state, JSON.parse(d)); }catch(e){} }
-const SYNC_ARRAYS=["carOps","carpetOrders","laundryOrders","expenses","meters","workers","users","managers","storeProducts","storeSales","storePurchases","storeCustomers","storeCash","suppliers","activity","logins"];
+const SYNC_ARRAYS=["carOps","carpetOrders","laundryOrders","expenses","meters","workers","users","managers","storeProducts","storeSales","storePurchases","storeCustomers","storeCash","suppliers","closings","recurring","activity","logins"];
 function _editedAtOf(id){ for(const k of SYNC_ARRAYS){ const r=(state[k]||[]).find(x=>x&&x.id===id); if(r) return +new Date(r.editedAt||0)||0; } return 0; }
 function tombTs(id){ return Math.max(Date.now(), _editedAtOf(id)+1); }
 function tomb(id){ if(!state.deleted) state.deleted={}; state.deleted["rec:"+id]=tombTs(id); }
@@ -3708,7 +3910,8 @@ function applyRemote(remote){
   L.carOps.forEach(o=>{ if(o.photos&&o.photos.length) pm["op"+o.id]=o.photos; });
   L.carpetOrders.forEach(o=>{ if(o.photos&&o.photos.length) pm["or"+o.id]=o.photos; });
   // ⚠️ يجب التقاط بيانات المتجر والموردين المحلية قبل Object.assign وإلا ضاعت (كان خطأ يمحو سجلات المتجر)
-  const Lstore={ storeProducts:state.storeProducts||[], storeSales:state.storeSales||[], storePurchases:state.storePurchases||[], storeCustomers:state.storeCustomers||[], storeCash:state.storeCash||[], suppliers:state.suppliers||[] };
+  const Lstore={ storeProducts:state.storeProducts||[], storeSales:state.storeSales||[], storePurchases:state.storePurchases||[], storeCustomers:state.storeCustomers||[], storeCash:state.storeCash||[], suppliers:state.suppliers||[], closings:state.closings||[], recurring:state.recurring||[] };
+  const localSent=Object.assign({}, state.autoClosingSent||{});
   const spm={}; Lstore.storeProducts.forEach(p=>{ if(p.image) spm[p.id]=p.image; });
   const localRem=Object.assign({}, state.debtReminded||{});
   Object.assign(state, remote);
@@ -3726,6 +3929,9 @@ function applyRemote(remote){
   state.laundryPrices=Object.assign({}, remote.laundryPrices||{}, localLndPrices);
   // ====== المتجر والموردون: دمج بالمعرّف مع الصور المحلية (Lstore التُقط قبل الدمج) ======
   state.suppliers=mergeById(Lstore.suppliers, remote.suppliers, state.deleted);
+  state.closings=mergeById(Lstore.closings, remote.closings, state.deleted);
+  state.recurring=mergeById(Lstore.recurring, remote.recurring, state.deleted);
+  state.autoClosingSent=Object.assign({}, remote.autoClosingSent||{}, localSent);
   state.storeProducts=mergeById(Lstore.storeProducts, remote.storeProducts, state.deleted);
   state.storeSales=mergeById(Lstore.storeSales, remote.storeSales, state.deleted);
   state.storePurchases=mergeById(Lstore.storePurchases, remote.storePurchases, state.deleted);
@@ -3758,6 +3964,7 @@ function applyRemote(remote){
   maybeAlertNewActivity();
   _applyingRemote=false;
   if(!window._remoteApplied){ window._remoteApplied=true; setTimeout(()=>{ try{ takeBackup(false); }catch(e){} }, 8000); }
+  try{ if(applyRecurring()) render(); }catch(e){}
   // Always push merged result back so cloud stays current
   try{ if(window.cloudReady) window.cloudPush(cloudCopy()); }catch(e){}
 }
@@ -3965,7 +4172,7 @@ function importData(file){
    - محليًا على الجهاز (IndexedDB) + في السحابة (backups/{يوم}) — آخر 30 يومًا.
    - نسخة لكل يوم تُحدَّث كل 20 دقيقة على الأكثر أثناء العمل.
    - الاسترجاع «يُعيد المفقود فقط» ولا يمسح أي شيء أحدث. */
-const BACKUP_KEEP=30, BACKUP_EVERY=20*60*1000, BACKUP_KEYS=["carOps","carpetOrders","laundryOrders","expenses","meters","workers","users","managers","storeProducts","storeSales","storePurchases","storeCustomers","storeCash","suppliers"];
+const BACKUP_KEEP=30, BACKUP_EVERY=20*60*1000, BACKUP_KEYS=["carOps","carpetOrders","laundryOrders","expenses","meters","workers","users","managers","storeProducts","storeSales","storePurchases","storeCustomers","storeCash","suppliers","closings","recurring"];
 let _lastBackupAt=0;
 function _idb(){ return new Promise((res,rej)=>{ try{ if(!window.indexedDB) return rej(new Error("no idb")); const r=indexedDB.open("sadaqa-backups",1); r.onupgradeneeded=()=>{ if(!r.result.objectStoreNames.contains("days")) r.result.createObjectStore("days",{keyPath:"id"}); }; r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }catch(e){ rej(e); } }); }
 async function localBackupPut(rec){ const db=await _idb(); return new Promise((res,rej)=>{ const tx=db.transaction("days","readwrite"); tx.objectStore("days").put(rec); tx.oncomplete=()=>res(); tx.onerror=()=>rej(tx.error); }); }
@@ -4061,7 +4268,8 @@ function resetFinancials(){
   tombArr(state.carOps); tombArr(state.carpetOrders); tombArr(state.laundryOrders);
   tombArr(state.expenses); tombArr(state.meters);
   tombArr(state.storeSales); tombArr(state.storePurchases); tombArr(state.storeCash);
-  tombArr(state.activity);
+  tombArr(state.activity); tombArr(state.closings);
+  state.closings=[]; state.autoClosingSent={};
   state.carOps=[]; state.carpetOrders=[]; state.laundryOrders=[];
   state.expenses=[]; state.meters=[];
   state.storeSales=[]; state.storePurchases=[]; state.storeCash=[];
@@ -4411,6 +4619,11 @@ function openSettings(){
   { const si=state.shopInfo||{}; document.getElementById("shopNameSet").value=si.name||""; document.getElementById("shopPhoneSet").value=si.phone||"";
     document.getElementById("shopAddrSet").value=si.address||""; document.getElementById("shopFooterSet").value=si.footer||""; }
   document.getElementById("rcptWidthSet").value=rcptWidth();
+  { const A=state.alerts||{}; document.getElementById("alReady").value=+A.readyDays>0?A.readyDays:3; document.getElementById("alWork").value=+A.workDays>0?A.workDays:2;
+    const ac=state.autoClosing||{}; document.getElementById("acEnabled").checked=!!ac.enabled; document.getElementById("acTime").value=ac.time||"22:00";
+    const sent=Object.keys(state.autoClosingSent||{}).sort(); document.getElementById("acLast").textContent=sent.length?sent[sent.length-1]:"—";
+    const t=ymd(new Date()); document.getElementById("xlFrom").value=ymd(new Date(new Date().getFullYear(),new Date().getMonth(),1)); document.getElementById("xlTo").value=t;
+    const au=window._authUid; document.getElementById("authStatus").innerHTML=au?`✅ هذا الجهاز مسجّل دخولًا مجهولًا (uid: <code>${au.slice(0,8)}…</code>) — يمكنك تفعيل القواعد.`:(window.cloudReady?"⚠️ لم يتم تسجيل الدخول المجهول — فعّل «Anonymous» في Firebase ▸ Authentication ▸ Sign-in method ثم أعد فتح التطبيق، قبل لصق القواعد.":"— (لا اتصال بالسحابة الآن)"); }
   document.getElementById("adMsgSet").value=state.adMsg||"";
   { const tg=(state.notify&&state.notify.telegram)||{};
     const a=document.getElementById("tgEnabled"); if(a) a.checked=!!tg.enabled;
@@ -4537,6 +4750,8 @@ document.getElementById("setSave").onclick=()=>{
   state.shopInfo={ name:document.getElementById("shopNameSet").value.trim(), phone:document.getElementById("shopPhoneSet").value.trim(),
     address:document.getElementById("shopAddrSet").value.trim(), footer:document.getElementById("shopFooterSet").value.trim(), editedAt:iso(new Date()) };
   setRcptWidth(document.getElementById("rcptWidthSet").value);
+  state.alerts={readyDays:Math.max(1,+document.getElementById("alReady").value||3), workDays:Math.max(1,+document.getElementById("alWork").value||2)};
+  { const en=document.getElementById("acEnabled").checked, prev=state.autoClosing||{}; state.autoClosing={enabled:en, time:document.getElementById("acTime").value||"22:00", since:(en&&!prev.enabled)?ymd(new Date()):(prev.since||"")}; }
   if(!state.notify) state.notify={telegram:{}};
   state.notify.telegram={ enabled:document.getElementById("tgEnabled").checked,
     token:document.getElementById("tgToken").value.trim(), chatId:document.getElementById("tgChat").value.trim() };
@@ -4546,6 +4761,7 @@ document.getElementById("setSave").onclick=()=>{
 document.getElementById("receiptClose").onclick=()=>document.getElementById("receiptModal").style.display="none";
 document.getElementById("receiptPrint").onclick=printReceipt;
 document.getElementById("receiptImg").onclick=shareReceiptImage;
+document.getElementById("xlExport").onclick=()=>exportExcel(document.getElementById("xlFrom").value, document.getElementById("xlTo").value);
 document.getElementById("rcptTestBtn").onclick=()=>{ setRcptWidth(document.getElementById("rcptWidthSet").value); openTestReceipt(); };
 (function(){
   // القفل يعتمد على عدم النشاط لمدة 60 دقيقة (انظر touchSession/lockNow/restoreSession).
@@ -4639,6 +4855,11 @@ function runMigrations(){
   if(!state.storeSales) state.storeSales=[];
   if(!state.storePurchases) state.storePurchases=[];
   if(!state.suppliers) state.suppliers=[];
+  if(!state.closings) state.closings=[];
+  if(!state.recurring) state.recurring=[];
+  if(!state.alerts) state.alerts={readyDays:3,workDays:2};
+  if(!state.autoClosing) state.autoClosing={enabled:false,time:"22:00",since:""};
+  if(!state.autoClosingSent) state.autoClosingSent={};
   if(!state.contactsSub) state.contactsSub="customers";
   if(typeof state.contactSearch!=="string") state.contactSearch="";
   if(typeof state.supplierSearch!=="string") state.supplierSearch="";
@@ -4672,6 +4893,7 @@ setTimeout(()=>{ if(!window.cloudReady){ const el=document.getElementById("cloud
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
   import * as FS from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+  import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
   try{
     const firebaseConfig = {
       apiKey: "AIzaSyAZYQ04I6meipcZkeeMu6Nn1bqLY_vZ8rk",
@@ -4686,6 +4908,9 @@ setTimeout(()=>{ if(!window.cloudReady){ const el=document.getElementById("cloud
     let db;
     try { db = FS.initializeFirestore(app, { localCache: FS.persistentLocalCache({ tabManager: FS.persistentMultipleTabManager() }) }); }
     catch(e){ db = FS.getFirestore(app); }
+    // تسجيل دخول مجهول (لا يُغيّر شيئًا حتى تُفعَّل قواعد firestore.rules) — لا يوقف التطبيق إن لم يكن مفعّلًا
+    try{ const auth=getAuth(app); onAuthStateChanged(auth,(u)=>{ window._authUid=u?u.uid:null; });
+      await Promise.race([ signInAnonymously(auth), new Promise(r=>setTimeout(r,4000)) ]); }catch(e){ console.warn("anon auth", e&&e.code); }
     const ref = FS.doc(db, "appState", "main");
     window.cloudPush = (data) => { FS.setDoc(ref, { data: JSON.stringify(data), ts: Date.now() }).then(()=>{ if(window.onCloudPushOk) window.onCloudPushOk(); }).catch((e)=>{ if(window.onCloudPushErr) window.onCloudPushErr(e); }); };
     // ===== نسخ احتياطية يومية: مستند لكل يوم backups/{YYYY-MM-DD} + فهرس صغير backups/_index =====
@@ -4725,7 +4950,7 @@ setTimeout(()=>{ if(!window.cloudReady){ const el=document.getElementById("cloud
 <!-- PWA: service-worker registration + update/install wiring -->
 <script>
 (function(){
-  var APP_VERSION = "2.5.0";
+  var APP_VERSION = "2.6.0";
   function $(id){ return document.getElementById(id); }
   function setText(id,t){ var el=$(id); if(el) el.textContent=t; }
 

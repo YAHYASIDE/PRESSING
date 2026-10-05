@@ -1,0 +1,24 @@
+// قواعد أمان Firestore لمشروع «مغاسيل صداقة» (pressing-sadaga)
+// الخطوات (مرة واحدة):
+//   1) Firebase Console ▸ Authentication ▸ Sign-in method ▸ فعّل "Anonymous".
+//   2) افتح التطبيق على كل جهاز مرة (يسجّل دخولًا مجهولًا تلقائيًا — يظهر ✅ في الإعدادات ▸ أمان قاعدة البيانات).
+//   3) Firestore Database ▸ Rules ▸ الصق هذا الملف ▸ Publish.
+// النتيجة: لا يقرأ ولا يكتب البيانات إلا من سجّل دخولًا من التطبيق، وفقط في المسارات المستخدمة.
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    // الحالة الرئيسية للتطبيق (مستند واحد)
+    match /appState/main {
+      allow read, write: if signedIn();
+    }
+    // النسخ الاحتياطية اليومية + فهرسها
+    match /backups/{day} {
+      allow read, write: if signedIn();
+    }
+    // كل ما عدا ذلك ممنوع
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -134,3 +134,7 @@ bash tests/run.sh store contacts_bio   # only some suites
   testing — mention it only if relevant, don't push it.
 - Fingerprint (WebAuthn) works in Chrome/Safari PWA, not inside the APK WebView.
 - Everything lives in one Firestore document; keep payloads small.
+- Records that must exist exactly once across devices (e.g. monthly recurring
+  expenses) use a deterministic id (`rec_{id}_{YYYY-MM}`) instead of `uid()`, so
+  `mergeById` dedupes them; still respect tombstones.
+- `firestore.rules` holds the security rules; the app signs in anonymously.
