@@ -297,6 +297,7 @@
 
   .set-sec{border:1px solid var(--line);border-radius:12px;padding:13px;margin-bottom:12px}
   .set-title{font-weight:800;font-size:.9rem;margin-bottom:9px}
+  .modal-box input.tg-inp{direction:ltr;text-align:left;letter-spacing:normal;font-size:.9rem;font-family:ui-monospace,Menlo,Consolas,monospace;padding:10px 12px}
   .set-inp{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:10px;background:var(--input);color:var(--ink);font-size:.92rem;margin-bottom:8px}
   .wk-row{display:flex;align-items:center;gap:8px;padding:8px 4px;border-bottom:1px solid var(--line)}
   .wk-row b{flex:1;font-weight:700;font-size:.9rem}
@@ -804,14 +805,15 @@
     <div class="set-sec">
       <div class="set-title">🤖 إشعارات Telegram (اختياري)</div>
       <label class="sw" style="margin-bottom:9px"><input type="checkbox" id="tgEnabled"> تفعيل الإشعارات على Telegram</label>
-      <input type="text" id="tgToken" class="set-inp" placeholder="Bot Token (من BotFather)" autocomplete="off">
-      <input type="text" id="tgChat" class="set-inp" placeholder="Chat ID (رقم محادثتك مع البوت)" inputmode="numeric" autocomplete="off">
+      <div class="field"><label>Bot Token (من @BotFather) — شكله: <code>123456789:AAH…</code></label><input type="text" id="tgToken" class="set-inp tg-inp" placeholder="123456789:AAHxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" autocomplete="off" spellcheck="false"></div>
+      <div class="field"><label>Chat ID (رقم محادثتك — أرقام فقط)</label><div style="display:flex;gap:8px"><input type="text" id="tgChat" class="set-inp tg-inp" placeholder="مثال: 987654321" inputmode="numeric" autocomplete="off" style="flex:1;margin:0"><button class="mini" id="tgFetchChat" type="button" style="white-space:nowrap;font-weight:800">🔎 جلب تلقائيًا</button></div></div>
+      <div id="tgStatus" class="hint" style="margin:-2px 0 8px"></div>
       <div class="set-row"><button class="mini" id="tgTest">📤 إرسال رسالة تجريبية</button></div>
       <div style="border-top:1px dashed var(--line);margin:10px 0 8px"></div>
       <label class="sw" style="margin-bottom:8px"><input type="checkbox" id="acEnabled"> 🤖 إرسال تقفيل اليوم تلقائيًا على Telegram</label>
-      <div class="row2"><div class="field"><label>الساعة</label><input type="time" id="acTime" value="22:00"></div><div class="field"><label>آخر إرسال</label><div class="hint" id="acLast" style="padding-top:10px">—</div></div></div>
+      <div class="row2"><div class="field"><label>الساعة</label><input type="time" id="acTime" value="22:00" lang="en"></div><div class="field"><label>آخر إرسال</label><div class="hint" id="acLast" style="padding-top:10px">—</div></div></div>
       <div class="hint">يُرسل من أي جهاز مفتوح عليه التطبيق بعد هذه الساعة (مرّة واحدة لكل يوم). إن كان التطبيق مغلقًا يُرسل عند أول فتح.</div>
-      <div class="hint" style="margin-top:8px;line-height:1.8">الخطوات: 1) راسِل <b>@BotFather</b> وأنشئ بوتًا لتحصل على <b>Token</b>. 2) ابدأ محادثة مع بوتك ثم راسِل <b>@userinfobot</b> لتعرف <b>Chat ID</b>. 3) الصق الاثنين هنا وفعّل الخيار. عندها تصلك رسالة فورية عند كل عملية يقوم بها عامل.</div>
+      <div class="hint" style="margin-top:8px;line-height:1.8">الخطوات: 1) راسِل <b>@BotFather</b> وأنشئ بوتًا، والصق <b>Token</b> أعلاه. 2) افتح بوتك في Telegram واضغط <b>Start</b> وأرسل له أي كلمة. 3) اضغط «🔎 جلب تلقائيًا» فيُكتب <b>Chat ID</b> وحده. 4) «إرسال رسالة تجريبية» ثم «حفظ».</div>
     </div>
     <div class="set-sec">
       <div class="set-title">⚠️ تنبيه الطلبات المتأخرة</div>
@@ -4646,13 +4648,36 @@ document.getElementById("setClose").onclick=()=>document.getElementById("setting
 { const nb=document.getElementById("notifBtn"); if(nb) nb.onclick=openNotif;
   const nc=document.getElementById("notifClose"); if(nc) nc.onclick=()=>document.getElementById("notifModal").style.display="none";
   const ns=document.getElementById("notifSeenBtn"); if(ns) ns.onclick=()=>{ markNotifSeen(); document.getElementById("notifModal").style.display="none"; };
+  const tgSt=(msg,ok)=>{ const el=document.getElementById("tgStatus"); if(el){ el.textContent=msg; el.style.color=ok===true?"var(--ready)":ok===false?"var(--unpaid)":""; } };
   const tt=document.getElementById("tgTest"); if(tt) tt.onclick=()=>{
     const token=document.getElementById("tgToken").value.trim(), chatId=document.getElementById("tgChat").value.trim();
-    if(!token||!chatId) return toast("أدخل التوكن و Chat ID أولًا");
-    toast("جارٍ الإرسال…");
+    const v=tgValidate(token,chatId); if(v){ tgSt(v,false); return toast(v); }
+    tgSt("جارٍ الإرسال…"); toast("جارٍ الإرسال…");
     fetch("https://api.telegram.org/bot"+encodeURIComponent(token)+"/sendMessage",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({chat_id:chatId,text:"✅ رسالة تجريبية من تطبيق مغاسيل صداقة — الإشعارات تعمل."})})
-      .then(r=>r.json()).then(j=>{ toast(j&&j.ok?"تم الإرسال ✅ — تحقّق من Telegram":"فشل الإرسال — راجع التوكن والمعرّف"); }).catch(()=>toast("تعذّر الاتصال بـ Telegram — تحقّق من الإنترنت"));
+      .then(r=>r.json()).then(j=>{ if(j&&j.ok){ tgSt("✅ وصلت الرسالة — اضغط «حفظ».",true); toast("تم الإرسال ✅ — تحقّق من Telegram"); } else { const m=tgErr(j); tgSt("✖ "+m,false); toast(m); } }).catch(()=>{ tgSt("تعذّر الاتصال بـ Telegram — تحقّق من الإنترنت",false); toast("تعذّر الاتصال بـ Telegram"); });
+  };
+  const tf=document.getElementById("tgFetchChat"); if(tf) tf.onclick=()=>{
+    const token=document.getElementById("tgToken").value.trim();
+    if(!TG_TOKEN_RE.test(token)){ tgSt("الصق التوكن الصحيح أولًا (أرقام ثم : ثم حروف)",false); return toast("التوكن غير صحيح"); }
+    tgSt("جارٍ البحث عن محادثتك…");
+    fetch("https://api.telegram.org/bot"+encodeURIComponent(token)+"/getUpdates?limit=50").then(r=>r.json()).then(j=>{
+      if(!j||!j.ok){ const m=tgErr(j); tgSt("✖ "+m,false); return toast(m); }
+      const chats=[]; (j.result||[]).forEach(u=>{ const m=u.message||u.edited_message||u.channel_post||(u.my_chat_member&&{chat:u.my_chat_member.chat}); if(m&&m.chat&&m.chat.id!=null) chats.push(m.chat); });
+      if(!chats.length){ tgSt("لم يصل البوت أي رسالة بعد — افتح بوتك في Telegram، اضغط Start وأرسل أي كلمة، ثم اضغط «جلب» مرة أخرى.",false); return toast("أرسل رسالة للبوت أولًا"); }
+      const c=chats[chats.length-1]; document.getElementById("tgChat").value=String(c.id);
+      tgSt("✅ وُجد: "+((c.first_name||"")+" "+(c.last_name||"")).trim()+(c.username?" (@"+c.username+")":"")+(c.title?" "+c.title:"")+" — Chat ID: "+c.id+". الآن اضغط «إرسال رسالة تجريبية».",true); toast("تم جلب Chat ID ✅");
+    }).catch(()=>{ tgSt("تعذّر الاتصال بـ Telegram — تحقّق من الإنترنت",false); toast("تعذّر الاتصال بـ Telegram"); });
   }; }
+const TG_TOKEN_RE=/^\d{6,}:[A-Za-z0-9_-]{25,}$/, TG_CHAT_RE=/^-?\d{5,}$/;
+function tgValidate(token,chatId){
+  if(!token) return "الصق التوكن أولًا (من @BotFather)";
+  if(!TG_TOKEN_RE.test(token)) return "التوكن غير صحيح — شكله: أرقام ثم نقطتان ثم حروف طويلة (123456789:AAH…)";
+  if(!chatId) return "Chat ID فارغ — اضغط «🔎 جلب تلقائيًا» بعد إرسال رسالة للبوت";
+  if(chatId===token||chatId.includes(":")) return "Chat ID خطأ: وضعت التوكن مكانه. Chat ID رقم فقط — اضغط «🔎 جلب تلقائيًا»";
+  if(!TG_CHAT_RE.test(chatId)) return "Chat ID يجب أن يكون أرقامًا فقط (مثال 987654321)";
+  return "";
+}
+function tgErr(j){ const d=(j&&j.description)||""; if(/chat not found/i.test(d)) return "Chat ID غير صحيح أو لم تبدأ محادثة مع البوت (اضغط Start وأرسل كلمة ثم «جلب تلقائيًا»)"; if(/unauthorized|not found/i.test(d)&&!/chat/i.test(d)) return "التوكن غير صحيح — انسخه من @BotFather كاملًا"; if(/blocked/i.test(d)) return "أنت حظرت البوت — افتحه واضغط Start"; return d?("Telegram: "+d):"فشل الإرسال — راجع التوكن والمعرّف"; }
 let _editCtx=null;
 function openEditCar(id){
   const o=state.carOps.find(x=>x.id===id); if(!o) return; _editCtx={type:"car",id};
@@ -4753,8 +4778,9 @@ document.getElementById("setSave").onclick=()=>{
   state.alerts={readyDays:Math.max(1,+document.getElementById("alReady").value||3), workDays:Math.max(1,+document.getElementById("alWork").value||2)};
   { const en=document.getElementById("acEnabled").checked, prev=state.autoClosing||{}; state.autoClosing={enabled:en, time:document.getElementById("acTime").value||"22:00", since:(en&&!prev.enabled)?ymd(new Date()):(prev.since||"")}; }
   if(!state.notify) state.notify={telegram:{}};
-  state.notify.telegram={ enabled:document.getElementById("tgEnabled").checked,
-    token:document.getElementById("tgToken").value.trim(), chatId:document.getElementById("tgChat").value.trim() };
+  { const en=document.getElementById("tgEnabled").checked, token=document.getElementById("tgToken").value.trim(), chatId=document.getElementById("tgChat").value.trim();
+    if(en){ const v=tgValidate(token,chatId); if(v){ toast("Telegram: "+v); const el=document.getElementById("tgStatus"); if(el){ el.textContent="✖ "+v; el.style.color="var(--unpaid)"; } document.getElementById("tgChat").focus(); return; } }
+    state.notify.telegram={ enabled:en, token, chatId }; }
   unlocked=true; // owner just set it, stays unlocked this session
   save(); document.getElementById("settingsModal").style.display="none"; toast("تم حفظ الإعدادات");
 };
@@ -4950,7 +4976,7 @@ setTimeout(()=>{ if(!window.cloudReady){ const el=document.getElementById("cloud
 <!-- PWA: service-worker registration + update/install wiring -->
 <script>
 (function(){
-  var APP_VERSION = "2.6.0";
+  var APP_VERSION = "2.6.1";
   function $(id){ return document.getElementById(id); }
   function setText(id,t){ var el=$(id); if(el) el.textContent=t; }
 
