@@ -178,6 +178,7 @@
   #lightbox{display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:100;align-items:center;justify-content:center;padding:20px;cursor:zoom-out}
   #lightbox img{max-width:100%;max-height:100%;border-radius:10px}
   .modal{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:110;display:none;align-items:center;justify-content:center;padding:20px}
+  #codeModal{z-index:150} /* نافذة الكود تعلو الإعدادات وغيرها */
   .modal-box{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:20px;max-width:340px;width:100%;box-shadow:var(--shadow);max-height:88vh;overflow-y:auto}
   #settingsModal .modal-actions{position:sticky;bottom:-20px;background:var(--surface);padding:12px 0 8px;margin-top:8px;border-top:1px solid var(--line);z-index:2}
   .modal-box h3{margin:0 0 6px;font-size:1.05rem;font-weight:800}
@@ -804,6 +805,8 @@
     </div>
     <div class="set-sec">
       <div class="set-title">🤖 إشعارات Telegram (اختياري)</div>
+      <div id="tgLockBar" style="display:flex;gap:8px;align-items:center;margin-bottom:10px"><span class="hint" id="tgLockHint" style="flex:1">🔒 إعدادات البوت مقفولة — لا تتغيّر إلا بكود البوت.</span><button class="mini" id="tgUnlock" type="button" style="font-weight:800">🔓 فتح للتعديل</button></div>
+      <fieldset id="tgFields" disabled style="border:0;padding:0;margin:0;min-width:0">
       <label class="sw" style="margin-bottom:9px"><input type="checkbox" id="tgEnabled"> تفعيل الإشعارات على Telegram</label>
       <div class="field"><label>Bot Token (من @BotFather) — شكله: <code>123456789:AAH…</code></label><input type="text" id="tgToken" class="set-inp tg-inp" placeholder="123456789:AAHxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" autocomplete="off" spellcheck="false"></div>
       <div class="field"><label>Chat ID (رقم محادثتك — أرقام فقط)</label><div style="display:flex;gap:8px"><input type="text" id="tgChat" class="set-inp tg-inp" placeholder="مثال: 987654321" inputmode="numeric" autocomplete="off" style="flex:1;margin:0"><button class="mini" id="tgFetchChat" type="button" style="white-space:nowrap;font-weight:800">🔎 جلب تلقائيًا</button></div></div>
@@ -813,6 +816,11 @@
       <label class="sw" style="margin-bottom:8px"><input type="checkbox" id="acEnabled"> 🤖 إرسال تقفيل اليوم تلقائيًا على Telegram</label>
       <div class="row2"><div class="field"><label>الساعة</label><input type="time" id="acTime" value="22:00" lang="en"></div><div class="field"><label>آخر إرسال</label><div class="hint" id="acLast" style="padding-top:10px">—</div></div></div>
       <div class="hint">يُرسل من أي جهاز مفتوح عليه التطبيق بعد هذه الساعة (مرّة واحدة لكل يوم). إن كان التطبيق مغلقًا يُرسل عند أول فتح.</div>
+      <div class="field" style="margin-top:8px"><label>كود البوت (لفتح هذه الإعدادات)</label><input type="text" id="tgPinSet" class="set-inp tg-inp" inputmode="numeric" placeholder="32720707" autocomplete="off"></div>
+      </fieldset>
+      <div style="border-top:1px dashed var(--line);margin:10px 0 8px"></div>
+      <label class="sw" style="margin-bottom:6px"><input type="checkbox" id="tgResponder"> 💬 هذا الجهاز يردّ على أوامر البوت (اليوم / تاريخ / السيارات…)</label>
+      <div class="hint" id="tgRespStatus" style="margin-bottom:8px">—</div>
       <div class="hint" style="margin-top:8px;line-height:1.8">الخطوات: 1) راسِل <b>@BotFather</b> وأنشئ بوتًا، والصق <b>Token</b> أعلاه. 2) افتح بوتك في Telegram واضغط <b>Start</b> وأرسل له أي كلمة. 3) اضغط «🔎 جلب تلقائيًا» فيُكتب <b>Chat ID</b> وحده. 4) «إرسال رسالة تجريبية» ثم «حفظ».</div>
     </div>
     <div class="set-sec">
@@ -1002,6 +1010,7 @@ const state = {
   closings:[],              /* جرد الصندوق عند التقفيل: {id,day,expected,actual,diff,note,by,date,editedAt} */
   recurring:[],             /* مصروفات ثابتة شهرية: {id,name,amount,category,day,payMethod,active,start,by,editedAt} */
   alerts:{readyDays:3,workDays:2}, autoClosing:{enabled:false,time:"22:00",since:""}, autoClosingSent:{},
+  tgPin:"32720707", tgLastUpdate:0,  /* كود قفل إعدادات البوت + آخر رسالة Telegram تمت معالجتها */
   contactsSub:"customers", contactSearch:"", supplierSearch:"",
   users:[],                 /* حسابات العمّال: {id,name,pin,active,createdAt} */
   managers:[],              /* حسابات المديرين: {id,name,pass,active,createdAt} */
@@ -1905,6 +1914,8 @@ function periodSummary(from,to){
     nCars:(state.carOps||[]).filter(o=>!o.cancelled&&F(o.date)).length,
     nRugs:(state.carpetOrders||[]).filter(o=>!o.cancelled&&F(o.date)).length,
     nLnd:(state.laundryOrders||[]).filter(o=>!o.cancelled&&F(o.date)).length,
+    nLndPieces:sum((state.laundryOrders||[]).filter(o=>!o.cancelled&&F(o.date)),o=>+o.count||1),
+    nRugPieces:sum((state.carpetOrders||[]).filter(o=>!o.cancelled&&F(o.date)),o=>+o.count||1),
     nSales:sales.length,
     newUnpaid:unpaidOf(state.carOps,o=>o.paid===false)+unpaidOf(state.carpetOrders,o=>!o.paid)+unpaidOf(state.laundryOrders,o=>!o.paid)
   };
@@ -3913,7 +3924,7 @@ function applyRemote(remote){
   L.carpetOrders.forEach(o=>{ if(o.photos&&o.photos.length) pm["or"+o.id]=o.photos; });
   // ⚠️ يجب التقاط بيانات المتجر والموردين المحلية قبل Object.assign وإلا ضاعت (كان خطأ يمحو سجلات المتجر)
   const Lstore={ storeProducts:state.storeProducts||[], storeSales:state.storeSales||[], storePurchases:state.storePurchases||[], storeCustomers:state.storeCustomers||[], storeCash:state.storeCash||[], suppliers:state.suppliers||[], closings:state.closings||[], recurring:state.recurring||[] };
-  const localSent=Object.assign({}, state.autoClosingSent||{});
+  const localSent=Object.assign({}, state.autoClosingSent||{}); const localTgLast=+state.tgLastUpdate||0;
   const spm={}; Lstore.storeProducts.forEach(p=>{ if(p.image) spm[p.id]=p.image; });
   const localRem=Object.assign({}, state.debtReminded||{});
   Object.assign(state, remote);
@@ -3934,6 +3945,7 @@ function applyRemote(remote){
   state.closings=mergeById(Lstore.closings, remote.closings, state.deleted);
   state.recurring=mergeById(Lstore.recurring, remote.recurring, state.deleted);
   state.autoClosingSent=Object.assign({}, remote.autoClosingSent||{}, localSent);
+  state.tgLastUpdate=Math.max(localTgLast, +remote.tgLastUpdate||0);
   state.storeProducts=mergeById(Lstore.storeProducts, remote.storeProducts, state.deleted);
   state.storeSales=mergeById(Lstore.storeSales, remote.storeSales, state.deleted);
   state.storePurchases=mergeById(Lstore.storePurchases, remote.storePurchases, state.deleted);
@@ -4630,7 +4642,12 @@ function openSettings(){
   { const tg=(state.notify&&state.notify.telegram)||{};
     const a=document.getElementById("tgEnabled"); if(a) a.checked=!!tg.enabled;
     const b=document.getElementById("tgToken"); if(b) b.value=tg.token||"";
-    const c=document.getElementById("tgChat"); if(c) c.value=tg.chatId||""; }
+    const c=document.getElementById("tgChat"); if(c) c.value=tg.chatId||"";
+    const pn=document.getElementById("tgPinSet"); if(pn) pn.value=state.tgPin||"32720707";
+    _tgUnlocked=false; const fs=document.getElementById("tgFields"); if(fs) fs.disabled=true; const lb=document.getElementById("tgLockBar"); if(lb) lb.style.display="flex";
+    const rs=document.getElementById("tgResponder"); if(rs) rs.checked=tgIsResponder();
+    const st=document.getElementById("tgStatus"); if(st) st.textContent="";
+    tgRespStatusUI(); }
   renderWorkersAdmin();
   renderManagersAdmin();
   renderCatalogAdmin();
@@ -4656,6 +4673,8 @@ document.getElementById("setClose").onclick=()=>document.getElementById("setting
     fetch("https://api.telegram.org/bot"+encodeURIComponent(token)+"/sendMessage",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({chat_id:chatId,text:"✅ رسالة تجريبية من تطبيق مغاسيل صداقة — الإشعارات تعمل."})})
       .then(r=>r.json()).then(j=>{ if(j&&j.ok){ tgSt("✅ وصلت الرسالة — اضغط «حفظ».",true); toast("تم الإرسال ✅ — تحقّق من Telegram"); } else { const m=tgErr(j); tgSt("✖ "+m,false); toast(m); } }).catch(()=>{ tgSt("تعذّر الاتصال بـ Telegram — تحقّق من الإنترنت",false); toast("تعذّر الاتصال بـ Telegram"); });
   };
+  const tu=document.getElementById("tgUnlock"); if(tu) tu.onclick=()=>requireCode(()=>{ _tgUnlocked=true; document.getElementById("tgFields").disabled=false; document.getElementById("tgLockBar").style.display="none"; toast("فُتحت إعدادات البوت للتعديل"); }, (state.tgPin||"32720707"), "كود البوت", "تعديل إعدادات Telegram يتطلّب كود البوت.");
+  const tr=document.getElementById("tgResponder"); if(tr) tr.onchange=()=>{ tgSetResponder(tr.checked); tgRespStatusUI(); if(tr.checked) tgPoll(); };
   const tf=document.getElementById("tgFetchChat"); if(tf) tf.onclick=()=>{
     const token=document.getElementById("tgToken").value.trim();
     if(!TG_TOKEN_RE.test(token)){ tgSt("الصق التوكن الصحيح أولًا (أرقام ثم : ثم حروف)",false); return toast("التوكن غير صحيح"); }
@@ -4668,6 +4687,93 @@ document.getElementById("setClose").onclick=()=>document.getElementById("setting
       tgSt("✅ وُجد: "+((c.first_name||"")+" "+(c.last_name||"")).trim()+(c.username?" (@"+c.username+")":"")+(c.title?" "+c.title:"")+" — Chat ID: "+c.id+". الآن اضغط «إرسال رسالة تجريبية».",true); toast("تم جلب Chat ID ✅");
     }).catch(()=>{ tgSt("تعذّر الاتصال بـ Telegram — تحقّق من الإنترنت",false); toast("تعذّر الاتصال بـ Telegram"); });
   }; }
+/* ================= البوت التفاعلي: يرد على «اليوم» / تاريخ / السيارات… (من الجهاز المجيب فقط) ================= */
+let _tgUnlocked=false, _tgAwaitDate=false, _tgPolling=false, _tgLastReply="", _tgLocalLast=0;
+function tgIsResponder(){ try{ return localStorage.getItem("sadaqa_tg_responder")==="1"; }catch(e){ return false; } }
+function tgSetResponder(on){ try{ localStorage.setItem("sadaqa_tg_responder", on?"1":"0"); }catch(e){} }
+function tgRespStatusUI(){ const el=document.getElementById("tgRespStatus"); if(!el) return; el.textContent=tgIsResponder()?("✅ مفعّل على هذا الجهاز — يجب أن يبقى التطبيق مفتوحًا ليردّ البوت."+(_tgLastReply?(" آخر رد: "+_tgLastReply):"")):"غير مفعّل على هذا الجهاز (فعّله على هاتفك أو جهاز المحل الذي يبقى مفتوحًا)."; }
+const TG_KB={keyboard:[["📊 اليوم","📅 أمس","🗓️ تاريخ"],["🚗 السيارات","🧺 السجاد","👕 الملابس"],["💸 المصروفات","📌 الديون","🧾 التقفيل"]],resize_keyboard:true};
+function tgParseDate(t){
+  t=(t||"").trim().replace(/[٠-٩]/g,d=>"٠١٢٣٤٥٦٧٨٩".indexOf(d));
+  let m=t.match(/(\d{4})-(\d{1,2})-(\d{1,2})/); if(m) return m[1]+"-"+m[2].padStart(2,"0")+"-"+m[3].padStart(2,"0");
+  m=t.match(/(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})/); if(m) return m[3]+"-"+m[2].padStart(2,"0")+"-"+m[1].padStart(2,"0");
+  m=t.match(/^(\d{4})-(\d{1,2})$/); if(m){ return [m[1]+"-"+m[2].padStart(2,"0")+"-01", ymd(new Date(+m[1],+m[2],0))]; }
+  if(/اليوم/.test(t)) return ymd(new Date());
+  if(/أمس|امس/.test(t)){ const d=new Date(); d.setDate(d.getDate()-1); return ymd(d); }
+  return null;
+}
+function tgPeriod(t){
+  const m=(t||"").match(/من\s*(\S+)\s*إلى\s*(\S+)/)||(t||"").match(/من\s*(\S+)\s*الى\s*(\S+)/);
+  if(m){ const a=tgParseDate(m[1]), b=tgParseDate(m[2]); if(typeof a==="string"&&typeof b==="string") return [a,b]; }
+  const d=tgParseDate(t); if(Array.isArray(d)) return d; if(d) return [d,d]; return null;
+}
+function tgLbl(from,to){ const t=ymd(new Date()); if(from===to) return from===t?"اليوم ("+from+")":from; return from+" ← "+to; }
+function tgSummaryText(from,to){
+  const s=periodSummary(from,to), pb=s.pay, bank=PAY_METHODS.filter(m=>m.k!=="cash").reduce((a,m)=>a+pb[m.k].inc,0);
+  return `📊 ملخص ${tgLbl(from,to)}
+━━━━━━━━━━
+🚗 السيارات: ${s.nCars} غسلة — ${money(s.cars)}
+🧺 السجاد: ${s.nRugs} طلب (${s.nRugPieces} قطعة) — ${money(s.rugs)}
+👕 الملابس: ${s.nLnd} طلب (${s.nLndPieces} قطعة) — ${money(s.lnd)}
+🏪 المتجر: ${s.nSales} فاتورة — ${money(s.storeSales)} (ربح ${money(s.storeMargin)})
+━━━━━━━━━━
+💰 دخل المغسلة: ${money(s.lndInc)}
+💸 المصروفات: ${money(s.lndExp)} (عمّال ${money(s.wages)} · عامة ${money(s.gen)} · عدّادات ${money(s.util)} · مواد ${money(s.intPurch)})
+📈 ربح المغسلة: ${money(s.lndProfit)}
+📈 الربح المجمّع: ${money(s.group)} ${CUR}
+━━━━━━━━━━
+💵 كاش: ${money(pb.cash.inc)} · 🏦 بنكي: ${money(bank)}
+⏳ غير مدفوع سُجّل في الفترة: ${money(s.newUnpaid)}
+📌 ديون الزبائن الآن: ${money(allServiceDues()+totalReceivables())}`;
+}
+function tgListText(kind,from,to){
+  const F=(x)=>{ if(!x) return false; const d=ymd(x); return d>=from&&d<=to; }, L=[];
+  if(kind==="cars"){ const a=(state.carOps||[]).filter(o=>!o.cancelled&&F(o.date)); L.push(`🚗 السيارات — ${tgLbl(from,to)} (${a.length})`); a.forEach(o=>L.push(`• ${timeStr(o.date)} ${o.vehicle}${o.plate?" "+o.plate:""} — ${o.wash} — ${o.free?"مجانية":money(o.price)} ${o.paid===false?"⏳ غير مدفوع":"✔"+pmTag(o)}${o.by?" — "+o.by:""}`)); L.push(`━━━━━━━━━━\nالمجموع: ${money(sum(a.filter(o=>!o.free),o=>+o.price||0))} ${CUR}`); }
+  else if(kind==="rugs"){ const a=(state.carpetOrders||[]).filter(o=>!o.cancelled&&F(o.date)); L.push(`🧺 السجاد والأفرشة — ${tgLbl(from,to)} (${a.length})`); a.forEach(o=>L.push(`• ${o.no} ${o.customer||""} — ${orderLabel(o)} — ${money(o.price)} — ${(STATUS[o.status]||{}).label||o.status} ${o.paid?"✔":"⏳"}`)); L.push(`━━━━━━━━━━\nالمجموع: ${money(sum(a,o=>+o.price||0))} ${CUR}`); }
+  else if(kind==="lnd"){ const a=(state.laundryOrders||[]).filter(o=>!o.cancelled&&F(o.date)); L.push(`👕 الملابس — ${tgLbl(from,to)} (${a.length} طلب، ${sum(a,o=>+o.count||1)} قطعة)`); a.forEach(o=>L.push(`• ${o.no} ${o.customer||""} — ${orderLabel(o,true)} — ${money(o.price)} — ${lndStatusLabel(o)} ${o.paid?"✔":"⏳"}`)); L.push(`━━━━━━━━━━\nالمجموع: ${money(sum(a,o=>+o.price||0))} ${CUR}`); }
+  else if(kind==="exp"){ const a=(state.expenses||[]).filter(e=>F(e.date)); L.push(`💸 المصروفات — ${tgLbl(from,to)} (${a.length})`); a.forEach(e=>L.push(`• ${e.category} — ${e.reason||""} — ${money(e.amount)}${pmTag(e)}`)); const s=periodSummary(from,to); L.push(`━━━━━━━━━━\nعامة: ${money(s.gen)} · عمّال: ${money(s.wages)} · عدّادات: ${money(s.util)} · مواد من المتجر: ${money(s.intPurch)}\nالإجمالي: ${money(s.lndExp)} ${CUR}`); }
+  else if(kind==="debts"){ const d=debtors(), c=creditors(); L.push(`📌 الديون الآن`); L.push(`لنا عند الزبائن: ${money(sum(d,x=>x.total))} (${d.length})`); d.slice(0,15).forEach(x=>L.push(`• ${x.name||x.phone} — ${money(x.total)} — منذ ${x.days} يوم`)); L.push(`علينا للموردين: ${money(sum(c,x=>x.bal))} (${c.length})`); c.slice(0,10).forEach(x=>L.push(`• ${x.s.name} — ${money(x.bal)}`)); }
+  if(L.length<=2 && kind!=="debts") L.splice(1,0,"لا يوجد.");
+  return L.join("\n");
+}
+// يعيد نص الرد (أو null) — دالة نقية لسهولة الاختبار
+function tgHandleText(text){
+  const t=(text||"").trim(); if(!t) return null;
+  if(/^\/start|مساعدة|❓|^help$/i.test(t)){ _tgAwaitDate=false; return `أهلًا 👋 أنا بوت ${shopInfo().name}.\nاختر من الأزرار، أو أرسل تاريخًا مثل 2026-10-04 أو 04/10/2026، أو «من 2026-10-01 إلى 2026-10-05»، أو شهرًا مثل 2026-10.\nيمكنك أيضًا: «السيارات أمس»، «الملابس 2026-10-03».`; }
+  if(/🗓️|^تاريخ$/.test(t)){ _tgAwaitDate=true; return "أرسل التاريخ بالشكل 2026-10-04 (أو شهرًا 2026-10، أو «من … إلى …»)."; }
+  const kinds=[["cars",/سيارات|🚗/],["rugs",/سجاد|أفرشة|افرشة|🧺/],["lnd",/ملابس|👕/],["exp",/مصروف|مصاريف|💸/],["debts",/ديون|دين|📌/],["close",/تقفيل|🧾/]];
+  const kind=(kinds.find(k=>k[1].test(t))||[])[0];
+  let per=tgPeriod(t); const today=ymd(new Date());
+  if(!per && _tgAwaitDate) return "لم أفهم التاريخ. مثال: 2026-10-04";
+  if(!per) per=[today,today];
+  _tgAwaitDate=false;
+  if(kind==="close"){ const day=per[0]; return (closingText(day,closingRows(periodSummary(day,day)))+cashCountText(day)).replace(/\*/g,""); }
+  if(kind==="debts") return tgListText("debts");
+  if(kind) return tgListText(kind,per[0],per[1]);
+  if(/اليوم|أمس|امس|📊|📅/.test(t) || tgPeriod(t)) return tgSummaryText(per[0],per[1]);
+  return "لم أفهم 🤔 — اختر من الأزرار أو أرسل «مساعدة».";
+}
+async function tgSend(token,chatId,text,kb){
+  const chunks=[]; for(let i=0;i<text.length;i+=3800) chunks.push(text.slice(i,i+3800));
+  for(const c of chunks){ await fetch("https://api.telegram.org/bot"+encodeURIComponent(token)+"/sendMessage",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(Object.assign({chat_id:chatId,text:c,disable_web_page_preview:true},kb?{reply_markup:kb}:{}))}); }
+}
+async function tgPoll(){
+  if(_tgPolling||!unlocked||!tgIsResponder()) return;
+  const t=(state.notify&&state.notify.telegram)||{}; if(!t.enabled||!t.token||!t.chatId) return;
+  _tgPolling=true;
+  try{
+    const since=Math.max(_tgLocalLast, +state.tgLastUpdate||0);
+    const r=await fetch("https://api.telegram.org/bot"+encodeURIComponent(t.token)+"/getUpdates?timeout=0&limit=20&offset="+(since+1)); const j=await r.json();
+    if(!j||!j.ok) return;
+    let maxId=since;
+    for(const u of (j.result||[])){ if(u.update_id>maxId) maxId=u.update_id; if(u.update_id<=since) continue;
+      const m=u.message; if(!m||!m.text||!m.chat) continue;
+      if(String(m.chat.id)!==String(t.chatId)){ continue; } // رسائل من غير المالك تُتجاهل
+      const reply=tgHandleText(m.text); if(reply){ await tgSend(t.token,t.chatId,reply,TG_KB); _tgLastReply=timeStr(new Date()); tgRespStatusUI(); } }
+    if(maxId>since){ _tgLocalLast=maxId; state.tgLastUpdate=maxId; save(); }
+  }catch(e){} finally{ _tgPolling=false; }
+}
+setInterval(tgPoll, 8000);
 const TG_TOKEN_RE=/^\d{6,}:[A-Za-z0-9_-]{25,}$/, TG_CHAT_RE=/^-?\d{5,}$/;
 function tgValidate(token,chatId){
   if(!token) return "الصق التوكن أولًا (من @BotFather)";
@@ -4776,11 +4882,15 @@ document.getElementById("setSave").onclick=()=>{
     address:document.getElementById("shopAddrSet").value.trim(), footer:document.getElementById("shopFooterSet").value.trim(), editedAt:iso(new Date()) };
   setRcptWidth(document.getElementById("rcptWidthSet").value);
   state.alerts={readyDays:Math.max(1,+document.getElementById("alReady").value||3), workDays:Math.max(1,+document.getElementById("alWork").value||2)};
-  { const en=document.getElementById("acEnabled").checked, prev=state.autoClosing||{}; state.autoClosing={enabled:en, time:document.getElementById("acTime").value||"22:00", since:(en&&!prev.enabled)?ymd(new Date()):(prev.since||"")}; }
+  if(_tgUnlocked||!(state.notify&&state.notify.telegram&&state.notify.telegram.enabled)){ const en=document.getElementById("acEnabled").checked, prev=state.autoClosing||{}; state.autoClosing={enabled:en, time:document.getElementById("acTime").value||"22:00", since:(en&&!prev.enabled)?ymd(new Date()):(prev.since||"")}; }
   if(!state.notify) state.notify={telegram:{}};
-  { const en=document.getElementById("tgEnabled").checked, token=document.getElementById("tgToken").value.trim(), chatId=document.getElementById("tgChat").value.trim();
+  if(_tgUnlocked){ const en=document.getElementById("tgEnabled").checked, token=document.getElementById("tgToken").value.trim(), chatId=document.getElementById("tgChat").value.trim();
     if(en){ const v=tgValidate(token,chatId); if(v){ toast("Telegram: "+v); const el=document.getElementById("tgStatus"); if(el){ el.textContent="✖ "+v; el.style.color="var(--unpaid)"; } document.getElementById("tgChat").focus(); return; } }
-    state.notify.telegram={ enabled:en, token, chatId }; }
+    const pin=(document.getElementById("tgPinSet").value||"").trim(); if(pin.length<4){ toast("كود البوت يجب أن يكون 4 أرقام على الأقل"); return; }
+    const prevTg=(state.notify&&state.notify.telegram)||{};
+    state.notify.telegram={ enabled:en, token, chatId }; state.tgPin=pin;
+    if(en && (prevTg.token!==token||prevTg.chatId!==chatId||!prevTg.enabled)) { tgSetResponder(true); logActivity("تعديل إعدادات البوت",""); }
+    _tgUnlocked=false; }
   unlocked=true; // owner just set it, stays unlocked this session
   save(); document.getElementById("settingsModal").style.display="none"; toast("تم حفظ الإعدادات");
 };
@@ -4886,6 +4996,8 @@ function runMigrations(){
   if(!state.alerts) state.alerts={readyDays:3,workDays:2};
   if(!state.autoClosing) state.autoClosing={enabled:false,time:"22:00",since:""};
   if(!state.autoClosingSent) state.autoClosingSent={};
+  if(!state.tgPin) state.tgPin="32720707";
+  if(typeof state.tgLastUpdate!=="number") state.tgLastUpdate=0;
   if(!state.contactsSub) state.contactsSub="customers";
   if(typeof state.contactSearch!=="string") state.contactSearch="";
   if(typeof state.supplierSearch!=="string") state.supplierSearch="";
@@ -4976,7 +5088,7 @@ setTimeout(()=>{ if(!window.cloudReady){ const el=document.getElementById("cloud
 <!-- PWA: service-worker registration + update/install wiring -->
 <script>
 (function(){
-  var APP_VERSION = "2.6.1";
+  var APP_VERSION = "2.7.0";
   function $(id){ return document.getElementById(id); }
   function setText(id,t){ var el=$(id); if(el) el.textContent=t; }
 

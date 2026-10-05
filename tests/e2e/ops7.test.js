@@ -106,6 +106,7 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
   log('firestore.rules present with auth check: '+(/request\.auth != null/.test(rules)&&/appState\/main/.test(rules)&&/backups\/\{day\}/.test(rules))+' (expect true)');
   await page.evaluate(()=>openSettings()); await page.waitForTimeout(250);
   log('settings has alerts/auto/excel/security sections: '+((await page.isVisible('#alReady'))&&(await page.isVisible('#acEnabled'))&&(await page.isVisible('#xlExport'))&&(await page.isVisible('#authStatus')))+' (expect true)');
+  await page.click('#tgUnlock'); await page.fill('#codeInput','32720707'); await page.click('#codeOk'); await page.waitForTimeout(200);
   await page.fill('#alReady','5'); await page.check('#acEnabled'); await page.fill('#acTime','21:30'); await page.click('#setSave'); await page.waitForTimeout(200);
   log('settings saved: '+(await page.evaluate(()=>state.alerts.readyDays===5&&state.autoClosing.enabled&&state.autoClosing.time==='21:30'&&state.autoClosing.since===ymd(new Date())))+' (expect true)');
 
