@@ -171,7 +171,7 @@
   .thumb{position:relative;width:52px;height:52px;border-radius:9px;overflow:hidden;border:1px solid var(--line);flex:none}
   .thumb img{width:100%;height:100%;object-fit:cover;display:block;cursor:pointer}
   .thumb-x{position:absolute;top:1px;inset-inline-start:1px;width:18px;height:18px;border-radius:50%;border:none;background:rgba(0,0,0,.6);color:#fff;font-size:12px;line-height:1;cursor:pointer;display:grid;place-items:center;padding:0}
-  .photo-add{width:52px;height:52px;border-radius:9px;border:1.5px dashed var(--brand-2);color:var(--brand-2);display:grid;place-items:center;align-content:center;cursor:pointer;font-size:.58rem;gap:2px;text-align:center;flex:none}
+  .photo-add{width:62px;height:56px;font-weight:800;border-radius:9px;border:1.5px dashed var(--brand-2);color:var(--brand-2);display:grid;place-items:center;align-content:center;cursor:pointer;font-size:.58rem;gap:2px;text-align:center;flex:none}
   .photo-add svg{width:18px;height:18px}
   .rec-thumbs{display:flex;gap:5px;flex-wrap:wrap;margin-top:6px}
   .rec-thumb{width:40px;height:40px;border-radius:7px;object-fit:cover;border:1px solid var(--line);cursor:pointer}
@@ -326,6 +326,10 @@
   .rcpt-logo{width:64px;height:64px;object-fit:contain;display:block;margin:0 auto 6px}
   .rcpt-sub{margin-top:6px;font-weight:800;color:var(--ink)!important;font-size:.9rem!important}
   .rcpt-sec{font-weight:800;margin:12px 0 2px;color:var(--brand);font-size:.92rem}
+  .debt-kinds button{flex-direction:column;gap:1px;padding:6px 4px;line-height:1.2}
+  .debt-kinds button small{font-size:.66rem;font-weight:800;opacity:.8}
+  .debt-by{display:flex;flex-wrap:wrap;gap:4px 10px;font-size:.78rem;color:var(--muted);font-weight:700;margin:2px 0}
+  .debt-stat{margin-bottom:8px}
   .ov-panel{border-color:var(--unpaid-bg)}
   .ov-row{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px dashed var(--line);font-size:.86rem}
   .ov-row:last-of-type{border-bottom:0}
@@ -352,6 +356,8 @@
   .ed-line{display:flex;gap:5px;align-items:center;margin-bottom:6px}
   .ed-line select,.ed-line input{min-width:0;padding:7px 6px;border:1px solid var(--line);border-radius:9px;background:var(--input);color:var(--ink);font-size:.82rem}
   .modal-box .ed-line input{letter-spacing:normal!important;text-align:center;font-size:.86rem!important;padding:7px 4px!important}
+  .ed-line{flex-wrap:wrap} .ed-line .edl-note{flex:1 1 100%;margin-top:-2px;font-size:.8rem!important}
+  .order-note{color:var(--brand);font-weight:700}
   .ed-line .edl-type{flex:2} .ed-line .edl-svc{flex:1.6} .ed-line .edl-count{flex:0 0 52px} .ed-line .edl-unit{flex:0 0 74px}
   .rcpt-printed{margin-top:4px;font-weight:600;opacity:.75;font-size:.72rem}
   .rcpt-head small{font-weight:700;color:var(--muted)}
@@ -1126,24 +1132,25 @@ function laundryDefaultPrice(type,service){ const k=type+"|"+service; return (st
 /* ===== طلب متعدد الأصناف (فاتورة واحدة): o.items=[{type,service?,count,unit,price}] ===== */
 function orderItems(o){ return (Array.isArray(o.items)&&o.items.length)?o.items:[{type:o.type,service:o.service,count:+o.count||1,unit:+o.unit||0,price:+o.price||0}]; }
 function isMultiOrder(o){ return Array.isArray(o.items)&&o.items.length>1; }
-function orderLabel(o,withSvc,sep){ if(!isMultiOrder(o)) return `${o.type} × ${o.count}`+(withSvc&&o.service?` — ${o.service}`:""); return o.items.map(i=>`${i.type} ×${i.count}`+(withSvc&&i.service?` (${i.service})`:"")).join(sep||"، "); }
+function orderLabel(o,withSvc,sep,withNote){ const nt=(x)=>withNote&&x.note?` [${x.note}]`:""; if(!isMultiOrder(o)) return `${o.type} × ${o.count}`+(withSvc&&o.service?` — ${o.service}`:"")+nt(o); return o.items.map(i=>`${i.type} ×${i.count}`+(withSvc&&i.service?` (${i.service})`:"")+nt(i)).join(sep||"، "); }
+function orderNotesHTML(o){ const L=isMultiOrder(o)?o.items.filter(i=>i.note).map(i=>`${_esc(i.type)}: ${_esc(i.note)}`):(o.note?[_esc(o.note)]:[]); return L.length?`<div class="meta order-note">📝 ${L.join(" · ")}</div>`:""; }
 function combinedService(lines){ const sv=[...new Set(lines.map(l=>l.service).filter(Boolean))]; return sv.length===1?sv[0]:"غسيل وكي"; }
 function buildOrderFromLines(lines,kind){
-  const L=lines.map(l=>{ const count=Math.max(1,+l.count||1), unit=+l.unit||0; const x={type:l.type,count,unit,price:unit*count}; if(kind==="lnd") x.service=l.service||"غسيل وكي"; return x; });
+  const L=lines.map(l=>{ const count=Math.max(1,+l.count||1), unit=+l.unit||0; const x={type:l.type,count,unit,price:unit*count}; if(kind==="lnd") x.service=l.service||"غسيل وكي"; const n=(l.note||"").trim(); if(n) x.note=n; return x; });
   const price=sum(L,l=>l.price), count=sum(L,l=>l.count);
-  if(L.length===1){ const r={items:null,type:L[0].type,count:L[0].count,unit:L[0].unit,price:L[0].price}; if(kind==="lnd") r.service=L[0].service; return r; }
+  if(L.length===1){ const r={items:null,type:L[0].type,count:L[0].count,unit:L[0].unit,price:L[0].price,note:L[0].note||""}; if(kind==="lnd") r.service=L[0].service; return r; }
   const r={items:L,type:[...new Set(L.map(l=>l.type))].join("، "),count,unit:Math.round(price/count),price}; if(kind==="lnd") r.service=combinedService(L); return r;
 }
 function applyLinesToOrder(o,lines,kind){ const b=buildOrderFromLines(lines,kind); Object.assign(o,b); if(!b.items) delete o.items; }
 function rcptItemsHTML(o,withSvc){
-  if(!isMultiOrder(o)) return `<div class="rcpt-row"><span>النوع</span><b>${_esc(o.type)} × ${o.count}</b></div>`+(withSvc?`<div class="rcpt-row"><span>الخدمة</span><b>${_esc(o.service)}</b></div>`:"");
-  return `<div class="rcpt-sec">الأصناف (${o.count} قطعة)</div>`+o.items.map(i=>`<div class="rcpt-row rcpt-item"><span>${_esc(i.type)}${withSvc&&i.service?` — ${_esc(i.service)}`:""}<small>${i.count} × ${money(i.unit)}</small></span><b>${money(i.price)}</b></div>`).join("");
+  if(!isMultiOrder(o)) return `<div class="rcpt-row"><span>النوع</span><b>${_esc(o.type)} × ${o.count}</b></div>`+(withSvc?`<div class="rcpt-row"><span>الخدمة</span><b>${_esc(o.service)}</b></div>`:"")+(o.note?`<div class="rcpt-row"><span>الوصف</span><b>${_esc(o.note)}</b></div>`:"");
+  return `<div class="rcpt-sec">الأصناف (${o.count} قطعة)</div>`+o.items.map(i=>`<div class="rcpt-row rcpt-item"><span>${_esc(i.type)}${withSvc&&i.service?` — ${_esc(i.service)}`:""}<small>${i.count} × ${money(i.unit)}${i.note?` — ${_esc(i.note)}`:""}</small></span><b>${money(i.price)}</b></div>`).join("");
 }
 // مسودة الأصناف في نموذج الطلب الجديد (تبقى بعد إعادة الرسم حتى الحفظ)
-const invDraft={cp:[],lnd:[]}, invDirty={cp:false,lnd:false};
+const invDraft={cp:[],lnd:[]}, invDirty={cp:false,lnd:false}, _lineNote={cp:"",lnd:""};
 function invDraftHTML(kind){
   const d=invDraft[kind]; if(!d.length) return "";
-  return `<div class="inv-box"><div class="inv-title">🧾 أصناف هذه الفاتورة (${d.length})</div>${d.map((l,i)=>`<div class="inv-line"><span>${_esc(l.type)} ×${l.count}${l.service?` <small>(${_esc(l.service)})</small>`:""}</span><b>${fmt(l.price)}</b><button type="button" class="inv-x" data-inv-x="${kind}:${i}" title="حذف الصنف">✕</button></div>`).join("")}
+  return `<div class="inv-box"><div class="inv-title">🧾 أصناف هذه الفاتورة (${d.length})</div>${d.map((l,i)=>`<div class="inv-line"><span>${_esc(l.type)} ×${l.count}${l.service?` <small>(${_esc(l.service)})</small>`:""}${l.note?` <small>📝 ${_esc(l.note)}</small>`:""}</span><b>${fmt(l.price)}</b><button type="button" class="inv-x" data-inv-x="${kind}:${i}" title="حذف الصنف">✕</button></div>`).join("")}
     <div class="inv-sum"><span>المجموع حتى الآن</span><b>${fmt(sum(d,l=>l.price))} ${CUR}</b></div>
     <div class="hint" style="margin-top:4px">أضف صنفًا آخر، أو اضغط «حفظ الفاتورة». الصنف الظاهر في الأعلى يُضاف تلقائيًا إن عدّلته.</div></div>`;
 }
@@ -1161,7 +1168,8 @@ function edLineHTML(kind,it){
   const tOpts=types.map(t=>`<option value="${_esc(t)}" ${t===it.type?"selected":""}>${_esc(t)}</option>`).join("");
   const sOpts=kind==="lnd"?LAUNDRY_SERVICES.map(x=>`<option value="${x}" ${x===it.service?"selected":""}>${x}</option>`).join(""):"";
   return `<div class="ed-line"><select class="edl-type">${tOpts}</select>${kind==="lnd"?`<select class="edl-svc">${sOpts}</select>`:""}
-    <input class="edl-count" type="number" min="1" value="${+it.count||1}" title="العدد"><input class="edl-unit" type="number" min="0" value="${+it.unit||0}" title="سعر القطعة"><button type="button" class="inv-x edl-x" title="حذف">✕</button></div>`;
+    <input class="edl-count" type="number" min="1" value="${+it.count||1}" title="العدد"><input class="edl-unit" type="number" min="0" value="${+it.unit||0}" title="سعر القطعة"><button type="button" class="inv-x edl-x" title="حذف">✕</button>
+    <input class="edl-note" type="text" value="${_esc(it.note||"")}" placeholder="وصف (مثال: 6×4 أحمر)"></div>`;
 }
 function itemsEditorHTML(kind,o){
   return `<div class="field"><label>الأصناف <small style="font-weight:600">(النوع${kind==="lnd"?" · الخدمة":""} · العدد · سعر القطعة)</small></label><div id="edLines">${orderItems(o).map(it=>edLineHTML(kind,it)).join("")}</div>
@@ -1181,7 +1189,7 @@ function bindItemsEditor(kind){
   document.getElementById("edAddLine").onclick=()=>{ const t=_typeList(kind)[0]||"", sv=kind==="lnd"?LAUNDRY_SERVICES[0]:""; box.insertAdjacentHTML("beforeend",edLineHTML(kind,{type:t,service:sv,count:1,unit:_defUnit(kind,t,sv)})); wire(); recalc(); };
   wire(); recalc();
 }
-function readItemsEditor(kind){ return [...document.querySelectorAll("#edLines .ed-line")].map(r=>({type:r.querySelector(".edl-type").value,service:r.querySelector(".edl-svc")?r.querySelector(".edl-svc").value:undefined,count:+r.querySelector(".edl-count").value||0,unit:+r.querySelector(".edl-unit").value||0})); }
+function readItemsEditor(kind){ return [...document.querySelectorAll("#edLines .ed-line")].map(r=>({type:r.querySelector(".edl-type").value,service:r.querySelector(".edl-svc")?r.querySelector(".edl-svc").value:undefined,count:+r.querySelector(".edl-count").value||0,unit:+r.querySelector(".edl-unit").value||0,note:(r.querySelector(".edl-note")||{}).value||""})); }
 function laundryIncome(f){ return sum((state.laundryOrders||[]).filter(o=>!o.cancelled&&o.paid&&f(o.paidDate||o.deliveredDate||o.date)),o=>o.price); }
 function laundryPending(o){ return !o.cancelled && (o.status!=="done" || !o.paid); }
 /* رقم طلب ملابس مقاوم للتصادم بين الأجهزة: يُشتق من أعلى رقم موجود في نفس الشهر */
@@ -1258,7 +1266,7 @@ function loyaltyCardHTML(plate){
 }
 
 /* ================= Photos ================= */
-let pendingCarBefore=[], pendingCarAfter=[], pendingCpPhotos=[];
+let pendingCarBefore=[], pendingCarAfter=[], pendingCpPhotos=[], pendingLndPhotos=[];
 /* ================= المتجر: حالة مؤقتة ================= */
 let _pendingBarcode="";
 let storeCart=[], purCart=[], pendingProdImg="", _editProdId=null, _editCustId=null, _storePayCtx=null;
@@ -1279,7 +1287,8 @@ function readAndCompress(file,cb){
 }
 function photoStripHTML(arr,kind){
   return arr.map((src,i)=>`<div class="thumb"><img src="${src}" data-view="${kind}:${i}"><button type="button" class="thumb-x" data-rm="${kind}:${i}">×</button></div>`).join("")
-    +`<label class="photo-add">${svg(I.camera)}<span>صورة</span><input type="file" accept="image/*" multiple capture="environment" data-photo="${kind}" style="display:none"></label>`;
+    +`<label class="photo-add" title="التقاط بالكاميرا">${svg(I.camera)}<span>كاميرا</span><input type="file" accept="image/*" capture="environment" data-photo="${kind}" style="display:none"></label>`
+    +`<label class="photo-add" title="اختيار من المعرض">🖼️<span>المعرض</span><input type="file" accept="image/*" multiple data-photo="${kind}" style="display:none"></label>`;
 }
 function openLightbox(src){ const lb=document.getElementById('lightbox'); lb.querySelector('img').src=src; lb.style.display='flex'; }
 function bindPhotoStrip(containerId,arr,kind){
@@ -1611,6 +1620,7 @@ function screenCarpets(){
       <div class="no">${o.no}</div>
       <div class="cust"><span class="state-dot ${os.cls}" title="${os.cls==="st-red"?"مكتمل وغير مدفوع":os.cls==="st-green"?"مدفوع":"قيد الانتظار"}"></span>${o.customer||"عميل"}</div>
       <div class="meta">${_esc(orderLabel(o,false," · "))}${isMultiOrder(o)?` <span class="badge b-done">${o.count} قطعة</span>`:""}</div>
+      ${orderNotesHTML(o)}
       <div class="order-dates">🗓️ سُجّل: ${ymd(o.date)} ${timeStr(o.date)}${o.by?` — بواسطة ${o.by}`:""}${o.editedAt?`<br>✏️ آخر تعديل: ${ymd(o.editedAt)} ${timeStr(o.editedAt)}`:""}</div>
       <div class="badges">
         ${o.cancelled?'<span class="badge badge-cancel">ملغى 🚫</span>':''}
@@ -1651,6 +1661,7 @@ function screenCarpets(){
           <div class="field"><label>سعر القطعة</label><input id="cpPrice" type="number" min="0" value="${startUnit}"></div>
           <div class="field"><label>العدد</label><input id="cpCount" type="number" min="1" value="1"></div>
         </div>
+        <div class="field"><label>وصف القطعة (اختياري)</label><input id="cpNote" type="text" placeholder="مثال: سجاد 6×4 أحمر واضح" value="${_esc(_lineNote.cp)}"></div>
         <div class="total-line"><span>الإجمالي</span><b><span id="cpTotal">${startUnit}</span></b></div>
         <button type="button" class="mini inv-add" id="cpAddLine">➕ أضف هذا الصنف للفاتورة وأكمل بصنف آخر</button>
         <div id="cpLines">${invDraftHTML("cp")}</div>
@@ -1684,6 +1695,8 @@ function screenLaundry(){
       <div class="no">${o.no}</div>
       <div class="cust"><span class="state-dot ${os.cls}"></span>${o.customer||"عميل"}</div>
       <div class="meta">${isMultiOrder(o)?`${_esc(orderLabel(o,true," · "))} <span class="badge b-done">${o.count} قطعة</span>`:`${_esc(o.type)} × ${o.count} — <b>${_esc(o.service)}</b>`}</div>
+      ${orderNotesHTML(o)}
+      ${recThumbs(o.photos)}
       <div class="order-dates">🗓️ سُجّل: ${ymd(o.date)} ${timeStr(o.date)}${o.by?` — بواسطة ${o.by}`:""}${o.editedAt?`<br>✏️ آخر تعديل: ${ymd(o.editedAt)} ${timeStr(o.editedAt)}`:""}</div>
       <div class="badges">
         ${o.cancelled?'<span class="badge badge-cancel">ملغى 🚫</span>':''}
@@ -1726,10 +1739,12 @@ function screenLaundry(){
           <div class="field"><label>سعر القطعة</label><input id="lndPrice" type="number" min="0" value="${startUnit}"></div>
           <div class="field"><label>العدد</label><input id="lndCount" type="number" min="1" value="1"></div>
         </div>
+        <div class="field"><label>وصف القطعة (اختياري)</label><input id="lndNote" type="text" placeholder="مثال: قميص أبيض بقعة على الياقة" value="${_esc(_lineNote.lnd)}"></div>
         <div class="total-line"><span>الإجمالي</span><b><span id="lndTotal">${startUnit}</span></b></div>
         <button type="button" class="mini inv-add" id="lndAddLine">➕ أضف هذا الصنف للفاتورة وأكمل بصنف آخر</button>
         <div id="lndLines">${invDraftHTML("lnd")}</div>
         <div class="hint" style="margin:0 0 10px">آخر سعر تُدخله لكل (نوع + خدمة) يصبح افتراضيًا.</div>
+        <div class="field"><label>صور القطع (اختياري)</label><div class="photos" id="lndPhotoStrip"></div></div>
         <div class="field"><label>التاريخ</label><input id="lndDate" type="date" value="${ymd(new Date())}" max="${ymd(new Date())}"></div>
         <button class="btn-primary" id="lndSave">${invSaveLabel("lnd")}</button>
       </div>
@@ -1811,14 +1826,14 @@ const DEBT_MSG_DEFAULT="السلام عليكم {الاسم} 🌷\nنذكّرك�
 function debtors(){
   const map=new Map(), byPhone=new Map();
   (state.storeCustomers||[]).forEach(c=>{ const p=normPhone(c.phone); if(p&&!byPhone.has(p)) byPhone.set(p,c); });
-  const get=(key,init)=>{ let d=map.get(key); if(!d){ d=Object.assign({key,name:"",phone:"",country:"222",custId:null,svc:0,store:0,count:0,oldest:"",items:[]},init); map.set(key,d); } return d; };
+  const get=(key,init)=>{ let d=map.get(key); if(!d){ d=Object.assign({key,name:"",phone:"",country:"222",custId:null,svc:0,store:0,count:0,oldest:"",items:[],by:{car:0,rug:0,lnd:0,store:0},n:{car:0,rug:0,lnd:0,store:0}},init); map.set(key,d); } return d; };
   const add=(o,kind,label)=>{
     const p=normPhone(o.phone), c=p?byPhone.get(p):null, nm=(o.customer||(o.plate?("سيارة "+o.plate):"")||"").trim();
     const key=c?("c:"+c.id):p?("p:"+p):("n:"+(nm||"?"));
     const d=get(key, c?{name:c.name,phone:c.phone||"",country:c.country||"222",custId:c.id}:{name:nm,phone:(o.phone||"").trim(),country:o.country||"222"});
     if(!d.name&&nm) d.name=nm;
-    const amt=+o.price||0; d.svc+=amt; d.count++; if(o.date&&(!d.oldest||o.date<d.oldest)) d.oldest=o.date;
-    d.items.push({kind:label,no:o.no||"",amt,date:o.date});
+    const amt=+o.price||0; d.svc+=amt; d.count++; d.by[kind]+=amt; d.n[kind]++; if(o.date&&(!d.oldest||o.date<d.oldest)) d.oldest=o.date;
+    d.items.push({kind:label,k:kind,no:o.no||"",amt,date:o.date});
   };
   (state.carOps||[]).forEach(o=>{ if(!o.cancelled&&o.paid===false&&(+o.price||0)>0) add(o,"car","🚗 سيارة"); });
   (state.carpetOrders||[]).forEach(o=>{ if(!o.cancelled&&!o.paid&&(+o.price||0)>0) add(o,"rug","🧺 سجاد"); });
@@ -1827,7 +1842,7 @@ function debtors(){
     if(c.isLaundry) return; // دين المغسلة نفسها داخلي — لا يُذكَّر
     const sales=(state.storeSales||[]).filter(s=>!s.cancelled&&s.customerId===c.id&&saleOutstanding(s)>0); if(!sales.length) return;
     const d=get("c:"+c.id,{name:c.name,phone:c.phone||"",country:c.country||"222",custId:c.id});
-    sales.forEach(s=>{ const amt=saleOutstanding(s); d.store+=amt; d.count++; if(s.date&&(!d.oldest||s.date<d.oldest)) d.oldest=s.date; d.items.push({kind:"🏪 متجر",no:s.no||"",amt,date:s.date}); });
+    sales.forEach(s=>{ const amt=saleOutstanding(s); d.store+=amt; d.count++; d.by.store+=amt; d.n.store++; if(s.date&&(!d.oldest||s.date<d.oldest)) d.oldest=s.date; d.items.push({kind:"🏪 متجر",k:"store",no:s.no||"",amt,date:s.date}); });
   });
   const now=Date.now();
   return [...map.values()].map(d=>Object.assign(d,{total:d.svc+d.store, days:d.oldest?Math.max(0,Math.floor((now-new Date(d.oldest))/864e5)):0}))
@@ -1838,48 +1853,62 @@ function debtMessage(d){
   const v={"الاسم":d.name||"زبوننا الكريم","المبلغ":money(d.total),"العملة":CUR,"المحل":si.name,"العدد":String(d.count),"الأيام":String(d.days)};
   return tpl.replace(/\{(الاسم|المبلغ|العملة|المحل|العدد|الأيام)\}/g,(m,k)=>v[k]);
 }
-function sendDebtReminder(key){
-  const d=debtors().find(x=>x.key===key); if(!d) return;
+const DEBT_KINDS=[{k:"all",t:"الكل",ic:"📌"},{k:"car",t:"السيارات",ic:"🚗"},{k:"rug",t:"السجاد",ic:"🧺"},{k:"lnd",t:"الملابس",ic:"👕"},{k:"store",t:"المتجر",ic:"🏪"}];
+function debtKindLabel(k){ const x=DEBT_KINDS.find(d=>d.k===k); return x?x.t:""; }
+// نسخة من المدين مقصورة على قسم واحد (للعرض والتذكير)
+function debtorForKind(d,k){ if(!k||k==="all") return d; const items=d.items.filter(it=>it.k===k); return Object.assign({},d,{total:d.by[k]||0,count:d.n[k]||0,items,oldest:items.map(it=>it.date).filter(Boolean).sort()[0]||"",days:(()=>{ const o=items.map(it=>it.date).filter(Boolean).sort()[0]; return o?Math.max(0,Math.floor((Date.now()-new Date(o))/864e5)):0; })()}); }
+function sendDebtReminder(key,kind){
+  let d=debtors().find(x=>x.key===key); if(!d) return; d=debtorForKind(d,kind);
   const ph=waPhoneFull(d.phone,d.country); if(!ph){ toast("لا يوجد رقم هاتف لهذا الزبون"); return; }
   state.debtReminded=state.debtReminded||{}; state.debtReminded[key]=iso(new Date());
-  logActivity("تذكير دين",(d.name||d.phone)+" · "+money(d.total)+" "+CUR);
+  logActivity("تذكير دين",(d.name||d.phone)+" · "+money(d.total)+" "+CUR+(kind&&kind!=="all"?" ("+debtKindLabel(kind)+")":""));
   save(); window.open(`https://wa.me/${ph}?text=${encodeURIComponent(debtMessage(d))}`,"_blank"); render();
 }
 function contactsDebts(noStats){
   const E=_esc, q=(state.contactSearch||"").trim();
-  let list=debtors(); const all=list;
+  const kind=DEBT_KINDS.some(x=>x.k===state.debtKind)?state.debtKind:"all";
+  const all=debtors();
+  const tot={all:sum(all,d=>d.total)}; ["car","rug","lnd","store"].forEach(k=>{ tot[k]=sum(all,d=>d.by[k]); });
+  const cnt={all:all.length}; ["car","rug","lnd","store"].forEach(k=>{ cnt[k]=all.filter(d=>d.by[k]>0).length; });
+  let list=all.map(d=>debtorForKind(d,kind)).filter(d=>d.total>0);
   if(q) list=list.filter(d=>(d.name||"").includes(q)||(d.phone||"").includes(q));
-  const sortOld=state.debtSort==="old"; if(sortOld) list=list.slice().sort((a,b)=>b.days-a.days);
+  const sortOld=state.debtSort==="old"; list=list.slice().sort(sortOld?((a,b)=>b.days-a.days):((a,b)=>b.total-a.total));
   const rem=state.debtReminded||{};
+  const kindSeg=`<div class="seg debt-kinds" style="margin-bottom:10px">${DEBT_KINDS.map(x=>`<button data-debtkind="${x.k}" class="${kind===x.k?'on':''}">${x.ic} ${x.t}<small>${money(tot[x.k])}</small></button>`).join("")}</div>`;
   const cards=list.length?list.map(d=>{ const r=rem[d.key]; const ph=waPhoneFull(d.phone,d.country), tl=telLink(d.phone,d.country);
     const items=d.items.slice().sort((a,b)=>(a.date||"").localeCompare(b.date||"")).slice(0,6).map(it=>`<div class="meta" style="display:flex;justify-content:space-between;gap:8px"><span>${it.kind}${it.no?(" "+E(it.no)):""} · ${it.date?ymd(it.date):""}</span><b>${money(it.amt)}</b></div>`).join("")+(d.items.length>6?`<div class="hint">+ ${d.items.length-6} أخرى</div>`:"");
     return `
     <div class="order">
       <div class="cust">${E(d.name||"بدون اسم")}${d.custId?' <span class="badge b-done">محفوظ</span>':''}</div>
       ${d.phone?`<div class="meta">📞 ${E(d.phone)}</div>`:`<div class="meta" style="color:var(--muted)">لا يوجد رقم هاتف</div>`}
-      <div class="price" style="color:var(--unpaid)">${money(d.total)} ${CUR}</div>
-      <div class="meta">${d.count} طلب/فاتورة · أقدمها منذ <b>${d.days}</b> يوم${d.store>0&&d.svc>0?` · خدمات ${money(d.svc)} + متجر ${money(d.store)}`:""}</div>
+      <div class="price" style="color:var(--unpaid)">${money(d.total)} ${CUR}${kind!=="all"?` <span class="badge b-unpaid">${debtKindLabel(kind)}</span>`:""}</div>
+      <div class="meta">${d.count} طلب/فاتورة · أقدمها منذ <b>${d.days}</b> يوم</div>
+      ${kind==="all"?`<div class="debt-by">${["car","rug","lnd","store"].filter(k=>d.by[k]>0).map(k=>{ const x=DEBT_KINDS.find(y=>y.k===k); return `<span>${x.ic} ${x.t}: <b>${money(d.by[k])}</b></span>`; }).join("")}</div>`:""}
       ${items}
       ${r?`<div class="meta" style="color:var(--ready)">✔ آخر تذكير: ${ymd(r)} ${timeStr(r)}</div>`:""}
       <div class="order-acts-sub">
-        ${ph?`<button class="mini act-pay" data-debt-wa="${E(d.key)}">💬 تذكير واتساب</button>`:""}
+        ${ph?`<button class="mini act-pay" data-debt-wa="${E(d.key)}">💬 تذكير واتساب${kind!=="all"?" ("+debtKindLabel(kind)+")":""}</button>`:""}
         ${tl?`<a class="mini" href="${tl}" style="text-decoration:none">📞 اتصال</a>`:""}
-        ${d.custId&&d.store>0?`<button class="mini" data-dc-pay="${d.custId}">تحصيل دين المتجر</button>`:""}
+        ${d.custId&&d.by.store>0&&(kind==="all"||kind==="store")?`<button class="mini" data-dc-pay="${d.custId}">تحصيل دين المتجر</button>`:""}
         ${d.custId?`<button class="icon-btn" data-dc-stmt="${d.custId}" title="كشف حساب">📄</button>`:""}
       </div>
-    </div>`; }).join(""):`<div class="panel empty" style="grid-column:1/-1">${svg(I.empty)}${q?"لا يوجد مدين مطابق للبحث.":"لا توجد ديون على الزبائن 🎉"}</div>`;
+    </div>`; }).join(""):`<div class="panel empty" style="grid-column:1/-1">${svg(I.empty)}${q?"لا يوجد مدين مطابق للبحث.":(kind==="all"?"لا توجد ديون على الزبائن 🎉":"لا توجد ديون في قسم "+debtKindLabel(kind)+" 🎉")}</div>`;
   const pay=totalPayables();
   return `
     ${noStats?"":`<div class="store-stat">
-      <div class="s"><div class="v" style="color:var(--unpaid)">${money(sum(all,d=>d.total))}</div><div class="l">إجمالي الديون على الزبائن</div></div>
-      <div class="s"><div class="v">${all.length}</div><div class="l">زبون مدين</div></div>
+      <div class="s"><div class="v" style="color:var(--unpaid)">${money(tot.all)}</div><div class="l">إجمالي الديون على الزبائن (${cnt.all} مدين)</div></div>
       <div class="s"><div class="v" style="color:var(--wash)">${money(pay)}</div><div class="l">علينا للموردين</div></div>
     </div>`}
+    ${kindSeg}
+    <div class="store-stat debt-stat">
+      <div class="s"><div class="v" style="color:var(--unpaid)">${money(tot[kind])}</div><div class="l">${kind==="all"?"كل الأقسام":"ديون "+debtKindLabel(kind)} (${cnt[kind]} مدين)</div></div>
+      ${kind==="all"?["car","rug","lnd","store"].map(k=>{ const x=DEBT_KINDS.find(y=>y.k===k); return `<div class="s"><div class="v">${money(tot[k])}</div><div class="l">${x.ic} ${x.t} (${cnt[k]})</div></div>`; }).join(""):""}
+    </div>
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
       <input class="search-inp" id="contactSearch" type="text" placeholder="بحث بالاسم أو الهاتف" value="${E(q)}" style="flex:1;margin:0">
       <select id="debtSort" style="max-width:170px"><option value="amt">الأكبر مبلغًا</option><option value="old" ${sortOld?"selected":""}>الأقدم أولًا</option></select>
     </div>
-    <div class="hint" style="margin-bottom:8px">يشمل الطلبات غير المدفوعة (سيارات/سجاد/ملابس) وفواتير المتجر بالدين، مجمّعة حسب رقم الهاتف. نص الرسالة يُعدَّل من الإعدادات.</div>
+    <div class="hint" style="margin-bottom:8px">${kind==="all"?"كل الأقسام معًا، مجمّعة حسب رقم الهاتف. اختر قسمًا في الأعلى لعرض ديونه وحده.":"ديون "+debtKindLabel(kind)+" فقط — التذكير يُرسل بمبلغ هذا القسم."} نص الرسالة يُعدَّل من الإعدادات.</div>
     <div class="grid orders">${cards}</div>`;
 }
 
@@ -2229,7 +2258,8 @@ function storeScreenDebts(){
 }
 function bindDebtsUI(){
   document.querySelectorAll("[data-debtview]").forEach(b=>b.onclick=()=>{ state.debtView=b.dataset.debtview; render(); });
-  document.querySelectorAll("[data-debt-wa]").forEach(b=>b.onclick=()=>sendDebtReminder(b.dataset.debtWa));
+  document.querySelectorAll("[data-debtkind]").forEach(b=>b.onclick=()=>{ state.debtKind=b.dataset.debtkind; render(); });
+  document.querySelectorAll("[data-debt-wa]").forEach(b=>b.onclick=()=>sendDebtReminder(b.dataset.debtWa, state.debtKind));
   const dso=document.getElementById("debtSort"); if(dso) dso.onchange=()=>{ state.debtSort=dso.value; render(); };
   const cs=document.getElementById("contactSearch"); if(cs) cs.oninput=()=>{ state.contactSearch=cs.value; _refocus="contactSearch"; render(); };
   document.querySelectorAll("[data-dc-pay]").forEach(b=>b.onclick=()=>{ const c=storeCust(b.dataset.dcPay); if(c){ _storePayCtx={kind:"cust",id:c.id}; openStorePay(custBalance(c.id),"تحصيل من "+c.name); } });
@@ -2412,7 +2442,7 @@ function storeScreenProducts(){
     <div class="cols">
       <div class="panel">
         <h3>${editing?'تعديل مادة':'مادة جديدة'}</h3>
-        <div class="field"><label>صورة المادة</label><div id="prodImgBox" class="prod-img-box">${img?`<img src="${img}"><button type="button" class="thumb-x" id="prodImgRm">×</button>`:`<label class="photo-add" style="margin:0"><input type="file" id="prodImgInp" accept="image/*" capture="environment" style="display:none">${svg(I.camera)}<span>صورة</span></label>`}</div></div>
+        <div class="field"><label>صورة المادة</label><div id="prodImgBox" class="prod-img-box">${img?`<img src="${img}"><button type="button" class="thumb-x" id="prodImgRm">×</button>`:`<label class="photo-add" style="margin:0"><input type="file" class="prodImgInp" accept="image/*" capture="environment" style="display:none">${svg(I.camera)}<span>كاميرا</span></label><label class="photo-add" style="margin:0"><input type="file" class="prodImgInp" accept="image/*" style="display:none">🖼️<span>المعرض</span></label>`}</div></div>
         <div class="field"><label>اسم المادة <span style="color:var(--unpaid)">*</span></label><input id="prodName" type="text" value="${editing?(editing.name||'').replace(/"/g,'&quot;'):''}" placeholder="مثال: شامبو سجاد"></div>
         <div class="field"><label>الفئة</label><input id="prodCat" list="prodCatList" type="text" value="${editing?(editing.category||'').replace(/"/g,'&quot;'):''}" placeholder="مثال: منظفات"><datalist id="prodCatList">${catList}</datalist></div>
         <div class="row2">
@@ -2746,7 +2776,7 @@ function bindStore(){
   const sellCash=document.getElementById("posSellCash"); if(sellCash) sellCash.onclick=()=>doSell(true);
   const sellCredit=document.getElementById("posSellCredit"); if(sellCredit) sellCredit.onclick=()=>doSell(false);
   // Products
-  const pimgInp=document.getElementById("prodImgInp"); if(pimgInp) pimgInp.onchange=(e)=>{ const f=e.target.files[0]; if(f) readAndCompress(f,(url)=>{ pendingProdImg=url; render(); }); };
+  document.querySelectorAll(".prodImgInp").forEach(pimgInp=>{ pimgInp.onchange=(e)=>{ const f=e.target.files[0]; if(f) readAndCompress(f,(url)=>{ pendingProdImg=url; render(); }); }; });
   const pimgRm=document.getElementById("prodImgRm"); if(pimgRm) pimgRm.onclick=()=>{ pendingProdImg=""; if(_editProdId){ const p=storeProd(_editProdId); if(p) p.image=""; } render(); };
   const prodSave=document.getElementById("prodSave"); if(prodSave) prodSave.onclick=doProdSave;
   const prodCancel=document.getElementById("prodCancelEdit"); if(prodCancel) prodCancel.onclick=()=>{ _editProdId=null; pendingProdImg=""; render(); };
@@ -2953,7 +2983,8 @@ function bindContacts(){
   if(state.tab!=="contacts") return;
   document.querySelectorAll("[data-csub]").forEach(b=>b.onclick=()=>{ state.contactsSub=b.dataset.csub; render(); });
   const cs=document.getElementById("contactSearch"); if(cs) cs.oninput=()=>{ state.contactSearch=cs.value; _refocus="contactSearch"; render(); };
-  document.querySelectorAll("[data-debt-wa]").forEach(b=>b.onclick=()=>sendDebtReminder(b.dataset.debtWa));
+  document.querySelectorAll("[data-debt-wa]").forEach(b=>b.onclick=()=>sendDebtReminder(b.dataset.debtWa, state.debtKind));
+  document.querySelectorAll("[data-debtkind]").forEach(b=>b.onclick=()=>{ state.debtKind=b.dataset.debtkind; render(); });
   const dso=document.getElementById("debtSort"); if(dso) dso.onchange=()=>{ state.debtSort=dso.value; render(); };
   const ss=document.getElementById("supplierSearch"); if(ss) ss.oninput=()=>{ state.supplierSearch=ss.value; _refocus="supplierSearch"; render(); };
   const dcs=document.getElementById("dcSave"); if(dcs) dcs.onclick=doDirCustSave;
@@ -3518,10 +3549,11 @@ function bindScreen(){
       cpP.value=state.piecePrices[ct.value]||0; recalc(); cpMark();
     });
     cpP.oninput=()=>{ recalc(); cpMark(); }; cpC.oninput=()=>{ recalc(); cpMark(); };
-    const cpLine=()=>({type:ct.value,count:+cpC.value,unit:+cpP.value,price:(+cpP.value||0)*(+cpC.value||0)});
+    const cpNoteI=document.getElementById("cpNote"); if(cpNoteI) cpNoteI.oninput=()=>{ _lineNote.cp=cpNoteI.value; cpMark(); };
+    const cpLine=()=>({type:ct.value,count:+cpC.value,unit:+cpP.value,price:(+cpP.value||0)*(+cpC.value||0),note:(cpNoteI?cpNoteI.value:"").trim()});
     refreshInvDraft("cp");
     document.getElementById("cpAddLine").onclick=()=>{ const l=cpLine(); if(!(l.unit>0)) return toast("أدخل سعرًا صحيحًا"); if(!(l.count>0)) return toast("أدخل عددًا صحيحًا");
-      invDraft.cp.push(l); invDirty.cp=false; cpC.value=1; recalc(); refreshInvDraft("cp"); toast("➕ "+l.type+" ×"+l.count+" — اختر الصنف التالي"); };
+      invDraft.cp.push(l); invDirty.cp=false; cpC.value=1; _lineNote.cp=""; if(cpNoteI) cpNoteI.value=""; recalc(); refreshInvDraft("cp"); toast("➕ "+l.type+" ×"+l.count+" — اختر الصنف التالي"); };
     bindPhotoStrip("cpPhotoStrip",pendingCpPhotos,"cp");
     const doCpSave=()=>{
       const cpph=document.getElementById("cpPhone").value.trim();
@@ -3540,7 +3572,7 @@ function bindScreen(){
           status:"wash",paid:false,photos:[...pendingCpPhotos],date:d};
         applyLinesToOrder(o,lines,"cp"); state.carpetOrders.push(o);
         logActivity("طلب أفرشة", orderLabel(o)+" · "+fmt(o.price)+" "+CUR);
-        pendingCpPhotos.length=0; invDraft.cp=[]; invDirty.cp=false;
+        pendingCpPhotos.length=0; invDraft.cp=[]; invDirty.cp=false; _lineNote.cp="";
         toast("تمت إضافة الطلب"); render();
       };
       gateDate(cpDateV, commit);
@@ -3595,12 +3627,14 @@ function bindScreen(){
     });
     const lndMark=()=>{ invDirty.lnd=true; const sv=document.getElementById("lndSave"); if(sv) sv.textContent=invSaveLabel("lnd"); };
     if(lndSvc) lndSvc.onchange=()=>{ lndSyncPrice(); lndMark(); };
+    bindPhotoStrip("lndPhotoStrip",pendingLndPhotos,"lnd");
     if(lndP) lndP.oninput=()=>{ lndRecalc(); lndMark(); };
     if(lndC) lndC.oninput=()=>{ lndRecalc(); lndMark(); };
-    const lndLine=()=>({type:lndType.value,service:lndSvc.value,count:+lndC.value,unit:+lndP.value,price:(+lndP.value||0)*(+lndC.value||0)});
+    const lndNoteI=document.getElementById("lndNote"); if(lndNoteI) lndNoteI.oninput=()=>{ _lineNote.lnd=lndNoteI.value; lndMark(); };
+    const lndLine=()=>({type:lndType.value,service:lndSvc.value,count:+lndC.value,unit:+lndP.value,price:(+lndP.value||0)*(+lndC.value||0),note:(lndNoteI?lndNoteI.value:"").trim()});
     refreshInvDraft("lnd");
     document.getElementById("lndAddLine").onclick=()=>{ const l=lndLine(); if(!(l.unit>0)) return toast("أدخل سعرًا صحيحًا"); if(!(l.count>0)) return toast("أدخل عددًا صحيحًا");
-      invDraft.lnd.push(l); invDirty.lnd=false; lndC.value=1; lndRecalc(); refreshInvDraft("lnd"); toast("➕ "+l.type+" ×"+l.count+" — اختر الصنف التالي"); };
+      invDraft.lnd.push(l); invDirty.lnd=false; lndC.value=1; _lineNote.lnd=""; if(lndNoteI) lndNoteI.value=""; lndRecalc(); refreshInvDraft("lnd"); toast("➕ "+l.type+" ×"+l.count+" — اختر الصنف التالي"); };
     const doLndSave=()=>{
       const ph=document.getElementById("lndPhone").value.trim();
       const country=document.getElementById("lndCountry").value;
@@ -3613,10 +3647,10 @@ function bindScreen(){
       const commit=()=>{
         lines.forEach(l=>{ state.laundryPrices[l.type+"|"+l.service]=+l.unit; });
         const d=chosenDateIso(dateV);
-        const o={id:uid(),no:laundryNextNo(d), customer:cust, phone:ph, country, by:currentUser, paid:false, date:d};
+        const o={id:uid(),no:laundryNextNo(d), customer:cust, phone:ph, country, by:currentUser, paid:false, photos:[...pendingLndPhotos], date:d};
         applyLinesToOrder(o,lines,"lnd"); o.status=laundryFirstStatus(o.service); state.laundryOrders.push(o);
         logActivity("طلب ملابس", orderLabel(o,true)+" · "+fmt(o.price)+" "+CUR);
-        invDraft.lnd=[]; invDirty.lnd=false;
+        invDraft.lnd=[]; invDirty.lnd=false; _lineNote.lnd=""; pendingLndPhotos.length=0;
         toast("تمت إضافة الطلب"); render();
       };
       gateDate(dateV, commit);
@@ -3840,7 +3874,7 @@ function meterCode(){ return (state.meterPin&&state.meterPin.trim())?state.meter
 
 /* ============ persistence + theme + logo ============ */
 const LS_KEY="sadaqa_laundry_v1";
-const CLOUD_OMIT=["tab","expSub","carpetFilter","cpSearch","custSearch","expSearch","carSearch","lndSearch","lndFilter","storeSub","storeProdSearch","storeSaleSearch","storeCustSearch","storeSaleFilter","contactsSub","contactSearch","supplierSearch","debtSort","debtView","dateFrom","dateTo","dark","palette"];
+const CLOUD_OMIT=["tab","expSub","carpetFilter","cpSearch","custSearch","expSearch","carSearch","lndSearch","lndFilter","storeSub","storeProdSearch","storeSaleSearch","storeCustSearch","storeSaleFilter","contactsSub","contactSearch","supplierSearch","debtSort","debtView","debtKind","dateFrom","dateTo","dark","palette"];
 let _applyingRemote=false, _pushT=null;
 let L_pending_push=false;
 function saveLocal(){ try{ state._savedAt=Date.now(); localStorage.setItem(LS_KEY, JSON.stringify(state)); }catch(e){} }
@@ -3852,6 +3886,7 @@ function cloudCopy(){
   // and applyRemote re-attaches each device's local images after merge.
   (j.carOps||[]).forEach(o=>{ delete o.photos; });
   (j.carpetOrders||[]).forEach(o=>{ delete o.photos; });
+  (j.laundryOrders||[]).forEach(o=>{ delete o.photos; });
   (j.storeProducts||[]).forEach(p=>{ delete p.image; });
   return j;
 }
@@ -3923,6 +3958,7 @@ function applyRemote(remote){
   const pm={};
   L.carOps.forEach(o=>{ if(o.photos&&o.photos.length) pm["op"+o.id]=o.photos; });
   L.carpetOrders.forEach(o=>{ if(o.photos&&o.photos.length) pm["or"+o.id]=o.photos; });
+  L.laundryOrders.forEach(o=>{ if(o.photos&&o.photos.length) pm["ln"+o.id]=o.photos; });
   // ⚠️ يجب التقاط بيانات المتجر والموردين المحلية قبل Object.assign وإلا ضاعت (كان خطأ يمحو سجلات المتجر)
   const Lstore={ storeProducts:state.storeProducts||[], storeSales:state.storeSales||[], storePurchases:state.storePurchases||[], storeCustomers:state.storeCustomers||[], storeCash:state.storeCash||[], suppliers:state.suppliers||[], closings:state.closings||[], recurring:state.recurring||[] };
   const localSent=Object.assign({}, state.autoClosingSent||{}); const localTgLast=+state.tgLastUpdate||0;
@@ -3961,6 +3997,7 @@ function applyRemote(remote){
   state.customers=cs;
   (state.carOps||[]).forEach(o=>{ o.photos=pm["op"+o.id]||o.photos||[]; });
   (state.carpetOrders||[]).forEach(o=>{ o.photos=pm["or"+o.id]||o.photos||[]; });
+  (state.laundryOrders||[]).forEach(o=>{ o.photos=pm["ln"+o.id]||o.photos||[]; });
   const localHasMore = L.workers.length>(remote.workers||[]).length
     || L.expenses.length>(remote.expenses||[]).length
     || L.carOps.length>(remote.carOps||[]).length
@@ -4730,10 +4767,11 @@ function tgSummaryText(from,to){
 function tgListText(kind,from,to){
   const F=(x)=>{ if(!x) return false; const d=ymd(x); return d>=from&&d<=to; }, L=[];
   if(kind==="cars"){ const a=(state.carOps||[]).filter(o=>!o.cancelled&&F(o.date)); L.push(`🚗 السيارات — ${tgLbl(from,to)} (${a.length})`); a.forEach(o=>L.push(`• ${timeStr(o.date)} ${o.vehicle}${o.plate?" "+o.plate:""} — ${o.wash} — ${o.free?"مجانية":money(o.price)} ${o.paid===false?"⏳ غير مدفوع":"✔"+pmTag(o)}${o.by?" — "+o.by:""}`)); L.push(`━━━━━━━━━━\nالمجموع: ${money(sum(a.filter(o=>!o.free),o=>+o.price||0))} ${CUR}`); }
-  else if(kind==="rugs"){ const a=(state.carpetOrders||[]).filter(o=>!o.cancelled&&F(o.date)); L.push(`🧺 السجاد والأفرشة — ${tgLbl(from,to)} (${a.length})`); a.forEach(o=>L.push(`• ${o.no} ${o.customer||""} — ${orderLabel(o)} — ${money(o.price)} — ${(STATUS[o.status]||{}).label||o.status} ${o.paid?"✔":"⏳"}`)); L.push(`━━━━━━━━━━\nالمجموع: ${money(sum(a,o=>+o.price||0))} ${CUR}`); }
-  else if(kind==="lnd"){ const a=(state.laundryOrders||[]).filter(o=>!o.cancelled&&F(o.date)); L.push(`👕 الملابس — ${tgLbl(from,to)} (${a.length} طلب، ${sum(a,o=>+o.count||1)} قطعة)`); a.forEach(o=>L.push(`• ${o.no} ${o.customer||""} — ${orderLabel(o,true)} — ${money(o.price)} — ${lndStatusLabel(o)} ${o.paid?"✔":"⏳"}`)); L.push(`━━━━━━━━━━\nالمجموع: ${money(sum(a,o=>+o.price||0))} ${CUR}`); }
+  else if(kind==="rugs"){ const a=(state.carpetOrders||[]).filter(o=>!o.cancelled&&F(o.date)); L.push(`🧺 السجاد والأفرشة — ${tgLbl(from,to)} (${a.length})`); a.forEach(o=>L.push(`• ${o.no} ${o.customer||""} — ${orderLabel(o,false,"، ",true)} — ${money(o.price)} — ${(STATUS[o.status]||{}).label||o.status} ${o.paid?"✔":"⏳"}`)); L.push(`━━━━━━━━━━\nالمجموع: ${money(sum(a,o=>+o.price||0))} ${CUR}`); }
+  else if(kind==="lnd"){ const a=(state.laundryOrders||[]).filter(o=>!o.cancelled&&F(o.date)); L.push(`👕 الملابس — ${tgLbl(from,to)} (${a.length} طلب، ${sum(a,o=>+o.count||1)} قطعة)`); a.forEach(o=>L.push(`• ${o.no} ${o.customer||""} — ${orderLabel(o,true,"، ",true)} — ${money(o.price)} — ${lndStatusLabel(o)} ${o.paid?"✔":"⏳"}`)); L.push(`━━━━━━━━━━\nالمجموع: ${money(sum(a,o=>+o.price||0))} ${CUR}`); }
   else if(kind==="exp"){ const a=(state.expenses||[]).filter(e=>F(e.date)); L.push(`💸 المصروفات — ${tgLbl(from,to)} (${a.length})`); a.forEach(e=>L.push(`• ${e.category} — ${e.reason||""} — ${money(e.amount)}${pmTag(e)}`)); const s=periodSummary(from,to); L.push(`━━━━━━━━━━\nعامة: ${money(s.gen)} · عمّال: ${money(s.wages)} · عدّادات: ${money(s.util)} · مواد من المتجر: ${money(s.intPurch)}\nالإجمالي: ${money(s.lndExp)} ${CUR}`); }
-  else if(kind==="debts"){ const d=debtors(), c=creditors(); L.push(`📌 الديون الآن`); L.push(`لنا عند الزبائن: ${money(sum(d,x=>x.total))} (${d.length})`); d.slice(0,15).forEach(x=>L.push(`• ${x.name||x.phone} — ${money(x.total)} — منذ ${x.days} يوم`)); L.push(`علينا للموردين: ${money(sum(c,x=>x.bal))} (${c.length})`); c.slice(0,10).forEach(x=>L.push(`• ${x.s.name} — ${money(x.bal)}`)); }
+  else if(kind==="debts"){ const d=debtors(), c=creditors(); L.push(`📌 الديون الآن`); L.push(`لنا عند الزبائن: ${money(sum(d,x=>x.total))} (${d.length})`);
+    L.push(`  🚗 السيارات: ${money(sum(d,x=>x.by.car))} · 🧺 السجاد: ${money(sum(d,x=>x.by.rug))} · 👕 الملابس: ${money(sum(d,x=>x.by.lnd))} · 🏪 المتجر: ${money(sum(d,x=>x.by.store))}`); d.slice(0,15).forEach(x=>L.push(`• ${x.name||x.phone} — ${money(x.total)} — منذ ${x.days} يوم`)); L.push(`علينا للموردين: ${money(sum(c,x=>x.bal))} (${c.length})`); c.slice(0,10).forEach(x=>L.push(`• ${x.s.name} — ${money(x.bal)}`)); }
   if(L.length<=2 && kind!=="debts") L.splice(1,0,"لا يوجد.");
   return L.join("\n");
 }
@@ -5095,7 +5133,7 @@ setTimeout(()=>{ if(!window.cloudReady){ const el=document.getElementById("cloud
 <!-- PWA: service-worker registration + update/install wiring -->
 <script>
 (function(){
-  var APP_VERSION = "2.8.0";
+  var APP_VERSION = "2.9.0";
   function $(id){ return document.getElementById(id); }
   function setText(id,t){ var el=$(id); if(el) el.textContent=t; }
 

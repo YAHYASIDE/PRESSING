@@ -162,6 +162,16 @@
   (الأكبر) و`closingSent` فلا تتكرر الردود/التقفيل. `firestore.rules` يسمح بـ `bot/{doc}` للمسجّلين.
   اختبار Node بلا متصفح: `tests/e2e/bot_runner.test.js` (fetch وهمي). ملاحظة GitHub: الجدولة تتوقف
   إن لم يحدث أي commit لمدة 60 يومًا (يُعاد تفعيلها من صفحة Actions).
+- **الديون حسب القسم (2.9.0):** `debtors()` يُرجع لكل مدين `by:{car,rug,lnd,store}` و`n:{…}`؛ في شاشتي الديون
+  (الزبائن والموردون ▸ الديون، والمتجر ▸ الديون) شريط `DEBT_KINDS` (الكل/السيارات/السجاد/الملابس/المتجر)
+  بمجموع كل قسم (`state.debtKind` في `CLOUD_OMIT`)، و`debtorForKind(d,k)` يقصر البطاقة والتذكير على القسم
+  (`sendDebtReminder(key,kind)`). رد البوت «📌 الديون» يفصّل الأقسام.
+- **وصف لكل صنف + صور الملابس + معرض/كاميرا (2.9.0):** حقل `note` على كل سطر (`items[].note`) أو على الطلب
+  المفرد (`o.note`) في السجاد والملابس (`#cpNote`/`#lndNote`، مسودة `_lineNote`)، يظهر في البطاقة
+  (`orderNotesHTML`)، الإيصال، الواتساب/البوت (`orderLabel(o,svc,sep,withNote)`)، ومحرّر التعديل (`.edl-note`).
+  الملابس صار لها `photos` (مثل السجاد: `pendingLndPhotos`، `#lndPhotoStrip`، تُحذف في `cloudCopy` وتُعاد في
+  `applyRemote` بمفتاح `"ln"+id`). كل مكان صور فيه زران: 📷 كاميرا (`capture`) و🖼️ المعرض (بلا `capture`،
+  متعدد) — `photoStripHTML` وصورة المادة (`.prodImgInp`).
 - **قاعدة الحذف والاستعادة (2.0.0):** السجلّ يُعتبر محذوفًا فقط إذا كان وقت الـ tombstone
   ≥ `editedAt` للسجلّ (`isDead` في `mergeById`). لذلك السجلّ المُستعاد (editedAt جديد) يعود
   على كل الأجهزة. `tomb(id)` يضع وقتًا = max(الآن، editedAt+1) لتفادي فرق ساعات الأجهزة.
