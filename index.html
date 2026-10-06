@@ -357,6 +357,7 @@
   .ed-line select,.ed-line input{min-width:0;padding:7px 6px;border:1px solid var(--line);border-radius:9px;background:var(--input);color:var(--ink);font-size:.82rem}
   .modal-box .ed-line input{letter-spacing:normal!important;text-align:center;font-size:.86rem!important;padding:7px 4px!important}
   .ed-line{flex-wrap:wrap} .ed-line .edl-note{flex:1 1 100%;margin-top:-2px;font-size:.8rem!important}
+  .edl-dims{flex:1 1 100%;display:flex;gap:5px;align-items:center} .edl-dims input{flex:1;min-width:0} .edl-dims small{flex:none;color:var(--brand);font-weight:800;font-size:.72rem;min-width:44px}
   .order-note{color:var(--brand);font-weight:700}
   .ed-line .edl-type{flex:2} .ed-line .edl-svc{flex:1.6} .ed-line .edl-count{flex:0 0 52px} .ed-line .edl-unit{flex:0 0 74px}
   .rcpt-printed{margin-top:4px;font-weight:600;opacity:.75;font-size:.72rem}
@@ -992,6 +993,7 @@ const state = {
   orderSeq:0,
   vehiclePrices:{...VEHICLE_PRICES},
   piecePrices:{...PIECE_PRICES},
+  pieceUnit:{"موكيت":"m2","سجاد فاتح":"m2","سجاد داكن":"m2"},  /* الأصناف التي تُحسب بالمتر المربع (السعر = سعر المتر²) */
   washTypes:[...WASH_TYPES],
   laundryTypes:[...LAUNDRY_TYPES],
   tariff:{elec:0, water:0},   /* سعر الكيلو / سعر وحدة الماء (0 = تسجيل الاستهلاك فقط) */
@@ -1130,27 +1132,31 @@ function laundryFirstStatus(service){ return laundryFlow(service)[0]; }
 function laundryNext(o){ const fl=laundryFlow(o.service); const i=fl.indexOf(o.status); return (i>=0 && i<fl.length-1)?fl[i+1]:null; }
 function laundryDefaultPrice(type,service){ const k=type+"|"+service; return (state.laundryPrices&&state.laundryPrices[k])||0; }
 /* ===== طلب متعدد الأصناف (فاتورة واحدة): o.items=[{type,service?,count,unit,price}] ===== */
-function orderItems(o){ return (Array.isArray(o.items)&&o.items.length)?o.items:[{type:o.type,service:o.service,count:+o.count||1,unit:+o.unit||0,price:+o.price||0}]; }
+function orderItems(o){ return (Array.isArray(o.items)&&o.items.length)?o.items:[{type:o.type,service:o.service,count:+o.count||1,unit:+o.unit||0,price:+o.price||0,note:o.note||"",dims:o.dims||undefined}]; }
 function isMultiOrder(o){ return Array.isArray(o.items)&&o.items.length>1; }
-function orderLabel(o,withSvc,sep,withNote){ const nt=(x)=>withNote&&x.note?` [${x.note}]`:""; if(!isMultiOrder(o)) return `${o.type} × ${o.count}`+(withSvc&&o.service?` — ${o.service}`:"")+nt(o); return o.items.map(i=>`${i.type} ×${i.count}`+(withSvc&&i.service?` (${i.service})`:"")+nt(i)).join(sep||"، "); }
+function orderLabel(o,withSvc,sep,withNote){ const nt=(x)=>withNote&&x.note?` [${x.note}]`:""; const dm=(x)=>x.dims?` ${dimsText(x)}`:""; if(!isMultiOrder(o)) return `${o.type}${dm(o)} × ${o.count}`+(withSvc&&o.service?` — ${o.service}`:"")+nt(o); return o.items.map(i=>`${i.type}${dm(i)} ×${i.count}`+(withSvc&&i.service?` (${i.service})`:"")+nt(i)).join(sep||"، "); }
+function isM2(type){ return !!(state.pieceUnit&&state.pieceUnit[type]==="m2"); }
+function dimsText(x){ const d=x&&x.dims; if(!d) return ""; return `${+d.l}×${+d.w} م (${fmt(d.area)} م²)`; }
 function orderNotesHTML(o){ const L=isMultiOrder(o)?o.items.filter(i=>i.note).map(i=>`${_esc(i.type)}: ${_esc(i.note)}`):(o.note?[_esc(o.note)]:[]); return L.length?`<div class="meta order-note">📝 ${L.join(" · ")}</div>`:""; }
 function combinedService(lines){ const sv=[...new Set(lines.map(l=>l.service).filter(Boolean))]; return sv.length===1?sv[0]:"غسيل وكي"; }
 function buildOrderFromLines(lines,kind){
-  const L=lines.map(l=>{ const count=Math.max(1,+l.count||1), unit=+l.unit||0; const x={type:l.type,count,unit,price:unit*count}; if(kind==="lnd") x.service=l.service||"غسيل وكي"; const n=(l.note||"").trim(); if(n) x.note=n; return x; });
+  const L=lines.map(l=>{ const count=Math.max(1,+l.count||1); let unit=+l.unit||0; const x={type:l.type,count,unit,price:unit*count}; if(kind==="lnd") x.service=l.service||"غسيل وكي"; const n=(l.note||"").trim(); if(n) x.note=n;
+    if(l.dims&&+l.dims.l>0&&+l.dims.w>0){ const area=Math.round((+l.dims.l)*(+l.dims.w)*100)/100, m2=+l.dims.m2||0; x.dims={l:+l.dims.l,w:+l.dims.w,area,m2}; x.unit=Math.round(area*m2); x.price=x.unit*count; } return x; });
   const price=sum(L,l=>l.price), count=sum(L,l=>l.count);
-  if(L.length===1){ const r={items:null,type:L[0].type,count:L[0].count,unit:L[0].unit,price:L[0].price,note:L[0].note||""}; if(kind==="lnd") r.service=L[0].service; return r; }
+  if(L.length===1){ const r={items:null,type:L[0].type,count:L[0].count,unit:L[0].unit,price:L[0].price,note:L[0].note||"",dims:L[0].dims||null}; if(kind==="lnd") r.service=L[0].service; return r; }
   const r={items:L,type:[...new Set(L.map(l=>l.type))].join("، "),count,unit:Math.round(price/count),price}; if(kind==="lnd") r.service=combinedService(L); return r;
 }
-function applyLinesToOrder(o,lines,kind){ const b=buildOrderFromLines(lines,kind); Object.assign(o,b); if(!b.items) delete o.items; }
+function applyLinesToOrder(o,lines,kind){ const b=buildOrderFromLines(lines,kind); Object.assign(o,b); if(!b.items) delete o.items; if(!b.dims) delete o.dims; }
 function rcptItemsHTML(o,withSvc){
-  if(!isMultiOrder(o)) return `<div class="rcpt-row"><span>النوع</span><b>${_esc(o.type)} × ${o.count}</b></div>`+(withSvc?`<div class="rcpt-row"><span>الخدمة</span><b>${_esc(o.service)}</b></div>`:"")+(o.note?`<div class="rcpt-row"><span>الوصف</span><b>${_esc(o.note)}</b></div>`:"");
-  return `<div class="rcpt-sec">الأصناف (${o.count} قطعة)</div>`+o.items.map(i=>`<div class="rcpt-row rcpt-item"><span>${_esc(i.type)}${withSvc&&i.service?` — ${_esc(i.service)}`:""}<small>${i.count} × ${money(i.unit)}${i.note?` — ${_esc(i.note)}`:""}</small></span><b>${money(i.price)}</b></div>`).join("");
+  const dimsRow=(x)=>x.dims?`<div class="rcpt-row"><span>القياس</span><b>${dimsText(x)} × ${money(x.dims.m2)}/م²</b></div>`:"";
+  if(!isMultiOrder(o)) return `<div class="rcpt-row"><span>النوع</span><b>${_esc(o.type)} × ${o.count}</b></div>`+dimsRow(o)+(withSvc?`<div class="rcpt-row"><span>الخدمة</span><b>${_esc(o.service)}</b></div>`:"")+(o.note?`<div class="rcpt-row"><span>الوصف</span><b>${_esc(o.note)}</b></div>`:"");
+  return `<div class="rcpt-sec">الأصناف (${o.count} قطعة)</div>`+o.items.map(i=>`<div class="rcpt-row rcpt-item"><span>${_esc(i.type)}${withSvc&&i.service?` — ${_esc(i.service)}`:""}<small>${i.dims?`${dimsText(i)} × ${money(i.dims.m2)}/م² — `:""}${i.count} × ${money(i.unit)}${i.note?` — ${_esc(i.note)}`:""}</small></span><b>${money(i.price)}</b></div>`).join("");
 }
 // مسودة الأصناف في نموذج الطلب الجديد (تبقى بعد إعادة الرسم حتى الحفظ)
 const invDraft={cp:[],lnd:[]}, invDirty={cp:false,lnd:false}, _lineNote={cp:"",lnd:""};
 function invDraftHTML(kind){
   const d=invDraft[kind]; if(!d.length) return "";
-  return `<div class="inv-box"><div class="inv-title">🧾 أصناف هذه الفاتورة (${d.length})</div>${d.map((l,i)=>`<div class="inv-line"><span>${_esc(l.type)} ×${l.count}${l.service?` <small>(${_esc(l.service)})</small>`:""}${l.note?` <small>📝 ${_esc(l.note)}</small>`:""}</span><b>${fmt(l.price)}</b><button type="button" class="inv-x" data-inv-x="${kind}:${i}" title="حذف الصنف">✕</button></div>`).join("")}
+  return `<div class="inv-box"><div class="inv-title">🧾 أصناف هذه الفاتورة (${d.length})</div>${d.map((l,i)=>`<div class="inv-line"><span>${_esc(l.type)}${l.dims?` <small>${+l.dims.l}×${+l.dims.w} م = ${fmt(Math.round(l.dims.l*l.dims.w*100)/100)} م²</small>`:""} ×${l.count}${l.service?` <small>(${_esc(l.service)})</small>`:""}${l.note?` <small>📝 ${_esc(l.note)}</small>`:""}</span><b>${fmt(l.price)}</b><button type="button" class="inv-x" data-inv-x="${kind}:${i}" title="حذف الصنف">✕</button></div>`).join("")}
     <div class="inv-sum"><span>المجموع حتى الآن</span><b>${fmt(sum(d,l=>l.price))} ${CUR}</b></div>
     <div class="hint" style="margin-top:4px">أضف صنفًا آخر، أو اضغط «حفظ الفاتورة». الصنف الظاهر في الأعلى يُضاف تلقائيًا إن عدّلته.</div></div>`;
 }
@@ -1169,6 +1175,7 @@ function edLineHTML(kind,it){
   const sOpts=kind==="lnd"?LAUNDRY_SERVICES.map(x=>`<option value="${x}" ${x===it.service?"selected":""}>${x}</option>`).join(""):"";
   return `<div class="ed-line"><select class="edl-type">${tOpts}</select>${kind==="lnd"?`<select class="edl-svc">${sOpts}</select>`:""}
     <input class="edl-count" type="number" min="1" value="${+it.count||1}" title="العدد"><input class="edl-unit" type="number" min="0" value="${+it.unit||0}" title="سعر القطعة"><button type="button" class="inv-x edl-x" title="حذف">✕</button>
+    ${kind==="cp"?(()=>{ const m2=it.dims||isM2(it.type); const d=it.dims||{l:"",w:"",m2:+((state.piecePrices||{})[it.type])||0}; return `<div class="edl-dims" style="${m2?"":"display:none"}"><input class="edl-len" type="number" min="0" step="0.1" value="${d.l}" placeholder="الطول م"><span>×</span><input class="edl-wid" type="number" min="0" step="0.1" value="${d.w}" placeholder="العرض م"><input class="edl-m2" type="number" min="0" value="${d.m2}" placeholder="سعر م²"><small class="edl-area"></small></div>`; })():""}
     <input class="edl-note" type="text" value="${_esc(it.note||"")}" placeholder="وصف (مثال: 6×4 أحمر)"></div>`;
 }
 function itemsEditorHTML(kind,o){
@@ -1178,18 +1185,20 @@ function itemsEditorHTML(kind,o){
 }
 function bindItemsEditor(kind){
   const box=document.getElementById("edLines"); if(!box) return;
-  const recalc=()=>{ let t=0; box.querySelectorAll(".ed-line").forEach(r=>{ t+=(+r.querySelector(".edl-count").value||0)*(+r.querySelector(".edl-unit").value||0); }); document.getElementById("edTotal").textContent=fmt(t)+" "+CUR; };
+  const recalc=()=>{ let t=0; box.querySelectorAll(".ed-line").forEach(r=>{ const dm=r.querySelector(".edl-dims"); if(dm&&dm.style.display!=="none"){ const l=+r.querySelector(".edl-len").value||0, w=+r.querySelector(".edl-wid").value||0, m2=+r.querySelector(".edl-m2").value||0; const area=Math.round(l*w*100)/100; r.querySelector(".edl-unit").value=Math.round(area*m2); r.querySelector(".edl-area").textContent=area?(fmt(area)+" م²"):""; } t+=(+r.querySelector(".edl-count").value||0)*(+r.querySelector(".edl-unit").value||0); }); document.getElementById("edTotal").textContent=fmt(t)+" "+CUR; };
   const wire=()=>{ box.querySelectorAll(".ed-line").forEach(r=>{
     r.querySelectorAll("input").forEach(i=>i.oninput=recalc);
     const ts=r.querySelector(".edl-type"), ss=r.querySelector(".edl-svc");
-    const upd=()=>{ const d=_defUnit(kind,ts.value,ss?ss.value:""); if(d>0) r.querySelector(".edl-unit").value=d; recalc(); };
+    const upd=()=>{ const d=_defUnit(kind,ts.value,ss?ss.value:""); const dm=r.querySelector(".edl-dims"); if(dm){ const m2=isM2(ts.value); dm.style.display=m2?"":"none"; if(m2){ r.querySelector(".edl-m2").value=d; r.querySelector(".edl-unit").readOnly=true; } else { r.querySelector(".edl-unit").readOnly=false; if(d>0) r.querySelector(".edl-unit").value=d; } } else if(d>0) r.querySelector(".edl-unit").value=d; recalc(); };
+    const dm0=r.querySelector(".edl-dims"); if(dm0&&dm0.style.display!=="none") r.querySelector(".edl-unit").readOnly=true;
     ts.onchange=upd; if(ss) ss.onchange=upd;
     r.querySelector(".edl-x").onclick=()=>{ if(box.querySelectorAll(".ed-line").length<=1) return toast("يجب أن يبقى صنف واحد على الأقل"); r.remove(); recalc(); };
   }); };
   document.getElementById("edAddLine").onclick=()=>{ const t=_typeList(kind)[0]||"", sv=kind==="lnd"?LAUNDRY_SERVICES[0]:""; box.insertAdjacentHTML("beforeend",edLineHTML(kind,{type:t,service:sv,count:1,unit:_defUnit(kind,t,sv)})); wire(); recalc(); };
   wire(); recalc();
 }
-function readItemsEditor(kind){ return [...document.querySelectorAll("#edLines .ed-line")].map(r=>({type:r.querySelector(".edl-type").value,service:r.querySelector(".edl-svc")?r.querySelector(".edl-svc").value:undefined,count:+r.querySelector(".edl-count").value||0,unit:+r.querySelector(".edl-unit").value||0,note:(r.querySelector(".edl-note")||{}).value||""})); }
+function readItemsEditor(kind){ return [...document.querySelectorAll("#edLines .ed-line")].map(r=>{ const x={type:r.querySelector(".edl-type").value,service:r.querySelector(".edl-svc")?r.querySelector(".edl-svc").value:undefined,count:+r.querySelector(".edl-count").value||0,unit:+r.querySelector(".edl-unit").value||0,note:(r.querySelector(".edl-note")||{}).value||""};
+  const dm=r.querySelector(".edl-dims"); if(dm&&dm.style.display!=="none"){ x.dims={l:+r.querySelector(".edl-len").value||0,w:+r.querySelector(".edl-wid").value||0,m2:+r.querySelector(".edl-m2").value||0}; } return x; }); }
 function laundryIncome(f){ return sum((state.laundryOrders||[]).filter(o=>!o.cancelled&&o.paid&&f(o.paidDate||o.deliveredDate||o.date)),o=>o.price); }
 function laundryPending(o){ return !o.cancelled && (o.status!=="done" || !o.paid); }
 /* رقم طلب ملابس مقاوم للتصادم بين الأجهزة: يُشتق من أعلى رقم موجود في نفس الشهر */
@@ -1658,8 +1667,15 @@ function screenCarpets(){
           <input type="hidden" id="cpType" value="${firstP}">
         </div>
         <div class="row2">
-          <div class="field"><label>سعر القطعة</label><input id="cpPrice" type="number" min="0" value="${startUnit}"></div>
+          <div class="field"><label id="cpPriceLbl">${isM2(firstP)?"سعر المتر²":"سعر القطعة"}</label><input id="cpPrice" type="number" min="0" value="${startUnit}"></div>
           <div class="field"><label>العدد</label><input id="cpCount" type="number" min="1" value="1"></div>
+        </div>
+        <div id="cpDimsRow" style="${isM2(firstP)?"":"display:none"}">
+          <div class="row2">
+            <div class="field"><label>الطول (متر)</label><input id="cpLen" type="number" min="0" step="0.1" inputmode="decimal" placeholder="مثال: 6"></div>
+            <div class="field"><label>العرض (متر)</label><input id="cpWid" type="number" min="0" step="0.1" inputmode="decimal" placeholder="مثال: 4"></div>
+          </div>
+          <div class="hint" id="cpArea" style="margin:-4px 0 10px">أدخل الطول والعرض — السعر = المساحة × سعر المتر²</div>
         </div>
         <div class="field"><label>وصف القطعة (اختياري)</label><input id="cpNote" type="text" placeholder="مثال: سجاد 6×4 أحمر واضح" value="${_esc(_lineNote.cp)}"></div>
         <div class="total-line"><span>الإجمالي</span><b><span id="cpTotal">${startUnit}</span></b></div>
@@ -3539,21 +3555,28 @@ function bindScreen(){
   document.querySelectorAll("[data-filter]").forEach(b=>b.onclick=()=>{state.carpetFilter=b.dataset.filter;render();});
   const ct=document.getElementById("cpType"), cpP=document.getElementById("cpPrice"),
         cpC=document.getElementById("cpCount"), cpT=document.getElementById("cpTotal");
-  const recalc=()=>{ if(cpT) cpT.textContent=fmt((+cpP.value||0)*(+cpC.value||0)); };
+  const cpL=document.getElementById("cpLen"), cpW=document.getElementById("cpWid"), cpDims=document.getElementById("cpDimsRow"), cpAreaEl=document.getElementById("cpArea"), cpLbl=document.getElementById("cpPriceLbl");
+  const cpArea=()=>{ const l=+(cpL&&cpL.value)||0, w=+(cpW&&cpW.value)||0; return Math.round(l*w*100)/100; };
+  const cpUnit=()=> ct&&isM2(ct.value) ? Math.round(cpArea()*(+cpP.value||0)) : (+cpP.value||0);
+  const recalc=()=>{ if(cpT) cpT.textContent=fmt(cpUnit()*(+cpC.value||0)); if(cpAreaEl&&ct&&isM2(ct.value)){ const a=cpArea(); cpAreaEl.innerHTML=a?`المساحة: <b>${fmt(a)} م²</b> × ${money(+cpP.value||0)} = <b>${money(Math.round(a*(+cpP.value||0)))}</b> للقطعة`:"أدخل الطول والعرض — السعر = المساحة × سعر المتر²"; } };
   if(ct){
     const cpMark=()=>{ invDirty.cp=true; const sv=document.getElementById("cpSave"); if(sv) sv.textContent=invSaveLabel("cp"); };
+    const cpMode=()=>{ const m2=isM2(ct.value); if(cpDims) cpDims.style.display=m2?"":"none"; if(cpLbl) cpLbl.textContent=m2?"سعر المتر²":"سعر القطعة"; };
     document.querySelectorAll("[data-ppick]").forEach(btn=>btn.onclick=()=>{
       document.querySelectorAll("[data-ppick]").forEach(x=>x.classList.remove("on"));
       btn.classList.add("on");
       ct.value=btn.dataset.ppick;
-      cpP.value=state.piecePrices[ct.value]||0; recalc(); cpMark();
+      cpP.value=state.piecePrices[ct.value]||0; cpMode(); recalc(); cpMark();
     });
     cpP.oninput=()=>{ recalc(); cpMark(); }; cpC.oninput=()=>{ recalc(); cpMark(); };
+    if(cpL) cpL.oninput=()=>{ recalc(); cpMark(); }; if(cpW) cpW.oninput=()=>{ recalc(); cpMark(); };
+    cpMode(); recalc();
     const cpNoteI=document.getElementById("cpNote"); if(cpNoteI) cpNoteI.oninput=()=>{ _lineNote.cp=cpNoteI.value; cpMark(); };
-    const cpLine=()=>({type:ct.value,count:+cpC.value,unit:+cpP.value,price:(+cpP.value||0)*(+cpC.value||0),note:(cpNoteI?cpNoteI.value:"").trim()});
+    const cpLine=()=>{ const m2=isM2(ct.value); const l={type:ct.value,count:+cpC.value,unit:cpUnit(),price:cpUnit()*(+cpC.value||0),note:(cpNoteI?cpNoteI.value:"").trim()}; if(m2) l.dims={l:+cpL.value||0,w:+cpW.value||0,m2:+cpP.value||0}; return l; };
+    const cpCheck=(l)=>{ if(l.dims){ if(!(l.dims.l>0&&l.dims.w>0)) return "أدخل الطول والعرض بالمتر"; if(!(l.dims.m2>0)) return "أدخل سعر المتر²"; } else if(!(l.unit>0)) return "أدخل سعرًا صحيحًا"; if(!(l.count>0)) return "أدخل عددًا صحيحًا"; return ""; };
     refreshInvDraft("cp");
-    document.getElementById("cpAddLine").onclick=()=>{ const l=cpLine(); if(!(l.unit>0)) return toast("أدخل سعرًا صحيحًا"); if(!(l.count>0)) return toast("أدخل عددًا صحيحًا");
-      invDraft.cp.push(l); invDirty.cp=false; cpC.value=1; _lineNote.cp=""; if(cpNoteI) cpNoteI.value=""; recalc(); refreshInvDraft("cp"); toast("➕ "+l.type+" ×"+l.count+" — اختر الصنف التالي"); };
+    document.getElementById("cpAddLine").onclick=()=>{ const l=cpLine(); const er=cpCheck(l); if(er) return toast(er);
+      invDraft.cp.push(l); invDirty.cp=false; cpC.value=1; _lineNote.cp=""; if(cpNoteI) cpNoteI.value=""; if(cpL) cpL.value=""; if(cpW) cpW.value=""; recalc(); refreshInvDraft("cp"); toast("➕ "+l.type+(l.dims?" "+l.dims.l+"×"+l.dims.w+" م":"")+" ×"+l.count+" — اختر الصنف التالي"); };
     bindPhotoStrip("cpPhotoStrip",pendingCpPhotos,"cp");
     const doCpSave=()=>{
       const cpph=document.getElementById("cpPhone").value.trim();
@@ -3561,11 +3584,11 @@ function bindScreen(){
       const cpcust=document.getElementById("cpCust").value.trim();
       if(!cpcust && !cpph) return toast("أدخل اسم الزبون أو رقمه");
       const lines=invDraft.cp.slice();
-      if(!lines.length || invDirty.cp){ const l=cpLine(); if(!(l.unit>0)) return toast("أدخل سعرًا صحيحًا"); if(!(l.count>0)) return toast("أدخل عددًا صحيحًا"); lines.push(l); }
+      if(!lines.length || invDirty.cp){ const l=cpLine(); const er=cpCheck(l); if(er) return toast(er); lines.push(l); }
       if(!validPhone(cpph)) return toast("رقم الهاتف يجب أن يكون 8 أرقام");
       const cpDateV=(document.getElementById("cpDate")||{}).value||todayStr();
       const commit=()=>{
-        lines.forEach(l=>{ state.piecePrices[l.type]=+l.unit; });
+        lines.forEach(l=>{ state.piecePrices[l.type]=l.dims?(+l.dims.m2||0):(+l.unit||0); });
         state.orderSeq++;
         const d=chosenDateIso(cpDateV);
         const o={id:uid(),no:orderNo(state.orderSeq,d), customer:cpcust, phone:cpph, country:cpcountry, by:currentUser,
@@ -4094,7 +4117,10 @@ function applyTheme(){
 }
 const _render=render;
 let _refocus=null;
-render=function(){ _render(); save(); if(_refocus){ const el=document.getElementById(_refocus); if(el){ el.focus(); const v=el.value; el.value=""; el.value=v; } _refocus=null; } };
+function latinInputs(root){ (root||document).querySelectorAll('input[type=number],input[type=date],input[type=time]').forEach(i=>{ if(!i.lang) i.lang="en"; }); }
+latinInputs(document);
+try{ new MutationObserver(()=>latinInputs(document)).observe(document.body,{childList:true,subtree:true}); }catch(e){}
+render=function(){ _render(); latinInputs(document.getElementById("main")); save(); if(_refocus){ const el=document.getElementById(_refocus); if(el){ el.focus(); const v=el.value; el.value=""; el.value=v; } _refocus=null; } };
 document.getElementById("brandLogo").src=LOGO;
 document.getElementById("themeBtn").onclick=()=>{ state.dark=!state.dark; applyTheme(); save(); };
 
@@ -4176,8 +4202,9 @@ function renderCatalogAdmin(){
   const priced=(title,mk)=>{
     const m=state[mk]||{};
     const rows=Object.keys(m).map(k=>`<div class="cat-row">
-      <b class="cat-nm">${E(k)}</b>
-      <input class="cat-price" type="number" min="0" value="${+m[k]||0}" data-cp="${mk}~${E(k)}">
+      <b class="cat-nm">${E(k)}${mk==="piecePrices"&&isM2(k)?' <small style="color:var(--brand);font-weight:800">/م²</small>':''}</b>
+      ${mk==="piecePrices"?`<label class="sw" style="font-size:.72rem;gap:4px" title="يُحسب بالمتر المربع (طول × عرض)"><input type="checkbox" data-m2="${E(k)}" ${isM2(k)?"checked":""}> م²</label>`:""}
+      <input class="cat-price" type="number" min="0" value="${+m[k]||0}" data-cp="${mk}~${E(k)}" title="${mk==="piecePrices"&&isM2(k)?"سعر المتر²":"السعر"}">
       <button class="wk-btn" data-cat-ren="${mk}~${E(k)}" title="تعديل الاسم">✏️</button>
       <button class="wk-btn" data-cat-del="${mk}~${E(k)}" style="color:var(--unpaid)">حذف</button>
     </div>`).join("")||'<div class="hint">لا أصناف.</div>';
@@ -4197,6 +4224,7 @@ function renderCatalogAdmin(){
     + priced("🧺 أصناف السجاد والأفرشة وأسعارها","piecePrices")
     + named("👕 أصناف الملابس","laundryTypes");
   host.querySelectorAll("[data-cp]").forEach(inp=>inp.onchange=()=>{ const [mk,k]=inp.dataset.cp.split("~"); state[mk][k]=+inp.value||0; save(); toast("حُفظ السعر"); });
+  host.querySelectorAll("[data-m2]").forEach(cb=>cb.onchange=()=>{ state.pieceUnit=state.pieceUnit||{}; if(cb.checked) state.pieceUnit[cb.dataset.m2]="m2"; else delete state.pieceUnit[cb.dataset.m2]; save(); toast(cb.checked?"يُحسب بالمتر²":"يُحسب بالقطعة"); renderCatalogAdmin(); });
   host.querySelectorAll("[data-cat-add]").forEach(b=>b.onclick=()=>{ const mk=b.dataset.catAdd; const nm=_catClean(host.querySelector(`[data-newnm="${mk}"]`).value); const pr=+(host.querySelector(`[data-newpr="${mk}"]`).value||0); if(nm.length<1) return toast("أدخل اسم الصنف"); if(state[mk][nm]!=null) return toast("الصنف موجود"); state[mk][nm]=pr; save(); renderCatalogAdmin(); toast("أُضيف الصنف"); });
   host.querySelectorAll("[data-cat-ren]").forEach(b=>b.onclick=()=>{ const [mk,k]=b.dataset.catRen.split("~"); const nn=_catClean(prompt("الاسم الجديد:",k)); if(!nn||nn===k) return; if(state[mk][nn]!=null) return toast("الاسم مستخدم"); state[mk][nn]=state[mk][k]; delete state[mk][k]; save(); renderCatalogAdmin(); toast("تم التعديل"); });
   host.querySelectorAll("[data-cat-del]").forEach(b=>b.onclick=()=>{ const [mk,k]=b.dataset.catDel.split("~"); if(Object.keys(state[mk]).length<=1) return toast("أبقِ صنفًا واحدًا على الأقل"); if(confirm("حذف الصنف «"+k+"»؟")){ delete state[mk][k]; save(); renderCatalogAdmin(); toast("تم الحذف"); } });
@@ -4869,7 +4897,8 @@ document.getElementById("editSave").onclick=()=>{
     const lines=readItemsEditor(kind);
     if(!lines.length) return toast("أضف صنفًا واحدًا على الأقل");
     if(lines.some(l=>!(l.count>0))) return toast("أدخل عددًا صحيحًا لكل صنف");
-    if(lines.some(l=>!(l.unit>0))) return toast("أدخل سعرًا صحيحًا لكل صنف");
+    if(lines.some(l=>l.dims&&!(l.dims.l>0&&l.dims.w>0&&l.dims.m2>0))) return toast("أدخل الطول والعرض وسعر المتر² لكل صنف بالمتر");
+    if(lines.some(l=>!l.dims&&!(l.unit>0))) return toast("أدخل سعرًا صحيحًا لكل صنف");
     applyLinesToOrder(o,lines,kind);
     if(kind==="lnd" && !laundryFlow(o.service).includes(o.status)) o.status=laundryFirstStatus(o.service);
     o.customer=document.getElementById("edCust").value.trim();
@@ -5040,6 +5069,8 @@ function runMigrations(){
   if(!state.autoClosing) state.autoClosing={enabled:false,time:"22:00",since:""};
   if(!state.autoClosingSent) state.autoClosingSent={};
   if(!state.tgPin) state.tgPin="32720707";
+  if(!state.pieceUnit) state.pieceUnit={};
+  if(!state.pieceUnitV){ Object.keys(state.piecePrices||{}).forEach(k=>{ if(/سجاد|موكيت/.test(k)){ state.pieceUnit[k]="m2"; state.piecePrices[k]=/موكيت/.test(k)?800:1000; } }); state.pieceUnitV=1; changed=true; }
   if(typeof state.tgLastUpdate!=="number") state.tgLastUpdate=0;
   if(!state.contactsSub) state.contactsSub="customers";
   if(typeof state.contactSearch!=="string") state.contactSearch="";
@@ -5133,7 +5164,7 @@ setTimeout(()=>{ if(!window.cloudReady){ const el=document.getElementById("cloud
 <!-- PWA: service-worker registration + update/install wiring -->
 <script>
 (function(){
-  var APP_VERSION = "2.9.0";
+  var APP_VERSION = "2.10.0";
   function $(id){ return document.getElementById(id); }
   function setText(id,t){ var el=$(id); if(el) el.textContent=t; }
 

@@ -172,6 +172,13 @@
   الملابس صار لها `photos` (مثل السجاد: `pendingLndPhotos`، `#lndPhotoStrip`، تُحذف في `cloudCopy` وتُعاد في
   `applyRemote` بمفتاح `"ln"+id`). كل مكان صور فيه زران: 📷 كاميرا (`capture`) و🖼️ المعرض (بلا `capture`،
   متعدد) — `photoStripHTML` وصورة المادة (`.prodImgInp`).
+- **السجاد والموكيت بالمتر المربع (2.10.0):** `state.pieceUnit[type]="m2"` (افتراضيًا موكيت وسجاد فاتح/داكن؛
+  ترحيل `pieceUnitV` يضبط الأسعار مرة: موكيت 800، سجاد 1000 لكل م²). لهذه الأصناف `piecePrices` = سعر المتر²،
+  والنموذج يُظهر الطول×العرض (`#cpLen/#cpWid`، `#cpArea`) والسعر = المساحة × سعر المتر² × العدد. السطر يحمل
+  `dims:{l,w,area,m2}` (`buildOrderFromLines` يعيد حساب `unit`)، ويظهر في البطاقة/الإيصال/البوت (`dimsText`,
+  `orderLabel`). محرّر التعديل: `.edl-dims` (طول/عرض/سعر م²) و`unit` للقراءة فقط. الإعدادات ▸ الأصناف: خانة «م²»
+  لكل صنف (`data-m2`). `orderItems` صار يمرّر `note`/`dims` للطلب المفرد. **أرقام لاتينية في الحقول:**
+  `latinInputs()` يضع `lang="en"` على كل `input[type=number|date|time]` (مع MutationObserver).
 - **قاعدة الحذف والاستعادة (2.0.0):** السجلّ يُعتبر محذوفًا فقط إذا كان وقت الـ tombstone
   ≥ `editedAt` للسجلّ (`isDead` في `mergeById`). لذلك السجلّ المُستعاد (editedAt جديد) يعود
   على كل الأجهزة. `tomb(id)` يضع وقتًا = max(الآن، editedAt+1) لتفادي فرق ساعات الأجهزة.
