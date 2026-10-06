@@ -326,6 +326,11 @@
   .rcpt-logo{width:64px;height:64px;object-fit:contain;display:block;margin:0 auto 6px}
   .rcpt-sub{margin-top:6px;font-weight:800;color:var(--ink)!important;font-size:.9rem!important}
   .rcpt-sec{font-weight:800;margin:12px 0 2px;color:var(--brand);font-size:.92rem}
+  .sd-panel{padding:0;margin-bottom:8px;overflow:hidden;border-color:var(--unpaid-bg)}
+  .sd-head{width:100%;display:flex;justify-content:space-between;align-items:center;gap:8px;padding:9px 12px;background:var(--unpaid-bg);border:0;font:inherit;font-weight:800;color:var(--ink);cursor:pointer;text-align:start}
+  .sd-head small{color:var(--muted);font-weight:700} .sd-arrow{color:var(--muted);font-size:.8rem}
+  .sd-row{display:flex;align-items:center;gap:6px;padding:7px 10px;border-top:1px dashed var(--line);font-size:.86rem}
+  .sd-row .sd-main{flex:1;min-width:0} .sd-row .sd-amt{color:var(--unpaid);white-space:nowrap}
   .debt-kinds button{flex-direction:column;gap:1px;padding:6px 4px;line-height:1.2}
   .debt-kinds button small{font-size:.66rem;font-weight:800;opacity:.8}
   .debt-by{display:flex;flex-wrap:wrap;gap:4px 10px;font-size:.78rem;color:var(--muted);font-weight:700;margin:2px 0}
@@ -1576,6 +1581,7 @@ function screenCars(){
   return `
     <div class="screen-head"><h2>مغسلة السيارات</h2><span>اختر نوع السيارة فيظهر سعره تلقائيًا</span></div>
     ${dateBarHTML()}
+    ${sectionDebtsHTML("car")}
     <div class="cols">
       <div class="panel car-sky">
         <h3>عملية جديدة</h3>
@@ -1657,6 +1663,7 @@ function screenCarpets(){
   return `
     <div class="screen-head"><h2>مغسلة السجاد والأفرشة</h2><span>رقم الطلب يُنشأ تلقائيًا</span></div>
     ${dateBarHTML()}
+    ${sectionDebtsHTML("rug")}
     <div class="cols">
       <div class="panel">
         <h3>طلب جديد</h3>
@@ -1738,6 +1745,7 @@ function screenLaundry(){
   return `
     <div class="screen-head"><h2>مغسلة الملابس</h2><span>غسيل وكي — رقم الطلب تلقائي</span></div>
     ${dateBarHTML()}
+    ${sectionDebtsHTML("lnd")}
     <div class="cols">
       <div class="panel">
         <h3>طلب جديد</h3>
@@ -1877,9 +1885,9 @@ function sendDebtReminder(key,kind){
   logActivity("تذكير دين",(d.name||d.phone)+" · "+money(d.total)+" "+CUR+(kind&&kind!=="all"?" ("+debtKindLabel(kind)+")":""));
   save(); window.open(`https://wa.me/${ph}?text=${encodeURIComponent(debtMessage(d))}`,"_blank"); render();
 }
-function contactsDebts(noStats){
+function contactsDebts(noStats,fixedKind){
   const E=_esc, q=(state.contactSearch||"").trim();
-  const kind=DEBT_KINDS.some(x=>x.k===state.debtKind)?state.debtKind:"all";
+  const kind=fixedKind||(DEBT_KINDS.some(x=>x.k===state.debtKind)?state.debtKind:"all");
   const all=debtors();
   const tot={all:sum(all,d=>d.total)}; ["car","rug","lnd","store"].forEach(k=>{ tot[k]=sum(all,d=>d.by[k]); });
   const cnt={all:all.length}; ["car","rug","lnd","store"].forEach(k=>{ cnt[k]=all.filter(d=>d.by[k]>0).length; });
@@ -1887,7 +1895,7 @@ function contactsDebts(noStats){
   if(q) list=list.filter(d=>(d.name||"").includes(q)||(d.phone||"").includes(q));
   const sortOld=state.debtSort==="old"; list=list.slice().sort(sortOld?((a,b)=>b.days-a.days):((a,b)=>b.total-a.total));
   const rem=state.debtReminded||{};
-  const kindSeg=`<div class="seg debt-kinds" style="margin-bottom:10px">${DEBT_KINDS.map(x=>`<button data-debtkind="${x.k}" class="${kind===x.k?'on':''}">${x.ic} ${x.t}<small>${money(tot[x.k])}</small></button>`).join("")}</div>`;
+  const kindSeg=fixedKind?"":`<div class="seg debt-kinds" style="margin-bottom:10px">${DEBT_KINDS.map(x=>`<button data-debtkind="${x.k}" class="${kind===x.k?'on':''}">${x.ic} ${x.t}<small>${money(tot[x.k])}</small></button>`).join("")}</div>`;
   const cards=list.length?list.map(d=>{ const r=rem[d.key]; const ph=waPhoneFull(d.phone,d.country), tl=telLink(d.phone,d.country);
     const items=d.items.slice().sort((a,b)=>(a.date||"").localeCompare(b.date||"")).slice(0,6).map(it=>`<div class="meta" style="display:flex;justify-content:space-between;gap:8px"><span>${it.kind}${it.no?(" "+E(it.no)):""} · ${it.date?ymd(it.date):""}</span><b>${money(it.amt)}</b></div>`).join("")+(d.items.length>6?`<div class="hint">+ ${d.items.length-6} أخرى</div>`:"");
     return `
@@ -1896,6 +1904,8 @@ function contactsDebts(noStats){
       ${d.phone?`<div class="meta">📞 ${E(d.phone)}</div>`:`<div class="meta" style="color:var(--muted)">لا يوجد رقم هاتف</div>`}
       <div class="price" style="color:var(--unpaid)">${money(d.total)} ${CUR}${kind!=="all"?` <span class="badge b-unpaid">${debtKindLabel(kind)}</span>`:""}</div>
       <div class="meta">${d.count} طلب/فاتورة · أقدمها منذ <b>${d.days}</b> يوم</div>
+      ${kind!=="all"&&kind!=="store"&&d.by.store>0?`<div class="meta" style="color:var(--wash);font-weight:800">🏪 ويدين للمتجر أيضًا: ${money(d.by.store)}</div>`:""}
+      ${kind==="store"&&(d.by.car+d.by.rug+d.by.lnd)>0?`<div class="meta" style="color:var(--brand);font-weight:800">🧺 وعليه للمغسلة أيضًا: ${money(d.by.car+d.by.rug+d.by.lnd)}</div>`:""}
       ${kind==="all"?`<div class="debt-by">${["car","rug","lnd","store"].filter(k=>d.by[k]>0).map(k=>{ const x=DEBT_KINDS.find(y=>y.k===k); return `<span>${x.ic} ${x.t}: <b>${money(d.by[k])}</b></span>`; }).join("")}</div>`:""}
       ${items}
       ${r?`<div class="meta" style="color:var(--ready)">✔ آخر تذكير: ${ymd(r)} ${timeStr(r)}</div>`:""}
@@ -1913,18 +1923,37 @@ function contactsDebts(noStats){
       <div class="s"><div class="v" style="color:var(--wash)">${money(pay)}</div><div class="l">علينا للموردين</div></div>
     </div>`}
     ${kindSeg}
-    <div class="store-stat debt-stat">
+    ${fixedKind?"":`<div class="store-stat debt-stat">
       <div class="s"><div class="v" style="color:var(--unpaid)">${money(tot[kind])}</div><div class="l">${kind==="all"?"كل الأقسام":"ديون "+debtKindLabel(kind)} (${cnt[kind]} مدين)</div></div>
       ${kind==="all"?["car","rug","lnd","store"].map(k=>{ const x=DEBT_KINDS.find(y=>y.k===k); return `<div class="s"><div class="v">${money(tot[k])}</div><div class="l">${x.ic} ${x.t} (${cnt[k]})</div></div>`; }).join(""):""}
-    </div>
+    </div>`}
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
       <input class="search-inp" id="contactSearch" type="text" placeholder="بحث بالاسم أو الهاتف" value="${E(q)}" style="flex:1;margin:0">
       <select id="debtSort" style="max-width:170px"><option value="amt">الأكبر مبلغًا</option><option value="old" ${sortOld?"selected":""}>الأقدم أولًا</option></select>
     </div>
-    <div class="hint" style="margin-bottom:8px">${kind==="all"?"كل الأقسام معًا، مجمّعة حسب رقم الهاتف. اختر قسمًا في الأعلى لعرض ديونه وحده.":"ديون "+debtKindLabel(kind)+" فقط — التذكير يُرسل بمبلغ هذا القسم."} نص الرسالة يُعدَّل من الإعدادات.</div>
+    <div class="hint" style="margin-bottom:8px">${fixedKind?"ديون المتجر فقط (فواتير بالدين). ديون المغاسيل تظهر في شاشة كل قسم وفي «الزبائن والموردون ▸ الديون».":kind==="all"?"كل الأقسام معًا، مجمّعة حسب رقم الهاتف. اختر قسمًا في الأعلى لعرض ديونه وحده.":"ديون "+debtKindLabel(kind)+" فقط — التذكير يُرسل بمبلغ هذا القسم."} نص الرسالة يُعدَّل من الإعدادات.</div>
     <div class="grid orders">${cards}</div>`;
 }
 
+/* ديون القسم أعلى شاشته (سيارات/سجاد/ملابس) */
+function sectionDebtsHTML(kind){
+  const x=DEBT_KINDS.find(y=>y.k===kind); const L=debtors().filter(d=>d.by[kind]>0).map(d=>debtorForKind(d,kind)).sort((a,b)=>b.total-a.total);
+  const tot=sum(L,d=>d.total); if(!L.length) return "";
+  const open=!!(state.secDebtOpen&&state.secDebtOpen[kind]); const rem=state.debtReminded||{};
+  const rows=open?L.map(d=>{ const ph=waPhoneFull(d.phone,d.country), tl=telLink(d.phone,d.country), full=debtors().find(z=>z.key===d.key)||d; return `
+    <div class="sd-row"><div class="sd-main"><b>${_esc(d.name||"بدون اسم")}</b>${d.phone?` <span class="hint">📞 ${_esc(d.phone)}</span>`:""}
+      <div class="hint">${d.count} طلب · منذ ${d.days} يوم${full.by.store>0?` · <span style="color:var(--wash);font-weight:800">🏪 ويدين للمتجر ${money(full.by.store)}</span>`:""}${rem[d.key]?` · ✔ ذُكِّر ${ymd(rem[d.key])}`:""}</div></div>
+      <b class="sd-amt">${money(d.total)}</b>
+      ${ph?`<button class="wa-btn" data-sd-wa="${_esc(d.key)}" title="تذكير واتساب">${svg(I.whatsapp)}</button>`:""}${tl?`<a class="icon-btn" href="${tl}" title="اتصال" style="text-decoration:none">📞</a>`:""}
+      <button class="mini" data-sd-go="${_esc(d.phone||d.name||"")}" title="عرض طلباته غير المدفوعة">عرض</button></div>`; }).join(""):"";
+  return `<div class="panel sd-panel ${open?'open':''}"><button type="button" class="sd-head" data-sd-toggle="${kind}"><span>${x.ic} ديون ${x.t} <b style="color:var(--unpaid)">${money(tot)} ${CUR}</b> <small>(${L.length} مدين)</small></span><span class="sd-arrow">${open?"▲":"▼"}</span></button>${rows}</div>`;
+}
+function bindSectionDebts(){
+  document.querySelectorAll("[data-sd-toggle]").forEach(b=>b.onclick=()=>{ state.secDebtOpen=state.secDebtOpen||{}; const k=b.dataset.sdToggle; state.secDebtOpen[k]=!state.secDebtOpen[k]; render(); });
+  const kind=state.tab==="cars"?"car":state.tab==="carpets"?"rug":"lnd";
+  document.querySelectorAll("[data-sd-wa]").forEach(b=>b.onclick=()=>sendDebtReminder(b.dataset.sdWa, kind));
+  document.querySelectorAll("[data-sd-go]").forEach(b=>b.onclick=()=>{ const q=b.dataset.sdGo; if(state.tab==="cars"){ state.carSearch=q; } else if(state.tab==="carpets"){ state.carpetFilter="unpaid"; state.cpSearch=q; } else { state.lndFilter="unpaid"; state.lndSearch=q; } render(); try{ window.scrollTo({top:0,behavior:"smooth"}); }catch(e){} });
+}
 function telLink(ph,country){ const f=waPhoneFull(ph,country); return f?("tel:+"+f):""; }
 
 /* ================= ملخّص مالي لأي فترة (للتقفيل والتقرير الشهري) ================= */
@@ -2241,8 +2270,8 @@ function creditors(){
     .filter(x=>x.bal>0).sort((a,b)=>b.bal-a.bal);
 }
 function storeScreenDebts(){
-  const E=_esc, dv=debtors(), cr=creditors();
-  const owed=sum(dv,d=>d.total), owe=sum(cr,c=>c.bal);
+  const E=_esc, dv=debtors().filter(d=>d.by.store>0), cr=creditors();
+  const owed=sum(dv,d=>d.by.store), owe=sum(cr,c=>c.bal);
   const view=state.debtView==="cred"?"cred":"debt";
   const crCards=cr.length?cr.map(({s,bal,n,days})=>{ const tl=telLink(s.phone,s.country); return `
     <div class="order">
@@ -2258,7 +2287,7 @@ function storeScreenDebts(){
     </div>`; }).join(""):`<div class="panel empty" style="grid-column:1/-1">${svg(I.empty)}لا توجد ديون علينا للموردين 🎉</div>`;
   return `
     <div class="store-stat">
-      <div class="s"><div class="v" style="color:var(--unpaid)">${money(owed)}</div><div class="l">لنا عند الزبائن (${dv.length} مدين)</div></div>
+      <div class="s"><div class="v" style="color:var(--unpaid)">${money(owed)}</div><div class="l">🏪 ديون المتجر لنا (${dv.length} مدين)</div></div>
       <div class="s"><div class="v" style="color:var(--wash)">${money(owe)}</div><div class="l">علينا للموردين (${cr.length} دائن)</div></div>
       <div class="s"><div class="v" style="color:${owed-owe<0?'var(--unpaid)':'var(--ready)'}">${money(owed-owe)}</div><div class="l">الصافي (لنا − علينا)</div></div>
     </div>
@@ -2267,12 +2296,12 @@ function storeScreenDebts(){
       <button data-debtview="cred" class="${view==="cred"?"on":""}">📤 الدائنون — علينا (${cr.length})</button>
     </div>
     ${view==="cred"?`<div class="hint" style="margin-bottom:8px">الموردون الذين اشترينا منهم بالدين. «تسديد» يخصم من الصندوق بطريقة الدفع التي تختارها.</div><div class="grid orders">${crCards}</div>`
-      :contactsDebts(true)}`;
+      :contactsDebts(true,"store")}`;
 }
 function bindDebtsUI(){
   document.querySelectorAll("[data-debtview]").forEach(b=>b.onclick=()=>{ state.debtView=b.dataset.debtview; render(); });
   document.querySelectorAll("[data-debtkind]").forEach(b=>b.onclick=()=>{ state.debtKind=b.dataset.debtkind; render(); });
-  document.querySelectorAll("[data-debt-wa]").forEach(b=>b.onclick=()=>sendDebtReminder(b.dataset.debtWa, state.debtKind));
+  document.querySelectorAll("[data-debt-wa]").forEach(b=>b.onclick=()=>sendDebtReminder(b.dataset.debtWa, "store"));
   const dso=document.getElementById("debtSort"); if(dso) dso.onchange=()=>{ state.debtSort=dso.value; render(); };
   const cs=document.getElementById("contactSearch"); if(cs) cs.oninput=()=>{ state.contactSearch=cs.value; _refocus="contactSearch"; render(); };
   document.querySelectorAll("[data-dc-pay]").forEach(b=>b.onclick=()=>{ const c=storeCust(b.dataset.dcPay); if(c){ _storePayCtx={kind:"cust",id:c.id}; openStorePay(custBalance(c.id),"تحصيل من "+c.name); } });
@@ -3724,6 +3753,7 @@ function bindScreen(){
   bindStore();
   // contacts (الزبائن والموردون)
   bindContacts();
+  bindSectionDebts();
   bindPmPickers(document.getElementById("main"));
   { const xb=document.getElementById("exportExcel"); if(xb) xb.onclick=()=>exportExcel(); }
   bindReports();
@@ -3894,7 +3924,7 @@ function meterCode(){ return (state.meterPin&&state.meterPin.trim())?state.meter
 
 /* ============ persistence + theme + logo ============ */
 const LS_KEY="sadaqa_laundry_v1";
-const CLOUD_OMIT=["tab","expSub","carpetFilter","cpSearch","custSearch","expSearch","carSearch","lndSearch","lndFilter","storeSub","storeProdSearch","storeSaleSearch","storeCustSearch","storeSaleFilter","contactsSub","contactSearch","supplierSearch","debtSort","debtView","debtKind","dateFrom","dateTo","dark","palette"];
+const CLOUD_OMIT=["tab","expSub","carpetFilter","cpSearch","custSearch","expSearch","carSearch","lndSearch","lndFilter","storeSub","storeProdSearch","storeSaleSearch","storeCustSearch","storeSaleFilter","contactsSub","contactSearch","supplierSearch","debtSort","debtView","debtKind","secDebtOpen","dateFrom","dateTo","dark","palette"];
 let _applyingRemote=false, _pushT=null;
 let L_pending_push=false;
 function saveLocal(){ try{ state._savedAt=Date.now(); localStorage.setItem(LS_KEY, JSON.stringify(state)); }catch(e){} }
@@ -5161,7 +5191,7 @@ setTimeout(()=>{ if(!window.cloudReady){ const el=document.getElementById("cloud
 <!-- PWA: service-worker registration + update/install wiring -->
 <script>
 (function(){
-  var APP_VERSION = "2.10.1";
+  var APP_VERSION = "2.11.0";
   function $(id){ return document.getElementById(id); }
   function setText(id,t){ var el=$(id); if(el) el.textContent=t; }
 

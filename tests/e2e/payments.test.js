@@ -74,8 +74,9 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
     state.laundryOrders.push({id:'l2',no:'L2',customer:'سارة',phone:'33445511',country:'222',type:'فستان',service:'غسيل',count:1,unit:400,price:400,status:'wash',paid:false,date:d,editedAt:d}); save(); });
   await page.click('[data-tab="store"]'); await page.click('[data-ssub="debts"]'); await page.waitForTimeout(250);
   const st = await page.textContent('main');
-  log('store debts tab: owed 400 + owe 900: '+(st.includes('لنا عند الزبائن')&&st.includes('علينا للموردين')&&st.includes('900'))+' (expect true)');
-  log('debtors listed (سارة): '+st.includes('سارة')+' (expect true)');
+  log('store debts tab: store only, owe 900: '+(st.includes('ديون المتجر لنا')&&st.includes('علينا للموردين')&&st.includes('900'))+' (expect true)');
+  log('laundry debtor (سارة) NOT in store tab: '+!st.includes('سارة')+' (expect true)');
+  log('laundry debtor appears on laundry screen panel: '+(await page.evaluate(()=>{ state.secDebtOpen={lnd:true}; return /سارة/.test(sectionDebtsHTML('lnd')); }))+' (expect true)');
   await page.click('[data-debtview="cred"]'); await page.waitForTimeout(200);
   log('creditors listed: '+(await page.textContent('main')).includes('مورّد المنظفات')+' (expect true)');
   await page.click('[data-sp-pay="s1"]'); await page.waitForTimeout(150);
