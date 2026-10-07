@@ -326,6 +326,11 @@
   .rcpt-logo{width:64px;height:64px;object-fit:contain;display:block;margin:0 auto 6px}
   .rcpt-sub{margin-top:6px;font-weight:800;color:var(--ink)!important;font-size:.9rem!important}
   .rcpt-sec{font-weight:800;margin:12px 0 2px;color:var(--brand);font-size:.92rem}
+  .msg-tpl{border:1px solid var(--line);border-radius:12px;padding:8px 10px;margin-bottom:8px;background:var(--soft)}
+  .msg-tpl-head{display:flex;justify-content:space-between;align-items:center;gap:6px;margin-bottom:6px;font-size:.88rem}
+  .msg-tpl-head span{display:flex;gap:4px}
+  .msg-tpl textarea{width:100%;font-size:.84rem;line-height:1.6;margin:0}
+  .msg-prev{white-space:pre-wrap;background:var(--surface);border:1px dashed var(--brand-2);border-radius:10px;padding:8px 10px;font-size:.82rem;line-height:1.7;margin:6px 0 0;font-family:inherit;direction:rtl}
   .sd-panel{padding:0;margin-bottom:8px;overflow:hidden;border-color:var(--unpaid-bg)}
   .sd-head{width:100%;display:flex;justify-content:space-between;align-items:center;gap:8px;padding:9px 12px;background:var(--unpaid-bg);border:0;font:inherit;font-weight:800;color:var(--ink);cursor:pointer;text-align:start}
   .sd-head small{color:var(--muted);font-weight:700} .sd-arrow{color:var(--muted);font-size:.8rem}
@@ -863,18 +868,12 @@
       <div class="hint" style="margin-top:6px">اتركها صفرًا لتسجيل الاستهلاك بلا تكلفة.</div>
     </div>
     <div class="set-sec">
-      <div class="set-title">رسالة الشكر (نهاية الرسالة)</div>
-      <input type="text" id="thanksSet" placeholder="مثال: شكرًا لغسلتك عندنا 🌟">
-    </div>
-    <div class="set-sec">
-      <div class="set-title">رسالة إعلانية (تُضاف لرسائل واتساب)</div>
-      <textarea id="adMsgSet" rows="3" placeholder="مثال: اجمع 5 غسلات واحصل على غسلة مجانية 🎁"></textarea>
-      <div class="hint" style="margin-top:6px">تظهر في نهاية كل رسالة واتساب لجذب الزبائن. اتركها فارغة لإخفائها.</div>
-    </div>
-    <div class="set-sec">
-      <div class="set-title">🔔 رسالة تذكير الدين (واتساب)</div>
-      <textarea id="debtMsgSet" rows="4"></textarea>
-      <div class="hint" style="margin-top:6px">الكلمات بين القوسين تُستبدل تلقائيًا: {الاسم} {المبلغ} {العملة} {المحل} {العدد} {الأيام}. اتركها فارغة لاستخدام النص الافتراضي.</div>
+      <div class="set-title">💬 الرسائل (واتساب للزبائن والموردين)</div>
+      <div class="hint" style="margin-bottom:8px">كل رسالة يرسلها التطبيق موجودة هنا. الكلمات بين الأقواس {…} تُستبدل تلقائيًا؛ عدّل النص كما تشاء، أو اكتب اسمًا ورقمًا مختلفين مباشرة. اسم المحل والهاتف الافتراضيان من قسم «🧾 الإيصال والطابعة».</div>
+      <div class="field"><label>رسالة الشكر {الشكر}</label><input type="text" id="thanksSet" placeholder="مثال: شكرًا لغسلتك عندنا 🌟"></div>
+      <div class="field"><label>رسالة إعلانية {الإعلان} — تُضاف في ذيل الرسائل (اتركها فارغة لإخفائها)</label><textarea id="adMsgSet" rows="2" placeholder="مثال: اجمع 5 غسلات واحصل على غسلة مجانية 🎁"></textarea></div>
+      <div id="msgTplAdmin"></div>
+      <textarea id="debtMsgSet" style="display:none"></textarea>
     </div>
     <div class="set-sec">
       <div class="set-title">🧾 الإيصال والطابعة</div>
@@ -1024,7 +1023,7 @@ const state = {
   closings:[],              /* جرد الصندوق عند التقفيل: {id,day,expected,actual,diff,note,by,date,editedAt} */
   recurring:[],             /* مصروفات ثابتة شهرية: {id,name,amount,category,day,payMethod,active,start,by,editedAt} */
   alerts:{readyDays:3,workDays:2}, autoClosing:{enabled:false,time:"22:00",since:""}, autoClosingSent:{},
-  tgPin:"32720707", tgLastUpdate:0,  /* كود قفل إعدادات البوت + آخر رسالة Telegram تمت معالجتها */
+  tgPin:"32720707", tgLastUpdate:0, msgTpl:{},  /* كود قفل إعدادات البوت + آخر رسالة Telegram تمت معالجتها */
   contactsSub:"customers", contactSearch:"", supplierSearch:"",
   users:[],                 /* حسابات العمّال: {id,name,pin,active,createdAt} */
   managers:[],              /* حسابات المديرين: {id,name,pass,active,createdAt} */
@@ -1843,7 +1842,6 @@ function detectedCustomers(){
   return [...map.values()].sort((a,b)=>(b.last||"").localeCompare(a.last||""));
 }
 /* ================= تذكير الديون ================= */
-const DEBT_MSG_DEFAULT="السلام عليكم {الاسم} 🌷\nنذكّركم بأن عليكم مبلغ {المبلغ} {العملة} لدى {المحل} ({العدد} طلب/فاتورة).\nنرجو التكرّم بالتسديد عند أقرب فرصة، وشكرًا لتعاملكم معنا.";
 function debtors(){
   const map=new Map(), byPhone=new Map();
   (state.storeCustomers||[]).forEach(c=>{ const p=normPhone(c.phone); if(p&&!byPhone.has(p)) byPhone.set(p,c); });
@@ -1870,9 +1868,7 @@ function debtors(){
     .filter(d=>d.total>0).sort((a,b)=>b.total-a.total);
 }
 function debtMessage(d){
-  const si=shopInfo(), tpl=(state.debtMsg||"").trim()||DEBT_MSG_DEFAULT;
-  const v={"الاسم":d.name||"زبوننا الكريم","المبلغ":money(d.total),"العملة":CUR,"المحل":si.name,"العدد":String(d.count),"الأيام":String(d.days)};
-  return tpl.replace(/\{(الاسم|المبلغ|العملة|المحل|العدد|الأيام)\}/g,(m,k)=>v[k]);
+  return buildMsg("debt",{"الاسم":d.name||"زبوننا الكريم","المبلغ":money(d.total),"العملة":CUR,"العدد":String(d.count),"الأيام":String(d.days)});
 }
 const DEBT_KINDS=[{k:"all",t:"الكل",ic:"📌"},{k:"car",t:"السيارات",ic:"🚗"},{k:"rug",t:"السجاد",ic:"🧺"},{k:"lnd",t:"الملابس",ic:"👕"},{k:"store",t:"المتجر",ic:"🏪"}];
 function debtKindLabel(k){ const x=DEBT_KINDS.find(d=>d.k===k); return x?x.t:""; }
@@ -2854,11 +2850,12 @@ function bindStore(){
 
 /* ================= الزبائن والموردون ================= */
 function _esc(s){ return String(s==null?"":s).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;"); }
-function contactBtns(phone,country){
+function contactBtns(phone,country,text){
   const t=telLink(phone,country), w=waPhoneFull(phone,country);
   return (t?`<a class="wa-btn" href="${t}" title="اتصال" style="display:inline-grid;place-items:center;text-decoration:none;width:28px;height:28px">📞</a>`:"")
-       + (w?`<a class="wa-btn" href="https://wa.me/${w}" target="_blank" rel="noopener" title="واتساب" style="display:inline-grid;place-items:center;width:28px;height:28px">${svg(I.whatsapp)}</a>`:"");
+       + (w?`<a class="wa-btn" href="https://wa.me/${w}${text?"?text="+encodeURIComponent(text):""}" target="_blank" rel="noopener" title="واتساب" style="display:inline-grid;place-items:center;width:28px;height:28px">${svg(I.whatsapp)}</a>`:"");
 }
+function supplierMsg(s){ const bal=supplierBalance(s); return buildMsg("supplier",{"المورد":s.name||"","الرصيد":bal>0?("المستحقّ لكم عندنا: "+money(bal)+" "+CUR):"لا يوجد مستحقّ حاليًا.","المبلغ":money(bal)}); }
 function screenContacts(){
   const sub=["suppliers","debts"].includes(state.contactsSub)?state.contactsSub:"customers";
   const nDebt=debtors().length;
@@ -2928,7 +2925,7 @@ function contactsSuppliers(){
   const cards=rows.length?rows.map(({s,ps,total,bal,last})=>`
     <div class="order">
       <div class="cust">${E(s.name)}${s.category?` <span class="badge b-done">${E(s.category)}</span>`:''}</div>
-      ${s.phone?`<div class="meta" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">📞 ${E(s.phone)} ${contactBtns(s.phone,s.country)}</div>`:''}
+      ${s.phone?`<div class="meta" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">📞 ${E(s.phone)} ${contactBtns(s.phone,s.country,supplierMsg(s))}</div>`:''}
       ${s.note?`<div class="meta">${E(s.note)}</div>`:''}
       <div class="meta">المشتريات: <b>${ps.length}</b> · الإجمالي: <b>${money(total)}</b>${last?` · آخر توريد: ${ymd(last)}`:''}</div>
       <div class="price" style="color:${bal>0?'var(--unpaid)':'var(--ready)'}">${bal>0?('مستحقّ له: '+money(bal)+' '+CUR):'لا ديون له'}</div>
@@ -4223,6 +4220,17 @@ function createManager(){
   toast("تم إنشاء حساب المدير «"+nm+"»");
 }
 function _catClean(s){ return (s||"").replace(/["|<>]/g,"").trim(); }
+function renderMsgTplAdmin(){
+  const host=document.getElementById("msgTplAdmin"); if(!host) return;
+  host.innerHTML=MSG_TPL.map(t=>`<div class="msg-tpl"><div class="msg-tpl-head"><b>${t.t}</b><span><button type="button" class="wk-btn" data-msg-prev="${t.k}">👁 معاينة</button><button type="button" class="wk-btn" data-msg-reset="${t.k}">↺ الافتراضي</button></span></div>
+    <textarea rows="3" data-msgtpl="${t.k}" dir="auto">${_esc(msgTpl(t.k))}</textarea>
+    <div class="hint">المتغيرات: ${["head","foot"].includes(t.k)?"":"{رأس} {الذيل} "}${t.v.map(v=>"{"+v+"}").join(" ")}</div>
+    <pre class="msg-prev" id="msgPrev_${t.k}" style="display:none"></pre></div>`).join("");
+  host.querySelectorAll("[data-msg-reset]").forEach(b=>b.onclick=()=>{ const ta=host.querySelector(`[data-msgtpl="${b.dataset.msgReset}"]`); ta.value=msgDefault(b.dataset.msgReset); toast("أُعيد النص الافتراضي — اضغط حفظ"); });
+  host.querySelectorAll("[data-msg-prev]").forEach(b=>b.onclick=()=>{ const k=b.dataset.msgPrev, pre=document.getElementById("msgPrev_"+k); if(pre.style.display!=="none"){ pre.style.display="none"; return; }
+    const saved=state.msgTpl||{}; const tmp=Object.assign({},saved); host.querySelectorAll("[data-msgtpl]").forEach(ta=>{ tmp[ta.dataset.msgtpl]=ta.value; }); const th=document.getElementById("thanksSet").value, ad=document.getElementById("adMsgSet").value;
+    const bt=state.thanksMsg, ba=state.adMsg; state.msgTpl=tmp; state.thanksMsg=th; state.adMsg=ad; try{ pre.textContent=msgPreview(k); } finally { state.msgTpl=saved; state.thanksMsg=bt; state.adMsg=ba; } pre.style.display="block"; });
+}
 function renderCatalogAdmin(){
   const host=document.getElementById("catalogAdmin"); if(!host) return;
   const E=s=>String(s==null?"":s).replace(/</g,"&lt;").replace(/"/g,"&quot;");
@@ -4635,8 +4643,34 @@ function orderState(o){
 const SHOP_NAME="مغاسيل صداقة", SHOP_PHONE="22227268";
 const VEH_LETTER={"سيارة صغيرة":"S","سيارة كبيرة":"K","دراجة نارية":"D","شاحنة":"T","انيل":"A","أخرى":"X"};
 function carNo(vehicle){ const L=VEH_LETTER[vehicle]||"X"; if(!state.carSeq) state.carSeq={}; state.carSeq[L]=(state.carSeq[L]||0)+1; return L+state.carSeq[L]; }
-function waHead(){ return `*${SHOP_NAME}*\nالتاريخ: ${ymd(new Date())}\nالهاتف: ${SHOP_PHONE}\n━━━━━━━━━━`; }
-function waFoot(){ const th=(state.thanksMsg||"شكرًا لغسلتك عندنا 🌟").trim(); const ad=(state.adMsg||"").trim(); return `━━━━━━━━━━${th?`\n${th}`:""}${ad?`\n\n${ad}`:""}`; }
+/* ================= الرسائل (قوالب قابلة للتعديل من الإعدادات ▸ 💬 الرسائل) ================= */
+const MSG_TPL=[
+  {k:"head", t:"رأس كل رسالة", d:"*{المحل}*\nالتاريخ: {التاريخ}\nالهاتف: {الهاتف}\n━━━━━━━━━━", v:["المحل","الهاتف","التاريخ","العنوان"]},
+  {k:"foot", t:"ذيل كل رسالة", d:"━━━━━━━━━━\n{الشكر}\n\n{الإعلان}", v:["الشكر","الإعلان","المحل","الهاتف"]},
+  {k:"car", t:"🚗 رسالة زبون السيارة", d:"{رأس}\nرقم الطلب: {رقم الطلب}\n{المركبة}{اللوحة}\n{الذيل}", v:["رقم الطلب","المركبة","اللوحة","السعر","الغسيل"]},
+  {k:"carPhotos", t:"📷 رسالة صور قبل/بعد", d:"{رأس}\nرقم الطلب: {رقم الطلب}\nصور سيارتك قبل وبعد الغسيل\n{الذيل}", v:["رقم الطلب","المركبة","اللوحة"]},
+  {k:"loyalty", t:"🎁 بطاقة الولاء", d:"{رأس}\nبطاقة الولاء{اللوحة}\nلديك {الأختام} من 5 أختام\n{سطر الولاء}\n{الذيل}", v:["اللوحة","الأختام","الباقي","سطر الولاء"]},
+  {k:"rug", t:"🧺 حالة طلب السجاد", d:"{رأس}\n{الأصناف}\nرقم الطلب: {رقم الطلب}\nالحالة: {الحالة}\n{الدفع}\n{الذيل}", v:["الأصناف","رقم الطلب","الحالة","الدفع","المبلغ","الزبون"]},
+  {k:"lnd", t:"👕 حالة طلب الملابس", d:"{رأس}\nملابس — {الخدمة}\n{الأصناف}\nرقم الطلب: {رقم الطلب}\nالحالة: {الحالة}\n{الدفع}\n{الذيل}", v:["الخدمة","الأصناف","رقم الطلب","الحالة","الدفع","المبلغ","الزبون"]},
+  {k:"debt", t:"🔔 تذكير الدين", d:"السلام عليكم {الاسم} 🌷\nنذكّركم بأن عليكم مبلغ {المبلغ} {العملة} لدى {المحل} ({العدد} طلب/فاتورة).\nنرجو التكرّم بالتسديد عند أقرب فرصة، وشكرًا لتعاملكم معنا.", v:["الاسم","المبلغ","العملة","المحل","العدد","الأيام"]},
+  {k:"supplier", t:"🏭 رسالة المورّد", d:"السلام عليكم {المورد} 🌷\nمعكم {المحل} ({الهاتف}).\n{الرصيد}\nشكرًا لتعاونكم.", v:["المورد","المحل","الهاتف","الرصيد","المبلغ"]}
+];
+function msgDefault(k){ const x=MSG_TPL.find(t=>t.k===k); return x?x.d:""; }
+function msgTpl(k){ const c=(state.msgTpl||{})[k]; return (typeof c==="string"&&c.trim())?c:msgDefault(k); }
+function fillTpl(tpl,vars){ return String(tpl||"").replace(/\{([^{}]+)\}/g,(m,key)=>{ const v=vars[key.trim()]; return v==null?"":String(v); }); }
+function msgBase(){ const si=shopInfo(); return {"المحل":si.name,"الهاتف":si.phone,"العنوان":si.address,"التاريخ":ymd(new Date()),"الشكر":(state.thanksMsg||"شكرًا لغسلتك عندنا 🌟").trim(),"الإعلان":(state.adMsg||"").trim()}; }
+function waHead(){ return fillTpl(msgTpl("head"),msgBase()); }
+function waFoot(){ return fillTpl(msgTpl("foot"),msgBase()).replace(/\n{3,}/g,"\n\n").replace(/\n+$/,""); }
+// يبني رسالة كاملة: يحقن الرأس والذيل ثم متغيرات الرسالة
+function buildMsg(k,vars){ const all=Object.assign({},msgBase(),{"رأس":waHead(),"الذيل":waFoot()},vars||{}); return fillTpl(msgTpl(k),all).replace(/\n{3,}/g,"\n\n"); }
+function msgPreview(k){
+  const o={no:"L2026-10-003",type:"قميص",count:4,service:"غسيل وكي",price:800,status:"ready",paid:false,customer:"محمد",items:[{type:"قميص",count:4,service:"غسيل وكي"},{type:"بنطلون",count:2,service:"غسيل وكي"}]};
+  const ex={ car:{"رقم الطلب":"S57","المركبة":"سيارة صغيرة","اللوحة":" · 1234AB","السعر":"1,000","الغسيل":"غسيل خارجي"}, carPhotos:{"رقم الطلب":"S57","المركبة":"سيارة صغيرة","اللوحة":"1234AB"},
+    loyalty:{"اللوحة":" — لوحة 1234AB","الأختام":3,"الباقي":2,"سطر الولاء":"بعد 2 غسلات لديك غسلة مجانية"}, rug:{"الأصناف":"سجاد داكن 6 م ×1","رقم الطلب":"K2026-10-001","الحالة":"جاهز للاستلام","الدفع":"المبلغ المستحق: 6,000","المبلغ":"6,000","الزبون":"محمد"},
+    lnd:{"الخدمة":"غسيل وكي","الأصناف":orderLabel(o,true,"\n"),"رقم الطلب":o.no,"الحالة":"جاهز للاستلام","الدفع":"المبلغ المستحق: 800","المبلغ":"800","الزبون":"محمد"},
+    debt:{"الاسم":"محمد","المبلغ":"2,000","العملة":CUR,"العدد":2,"الأيام":5}, supplier:{"المورد":"مورّد المنظفات","الرصيد":"المستحقّ لكم عندنا: 9,000 "+CUR,"المبلغ":"9,000"} };
+  return buildMsg(k,ex[k]||{});
+}
 const COUNTRIES=[{n:"موريتانيا",c:"222"},{n:"مالي",c:"223"},{n:"النيجر",c:"227"},{n:"الجزائر",c:"213"}];
 function countryOpts(sel){ return COUNTRIES.map(x=>`<option value="${x.c}" ${x.c===(sel||"222")?"selected":""}>${x.n} +${x.c}</option>`).join(""); }
 function validPhone(ph){ return ph==="" || /^[0-9]{8,9}$/.test(ph); }
@@ -4646,13 +4680,13 @@ function waPhone(o){ return waPhoneFull(o.phone,o.country); }
 function openCarChat(o){
   const ph=waPhoneFull(o.phone,o.country);
   if(!ph){ toast("لا يوجد رقم هاتف لهذا الزبون"); return; }
-  const text=`${waHead()}\nرقم الطلب: ${o.no||"-"}\n${waFoot()}`;
+  const text=buildMsg("car",{"رقم الطلب":o.no||"-","المركبة":o.vehicle||"","اللوحة":o.plate?(" · "+o.plate):"","السعر":o.free?"مجانية":money(o.price),"الغسيل":o.wash||""});
   window.open(`https://wa.me/${ph}?text=${encodeURIComponent(text)}`,"_blank");
 }
 async function shareCarImages(o){
   const list=[...(o.photosBefore||[]).map((d,i)=>({d,n:`before${i+1}.jpg`})), ...(o.photosAfter||[]).map((d,i)=>({d,n:`after${i+1}.jpg`}))];
   if(!list.length){ toast("لا توجد صور لهذه الغسلة"); return; }
-  const text=`${waHead()}\nرقم الطلب: ${o.no||"-"}\nصور سيارتك قبل وبعد الغسيل\n${waFoot()}`;
+  const text=buildMsg("carPhotos",{"رقم الطلب":o.no||"-","المركبة":o.vehicle||"","اللوحة":o.plate||""});
   try{
     const files=[];
     for(const it of list){ const bl=await (await fetch(it.d)).blob(); files.push(new File([bl], it.n, {type:bl.type||"image/jpeg"})); }
@@ -4665,13 +4699,13 @@ function openWaCust(c){
   const ph=waPhoneFull(c.phone,c.country); if(!ph){ toast("لا يوجد رقم هاتف لهذا الزبون"); return; }
   const s=c.stamps||0;
   const line=s===4?"غسلتك القادمة مجانية":`بعد ${4-s} غسلات لديك غسلة مجانية`;
-  const msg=`${waHead()}\nبطاقة الولاء${c.plate?` — لوحة ${c.plate}`:""}\nلديك ${s} من 5 أختام\n${line}\n${waFoot()}`;
+  const msg=buildMsg("loyalty",{"اللوحة":c.plate?` — لوحة ${c.plate}`:"","الأختام":s,"الباقي":Math.max(0,4-s),"سطر الولاء":line});
   window.open(`https://wa.me/${ph}?text=${encodeURIComponent(msg)}`,"_blank");
 }
 function waStatusMsg(o){
   const st=o.status==="ready"?"جاهز للاستلام":o.status==="done"?"تم التسليم":"قيد الغسيل";
   const pay=o.paid?"مدفوع":`المبلغ المستحق: ${money(o.price)}`;
-  return `${waHead()}\n${orderLabel(o,false,"\n")}\nرقم الطلب: ${o.no}\nالحالة: ${st}\n${pay}\n${waFoot()}`;
+  return buildMsg("rug",{"الأصناف":orderLabel(o,false,"\n",true),"رقم الطلب":o.no,"الحالة":st,"الدفع":pay,"المبلغ":money(o.price),"الزبون":o.customer||""});
 }
 function openWa(o){
   const ph=waPhone(o);
@@ -4689,7 +4723,7 @@ function openLndWa(o){
   if(!ph){ toast("لا يوجد رقم هاتف لهذا الزبون"); return; }
   const st=o.status==="ready"?"جاهز للاستلام":o.status==="done"?"تم التسليم":lndStatusLabel(o);
   const pay=o.paid?"مدفوع":`المبلغ المستحق: ${money(o.price)}`;
-  const text=`${waHead()}\n${isMultiOrder(o)?"ملابس:\n"+orderLabel(o,true,"\n"):"ملابس — "+o.service+"\n"+o.type+" × "+o.count}\nرقم الطلب: ${o.no}\nالحالة: ${st}\n${pay}\n${waFoot()}`;
+  const text=buildMsg("lnd",{"الخدمة":o.service||"","الأصناف":isMultiOrder(o)?orderLabel(o,true,"\n",true):(o.type+" × "+o.count+(o.note?" ["+o.note+"]":"")),"رقم الطلب":o.no,"الحالة":st,"الدفع":pay,"المبلغ":money(o.price),"الزبون":o.customer||""});
   window.open(`https://wa.me/${ph}?text=${encodeURIComponent(text)}`,"_blank");
 }
 function openLndReceipt(o){
@@ -4722,7 +4756,7 @@ function openSettings(){
   document.getElementById("tarElecSet").value=state.tariff.elec||0;
   document.getElementById("tarWaterSet").value=state.tariff.water||0;
   document.getElementById("thanksSet").value=state.thanksMsg||"";
-  document.getElementById("debtMsgSet").value=state.debtMsg||""; document.getElementById("debtMsgSet").placeholder=DEBT_MSG_DEFAULT;
+  renderMsgTplAdmin();
   { const si=state.shopInfo||{}; document.getElementById("shopNameSet").value=si.name||""; document.getElementById("shopPhoneSet").value=si.phone||"";
     document.getElementById("shopAddrSet").value=si.address||""; document.getElementById("shopFooterSet").value=si.footer||""; }
   document.getElementById("rcptWidthSet").value=rcptWidth();
@@ -4976,7 +5010,7 @@ document.getElementById("setSave").onclick=()=>{
   state.tariff.water=+document.getElementById("tarWaterSet").value||0;
   state.thanksMsg=document.getElementById("thanksSet").value.trim();
   state.adMsg=document.getElementById("adMsgSet").value.trim();
-  state.debtMsg=document.getElementById("debtMsgSet").value.trim();
+  { const t={}; document.querySelectorAll("[data-msgtpl]").forEach(ta=>{ const k=ta.dataset.msgtpl, v=ta.value.replace(/\r/g,""); if(v.trim()&&v!==msgDefault(k)) t[k]=v; }); state.msgTpl=t; delete state.debtMsg; }
   state.shopInfo={ name:document.getElementById("shopNameSet").value.trim(), phone:document.getElementById("shopPhoneSet").value.trim(),
     address:document.getElementById("shopAddrSet").value.trim(), footer:document.getElementById("shopFooterSet").value.trim(), editedAt:iso(new Date()) };
   setRcptWidth(document.getElementById("rcptWidthSet").value);
@@ -5097,6 +5131,8 @@ function runMigrations(){
   if(!state.autoClosingSent) state.autoClosingSent={};
   if(!state.tgPin) state.tgPin="32720707";
   if(!state.pieceUnit) state.pieceUnit={};
+  if(!state.msgTpl) state.msgTpl={};
+  if(state.debtMsg&&state.debtMsg.trim()){ state.msgTpl.debt=state.debtMsg; delete state.debtMsg; changed=true; }
   if(!state.pieceUnitV){ Object.keys(state.piecePrices||{}).forEach(k=>{ if(/سجاد|موكيت/.test(k)){ state.pieceUnit[k]="m2"; state.piecePrices[k]=/موكيت/.test(k)?800:1000; } }); state.pieceUnitV=1; changed=true; }
   if(typeof state.tgLastUpdate!=="number") state.tgLastUpdate=0;
   if(!state.contactsSub) state.contactsSub="customers";
@@ -5191,7 +5227,7 @@ setTimeout(()=>{ if(!window.cloudReady){ const el=document.getElementById("cloud
 <!-- PWA: service-worker registration + update/install wiring -->
 <script>
 (function(){
-  var APP_VERSION = "2.11.0";
+  var APP_VERSION = "2.12.0";
   function $(id){ return document.getElementById(id); }
   function setText(id,t){ var el=$(id); if(el) el.textContent=t; }
 

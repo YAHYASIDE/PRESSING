@@ -41,7 +41,7 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
   log('reminded timestamp shown: '+/آخر تذكير/.test(await page.textContent('main'))+' (expect true)');
   // custom template via settings
   await page.evaluate(()=>openSettings()); await page.waitForTimeout(300);
-  await page.fill('#debtMsgSet','يا {الاسم} عليك {المبلغ} منذ {الأيام} يوم');
+  await page.fill('[data-msgtpl="debt"]','يا {الاسم} عليك {المبلغ} منذ {الأيام} يوم');
   await page.click('#setSave'); await page.waitForTimeout(200);
   const m2 = await page.evaluate(()=>debtMessage(debtors().find(d=>d.name==='أحمد')));
   log('custom template applied: '+(m2==='يا أحمد عليك 650 منذ 10 يوم')+' (expect true) ['+m2+']');
