@@ -32,8 +32,15 @@
     --soft:#f1f6fa; --soft-hover:#e8eff5; --input:#f7fafc; --chip:#e9f0f6;
     --info-bg:#eaf3fb; --info-line:#cfe1f3; --info-ink:#1c6ea4;
   }
+  :root{ --radius-sm:10px; --shadow-sm:0 1px 2px rgba(21,37,52,.06) }
   *{box-sizing:border-box}
   html,body{margin:0;padding:0}
+  /* ===== ذوق (2.19.0): أرقام متساوية العرض، حالات الضغط والتركيز، هرمية عناوين أهدأ ===== */
+  .amt,.fv,.value,.price,.big-balance,.sd-amt,.total-line b,.fin-hero .fh-v,.act-card .fv,.pm-chip b,.bd-item .bv,.vc,.rcpt b,.c7val,.metric .value{font-variant-numeric:tabular-nums}
+  button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,summary:focus-visible{outline:2px solid var(--brand-2);outline-offset:2px}
+  .mini:active,.chip:active,.pick:active,.stab:active,.act-card:active,.pm-opt:active,.wk-btn:active{transform:scale(.985)}
+  h2,h3{text-wrap:balance}
+  .hint{line-height:1.5}
   body{font-family:"Tajawal","Segoe UI",Tahoma,Arial,sans-serif;background:var(--bg);color:var(--ink);
     -webkit-font-smoothing:antialiased;min-height:100vh}
   button{font-family:inherit;cursor:pointer}
@@ -67,7 +74,7 @@
   .screen{animation:fade .25s ease}
   @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
   .screen-head{display:flex;align-items:center;gap:8px;margin:0 0 8px}
-  .screen-head h2{font-size:1.08rem;font-weight:800;margin:0}
+  .screen-head h2{font-size:1.12rem;font-weight:800;margin:0;letter-spacing:-.01em}
   .screen-head > span{display:none}
 
   .grid{display:grid;gap:10px}
@@ -100,10 +107,11 @@
   .row-ic{display:inline-grid;place-items:center;width:26px;height:26px;border-radius:7px;background:var(--soft-hover);color:var(--brand);vertical-align:middle;margin-inline-end:5px}
   .row-ic svg{width:15px;height:15px}
   .veh-badge{width:34px;height:34px;border-radius:50%;object-fit:cover;flex:none}
-  .pick .pick-img{width:48px;height:48px;border-radius:50%;object-fit:cover}
+  .pick .pick-img{width:44px;height:44px;border-radius:50%;object-fit:cover}
   .row-vimg{width:28px;height:28px;border-radius:50%;object-fit:cover;vertical-align:middle;margin-inline-end:6px;flex:none}
-  .seg{display:inline-flex;background:var(--soft-hover);border:1px solid var(--line);border-radius:12px;padding:4px;gap:4px;margin-bottom:18px;flex-wrap:wrap}
-  .seg button{border:none;background:transparent;color:var(--muted);font-weight:700;font-size:.86rem;padding:8px 15px;border-radius:9px;display:flex;align-items:center;gap:7px}
+  .seg{display:flex;max-width:100%;background:var(--soft-hover);border:1px solid var(--line);border-radius:12px;padding:4px;gap:4px;margin-bottom:12px;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+  .seg::-webkit-scrollbar{display:none}
+  .seg button{border:none;background:transparent;color:var(--muted);font-weight:700;font-size:.84rem;padding:7px 12px;border-radius:9px;display:flex;align-items:center;gap:6px;white-space:nowrap;flex:none}
   .seg button svg{width:16px;height:16px}
   .seg button.on{background:var(--surface);color:var(--brand);box-shadow:var(--shadow)}
   .meter{border:1px solid var(--line);border-radius:14px;padding:15px;margin-bottom:14px}
@@ -150,7 +158,7 @@
   body.dark input,body.dark textarea{background:var(--input);color:var(--ink)}
   .hint{font-size:.72rem;color:var(--muted);margin-top:5px;font-weight:500}
   .picker{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-  .pick{display:flex;flex-direction:column;align-items:center;gap:6px;padding:11px 6px;border:1.5px solid var(--line);background:var(--input);border-radius:12px;color:var(--muted);font-weight:700;font-size:.76rem;transition:border .15s,background .15s,color .15s}
+  .pick{display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 4px;border:1.5px solid var(--line);background:var(--input);border-radius:12px;color:var(--muted);font-weight:700;font-size:.84rem;font-size:.76rem;transition:border .15s,background .15s,color .15s}
   .pick svg{width:26px;height:26px}
   .pick:hover{border-color:var(--brand-2);color:var(--ink)}
   .pick.on{border-color:var(--brand);background:var(--chip);color:var(--brand);box-shadow:var(--shadow)}
@@ -273,9 +281,14 @@
     .layout{flex-direction:column}
     nav.side{width:100%;flex-direction:row;overflow-x:auto;padding:4px 6px;gap:4px;order:2;position:sticky;bottom:0;
       background:var(--surface);border-top:1px solid var(--line);border-inline-start:none;z-index:20}
-    .nav-btn{flex-direction:column;gap:2px;padding:5px 4px;font-size:.66rem;min-width:56px;text-align:center;border-radius:10px}
+    nav.side{padding:4px 4px calc(4px + env(safe-area-inset-bottom,0px));gap:2px}
+    .nav-btn{flex:1 0 44px;min-width:0;flex-direction:column;gap:2px;padding:5px 2px;font-size:.62rem;text-align:center;border-radius:10px;white-space:nowrap}
     .nav-btn svg{width:19px;height:19px}
-    .nav-badge{position:absolute;margin:0;top:2px;inset-inline-start:36px}
+    .nav-badge{position:absolute;margin:0;top:1px;inset-inline-start:calc(50% + 6px)}
+    #toast{bottom:calc(84px + env(safe-area-inset-bottom,0px));max-width:calc(100% - 24px)}
+    .seg{overflow:visible}
+    .seg button{flex:1 1 0;padding:7px 4px;font-size:.76rem;gap:4px;justify-content:center}
+    .seg button svg{display:none}
     main{order:1;padding:8px}
     .panel{padding:12px}
     .grid{gap:8px}
@@ -345,8 +358,8 @@
   .msg-tpl-head span{display:flex;gap:4px}
   .msg-tpl textarea{width:100%;font-size:.84rem;line-height:1.6;margin:0}
   .msg-prev{white-space:pre-wrap;background:var(--surface);border:1px dashed var(--brand-2);border-radius:10px;padding:8px 10px;font-size:.82rem;line-height:1.7;margin:6px 0 0;font-family:inherit;direction:rtl}
-  .sd-panel{padding:0;margin-bottom:8px;overflow:hidden;border-color:var(--unpaid-bg)}
-  .sd-head{width:100%;display:flex;justify-content:space-between;align-items:center;gap:8px;padding:9px 12px;background:var(--unpaid-bg);border:0;font:inherit;font-weight:800;color:var(--ink);cursor:pointer;text-align:start}
+  .sd-panel{padding:0;margin-bottom:8px;overflow:hidden;border-color:var(--line);border-inline-start:4px solid var(--unpaid)}
+  .sd-head{width:100%;display:flex;justify-content:space-between;align-items:center;gap:8px;padding:9px 12px;background:var(--surface);border:0;font:inherit;font-weight:800;color:var(--ink);cursor:pointer;text-align:start}
   .sd-head small{color:var(--muted);font-weight:700} .sd-arrow{color:var(--muted);font-size:.8rem}
   .sd-row{display:flex;align-items:center;gap:6px;padding:7px 10px;border-top:1px dashed var(--line);font-size:.86rem}
   .sd-row .sd-main{flex:1;min-width:0} .sd-row .sd-amt{color:var(--unpaid);white-space:nowrap}
@@ -1433,7 +1446,7 @@ function renderNav(){
     {id:"laundry",label:"الملابس",icon:I.fabric,badge:lndUnpaid},
     {id:"carpets",label:"السجاد",icon:I.rug,badge:unpaid},
     {id:"store",label:"المتجر",icon:I.shop,badge:storeLow},
-    {id:"contacts",label:"زبائن وموردون",icon:I.usertag},
+    {id:"contacts",label:"الزبائن",icon:I.usertag},
     {id:"expenses",label:"المصروفات",icon:I.wallet},
     {id:"reports",label:"التقارير",icon:I.chart}
   ];
@@ -5877,7 +5890,7 @@ setTimeout(()=>{ if(!window.cloudReady){ const el=document.getElementById("cloud
 <!-- PWA: service-worker registration + update/install wiring -->
 <script>
 (function(){
-  var APP_VERSION = "2.18.0";
+  var APP_VERSION = "2.19.0";
   window.APP_VERSION = APP_VERSION;
   function $(id){ return document.getElementById(id); }
   // سجّل إصدار هذا الجهاز في الحالة المتزامنة (ليُنبَّه الجهاز القديم)
