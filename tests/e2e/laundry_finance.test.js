@@ -46,7 +46,12 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
   await page.click('[data-tab="dashboard"]'); await page.waitForTimeout(300);
   const dash=await page.textContent('.fin-wrap');
   log('dashboard summary shows 100,000 total, 70,000 received, 30,000 debts: '+(/100,000/.test(dash)&&/70,000/.test(dash)&&/30,000/.test(dash))+' (expect true)');
-  log('dashboard summary has method and service cards: '+/Bankily/.test(dash)+' (expect true) | '+/تحويلات بنكية/.test(dash)+' (expect true) | '+/دخل الملابس/.test(dash)+' (expect true)');
+  log('dashboard summary has bank-apps group 40,000 and service cards: '+/التطبيقات البنكية/.test(dash)+' (expect true) | '+/40,000/.test(dash)+' (expect true) | '+/دخل الملابس/.test(dash)+' (expect true)');
+  log('bank apps detail hidden by default: '+(await page.evaluate(()=>[...document.querySelectorAll('[data-bank-detail]')].every(d=>d.style.display==='none')))+' (expect true)');
+  await page.click('.fin-wrap .fin-card[onclick]'); await page.waitForTimeout(100);
+  log('toggle opens full bank apps (bankily 20,000 / masrvi 20,000 / sedad 0) everywhere: '+(await page.evaluate(()=>{ const ds=[...document.querySelectorAll('[data-bank-detail]')]; const t=ds.map(d=>d.textContent).join(' '); return ds.every(d=>d.style.display==='') && /بنكيلي/.test(t) && /مصرفي/.test(t) && /سداد/.test(t) && document.querySelectorAll('.pm-strip .pm-chip').length===5; }))+' (expect true)');
+  await page.click('.fin-wrap .fin-card[onclick]'); await page.waitForTimeout(100);
+  log('toggle closes again: '+(await page.evaluate(()=>[...document.querySelectorAll('[data-bank-detail]')].every(d=>d.style.display==='none')))+' (expect true)');
   // الفلتر: أمس → أصفار
   await page.click('[data-preset="yesterday"]'); await page.waitForTimeout(300);
   log('yesterday filter shows 0 services: '+(await page.evaluate(()=>laundryFin(x=>inRange(x)).services===0))+' (expect true)');
@@ -58,7 +63,7 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
   log('day report modal shows cards with 100,000 / 70,000 / 30,000: '+(/تقرير اليوم/.test(rep1)&&/100,000/.test(rep1)&&/70,000/.test(rep1)&&/30,000/.test(rep1))+' (expect true)');
   await page.click('#closeDayBtn'); await page.waitForTimeout(200);
   const body=await page.textContent('#cdyBody');
-  log('confirm window: services 100,000, cash 30,000, bankily 20,000, bank 20,000, debts 30,000, transfer 70,000: '+(/100,000/.test(body)&&/30,000/.test(body)&&/20,000/.test(body)&&/70,000/.test(body)&&/لا تُحوَّل/.test(body))+' (expect true)');
+  log('confirm window: services 100,000, cash 30,000, bankily 20,000, bank 20,000, debts 30,000, transfer 70,000: '+(/100,000/.test(body)&&/30,000/.test(body)&&/40,000/.test(body)&&/20,000/.test(body)&&/70,000/.test(body)&&/التطبيقات البنكية/.test(body)&&/لا تُحوَّل/.test(body))+' (expect true)');
   await page.click('#closeDayOk'); await code(); await page.waitForTimeout(400);
   // 9) حركة واحدة فقط بقيمة 70,000
   const mv=await page.evaluate(d=>({ list:state.storeCash.filter(m=>m.kind==='lndTransfer'), bal:cashboxBalance(), st:dayStatus(d), c:closingOf(d) }),T);
@@ -74,7 +79,7 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
   log('per-method chips cash 30,000 / bankily 20,000 / masrvi 20,000: '+(await page.evaluate(()=>{ const t=document.querySelector('.pm-strip').textContent; return /30,000/.test(t)&&/20,000/.test(t); }))+' (expect true)');
   await page.click('[data-cash-view]'); await page.waitForTimeout(300);
   const det=await page.textContent('#receiptContent');
-  log('movement detail: source laundry, services split, methods, debts, transferred: '+(/المصدر/.test(det)&&/الملابس/.test(det)&&/الأفرشة والسجاد/.test(det)&&/السيارات/.test(det)&&/Bankily/.test(det)&&/تحويلات بنكية/.test(det)&&/ديون جديدة/.test(det)&&/المحوّل فعليًا/.test(det)&&/70,000/.test(det))+' (expect true)');
+  log('movement detail: source laundry, services split, methods, debts, transferred: '+(/المصدر/.test(det)&&/الملابس/.test(det)&&/الأفرشة والسجاد/.test(det)&&/السيارات/.test(det)&&/التطبيقات البنكية/.test(det)&&/بنكيلي/.test(det)&&/مصرفي/.test(det)&&/ديون جديدة/.test(det)&&/المحوّل فعليًا/.test(det)&&/70,000/.test(det))+' (expect true)');
   await page.click('#tdOpenDay'); await page.waitForTimeout(300);
   log('detail links back to the day report: '+/تقرير اليوم/.test(await page.textContent('#receiptContent'))+' (expect true)');
   await page.click('#receiptClose');

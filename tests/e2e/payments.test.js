@@ -62,7 +62,7 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
   const rep = await page.textContent('#payBreakPanel');
   log('reports panel shows bank total 2,400: '+(rep.includes('2,400')&&rep.includes('بنكيلي')&&rep.includes('سداد'))+' (expect true)');
   await page.click('[data-tab="dashboard"]'); await page.waitForTimeout(200);
-  log('dashboard strip shows methods: '+((await page.$$('.pm-strip .pm-chip')).length===4)+' (expect true)');
+  log('dashboard strip shows cash + bank apps group, expandable to 3 apps: '+(await page.evaluate(()=>{ const n1=document.querySelectorAll('.pm-strip .pm-chip').length; toggleBankApps(); const open=[...document.querySelectorAll('[data-bank-detail]')].every(d=>d.style.display===''); toggleBankApps(); return n1===5 && open; }))+' (expect true)');
   await page.click('#openClosing'); await page.waitForTimeout(200);
   const cl = await page.textContent('#receiptContent');
   log('closing lists payment methods: '+(cl.includes('طريقة الدفع')&&cl.includes('مصرفي')&&cl.includes('صافي الكاش'))+' (expect true)');
