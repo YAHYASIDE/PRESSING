@@ -226,6 +226,27 @@
   فقط، فطلب قديم دُفع/سُلّم اليوم يختفي من «اليوم» ويظهر في «7 أيام/الكل» بينما الدخل يحسبه اليوم. الآن
   `activeInRange(o)` = `inRange` لأي من `date/paidDate/deliveredDate/readyDate`، و`inRange(undefined)=false`.
   الاختبار `tests/e2e/paid_visible.test.js`.
+- **الأيام المغلقة 🔒 (2.15.0):** «تقفيل اليوم» ▸ زر «🔒 إغلاق يوم المغسلة وتحويل الدخل إلى المتجر» (مالك/مدير، بالكود)
+  → `closeDay(day)`: سجل الإغلاق في `state.closings` بمعرّف ثابت `LaundryClosing-{day}` (`locked,closedAt,closedBy,snap,
+  transferred,transfers,edits,status,verify`) + حركة صندوق لكل طريقة دفع `LaundryTransfer-{day}-{method}` (`kind:"lndTransfer"`,
+  `day`, `ref`) بقيمة **المستلم فعليًا** في اليوم (`daySnapshot(day)`: `services/paidSvc/debts/by[method]/received/expenses`).
+  المعرّفات الحتمية + `mergeById` = لا تكرار مهما أُعيدت المحاولة. التحويل/التسوية **ليسا دخلًا للمتجر** (`payBreakdown`
+  يستثني `kind`) لكنهما يدخلان رصيد الصندوق (`cashIn/cashboxBalance`)، ولا يُحذفان (`data-cash-del` مخفي). حالات اليوم
+  `dayStatus(day)`: open 🟢 / pending 🟡 (`pendingAt` خلال `CD_WINDOW`=15 دقيقة) / locked 🔒 / edited 🔵 / mismatch ⚠️
+  (`dayStatusChip` في الرئيسية ونافذة التقفيل). **البوابات:** `gateDay`/`gateDate` و`gateRec(o)` (يوم التسجيل أو يوم الدفع)
+  → إن كان اليوم مغلقًا `closedDayGate(day,cb)`: عامل → «⛔ ليس لديك صلاحية» (`#cdNoPerm`)؛ مالك/مدير → `#cdModal`
+  «🔒 هذا اليوم مغلق» ▸ «✏️ طلب تعديل اليوم» ▸ سبب إلزامي `#cdReason` ▸ `cdStart` (جلسة محلية `_cdEdit={day,reason,at,
+  before,bak}`، الحالة pending) ثم يُنفَّذ `cb`. بعد كل `save()` (`render` يستدعيه) يعمل `cdAfterSave`: `cdRecDiff` يقارن
+  سجلات اليوم المغلق مع النسخة الاحتياطية (حقل بحقل) → ملخص تأكيد `#cdcModal` (السجلات، فرق الإجماليات `cdTotalsDiff`،
+  التسوية لكل طريقة = المستلم الجديد − `closing.transferred[m]`، السبب) → `cdCommit`: سجل تدقيق في **`state.closedDayEdits`**
+  (مُزامن، في SYNC_ARRAYS/BACKUP_KEYS/resetFinancials) `{id,day,ts,by,role,reason,kind,before,after,totals,records,
+  adjustments,headline,transferBefore,transferAfter,verified,issues}` + حركات `LaundryAdj-{day}-{method}-{ts}`
+  (`kind:"lndAdj"`, `ref`=التحويل الأصلي, `editId`) + `edits++` + `verifyDay` (الخدمات = المدفوع + الديون؛ المحوّل = المستلم؛
+  كشف المتجر = سجل الإغلاق) → عدم التطابق = حالة ⚠️ + alert + Telegram. «إلغاء» = `cdAbort` يُعيد **فقط** سجلات اليوم
+  المغلق المتغيّرة (لا يمسّ ما سُجّل اليوم). الحذف على يوم مغلق → `cancelDocumented` (`cancelled,cancelReason,cancelledBy,
+  cancelledAt`) بدل الإزالة (سيارات/سجاد/ملابس/مصروفات؛ `manualExp` يستثني الملغى). إضافة مصروف بتاريخ سابق صارت تمرّ
+  بـ`gateDate`. التقارير ▸ «📋 سجل تعديلات الأيام المغلقة» (`closedEditsReportHTML`، الضغط → `openClosedEdit`). **تحصيل
+  دين قديم اليوم لا يحتاج طلبًا** (المال يُستلم اليوم: يُحسب بيوم الدفع). الاختبار `tests/e2e/closed_days.test.js`.
 - **قاعدة الحذف والاستعادة (2.0.0):** السجلّ يُعتبر محذوفًا فقط إذا كان وقت الـ tombstone
   ≥ `editedAt` للسجلّ (`isDead` في `mergeById`). لذلك السجلّ المُستعاد (editedAt جديد) يعود
   على كل الأجهزة. `tomb(id)` يضع وقتًا = max(الآن، editedAt+1) لتفادي فرق ساعات الأجهزة.

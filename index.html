@@ -179,6 +179,7 @@
   #lightbox img{max-width:100%;max-height:100%;border-radius:10px}
   .modal{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:110;display:none;align-items:center;justify-content:center;padding:20px}
   #codeModal{z-index:150} /* نافذة الكود تعلو الإعدادات وغيرها */
+  #cdModal,#cdcModal{z-index:145}
   .modal-box{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:20px;max-width:340px;width:100%;box-shadow:var(--shadow);max-height:88vh;overflow-y:auto}
   #settingsModal .modal-actions{position:sticky;bottom:-20px;background:var(--surface);padding:12px 0 8px;margin-top:8px;border-top:1px solid var(--line);z-index:2}
   .modal-box h3{margin:0 0 6px;font-size:1.05rem;font-weight:800}
@@ -731,6 +732,29 @@
     </div>
   </div>
 </div>
+<div id="cdModal" class="modal">
+  <div class="modal-box">
+    <h3>🔒 هذا اليوم مغلق</h3>
+    <p>اليوم <b id="cdDay"></b> مغلق. لا يمكن تعديل بيانات يوم مغلق مباشرة.</p>
+    <p id="cdNoPerm" style="color:var(--unpaid);font-weight:700;display:none">⛔ ليس لديك صلاحية تعديل يوم مغلق.</p>
+    <div id="cdReasonWrap" style="display:none"><label class="hint">سبب التعديل (إلزامي)</label><textarea id="cdReason" rows="3" placeholder="مثال: تم تسجيل عملية بنكيلي بقيمة 5,000 بدل 50,000" style="width:100%;padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--input);color:var(--ink);font-family:inherit"></textarea></div>
+    <div class="modal-actions">
+      <button class="btn-primary" id="cdRequest" style="width:auto;flex:1">✏️ طلب تعديل اليوم</button>
+      <button class="btn-primary" id="cdGo" style="width:auto;flex:1;display:none">متابعة</button>
+      <button class="mini" id="cdCancel">إلغاء</button>
+    </div>
+  </div>
+</div>
+<div id="cdcModal" class="modal">
+  <div class="modal-box" style="max-height:90vh;overflow:auto">
+    <h3>⚠️ تأكيد تعديل يوم مغلق</h3>
+    <div id="cdcBody"></div>
+    <div class="modal-actions" style="margin-top:10px">
+      <button class="btn-primary" id="cdcOk" style="width:auto;flex:1">✅ تأكيد التعديل</button>
+      <button class="mini" id="cdcCancel">إلغاء</button>
+    </div>
+  </div>
+</div>
 <div id="codeModal" class="modal">
   <div class="modal-box">
     <h3 id="codeTitle">أدخل الكود</h3>
@@ -1048,6 +1072,7 @@ const state = {
   users:[],                 /* حسابات العمّال: {id,name,pin,active,createdAt} */
   managers:[],              /* حسابات المديرين: {id,name,pass,active,createdAt} */
   activity:[],              /* سجلّ النشاط: {id,ts,byName,byRole,action,detail} */
+  closedDayEdits:[],        /* سجل تدقيق تعديلات الأيام المغلقة (2.15.0) */
   notifSeenTs:0,            /* آخر وقت شاهد فيه المالك الإشعارات */
   notify:{ telegram:{ enabled:false, token:"", chatId:"" } }
 };
@@ -1104,7 +1129,7 @@ function carpetCounts(f){
 }
 function carIncome(f){return sum(state.carOps.filter(o=>!o.cancelled&&o.paid!==false&&f(o.paidDate||o.date)),o=>o.price);}
 function carpetIncome(f){return sum(state.carpetOrders.filter(o=>!o.cancelled&&o.paid&&f(o.paidDate||o.deliveredDate||o.date)),o=>o.price);}
-function manualExp(f){return sum(state.expenses.filter(e=>f(e.date)),e=>e.amount);}
+function manualExp(f){return sum(state.expenses.filter(e=>!e.cancelled&&f(e.date)),e=>e.amount);}
 function mElec(m){ return (m.elec!==undefined&&m.elec!=="")?(+m.elec||0):(+m.elecEnd||+m.elecStart||0); }
 function mWater(m){ return (m.water!==undefined&&m.water!=="")?(+m.water||0):(+m.waterEnd||+m.waterStart||0); }
 function sortedMeters(){ return state.meters.slice().sort((a,b)=>(a.savedAt||new Date(a.date).getTime())-(b.savedAt||new Date(b.date).getTime())); }
@@ -1521,7 +1546,7 @@ function screenDashboard(){
     <div class="report-btns">
       <button class="mini" id="sendReport">📤 التقرير الكامل</button>
       <button class="mini" id="sendReport2">📤 تقرير الدخل (− مصروفات عامة)</button>
-      ${currentRole!=="worker"?`<button class="mini" id="openClosing" style="background:var(--brand);color:#fff;border-color:var(--brand)">🧾 تقفيل اليوم</button>`:""}
+      ${currentRole!=="worker"?`<button class="mini" id="openClosing" style="background:var(--brand);color:#fff;border-color:var(--brand)">🧾 تقفيل اليوم</button>`:""}${(state.dateFrom===state.dateTo)?dayStatusChip(state.dateFrom):""}
     </div>
     ${overdueHTML()}
     ${(()=>{ const r=payBreakdown(F); return `<div class="pm-strip">${PAY_METHODS.map(m=>`<div class="pm-chip ${m.k}"><span>${m.ic} ${m.t}</span><b>${money(r[m.k].inc)}</b></div>`).join("")}</div>`; })()}
@@ -2018,6 +2043,171 @@ function rcptHeader(sub){ const si=shopInfo(); return `<div class="rcpt-head"><i
 function rcptFooter(extra){ const si=shopInfo(); return `<div class="rcpt-foot">${extra?extra+"<br>":""}${_esc(si.footer)}<div class="rcpt-printed">${ymd(new Date())} ${timeStr(new Date())}</div></div>`; }
 
 /* ================= تقفيل اليوم ================= */
+/* ================= الأيام المغلقة (2.15.0) =================
+   إغلاق يوم المغسلة = قفل اليوم 🔒 + تحويل الدخل المستلم فعليًا (حسب طريقة الدفع) إلى صندوق المتجر
+   بحركات بمعرّفات ثابتة LaundryTransfer-{day}-{method} (لا تتكرر عبر الأجهزة/التحديث/إعادة المحاولة).
+   تعديل يوم مغلق: مدير/مالك فقط → طلب تعديل + سبب إلزامي → التعديل → ملخص تأكيد (قبل/بعد/الفرق/التسوية)
+   → سجل تدقيق state.closedDayEdits + تسوية LaundryAdj مرتبطة بالتحويل الأصلي + فحص تطابق. */
+const CD_WINDOW=15*60*1000;
+const DAY_STATUS={open:{ic:"🟢",t:"مفتوح"},pending:{ic:"🟡",t:"بانتظار المراجعة"},locked:{ic:"🔒",t:"مغلق"},edited:{ic:"🔵",t:"تم تعديل بعد الإغلاق"},mismatch:{ic:"⚠️",t:"غير متطابق"}};
+function closingIdOf(day){ return "LaundryClosing-"+day; }
+function transferIdOf(day,m){ return "LaundryTransfer-"+day+"-"+m; }
+function dayIsClosed(day){ const c=closingOf(day); return !!(c&&c.locked); }
+function closedDayOf(dateIso){ if(!dateIso) return null; const d=ymd(dateIso); return dayIsClosed(d)?d:null; }
+function recClosed(o){ return closedDayOf(o&&o.date)||closedDayOf(o&&o.paidDate); }
+function dayStatus(day){ const c=closingOf(day); if(!c||!c.locked) return "open"; if(c.status==="pending" && Date.now()-(+new Date(c.pendingAt||0))<CD_WINDOW) return "pending"; if(c.verify&&c.verify.ok===false) return "mismatch"; return (c.edits||0)>0?"edited":"locked"; }
+function dayStatusChip(day){ const k=dayStatus(day), d=DAY_STATUS[k]; return `<span class="chip ${k==='open'?'':'on'}" data-daystat="${day}" style="${k==='mismatch'?'background:#fdecea;color:#c0392b':k==='edited'?'background:#e3f0ff;color:#1b4f8a':k==='pending'?'background:#fff6d6;color:#8a6d00':''}">${d.ic} ${d.t}</span>`; }
+function cdLaundryArrays(){ return {carOps:state.carOps||[], carpetOrders:state.carpetOrders||[], laundryOrders:state.laundryOrders||[]}; }
+function daySnapshot(day){
+  const inDay=(x)=>!!x && ymd(x)===day;
+  const by={}; PAY_METHODS.forEach(m=>by[m.k]=0);
+  let services=0, paidSvc=0, debts=0, n=0;
+  const A=cdLaundryArrays();
+  const isPaid=(k,o)=> k==="carOps" ? o.paid!==false : !!o.paid;
+  Object.keys(A).forEach(k=>A[k].forEach(o=>{ if(!o||o.cancelled) return; const price=+o.price||0;
+    if(inDay(o.date)){ services+=price; n++; if(isPaid(k,o)) paidSvc+=price; else debts+=price; }
+    if(isPaid(k,o) && price>0 && inDay(o.paidDate||o.date)) by[normPM(o.payMethod)]+=price; }));
+  const received=PAY_METHODS.reduce((t,m)=>t+by[m.k],0);
+  const expenses=sum((state.expenses||[]).filter(e=>!e.cancelled&&inDay(e.date)),e=>+e.amount||0);
+  return {day,services,paidSvc,debts,n,by,received,expenses};
+}
+function dayTransferred(day){ const r={}; PAY_METHODS.forEach(m=>r[m.k]=0); (state.storeCash||[]).forEach(m=>{ if(m.day!==day||!(m.kind==="lndTransfer"||m.kind==="lndAdj")) return; r[normPM(m.payMethod)]+=(m.type==="in"?1:-1)*(+m.amount||0); }); r.total=PAY_METHODS.reduce((t,m)=>t+r[m.k],0); return r; }
+function closeDay(day){
+  if(dayIsClosed(day)) return {ok:false,msg:"هذا اليوم مغلق مسبقًا"};
+  if(day>todayStr()) return {ok:false,msg:"لا يمكن إغلاق يوم في المستقبل"};
+  const now=iso(new Date()), snap=daySnapshot(day);
+  let c=closingOf(day); if(!c){ c={id:closingIdOf(day),day,date:now}; state.closings.push(c); }
+  const ids=[];
+  PAY_METHODS.forEach(m=>{ const amt=Math.round(snap.by[m.k]); if(amt<=0) return; const id=transferIdOf(day,m.k);
+    if(!(state.storeCash||[]).some(x=>x.id===id)){ state.storeCash.push({id,type:"in",amount:amt,reason:"تحويل دخل المغسلة "+day,kind:"lndTransfer",day,customerId:null,ref:closingIdOf(day),payMethod:m.k,date:now,by:currentUser,editedAt:now}); }
+    ids.push(id); });
+  Object.assign(c,{cid:closingIdOf(day),locked:true,status:"locked",closedAt:now,closedBy:currentUser,snap,transferred:Object.assign({},snap.by),transfers:ids,edits:c.edits||0,editedAt:now});
+  c.verify=verifyDay(day);
+  logActivity("إغلاق يوم المغسلة", day+" · محوّل للمتجر "+money(snap.received)+" "+CUR);
+  notifyTelegram("🔒 إغلاق يوم المغسلة "+day+"\nالخدمات: "+money(snap.services)+"\nالمستلم (محوّل للمتجر): "+money(snap.received)+"\nالديون الجديدة: "+money(snap.debts)+"\nبواسطة: "+currentUser);
+  save(); return {ok:true,c};
+}
+function verifyDay(day){
+  const issues=[]; const c=closingOf(day); const s=daySnapshot(day);
+  if(Math.round(s.services)!==Math.round(s.paidSvc+s.debts)) issues.push("إجمالي الخدمات ("+money(s.services)+") ≠ المدفوع ("+money(s.paidSvc)+") + الديون ("+money(s.debts)+")");
+  if(c&&c.locked){ const t=dayTransferred(day);
+    if(Math.round(t.total)!==Math.round(s.received)) issues.push("المحوّل للمتجر ("+money(t.total)+") ≠ المستلم فعليًا ("+money(s.received)+")");
+    PAY_METHODS.forEach(m=>{ if(Math.round(t[m.k])!==Math.round((c.transferred||{})[m.k]||0)) issues.push("كشف المتجر لـ"+m.t+" ("+money(t[m.k])+") ≠ سجل الإغلاق ("+money((c.transferred||{})[m.k]||0)+")"); }); }
+  return {ok:issues.length===0, issues, at:iso(new Date())};
+}
+function cancelDocumented(o,label){ o.cancelled=true; o.cancelReason=(_cdEdit&&_cdEdit.reason)||""; o.cancelledBy=currentUser; o.cancelledAt=iso(new Date()); o.editedAt=iso(new Date()); logActivity(label+" (موثق)", (o.type||o.vehicle||o.reason||"")+(o.cancelReason?(" · "+o.cancelReason):"")); toast("أُلغيت العملية إلغاءً موثقًا (لم تُحذف)"); render(); }
+function closedDayGate(day, cb){
+  if(currentRole!=="owner"&&currentRole!=="manager"){ toast("⛔ ليس لديك صلاحية تعديل يوم مغلق."); cdInfoModal(day,false); return; }
+  if(_cdEdit && _cdEdit.day===day && Date.now()-_cdEdit.at<CD_WINDOW){ cb(); return; }
+  cdInfoModal(day,true,cb);
+}
+function cdInfoModal(day, canRequest, cb){
+  const m=document.getElementById("cdModal"); if(!m) return;
+  document.getElementById("cdDay").textContent=day;
+  document.getElementById("cdReasonWrap").style.display="none"; document.getElementById("cdReason").value="";
+  document.getElementById("cdRequest").style.display=canRequest?"":"none"; document.getElementById("cdGo").style.display="none";
+  document.getElementById("cdNoPerm").style.display=canRequest?"none":"";
+  m.style.display="flex";
+  document.getElementById("cdRequest").onclick=()=>{ document.getElementById("cdReasonWrap").style.display=""; document.getElementById("cdRequest").style.display="none"; document.getElementById("cdGo").style.display=""; setTimeout(()=>document.getElementById("cdReason").focus(),50); };
+  document.getElementById("cdGo").onclick=()=>{ const reason=document.getElementById("cdReason").value.trim(); if(!reason) return toast("اكتب سبب التعديل أولًا"); m.style.display="none"; cdStart(day,reason); if(cb) cb(); };
+  document.getElementById("cdCancel").onclick=()=>{ m.style.display="none"; };
+}
+function cdBackup(){ const A=cdLaundryArrays(); const j=JSON.parse(JSON.stringify({carOps:A.carOps,carpetOrders:A.carpetOrders,laundryOrders:A.laundryOrders,expenses:state.expenses||[]})); stripPhotos(j); return j; }
+function cdStart(day,reason){
+  const c=closingOf(day); const now=iso(new Date());
+  _cdEdit={day,reason,at:Date.now(),before:daySnapshot(day),bak:cdBackup()};
+  if(c){ c.status="pending"; c.pendingBy=currentUser; c.pendingReason=reason; c.pendingAt=now; c.editedAt=now; }
+  logActivity("طلب تعديل يوم مغلق", day+" · "+reason);
+  save(); // الفحص بعد الحفظ لا يجد فرقًا بعد، فلا يظهر شيء
+  toast("🟡 اليوم بانتظار المراجعة — عدّل ما تريد ثم أكّد الملخص");
+}
+function cdRecDiff(bak){
+  const out=[]; const fields=["price","paid","paidDate","payMethod","cancelled","status","count","type","service","vehicle","wash","amount","reason","note","customer","date"];
+  const day=_cdEdit.day; const inDay=(o)=>!!o && (ymd(o.date||0)===day || (o.paidDate&&ymd(o.paidDate)===day));
+  const names={carOps:"سيارة",carpetOrders:"أفرشة",laundryOrders:"ملابس",expenses:"مصروف"};
+  ["carOps","carpetOrders","laundryOrders","expenses"].forEach(k=>{
+    const B=new Map((bak[k]||[]).map(o=>[o.id,o])), N=new Map((state[k]||[]).map(o=>[o.id,o]));
+    N.forEach((o,id)=>{ const b=B.get(id); if(!b){ if(inDay(o)) out.push({arr:k,kind:names[k],id,label:cdLabel(k,o),added:true,changes:[["جديد","—",cdVal("price",o.price||o.amount)]]}); return; }
+      if(!inDay(o)&&!inDay(b)) return;
+      const ch=[]; fields.forEach(f=>{ const bv=b[f], nv=o[f]; if(JSON.stringify(bv===undefined?null:bv)!==JSON.stringify(nv===undefined?null:nv)) ch.push([cdField(f),cdVal(f,bv),cdVal(f,nv)]); });
+      if(ch.length) out.push({arr:k,kind:names[k],id,label:cdLabel(k,o),changes:ch}); });
+    B.forEach((b,id)=>{ if(!N.has(id)&&inDay(b)) out.push({arr:k,kind:names[k],id,label:cdLabel(k,b),removed:true,changes:[["حُذف",cdVal("price",b.price||b.amount),"—"]]}); });
+  });
+  return out;
+}
+function cdLabel(k,o){ return k==="carOps"?((o.vehicle||"")+(o.plate?(" · "+o.plate):"")+(o.no?(" #"+o.no):"")) : k==="expenses"?(o.reason||o.category||"") : ((o.no?("#"+o.no+" "):"")+(o.customer||"")+" · "+(typeof orderLabel==="function"?orderLabel(o):(o.type||""))); }
+function cdField(f){ return ({price:"السعر",amount:"المبلغ",paid:"مدفوع",paidDate:"تاريخ الدفع",payMethod:"طريقة الدفع",cancelled:"ملغى",status:"الحالة",count:"العدد",type:"الصنف",service:"الخدمة",vehicle:"نوع السيارة",wash:"نوع الغسيل",reason:"البيان",note:"الوصف",customer:"الزبون",date:"التاريخ"})[f]||f; }
+function cdVal(f,v){ if(v===undefined||v===null||v==="") return "—"; if(f==="payMethod") return pmLabel(v); if(f==="paid"||f==="cancelled") return v?"نعم":"لا"; if(f==="paidDate"||f==="date") return ymd(v); if(typeof v==="number") return money(v); return String(v); }
+function cdTotalsDiff(b,a){ const rows=[]; const add=(t,x,y)=>{ if(Math.round(x)!==Math.round(y)) rows.push({t,before:x,after:y,diff:y-x}); };
+  add("إجمالي الخدمات",b.services,a.services); add("المدفوع من خدمات اليوم",b.paidSvc,a.paidSvc); add("الديون",b.debts,a.debts);
+  PAY_METHODS.forEach(m=>add(m.t,b.by[m.k],a.by[m.k])); add("صافي المستلم",b.received,a.received); add("المصروفات",b.expenses,a.expenses); return rows; }
+function cdAfterSave(){
+  if(!_cdEdit||_cdConfirmOpen) return;
+  if(Date.now()-_cdEdit.at>CD_WINDOW){ cdAbort("انتهت مهلة التعديل (15 دقيقة) — أُلغيت التغييرات"); return; }
+  const recs=cdRecDiff(_cdEdit.bak); if(!recs.length) return;
+  const after=daySnapshot(_cdEdit.day), totals=cdTotalsDiff(_cdEdit.before,after);
+  const c=closingOf(_cdEdit.day), tr=(c&&c.transferred)||{}; const adj=PAY_METHODS.map(m=>({k:m.k,t:m.ic+" "+m.t,old:tr[m.k]||0,neu:after.by[m.k],d:after.by[m.k]-(tr[m.k]||0)})).filter(x=>Math.round(x.d)!==0);
+  _cdConfirmOpen=true;
+  const box=document.getElementById("cdcBody");
+  box.innerHTML=`<div class="hint">📅 ${_cdEdit.day} · ${recs.length} سجل</div>
+    ${recs.map(r=>`<div class="cat-row" style="flex-direction:column;align-items:stretch;gap:2px"><b class="cat-nm">${r.kind}: ${_esc(r.label)}</b>${r.changes.map(ch=>`<div style="font-size:.85rem">${ch[0]}: <span style="color:var(--muted)">${_esc(ch[1])}</span> → <b>${_esc(ch[2])}</b></div>`).join("")}</div>`).join("")}
+    ${totals.length?`<div class="set-title" style="margin-top:8px">الفرق في الإجماليات</div>${totals.map(r=>`<div class="rcpt-row"><span>${r.t}</span><b>${money(r.before)} → ${money(r.after)} <span style="color:${r.diff>0?'var(--ready)':'var(--unpaid)'}">(${r.diff>0?'+':'−'}${money(Math.abs(r.diff))})</span></b></div>`).join("")}`:`<div class="hint" style="margin-top:8px">لا تغيير في الإجماليات المالية (تعديل بيانات فقط).</div>`}
+    ${adj.length?`<div class="set-title" style="margin-top:8px">🏪 التسوية في المتجر</div>${adj.map(a=>`<div class="rcpt-row"><span>${a.t}: محوّل سابقًا ${money(a.old)} → الصحيح ${money(a.neu)}</span><b style="color:${a.d>0?'var(--ready)':'var(--unpaid)'}">${a.d>0?'+':'−'}${money(Math.abs(a.d))} ${CUR}</b></div>`).join("")}`:`<div class="hint">لا تسوية مطلوبة في المتجر.</div>`}
+    <div class="rcpt-row" style="margin-top:8px"><span>سبب التعديل</span><b>${_esc(_cdEdit.reason)}</b></div>`;
+  document.getElementById("cdcModal").style.display="flex";
+  document.getElementById("cdcOk").onclick=()=>{ document.getElementById("cdcModal").style.display="none"; _cdConfirmOpen=false; cdCommit(recs,after,totals,adj); };
+  document.getElementById("cdcCancel").onclick=()=>{ document.getElementById("cdcModal").style.display="none"; _cdConfirmOpen=false; cdAbort("أُلغي التعديل وأُعيدت البيانات كما كانت"); };
+}
+function cdAbort(msg){
+  const e=_cdEdit; if(!e) return;
+  // نُعيد فقط سجلات اليوم المغلق التي تغيّرت (لا نمسّ ما سُجّل اليوم أثناء المهلة)
+  const recs=cdRecDiff(e.bak); _cdEdit=null; const now=iso(new Date());
+  recs.forEach(r=>{ const arr=state[r.arr]||[]; const bakRec=(e.bak[r.arr]||[]).find(x=>x.id===r.id);
+    if(r.added){ state[r.arr]=arr.filter(x=>x.id!==r.id); tomb(r.id); return; }
+    if(!bakRec) return; const restored=Object.assign({},bakRec,{editedAt:now}); if(state.deleted) delete state.deleted["rec:"+r.id];
+    const i=arr.findIndex(x=>x.id===r.id); if(i>=0) arr[i]=restored; else arr.push(restored); });
+  attachPhotos(_photoCache);
+  const c=closingOf(e.day); if(c&&c.status==="pending"){ c.status=(c.edits||0)>0?"edited":"locked"; delete c.pendingAt; c.editedAt=iso(new Date()); }
+  logActivity("إلغاء تعديل يوم مغلق", e.day); save(); render(); toast(msg||"أُلغي التعديل");
+}
+function cdCommit(recs,after,totals,adj){
+  const e=_cdEdit; _cdEdit=null; if(!e) return;
+  const now=iso(new Date()), c=closingOf(e.day); const editId=uid();
+  const adjIds=[];
+  adj.forEach(a=>{ const id="LaundryAdj-"+e.day+"-"+a.k+"-"+Date.now().toString(36); state.storeCash.push({id,type:a.d>0?"in":"out",amount:Math.round(Math.abs(a.d)),reason:"تسوية دخل المغسلة "+e.day+" ("+(a.d>0?"+":"−")+money(Math.abs(a.d))+")",kind:"lndAdj",day:e.day,ref:transferIdOf(e.day,a.k),editId,customerId:null,payMethod:a.k,date:now,by:currentUser,editedAt:now}); adjIds.push(id);
+    if(c){ c.transferred=c.transferred||{}; c.transferred[a.k]=a.neu; } });
+  const kind=totals.length?totals.filter(t=>!/المدفوع من|صافي المستلم/.test(t.t)).map(t=>t.t).join("، ")||"إجماليات":"بيانات";
+  const first=totals.find(t=>PAY_METHODS.some(m=>m.t===t.t))||totals.find(t=>t.t==="صافي المستلم")||totals[0]||null;
+  const entry={id:editId,cid:c?(c.cid||c.id):closingIdOf(e.day),day:e.day,ts:now,by:currentUser,role:currentRole,reason:e.reason,kind,
+    before:e.before,after,totals,records:recs,adjustments:adj.map((a,i)=>Object.assign({},a,{id:adjIds[i]})),
+    headline:first?{t:first.t,before:first.before,after:first.after,diff:first.diff}:null,transferBefore:e.before.received,transferAfter:after.received};
+  state.closedDayEdits.push(entry);
+  if(c){ c.edits=(c.edits||0)+1; c.status="edited"; delete c.pendingAt; c.lastEditId=editId; c.verify=verifyDay(e.day); c.editedAt=now; entry.verified=c.verify.ok; entry.issues=c.verify.issues; }
+  logActivity("تعديل يوم مغلق", e.day+" · "+kind+" · "+e.reason);
+  notifyTelegram("🔵 تعديل يوم مغلق "+e.day+"\n"+(first?(first.t+": "+money(first.before)+" → "+money(first.after)+" ("+(first.diff>0?"+":"−")+money(Math.abs(first.diff))+")\n"):"")+(adj.length?("تسوية المتجر: "+adj.map(a=>(a.d>0?"+":"−")+money(Math.abs(a.d))).join(" ")+"\n"):"")+"السبب: "+e.reason+"\nبواسطة: "+currentUser+(c&&!c.verify.ok?("\n⚠️ عدم تطابق: "+c.verify.issues.join(" | ")):""));
+  save(); render();
+  if(c&&!c.verify.ok){ toast("⚠️ عدم تطابق مالي بعد التعديل — راجع تقفيل اليوم"); try{ alert("⚠️ عدم تطابق مالي في يوم "+e.day+":\n"+c.verify.issues.join("\n")+"\n\nالتعديل مسجّل لكن اليوم مُعلَّم «غير متطابق» حتى تُعالَج المشكلة."); }catch(_){ } }
+  else toast("✅ تم التعديل وتوثيقه"+(adj.length?" وأُضيفت التسوية للمتجر":""));
+}
+function closedEditsReportHTML(){
+  const list=(state.closedDayEdits||[]).slice().sort((a,b)=>(b.ts||"").localeCompare(a.ts||""));
+  const rows=list.slice(0,50).map(x=>{ const h=x.headline; return `<tr data-cde="${x.id}" style="cursor:pointer"><td>${x.day}</td><td>${_esc(x.kind||"")}${x.verified===false?' <span class="badge b-unpaid">⚠️</span>':''}</td><td class="amt">${h?money(h.before):"—"}</td><td class="amt">${h?money(h.after):"—"}</td><td class="amt" style="color:${h&&h.diff>0?'var(--ready)':'var(--unpaid)'}">${h?((h.diff>0?"+":"−")+money(Math.abs(h.diff))):"—"}</td><td>${_esc(x.reason||"")}</td><td>${_esc(x.by||"")}</td><td>${timeStr(x.ts)}</td></tr>`; }).join("");
+  return `<div class="panel" style="margin-bottom:16px"><h3>📋 سجل تعديلات الأيام المغلقة</h3>
+    ${list.length?`<div style="overflow:auto"><table class="tbl"><thead><tr><th>التاريخ</th><th>نوع التعديل</th><th>قبل</th><th>بعد</th><th>الفرق</th><th>السبب</th><th>المستخدم</th><th>الوقت</th></tr></thead><tbody>${rows}</tbody></table></div><div class="hint">اضغط أي سطر لعرض كل التفاصيل.</div>`:`<div class="hint">لا توجد تعديلات على أيام مغلقة بعد.</div>`}</div>`;
+}
+function openClosedEdit(id){
+  const x=(state.closedDayEdits||[]).find(e=>e.id===id); if(!x) return;
+  document.getElementById("receiptContent").innerHTML=`<div class="rcpt">${rcptHeader("سجل تعديل يوم مغلق — "+x.day)}
+    <div class="rcpt-row"><span>الوقت</span><b>${ymd(x.ts)} ${timeStr(x.ts)}</b></div><div class="rcpt-row"><span>المعدِّل</span><b>${_esc(x.by||"")} (${x.role==="owner"?"مالك":x.role==="manager"?"مدير":x.role||""})</b></div>
+    <div class="rcpt-row"><span>نوع التعديل</span><b>${_esc(x.kind||"")}</b></div><div class="rcpt-row"><span>السبب</span><b>${_esc(x.reason||"")}</b></div>
+    <div class="rcpt-sec">السجلات المعدّلة</div>${(x.records||[]).map(r=>`<div class="rcpt-row" style="flex-direction:column;align-items:flex-start"><b>${r.kind}: ${_esc(r.label)}</b>${r.changes.map(ch=>`<span style="font-size:.85rem">${ch[0]}: ${_esc(ch[1])} → <b>${_esc(ch[2])}</b></span>`).join("")}</div>`).join("")}
+    ${(x.totals||[]).length?`<div class="rcpt-sec">الإجماليات</div>${x.totals.map(t=>`<div class="rcpt-row"><span>${t.t}</span><b>${money(t.before)} → ${money(t.after)} (${t.diff>0?"+":"−"}${money(Math.abs(t.diff))})</b></div>`).join("")}`:""}
+    <div class="rcpt-sec">🏪 المتجر</div><div class="rcpt-row"><span>المحوّل قبل التعديل</span><b>${money(x.transferBefore||0)}</b></div><div class="rcpt-row"><span>الصحيح بعد التعديل</span><b>${money(x.transferAfter||0)}</b></div>
+    ${(x.adjustments||[]).length?x.adjustments.map(a=>`<div class="rcpt-row"><span>تسوية ${a.t} (${_esc(a.id||"")} ← ${_esc(transferIdOf(x.day,a.k))})</span><b>${a.d>0?"+":"−"}${money(Math.abs(a.d))} ${CUR}</b></div>`).join(""):`<div class="hint" style="text-align:center">لا تسوية</div>`}
+    <div class="rcpt-paid ${x.verified===false?'no':'ok'}">${x.verified===false?"⚠️ عدم تطابق: "+_esc((x.issues||[]).join(" | ")):"✔ التطابق المالي سليم"}</div>
+    ${rcptFooter("")}</div>`;
+  document.getElementById("receiptModal").style.display="flex";
+}
 function closingRows(s){
   return [
     ["h","💰 دخل المغسلة"],
@@ -2040,6 +2230,9 @@ function closingRows(s){
 }
 /* ================= جرد الصندوق عند التقفيل ================= */
 function closingOf(day){ return (state.closings||[]).find(c=>c.day===day&&!c.cancelled)||null; }
+// سجل الجرد = سجل إغلاق فيه عدّ فعلي (سجل الإغلاق 🔒 وحده بلا جرد لا يُعرض كجرد)
+function cashCountOf(day){ const c=closingOf(day); return (c&&typeof c.actual==="number")?c:null; }
+function hasCashCount(c){ return !!c && typeof c.actual==="number"; }
 function saveCashCount(day, actual, note){
   const s=periodSummary(day,day), expected=s.pay.cash.net;
   let c=closingOf(day); const d=iso(new Date());
@@ -2049,9 +2242,9 @@ function saveCashCount(day, actual, note){
   if(c.diff!==0) notifyTelegram("⚠️ جرد الصندوق "+day+"\n"+(c.diff>0?"زيادة":"عجز")+": "+money(Math.abs(c.diff))+" "+CUR+"\nالمتوقع: "+money(c.expected)+" — الفعلي: "+money(c.actual)+"\nبواسطة: "+currentUser+(c.note?("\nملاحظة: "+c.note):""));
   save(); return c;
 }
-function cashCountText(day){ const c=closingOf(day); if(!c) return ""; return `\n━━━━━━━━━━\n*🧮 جرد الصندوق*\nالمتوقع: ${money(c.expected)}\nالفعلي: ${money(c.actual)}\n*${c.diff===0?"مطابق ✓":(c.diff>0?"زيادة ":"عجز ")+money(Math.abs(c.diff))+" "+CUR}*${c.note?("\n"+c.note):""}\nبواسطة ${c.by||""}`; }
+function cashCountText(day){ const c=cashCountOf(day); if(!c) return ""; return `\n━━━━━━━━━━\n*🧮 جرد الصندوق*\nالمتوقع: ${money(c.expected)}\nالفعلي: ${money(c.actual)}\n*${c.diff===0?"مطابق ✓":(c.diff>0?"زيادة ":"عجز ")+money(Math.abs(c.diff))+" "+CUR}*${c.note?("\n"+c.note):""}\nبواسطة ${c.by||""}`; }
 function closingsReportHTML(){
-  const L=(state.closings||[]).filter(c=>!c.cancelled).slice().sort((a,b)=>b.day.localeCompare(a.day)).slice(0,14);
+  const L=(state.closings||[]).filter(c=>!c.cancelled&&hasCashCount(c)).slice().sort((a,b)=>b.day.localeCompare(a.day)).slice(0,14);
   const rows=L.length?L.map(c=>`<tr><td>${c.day}</td><td class="amt" style="text-align:left">${money(c.expected)}</td><td class="amt" style="text-align:left">${money(c.actual)}</td><td class="amt" style="text-align:left;font-weight:800;color:${c.diff===0?'var(--ready)':c.diff>0?'var(--wash)':'var(--unpaid)'}">${c.diff===0?"✓ مطابق":(c.diff>0?"+":"−")+money(Math.abs(c.diff))}</td><td>${_esc(c.by||"")}${c.note?`<div class="hint">${_esc(c.note)}</div>`:""}</td></tr>`).join("")
     :`<tr><td colspan="5"><div class="hint">لا يوجد جرد بعد — يُسجَّل من «🧾 تقفيل اليوم» في الرئيسية.</div></td></tr>`;
   const shortTot=sum(L.filter(c=>c.diff<0),c=>-c.diff);
@@ -2167,7 +2360,7 @@ function exportCSV(from,to){
   sec("مشتريات المتجر",["التاريخ","رقم","المورّد","الأصناف","الإجمالي","المدفوع","المتبقي","بواسطة"],(state.storePurchases||[]).filter(o=>F(o.date)).map(o=>[ymd(o.date),o.no,o.supplier,(o.items||[]).map(i=>i.name+" ×"+i.qty).join(" | "),o.total,purPaidAmt(o),purOutstanding(o),o.by]));
   sec("حركات الصندوق",["التاريخ","النوع","البيان","المبلغ","طريقة الدفع","بواسطة"],(state.storeCash||[]).filter(m=>F(m.date)).map(m=>[ymd(m.date),m.type==="in"?"وارد":"صادر",m.reason,m.amount,pmLabel(m.payMethod),m.by]));
   sec("المصروفات",["التاريخ","الفئة","البيان","المبلغ","طريقة الدفع","بواسطة"],(state.expenses||[]).filter(e=>F(e.date)).map(e=>[ymd(e.date),e.category,e.reason,e.amount,pmLabel(e.payMethod),e.by]));
-  sec("جرد الصندوق",["اليوم","المتوقع","الفعلي","الفرق","ملاحظة","بواسطة"],(state.closings||[]).filter(c=>c.day>=from&&c.day<=to).map(c=>[c.day,c.expected,c.actual,c.diff,c.note,c.by]));
+  sec("جرد الصندوق",["اليوم","المتوقع","الفعلي","الفرق","ملاحظة","بواسطة"],(state.closings||[]).filter(c=>hasCashCount(c)&&c.day>=from&&c.day<=to).map(c=>[c.day,c.expected,c.actual,c.diff,c.note,c.by]));
   const ps=periodSummary(from,to), pb=payBreakdown(F);
   sec("الملخص",["البند","المبلغ"],[["دخل السيارات",ps.cars],["دخل السجاد",ps.rugs],["دخل الملابس",ps.lnd],["إجمالي دخل المغسلة",ps.lndInc],["العمّال",ps.wages],["مصروفات عامة",ps.gen],["العدّادات",ps.util],["مواد من المتجر",ps.intPurch],["ربح المغسلة",ps.lndProfit],["مبيعات المتجر",ps.storeSales],["هامش المتجر",ps.storeMargin],["الربح المجمّع",ps.group],...PAY_METHODS.map(m=>["دخل "+m.t,pb[m.k].inc])]);
   return "﻿"+L.join("\r\n");
@@ -2195,15 +2388,20 @@ function openClosing(day){
     <div class="rcpt">
       ${rcptHeader("تقفيل اليوم — "+day)}
       <div class="no-print" style="display:flex;gap:8px;align-items:center;margin-bottom:8px"><input type="date" id="closingDay" value="${day}" max="${ymd(new Date())}" style="flex:1"><button class="mini" id="closingWa">📤 إرسال واتساب</button></div>
+      <div style="text-align:center;margin-bottom:6px">${dayStatusChip(day)}</div>
+      ${(()=>{ const c=closingOf(day); if(!(c&&c.locked)) return ""; const t=dayTransferred(day); return `<div class="rcpt-sec">🔒 الإغلاق</div><div class="rcpt-row"><span>أُغلق</span><b>${ymd(c.closedAt||c.date)} ${timeStr(c.closedAt||c.date)} · ${_esc(c.closedBy||"")}</b></div><div class="rcpt-row"><span>المعرّف</span><b dir="ltr" style="font-size:.75rem">${_esc(c.cid||c.id)}</b></div>${PAY_METHODS.filter(m=>t[m.k]).map(m=>`<div class="rcpt-row"><span>محوّل للمتجر ${m.ic} ${m.t}</span><b>${money(t[m.k])}</b></div>`).join("")}<div class="rcpt-row" style="font-weight:800"><span>إجمالي المحوّل للمتجر</span><b>${money(t.total)}</b></div>${(c.edits||0)?`<div class="rcpt-row"><span>تعديلات بعد الإغلاق</span><b>${c.edits}</b></div>`:""}${c.verify&&!c.verify.ok?`<div class="rcpt-paid no">⚠️ ${_esc(c.verify.issues.join(" | "))}</div>`:""}`; })()}
       ${body}
-      ${(()=>{ const c=closingOf(day); return c?`<div class="rcpt-sec">🧮 جرد الصندوق</div><div class="rcpt-row"><span>المتوقع</span><b>${money(c.expected)}</b></div><div class="rcpt-row"><span>الفعلي في الدرج</span><b>${money(c.actual)}</b></div><div class="rcpt-paid ${c.diff===0?'ok':'no'}">${c.diff===0?"✔ مطابق":(c.diff>0?"زيادة ":"⚠️ عجز ")+money(Math.abs(c.diff))+" "+CUR}</div>${c.note?`<div class="hint" style="text-align:center">${_esc(c.note)}</div>`:""}<div class="hint" style="text-align:center">بواسطة ${_esc(c.by||"")} · ${ymd(c.editedAt||c.date)} ${timeStr(c.editedAt||c.date)}</div>`:""; })()}
-      ${currentRole!=="worker"?`<div class="no-print cash-count"><div class="cc-title">🧮 جرد الكاش ${closingOf(day)?"(تعديل)":""}</div><div class="hint">الكاش المتوقع من حركات اليوم: <b>${money(s.pay.cash.net)} ${CUR}</b></div>
-        <div class="row2" style="margin-top:6px"><div class="field"><label>الكاش الفعلي في الدرج</label><input id="ccActual" type="number" min="0" value="${closingOf(day)?closingOf(day).actual:""}" placeholder="عدّ الدرج"></div><div class="field"><label>ملاحظة</label><input id="ccNote" type="text" value="${_esc((closingOf(day)||{}).note||"")}" placeholder="اختياري"></div></div>
-        <button class="btn-primary" id="ccSave" style="width:100%">💾 حفظ الجرد</button></div>`:""}
+      ${(()=>{ const c=cashCountOf(day); return c?`<div class="rcpt-sec">🧮 جرد الصندوق</div><div class="rcpt-row"><span>المتوقع</span><b>${money(c.expected)}</b></div><div class="rcpt-row"><span>الفعلي في الدرج</span><b>${money(c.actual)}</b></div><div class="rcpt-paid ${c.diff===0?'ok':'no'}">${c.diff===0?"✔ مطابق":(c.diff>0?"زيادة ":"⚠️ عجز ")+money(Math.abs(c.diff))+" "+CUR}</div>${c.note?`<div class="hint" style="text-align:center">${_esc(c.note)}</div>`:""}<div class="hint" style="text-align:center">بواسطة ${_esc(c.by||"")} · ${ymd(c.editedAt||c.date)} ${timeStr(c.editedAt||c.date)}</div>`:""; })()}
+      ${currentRole!=="worker"?`<div class="no-print cash-count"><div class="cc-title">🧮 جرد الكاش ${cashCountOf(day)?"(تعديل)":""}</div><div class="hint">الكاش المتوقع من حركات اليوم: <b>${money(s.pay.cash.net)} ${CUR}</b></div>
+        <div class="row2" style="margin-top:6px"><div class="field"><label>الكاش الفعلي في الدرج</label><input id="ccActual" type="number" min="0" value="${cashCountOf(day)?cashCountOf(day).actual:""}" placeholder="عدّ الدرج"></div><div class="field"><label>ملاحظة</label><input id="ccNote" type="text" value="${_esc((cashCountOf(day)||{}).note||"")}" placeholder="اختياري"></div></div>
+        <button class="btn-primary" id="ccSave" style="width:100%">💾 حفظ الجرد</button></div>
+        <div class="no-print" style="margin-top:8px">${dayIsClosed(day)?`<button class="mini" id="cdRequestBtn" style="width:100%">✏️ طلب تعديل هذا اليوم</button>`:`<button class="btn-primary" id="closeDayBtn" style="width:100%;background:#c0392b;border-color:#c0392b">🔒 إغلاق يوم المغسلة وتحويل الدخل إلى المتجر</button><div class="hint" style="text-align:center">المستلم فعليًا اليوم: <b>${money(daySnapshot(day).received)} ${CUR}</b> يُحوَّل إلى صندوق المتجر حسب طريقة الدفع. بعد الإغلاق لا تُعدَّل بيانات اليوم إلا بطلب موثق.</div>`}</div>`:""}
       ${rcptFooter(currentUser?("أعدّه: "+_esc(currentUser)):"")}
     </div>`;
   document.getElementById("receiptModal").style.display="flex";
   const dIn=document.getElementById("closingDay"); if(dIn) dIn.onchange=()=>openClosing(dIn.value||day);
+  const cdb=document.getElementById("closeDayBtn"); if(cdb) cdb.onclick=()=>{ if(!confirm("إغلاق يوم "+day+" وتحويل "+money(daySnapshot(day).received)+" "+CUR+" إلى صندوق المتجر؟\nبعد الإغلاق لا تُعدَّل بيانات اليوم إلا بطلب تعديل موثق.")) return; requireCode(()=>{ const r=closeDay(day); toast(r.ok?"🔒 أُغلق اليوم وحُوّل الدخل إلى المتجر":r.msg); openClosing(day); }, SECRET_CODE, "كود إغلاق اليوم", "إغلاق اليوم يتطلّب كود التحقق."); };
+  const cdr=document.getElementById("cdRequestBtn"); if(cdr) cdr.onclick=()=>{ document.getElementById("receiptModal").style.display="none"; closedDayGate(day, ()=>{ toast("افتح شاشة السيارات/السجاد/الملابس/المصروفات وعدّل ما تريد — سيظهر ملخص التأكيد عند الحفظ"); }); };
   const ccs=document.getElementById("ccSave"); if(ccs) ccs.onclick=()=>{ const v=document.getElementById("ccActual").value; if(v===""||!(+v>=0)) return toast("أدخل الكاش الفعلي"); const c=saveCashCount(day,+v,document.getElementById("ccNote").value); toast(c.diff===0?"✔ الصندوق مطابق":(c.diff>0?"زيادة ":"⚠️ عجز ")+money(Math.abs(c.diff))+" "+CUR); openClosing(day); };
   const wa=document.getElementById("closingWa"); if(wa) wa.onclick=()=>{
     const text=closingText(day,rows)+cashCountText(day); logActivity("تقفيل اليوم",day+" · ربح "+money(s.group)+" "+CUR);
@@ -2231,8 +2429,8 @@ function payBreakdown(F){
   (state.carpetOrders||[]).forEach(o=>{ if(!o.cancelled&&o.paid&&F(o.paidDate||o.deliveredDate||o.date)) at(o.payMethod).lnd+=+o.price||0; });
   (state.laundryOrders||[]).forEach(o=>{ if(!o.cancelled&&o.paid&&F(o.paidDate||o.deliveredDate||o.date)) at(o.payMethod).lnd+=+o.price||0; });
   const internal=new Set((state.storeCustomers||[]).filter(c=>c.isLaundry).map(c=>c.id));
-  (state.storeCash||[]).forEach(m=>{ if(!F(m.date)) return; if(m.customerId&&internal.has(m.customerId)) return; if(m.type==="in") at(m.payMethod).store+=+m.amount||0; else at(m.payMethod).out+=+m.amount||0; });
-  (state.expenses||[]).forEach(e=>{ if(F(e.date)) at(e.payMethod).out+=+e.amount||0; });
+  (state.storeCash||[]).forEach(m=>{ if(!F(m.date)) return; if(m.kind==="lndTransfer"||m.kind==="lndAdj") return; if(m.customerId&&internal.has(m.customerId)) return; if(m.type==="in") at(m.payMethod).store+=+m.amount||0; else at(m.payMethod).out+=+m.amount||0; });
+  (state.expenses||[]).forEach(e=>{ if(!e.cancelled&&F(e.date)) at(e.payMethod).out+=+e.amount||0; });
   PAY_METHODS.forEach(m=>{ const x=r[m.k]; x.inc=x.lnd+x.store; x.net=x.inc-x.out; });
   return r;
 }
@@ -2638,9 +2836,9 @@ function storeScreenCashbox(){
   const moves=(state.storeCash||[]).filter(m=>inRange(m.date)).slice().reverse().slice(0,60).map(m=>`
     <tr><td>${ymd(m.date)}<div style="font-size:.7rem;color:var(--muted)">${timeStr(m.date)}</div></td>
       <td><span class="badge ${m.type==='in'?'b-paid':'b-unpaid'}">${m.type==='in'?'وارد':'صادر'}</span></td>
-      <td>${m.reason||'—'}<div style="font-size:.7rem;color:var(--muted)">${pmLabel(m.payMethod)}</div></td>
+      <td>${m.reason||'—'}${m.kind==='lndTransfer'?' <span class="badge b-done">🔒 تحويل</span>':m.kind==='lndAdj'?` <span class="badge b-wash">تسوية</span>`:''}<div style="font-size:.7rem;color:var(--muted)">${pmLabel(m.payMethod)}${m.ref&&m.kind==='lndAdj'?` · مرتبط بـ ${_esc(m.ref)}`:''}</div></td>
       <td class="amt" style="color:${m.type==='in'?'var(--ready)':'var(--unpaid)'}">${m.type==='in'?'+':'−'}${money(m.amount)}</td>
-      <td style="text-align:left"><button class="icon-btn" data-cash-del="${m.id}" title="حذف">${svg(I.trash)}</button></td></tr>`).join("")||`<tr><td colspan="5"><div class="empty">${svg(I.empty)}لا توجد حركات في هذه الفترة.</div></td></tr>`;
+      <td style="text-align:left">${m.kind?'':`<button class="icon-btn" data-cash-del="${m.id}" title="حذف">${svg(I.trash)}</button>`}</td></tr>`).join("")||`<tr><td colspan="5"><div class="empty">${svg(I.empty)}لا توجد حركات في هذه الفترة.</div></td></tr>`;
   return `
     <div class="panel" style="text-align:center;margin-bottom:14px">
       <div class="l" style="color:var(--muted);font-weight:700">رصيد الصندوق الحالي</div>
@@ -2864,7 +3062,7 @@ function bindStore(){
   // Cashbox
   const ci=document.getElementById("cashInBtn"); if(ci) ci.onclick=()=>{ const a=+document.getElementById("cashAmt").value||0; const r=(document.getElementById("cashReason").value||"").trim(); if(!(a>0)) return toast("أدخل مبلغًا"); addCashMove("in",a,r||"إيداع يدوي",null,null,pmVal("cashPm")); logActivity("إيداع صندوق",money(a)+" "+CUR); toast("تم الإيداع"); render(); };
   const co=document.getElementById("cashOutBtn"); if(co) co.onclick=()=>{ const a=+document.getElementById("cashAmt").value||0; const r=(document.getElementById("cashReason").value||"").trim(); if(!(a>0)) return toast("أدخل مبلغًا"); addCashMove("out",a,r||"سحب يدوي",null,null,pmVal("cashPm")); logActivity("سحب صندوق",money(a)+" "+CUR); toast("تم السحب"); render(); };
-  document.querySelectorAll("[data-cash-del]").forEach(b=>b.onclick=()=>{ requireCode(()=>{ tomb(b.dataset.cashDel); state.storeCash=state.storeCash.filter(x=>x.id!==b.dataset.cashDel); toast("تم الحذف"); render(); }, SECRET_CODE, "كود الحذف", "حذف حركة الصندوق يتطلب الكود."); });
+  document.querySelectorAll("[data-cash-del]").forEach(b=>b.onclick=()=>{ const m=(state.storeCash||[]).find(x=>x.id===b.dataset.cashDel); if(m&&m.kind) return toast("🔒 حركة إغلاق/تسوية — لا تُحذف"); requireCode(()=>{ tomb(b.dataset.cashDel); state.storeCash=state.storeCash.filter(x=>x.id!==b.dataset.cashDel); toast("تم الحذف"); render(); }, SECRET_CODE, "كود الحذف", "حذف حركة الصندوق يتطلب الكود."); });
   // store pay modal buttons
   const spOk=document.getElementById("storePayOk"); if(spOk) spOk.onclick=confirmStorePay;
   const spCancel=document.getElementById("storePayCancel"); if(spCancel) spCancel.onclick=()=>{ document.getElementById("storePayModal").style.display="none"; _storePayCtx=null; };
@@ -3087,8 +3285,8 @@ function expGeneral(){
   const total=manualExp(e=>inRange(e));
   const rows=today.length?today.map(e=>`
     <tr><td>${ymd(e.date)}<div style="font-size:.7rem;color:var(--muted)">${timeStr(e.date)}</div></td><td><span class="badge b-done">${e.category}</span></td>
-      <td>${e.reason||"—"}${e.recurringId?' <span class="badge b-done">ثابت</span>':''}${pmTag(e)?`<div style="font-size:.7rem;color:var(--brand)">${pmLabel(e.payMethod)}</div>`:""}</td><td class="amt">${money(e.amount)}</td>
-      <td style="text-align:left"><button class="icon-btn" data-del-exp="${e.id}" title="حذف">${svg(I.trash)}</button></td></tr>`).join("")
+      <td>${e.reason||"—"}${e.recurringId?' <span class="badge b-done">ثابت</span>':''}${e.cancelled?' <span class="badge b-unpaid">ملغى</span>':''}${pmTag(e)?`<div style="font-size:.7rem;color:var(--brand)">${pmLabel(e.payMethod)}</div>`:""}</td><td class="amt" style="${e.cancelled?'text-decoration:line-through;color:var(--muted)':''}">${money(e.amount)}</td>
+      <td style="text-align:left">${e.cancelled?"":`<button class="icon-btn" data-del-exp="${e.id}" title="حذف">${svg(I.trash)}</button>`}</td></tr>`).join("")
     :`<tr><td colspan="5"><div class="empty">${svg(I.empty)}لا توجد مصروفات في هذه الفترة.</div></td></tr>`;
   const opts=EXP_CATS.map(c=>`<option value="${c}">${c}</option>`).join("");
   const reasonOpts=[...new Set(state.expenses.map(e=>(e.reason||"").trim()).filter(Boolean))].map(r=>`<option value="${r}"></option>`).join("");
@@ -3377,6 +3575,7 @@ function openMonthlyPrint(){
 }
 function bindReports(){
   if(state.tab!=="reports") return;
+  document.querySelectorAll("[data-cde]").forEach(tr=>tr.onclick=()=>openClosedEdit(tr.dataset.cde));
   const sel=document.getElementById("repMonth"); if(sel) sel.onchange=()=>{ _repMonth=sel.value; render(); };
   const wa=document.getElementById("repMonthWa"); if(wa) wa.onclick=()=>{ const text=monthlyText(); try{ if(navigator.share){ navigator.share({text}).catch(()=>{}); return; } }catch(e){} window.open("https://wa.me/?text="+encodeURIComponent(text),"_blank"); };
   const pr=document.getElementById("repMonthPrint"); if(pr) pr.onclick=openMonthlyPrint;
@@ -3459,6 +3658,7 @@ function screenReports(){
     ${payBreakdownHTML(UF,"الدخل حسب طريقة الدفع ("+uPeriod+")")}
     ${workersReportHTML(UF,uPeriod)}
     ${closingsReportHTML()}
+    ${closedEditsReportHTML()}
     ${monthlyReportHTML()}
     <div class="grid metrics" style="margin-bottom:16px">
       ${card("الدخل",dInc,mInc,"var(--ready)")}
@@ -3586,12 +3786,13 @@ function bindScreen(){
   document.querySelectorAll("[data-car-receipt]").forEach(b=>b.onclick=()=>{ const o=state.carOps.find(x=>x.id===b.dataset.carReceipt); if(o) openCarReceipt(o); });
   document.querySelectorAll("[data-carwa]").forEach(b=>b.onclick=()=>{ const o=state.carOps.find(x=>x.id===b.dataset.carwa); if(o) openCarChat(o); });
   document.querySelectorAll("[data-carphotos]").forEach(b=>b.onclick=()=>{ const o=state.carOps.find(x=>x.id===b.dataset.carphotos); if(o) shareCarImages(o); });
-  document.querySelectorAll("[data-edit-car]").forEach(b=>b.onclick=()=>{ const o=state.carOps.find(x=>x.id===b.dataset.editCar); if(!o)return; gateDay(o.date,()=>openEditCar(b.dataset.editCar)); });
+  document.querySelectorAll("[data-edit-car]").forEach(b=>b.onclick=()=>{ const o=state.carOps.find(x=>x.id===b.dataset.editCar); if(!o)return; gateRec(o,()=>openEditCar(b.dataset.editCar)); });
   document.querySelectorAll("[data-carpay]").forEach(b=>b.onclick=()=>{ _payCtx={type:"car",id:b.dataset.carpay}; const pd=document.getElementById("payDate"); if(pd) pd.value=ymd(new Date()); document.getElementById("payModal").style.display="flex"; });
-  document.querySelectorAll("[data-edit-order]").forEach(b=>b.onclick=()=>{ const o=state.carpetOrders.find(x=>x.id===b.dataset.editOrder); if(!o)return; gateDay(o.date,()=>openEditOrder(b.dataset.editOrder)); });
-  document.querySelectorAll("[data-cancel-car]").forEach(b=>bindHold(b, ()=>{ const o=state.carOps.find(x=>x.id===b.dataset.cancelCar); if(!o)return; gateDay(o.date,()=>toggleCancelCar(b.dataset.cancelCar)); }, 1000));
-  document.querySelectorAll("[data-cancel-order]").forEach(b=>bindHold(b, ()=>{ const o=state.carpetOrders.find(x=>x.id===b.dataset.cancelOrder); if(!o)return; gateDay(o.date,()=>toggleCancelOrder(b.dataset.cancelOrder)); }, 1000));
+  document.querySelectorAll("[data-edit-order]").forEach(b=>b.onclick=()=>{ const o=state.carpetOrders.find(x=>x.id===b.dataset.editOrder); if(!o)return; gateRec(o,()=>openEditOrder(b.dataset.editOrder)); });
+  document.querySelectorAll("[data-cancel-car]").forEach(b=>bindHold(b, ()=>{ const o=state.carOps.find(x=>x.id===b.dataset.cancelCar); if(!o)return; gateRec(o,()=>toggleCancelCar(b.dataset.cancelCar)); }, 1000));
+  document.querySelectorAll("[data-cancel-order]").forEach(b=>bindHold(b, ()=>{ const o=state.carpetOrders.find(x=>x.id===b.dataset.cancelOrder); if(!o)return; gateRec(o,()=>toggleCancelOrder(b.dataset.cancelOrder)); }, 1000));
   document.querySelectorAll("[data-del-car]").forEach(b=>b.onclick=()=>{
+    const o=state.carOps.find(x=>x.id===b.dataset.delCar); if(o && recClosed(o)) return closedDayGate(recClosed(o), ()=>cancelDocumented(o,"إلغاء غسيل سيارة"));
     requireCode(()=>{ tomb(b.dataset.delCar); state.carOps=state.carOps.filter(o=>o.id!==b.dataset.delCar); toast("تم الحذف"); render(); }, SECRET_CODE, "كود الحذف", "أدخل كود الحذف لتأكيد العملية.");});
   document.querySelectorAll("[data-del-cust]").forEach(b=>b.onclick=()=>{
     requireCode(()=>{ tombCust(b.dataset.delCust); delete state.customers[b.dataset.delCust]; toast("تم حذف الزبون"); render(); }, SECRET_CODE, "كود الحذف", "أدخل كود الحذف لتأكيد العملية.");});
@@ -3670,12 +3871,13 @@ function bindScreen(){
   document.querySelectorAll("[data-pay]").forEach(b=>b.onclick=()=>{
     const o=state.carpetOrders.find(x=>x.id===b.dataset.pay);
     if(!o) return;
-    if(o.paid){ gateDay(o.date,()=>requireCode(()=>{ o.paid=false; delete o.paidDate; delete o.payMethod; o.editedAt=iso(new Date()); logActivity("إلغاء دفع",(o.type||o.vehicle||"")); toast("أُلغي الدفع"); render(); }, SECRET_CODE, "كود الحذف", "إلغاء الدفع يتطلب كود الحذف.")); }
+    if(o.paid){ gateRec(o,()=>requireCode(()=>{ o.paid=false; delete o.paidDate; delete o.payMethod; o.editedAt=iso(new Date()); logActivity("إلغاء دفع",(o.type||o.vehicle||"")); toast("أُلغي الدفع"); render(); }, SECRET_CODE, "كود الحذف", "إلغاء الدفع يتطلب كود الحذف.")); }
     else { _payCtx={type:"order",id:o.id}; const pd=document.getElementById("payDate"); if(pd) pd.value=ymd(new Date()); document.getElementById("payModal").style.display="flex"; }
   });
   document.querySelectorAll("[data-del-order]").forEach(b=>b.onclick=()=>{
     const o=state.carpetOrders.find(x=>x.id===b.dataset.delOrder);
     const doDel=()=>{ logActivity("حذف طلب أفرشة", (o&&o.type)||""); tomb(b.dataset.delOrder); state.carpetOrders=state.carpetOrders.filter(x=>x.id!==b.dataset.delOrder); toast("تم الحذف"); render(); };
+    if(o && recClosed(o)) return closedDayGate(recClosed(o), ()=>cancelDocumented(o,"إلغاء طلب أفرشة"));
     requireCode(doDel, SECRET_CODE, "كود الحذف", "حذف الطلب يتطلب كود الحذف.");
   });
 
@@ -3725,7 +3927,7 @@ function bindScreen(){
     };
     bindHold(document.getElementById("lndSave"), doLndSave, 1000);
   }
-  document.querySelectorAll("[data-lnd-edit]").forEach(b=>b.onclick=()=>{ const o=(state.laundryOrders||[]).find(x=>x.id===b.dataset.lndEdit); if(!o)return; gateDay(o.date,()=>openEditLnd(o.id)); });
+  document.querySelectorAll("[data-lnd-edit]").forEach(b=>b.onclick=()=>{ const o=(state.laundryOrders||[]).find(x=>x.id===b.dataset.lndEdit); if(!o)return; gateRec(o,()=>openEditLnd(o.id)); });
   document.querySelectorAll("[data-lnd-status]").forEach(b=>b.onclick=()=>{
     const o=(state.laundryOrders||[]).find(x=>x.id===b.dataset.lndStatus);
     if(!o) return;
@@ -3751,7 +3953,7 @@ function bindScreen(){
   document.querySelectorAll("[data-lnd-pay]").forEach(b=>b.onclick=()=>{
     const o=(state.laundryOrders||[]).find(x=>x.id===b.dataset.lndPay);
     if(!o) return;
-    if(o.paid){ gateDay(o.date,()=>requireCode(()=>{ o.paid=false; delete o.paidDate; delete o.payMethod; o.editedAt=iso(new Date()); logActivity("إلغاء دفع",(o.type||"")+" (ملابس)"); toast("أُلغي الدفع"); render(); }, SECRET_CODE, "كود الحذف", "إلغاء الدفع يتطلب كود الحذف.")); }
+    if(o.paid){ gateRec(o,()=>requireCode(()=>{ o.paid=false; delete o.paidDate; delete o.payMethod; o.editedAt=iso(new Date()); logActivity("إلغاء دفع",(o.type||"")+" (ملابس)"); toast("أُلغي الدفع"); render(); }, SECRET_CODE, "كود الحذف", "إلغاء الدفع يتطلب كود الحذف.")); }
     else { _payCtx={type:"laundry",id:o.id}; const pd=document.getElementById("payDate"); if(pd) pd.value=ymd(new Date()); document.getElementById("payModal").style.display="flex"; }
   });
   document.querySelectorAll("[data-lnd-cancel]").forEach(b=>bindHold(b,()=>{
@@ -3763,6 +3965,7 @@ function bindScreen(){
   document.querySelectorAll("[data-lnd-del]").forEach(b=>b.onclick=()=>{
     const o=(state.laundryOrders||[]).find(x=>x.id===b.dataset.lndDel);
     const doDel=()=>{ logActivity("حذف طلب ملابس", (o&&o.type)||""); tomb(b.dataset.lndDel); state.laundryOrders=(state.laundryOrders||[]).filter(x=>x.id!==b.dataset.lndDel); toast("تم الحذف"); render(); };
+    if(o && recClosed(o)) return closedDayGate(recClosed(o), ()=>cancelDocumented(o,"إلغاء طلب ملابس"));
     requireCode(doDel, SECRET_CODE, "كود الحذف", "حذف الطلب يتطلب كود الحذف.");
   });
   document.querySelectorAll("[data-lnd-wa]").forEach(b=>b.onclick=()=>{ const o=(state.laundryOrders||[]).find(x=>x.id===b.dataset.lndWa); if(o) openLndWa(o); });
@@ -3791,10 +3994,11 @@ function bindScreen(){
         logActivity("مصروف", (document.getElementById("expCat").value||"")+" · "+fmt(amount)+" "+CUR);
         toast("تمت إضافة المصروف"); render();
       };
-      doAdd();
+      gateDate(expDateV, doAdd);
     };
   }
   document.querySelectorAll("[data-del-exp]").forEach(b=>b.onclick=()=>{
+    const e=state.expenses.find(x=>x.id===b.dataset.delExp); if(e && closedDayOf(e.date)) return closedDayGate(closedDayOf(e.date), ()=>cancelDocumented(e,"إلغاء مصروف"));
     tomb(b.dataset.delExp); state.expenses=state.expenses.filter(e=>e.id!==b.dataset.delExp); toast("تم الحذف"); render(); });
 
   bindRecurring();
@@ -3906,9 +4110,11 @@ const SECRET_CODE="070752";
 let _codeCb=null, _codeExpected=SECRET_CODE;
 function todayStr(){ return ymd(new Date()); }
 function isPastDay(dateIso){ return ymd(dateIso)<todayStr(); }
-function gateDay(dateIso, cb){ if(isPastDay(dateIso)) requireCode(cb, SECRET_CODE, "كود تعديل يوم سابق", "تعديل بيانات يوم سابق يتطلب كود التحقق."); else cb(); }
+function gateDay(dateIso, cb){ const cd=closedDayOf(dateIso); if(cd) return closedDayGate(cd, cb); if(isPastDay(dateIso)) requireCode(cb, SECRET_CODE, "كود تعديل يوم سابق", "تعديل بيانات يوم سابق يتطلب كود التحقق."); else cb(); }
+// يوم السجلّ المالي = يوم التسجيل أو يوم الدفع (المال استُلم يوم الدفع)
+function gateRec(o, cb){ const d1=closedDayOf(o&&o.date), d2=closedDayOf(o&&o.paidDate); if(d1||d2) return closedDayGate(d1||d2, cb); gateDay(o&&o.date, cb); }
 function chosenDateIso(dateStr){ const t=todayStr(); if(!dateStr||dateStr===t) return iso(new Date()); return new Date(dateStr+"T12:00:00").toISOString(); }
-function gateDate(dateStr, commit){ if(dateStr && dateStr!==todayStr()) requireCode(commit, SECRET_CODE, "كود التاريخ السابق", "التسجيل بتاريخ سابق يتطلّب كود التحقق."); else commit(); }
+function gateDate(dateStr, commit){ const d=dateStr||todayStr(); if(dayIsClosed(d)) return closedDayGate(d, commit); if(dateStr && dateStr!==todayStr()) requireCode(commit, SECRET_CODE, "كود التاريخ السابق", "التسجيل بتاريخ سابق يتطلّب كود التحقق."); else commit(); }
 function bindHold(el, cb, ms){
   if(!el) return; ms=ms||1000; el.classList.add("hold-btn");
   let t=null;
@@ -4014,9 +4220,10 @@ function cloudCopy(){
   return stripPhotos(j);
 }
 function verCmp(a,b){ const A=String(a||"0").split(".").map(x=>+x||0), B=String(b||"0").split(".").map(x=>+x||0); for(let i=0;i<3;i++){ if((A[i]||0)!==(B[i]||0)) return (A[i]||0)>(B[i]||0)?1:-1; } return 0; }
-function save(){ saveLocal(); updateCloudBtn("pending"); L_pending_push=true; if(window.cloudReady && !_applyingRemote){ clearTimeout(_pushT); _pushT=setTimeout(()=>{ try{ window.cloudPush(cloudCopy()); L_pending_push=false; }catch(e){ updateCloudBtn("offline"); } }, 600); } }
+let _cdEdit=null, _cdConfirmOpen=false;
+function save(){ saveLocal(); if(_cdEdit && !_cdConfirmOpen){ setTimeout(cdAfterSave,0); } updateCloudBtn("pending"); L_pending_push=true; if(window.cloudReady && !_applyingRemote){ clearTimeout(_pushT); _pushT=setTimeout(()=>{ try{ window.cloudPush(cloudCopy()); L_pending_push=false; }catch(e){ updateCloudBtn("offline"); } }, 600); } }
 function load(){ try{ const d=localStorage.getItem(LS_KEY); if(d) Object.assign(state, JSON.parse(d)); }catch(e){} }
-const SYNC_ARRAYS=["carOps","carpetOrders","laundryOrders","expenses","meters","workers","users","managers","storeProducts","storeSales","storePurchases","storeCustomers","storeCash","suppliers","closings","recurring","activity","logins"];
+const SYNC_ARRAYS=["carOps","carpetOrders","laundryOrders","expenses","meters","workers","users","managers","storeProducts","storeSales","storePurchases","storeCustomers","storeCash","suppliers","closings","recurring","activity","logins","closedDayEdits"];
 function _editedAtOf(id){ for(const k of SYNC_ARRAYS){ const r=(state[k]||[]).find(x=>x&&x.id===id); if(r) return +new Date(r.editedAt||0)||0; } return 0; }
 function tombTs(id){ return Math.max(Date.now(), _editedAtOf(id)+1); }
 function tomb(id){ if(!state.deleted) state.deleted={}; state.deleted["rec:"+id]=tombTs(id); }
@@ -4075,7 +4282,7 @@ function applyRemote(remote){
   const unmigrated = (remote.codesV!==3);
   const L={ carOps:state.carOps||[], carpetOrders:state.carpetOrders||[], expenses:state.expenses||[],
             workers:state.workers||[], meters:state.meters||[], logins:state.logins||[], customers:state.customers||{},
-            users:state.users||[], managers:state.managers||[], activity:state.activity||[], laundryOrders:state.laundryOrders||[] };
+            users:state.users||[], managers:state.managers||[], activity:state.activity||[], laundryOrders:state.laundryOrders||[], closedDayEdits:state.closedDayEdits||[] };
   const localLndPrices=Object.assign({}, state.laundryPrices||{});
   const localSeenTs=state.notifSeenTs||0;
   const localDel=state.deleted||{};
@@ -4097,6 +4304,7 @@ function applyRemote(remote){
   state.users=mergeById(L.users, remote.users, state.deleted);
   state.managers=mergeById(L.managers, remote.managers, state.deleted);
   state.laundryOrders=mergeById(L.laundryOrders, remote.laundryOrders, state.deleted);
+  state.closedDayEdits=mergeById(L.closedDayEdits, remote.closedDayEdits, state.deleted);
   state.laundryPrices=Object.assign({}, remote.laundryPrices||{}, localLndPrices);
   // ====== المتجر والموردون: دمج بالمعرّف مع الصور المحلية (Lstore التُقط قبل الدمج) ======
   state.suppliers=mergeById(Lstore.suppliers, remote.suppliers, state.deleted);
@@ -4362,7 +4570,7 @@ function importData(file){
    - محليًا على الجهاز (IndexedDB) + في السحابة (backups/{يوم}) — آخر 30 يومًا.
    - نسخة لكل يوم تُحدَّث كل 20 دقيقة على الأكثر أثناء العمل.
    - الاسترجاع «يُعيد المفقود فقط» ولا يمسح أي شيء أحدث. */
-const BACKUP_KEEP=30, BACKUP_EVERY=20*60*1000, BACKUP_KEYS=["carOps","carpetOrders","laundryOrders","expenses","meters","workers","users","managers","storeProducts","storeSales","storePurchases","storeCustomers","storeCash","suppliers","closings","recurring"];
+const BACKUP_KEEP=30, BACKUP_EVERY=20*60*1000, BACKUP_KEYS=["carOps","carpetOrders","laundryOrders","expenses","meters","workers","users","managers","storeProducts","storeSales","storePurchases","storeCustomers","storeCash","suppliers","closings","recurring","closedDayEdits"];
 let _lastBackupAt=0;
 function _idb(){ return new Promise((res,rej)=>{ try{ if(!window.indexedDB) return rej(new Error("no idb")); const r=indexedDB.open("sadaqa-backups",3); r.onupgradeneeded=()=>{ const d=r.result; if(!d.objectStoreNames.contains("days")) d.createObjectStore("days",{keyPath:"id"}); if(!d.objectStoreNames.contains("photos")) d.createObjectStore("photos",{keyPath:"k"}); if(!d.objectStoreNames.contains("snaps")) d.createObjectStore("snaps",{keyPath:"id"}); }; r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }catch(e){ rej(e); } }); }
 async function localBackupPut(rec){ const db=await _idb(); return new Promise((res,rej)=>{ const tx=db.transaction("days","readwrite"); tx.objectStore("days").put(rec); tx.oncomplete=()=>res(); tx.onerror=()=>rej(tx.error); }); }
@@ -4641,8 +4849,8 @@ function resetFinancials(){
   tombArr(state.carOps); tombArr(state.carpetOrders); tombArr(state.laundryOrders);
   tombArr(state.expenses); tombArr(state.meters);
   tombArr(state.storeSales); tombArr(state.storePurchases); tombArr(state.storeCash);
-  tombArr(state.activity); tombArr(state.closings);
-  state.closings=[]; state.autoClosingSent={};
+  tombArr(state.activity); tombArr(state.closings); tombArr(state.closedDayEdits);
+  state.closings=[]; state.autoClosingSent={}; state.closedDayEdits=[];
   state.carOps=[]; state.carpetOrders=[]; state.laundryOrders=[];
   state.expenses=[]; state.meters=[];
   state.storeSales=[]; state.storePurchases=[]; state.storeCash=[];
@@ -5388,6 +5596,7 @@ function runMigrations(){
   if(!state.storePurchases) state.storePurchases=[];
   if(!state.suppliers) state.suppliers=[];
   if(!state.closings) state.closings=[];
+  if(!state.closedDayEdits) state.closedDayEdits=[];
   if(!state.recurring) state.recurring=[];
   if(!state.alerts) state.alerts={readyDays:3,workDays:2};
   if(!state.autoClosing) state.autoClosing={enabled:false,time:"22:00",since:""};
@@ -5497,7 +5706,7 @@ setTimeout(()=>{ if(!window.cloudReady){ const el=document.getElementById("cloud
 <!-- PWA: service-worker registration + update/install wiring -->
 <script>
 (function(){
-  var APP_VERSION = "2.14.0";
+  var APP_VERSION = "2.15.0";
   window.APP_VERSION = APP_VERSION;
   function $(id){ return document.getElementById(id); }
   // سجّل إصدار هذا الجهاز في الحالة المتزامنة (ليُنبَّه الجهاز القديم)
