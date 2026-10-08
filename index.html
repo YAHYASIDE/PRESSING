@@ -766,6 +766,11 @@
       <div class="hint" style="margin-top:6px">البصمة تُفعَّل لكل جهاز على حدة، وتفتح الحساب الذي فعّلها. يبقى الدخول بالكود متاحًا دائمًا.</div>
     </div>
     <div class="set-sec"><div class="set-title">المزامنة السحابية</div>حالة الاتصال: <b id="cloudStat">جارٍ الاتصال…</b></div>
+    <div class="set-sec">
+      <div class="set-title">🩺 صحة البيانات</div>
+      <div class="hint" style="margin-bottom:8px">فحص سريع يكشف أي مشكلة في الحفظ قبل أن تضيع بيانات: الحفظ على الجهاز، الرفع إلى السحابة، الصور، وإصدارات الأجهزة.</div>
+      <div id="healthAdmin"><div class="hint">جارٍ الفحص…</div></div>
+    </div>
     <div class="set-sec"><div class="set-title">لون التطبيق</div><div class="pal-row" id="palRow"></div></div>
     <div class="set-sec">
       <div class="set-title">🗂️ النسخ الاحتياطية اليومية (تلقائية)</div>
@@ -3548,7 +3553,7 @@ function bindScreen(){
         }
         const opDate=chosenDateIso(carDateV);
         state.carOps.push({id:uid(),no:carNo(vehicle),vehicle,wash:document.getElementById("carWash").value,price:free?0:price,
-          plate,phone,country,free,by:currentUser,paid:!deferred,paidDate:deferred?null:opDate,payMethod:deferred?null:pmVal("carPm"),note:"",photosBefore:[...pendingCarBefore],photosAfter:[...pendingCarAfter],date:opDate});
+          plate,phone,country,free,by:currentUser,paid:!deferred,paidDate:deferred?null:opDate,payMethod:deferred?null:pmVal("carPm"),note:"",photosBefore:[...pendingCarBefore],photosAfter:[...pendingCarAfter],date:opDate,editedAt:iso(new Date())});
         logActivity("غسيل سيارة", vehicle+(plate?(" · "+plate):"")+" · "+fmt(free?0:price)+" "+CUR+(deferred?" (آجل)":(" ("+pmLabel(pmVal("carPm"))+")"))); delete _pmDraft.carPm;
         pendingCarBefore.length=0; pendingCarAfter.length=0;
         if(free) toast("🎁 غسلة مجانية — اكتملت البطاقة");
@@ -3615,7 +3620,7 @@ function bindScreen(){
         state.orderSeq++;
         const d=chosenDateIso(cpDateV);
         const o={id:uid(),no:orderNo(state.orderSeq,d), customer:cpcust, phone:cpph, country:cpcountry, by:currentUser,
-          status:"wash",paid:false,photos:[...pendingCpPhotos],date:d};
+          status:"wash",paid:false,photos:[...pendingCpPhotos],date:d,editedAt:iso(new Date())};
         applyLinesToOrder(o,lines,"cp"); state.carpetOrders.push(o);
         logActivity("طلب أفرشة", orderLabel(o)+" · "+fmt(o.price)+" "+CUR);
         pendingCpPhotos.length=0; invDraft.cp=[]; invDirty.cp=false; _lineNote.cp="";
@@ -3693,7 +3698,7 @@ function bindScreen(){
       const commit=()=>{
         lines.forEach(l=>{ state.laundryPrices[l.type+"|"+l.service]=+l.unit; });
         const d=chosenDateIso(dateV);
-        const o={id:uid(),no:laundryNextNo(d), customer:cust, phone:ph, country, by:currentUser, paid:false, photos:[...pendingLndPhotos], date:d};
+        const o={id:uid(),no:laundryNextNo(d), customer:cust, phone:ph, country, by:currentUser, paid:false, photos:[...pendingLndPhotos], date:d, editedAt:iso(new Date())};
         applyLinesToOrder(o,lines,"lnd"); o.status=laundryFirstStatus(o.service); state.laundryOrders.push(o);
         logActivity("طلب ملابس", orderLabel(o,true)+" · "+fmt(o.price)+" "+CUR);
         invDraft.lnd=[]; invDirty.lnd=false; _lineNote.lnd=""; pendingLndPhotos.length=0;
@@ -3924,19 +3929,74 @@ const LS_KEY="sadaqa_laundry_v1";
 const CLOUD_OMIT=["tab","expSub","carpetFilter","cpSearch","custSearch","expSearch","carSearch","lndSearch","lndFilter","storeSub","storeProdSearch","storeSaleSearch","storeCustSearch","storeSaleFilter","contactsSub","contactSearch","supplierSearch","debtSort","debtView","debtKind","secDebtOpen","dateFrom","dateTo","dark","palette"];
 let _applyingRemote=false, _pushT=null;
 let L_pending_push=false;
-function saveLocal(){ try{ state._savedAt=Date.now(); localStorage.setItem(LS_KEY, JSON.stringify(state)); }catch(e){} }
+// ===== الصور (2.13.0): تُحفظ في IndexedDB لا في localStorage ولا في السحابة =====
+// كل حقل صورة في السجلات: المصفوفة، اسم الحقل، بادئة المفتاح في مخزن الصور.
+const PHOTO_FIELDS=[
+  {arr:"carOps",f:"photosBefore",k:"cb"},{arr:"carOps",f:"photosAfter",k:"ca"},{arr:"carOps",f:"photos",k:"op"},
+  {arr:"carpetOrders",f:"photos",k:"or"},{arr:"laundryOrders",f:"photos",k:"ln"},{arr:"storeProducts",f:"image",k:"pi"}];
+function _hasPhoto(v){ return Array.isArray(v) ? v.length>0 : !!v; }
+function stripPhotos(j){ PHOTO_FIELDS.forEach(pf=>{ (j[pf.arr]||[]).forEach(o=>{ if(o && pf.f in o) delete o[pf.f]; }); }); return j; }
+// نسخة ضحلة من الحالة بلا صور (السجلات التي فيها صور تُنسخ فقط) — للحفظ المحلي.
+function slimState(){
+  const c=Object.assign({}, state);
+  PHOTO_FIELDS.forEach(pf=>{ const a=state[pf.arr]; if(!Array.isArray(a)) return;
+    if(!a.some(o=>o && _hasPhoto(o[pf.f]))) return;
+    c[pf.arr]=c[pf.arr].map(o=>{ if(!o || !_hasPhoto(o[pf.f])) return o; const x=Object.assign({},o); delete x[pf.f]; return x; }); });
+  return c;
+}
+function capturePhotos(src){ const m={}; PHOTO_FIELDS.forEach(pf=>{ (src[pf.arr]||[]).forEach(o=>{ if(o && o.id && _hasPhoto(o[pf.f])) m[pf.k+o.id]=o[pf.f]; }); }); return m; }
+function attachPhotos(m){ let n=0; PHOTO_FIELDS.forEach(pf=>{ (state[pf.arr]||[]).forEach(o=>{ if(!o||!o.id) return; const v=m[pf.k+o.id]; if(v!=null && !_hasPhoto(o[pf.f])){ o[pf.f]=v; n++; } else if(pf.f!=="image" && o[pf.f]==null) o[pf.f]=[]; }); }); return n; }
+const _photoCache={};   // ما قرأناه/كتبناه في مخزن الصور (مفتاح → صور)
+const _photoSig={};     // بصمة ما كُتب فعلًا لتفادي إعادة الكتابة
+function _psig(v){ return Array.isArray(v) ? v.length+":"+v.reduce((t,x)=>t+String(x||"").length,0) : "s:"+String(v).length; }
+let _photoFlushT=null, _photoStoreErr=null;
+function photoFlush(){ clearTimeout(_photoFlushT); _photoFlushT=setTimeout(_photoFlushNow, 300); }
+async function _photoFlushNow(){
+  try{
+    const m=capturePhotos(state); const puts=[], dels=[];
+    Object.keys(m).forEach(k=>{ const sg=_psig(m[k]); if(_photoSig[k]!==sg){ puts.push({k,v:m[k]}); } });
+    Object.keys(_photoSig).forEach(k=>{ if(m[k]) return; const id=k.slice(2); if(state.deleted && state.deleted["rec:"+id]) dels.push(k); });
+    if(!puts.length && !dels.length) return;
+    const db=await _idb(); await new Promise((res,rej)=>{ const tx=db.transaction("photos","readwrite"), st=tx.objectStore("photos");
+      puts.forEach(p=>st.put(p)); dels.forEach(k=>st.delete(k)); tx.oncomplete=()=>res(); tx.onerror=()=>rej(tx.error); });
+    puts.forEach(p=>{ _photoSig[p.k]=_psig(p.v); _photoCache[p.k]=p.v; }); dels.forEach(k=>{ delete _photoSig[k]; delete _photoCache[k]; });
+    _photoStoreErr=null;
+  }catch(e){ _photoStoreErr=e; }
+}
+async function loadPhotos(){
+  try{ const db=await _idb(); const rows=await new Promise((res,rej)=>{ const rq=db.transaction("photos","readonly").objectStore("photos").getAll(); rq.onsuccess=()=>res(rq.result||[]); rq.onerror=()=>rej(rq.error); });
+    rows.forEach(r=>{ if(r&&r.k){ _photoCache[r.k]=r.v; _photoSig[r.k]=_psig(r.v); } });
+    const n=attachPhotos(_photoCache); if(n && typeof render==="function") render(); return n; }
+  catch(e){ _photoStoreErr=e; return 0; }
+}
+// ===== الحفظ المحلي يكشف الفشل (2.13.0) — كان يبتلع امتلاء الذاكرة بصمت =====
+let _localSaveErr=null, _localSaveOk=0, _localSaveFails=0, _localSize=0;
+function storageWarn(show){ const el=document.getElementById("storageWarn"); if(el) el.style.display=show?"flex":"none"; }
+function saveLocal(){
+  state._savedAt=Date.now();
+  let json; try{ json=JSON.stringify(slimState()); }catch(e){ _localSaveErr=e; _localSaveFails++; storageWarn(true); return false; }
+  const tryWrite=(j)=>{ try{ localStorage.setItem(LS_KEY, j); return true; }catch(e){ _localSaveErr=e; return false; } };
+  let ok=tryWrite(json);
+  if(!ok){ // محاولة ثانية بعد تقليص السجلات غير المهمة (النشاط وسجل الدخول)
+    if((state.activity||[]).length>150) state.activity=state.activity.slice(-150);
+    if((state.logins||[]).length>60) state.logins=state.logins.slice(-60);
+    try{ json=JSON.stringify(slimState()); ok=tryWrite(json); }catch(e){ ok=false; }
+  }
+  if(ok){ _localSaveOk=Date.now(); _localSize=json.length; if(_localSaveErr){ _localSaveErr=null; storageWarn(false); } photoFlush(); return true; }
+  _localSaveFails++; storageWarn(true);
+  try{ toast("⚠️ ذاكرة الجهاز ممتلئة — لم يُحفظ التسجيل على هذا الجهاز!"); }catch(_){}
+  return false;
+}
 function cloudCopy(){
   const c={}; for(const k in state){ if(CLOUD_OMIT.includes(k)) continue; c[k]=state[k]; }
   const j=JSON.parse(JSON.stringify(c));
   // Keep the single Firestore document small (<<1MB) so writes never fail:
-  // strip heavy base64 images from the synced copy. They stay in localStorage,
-  // and applyRemote re-attaches each device's local images after merge.
-  (j.carOps||[]).forEach(o=>{ delete o.photos; });
-  (j.carpetOrders||[]).forEach(o=>{ delete o.photos; });
-  (j.laundryOrders||[]).forEach(o=>{ delete o.photos; });
-  (j.storeProducts||[]).forEach(p=>{ delete p.image; });
-  return j;
+  // strip ALL heavy base64 images (incl. car before/after photos — they were
+  // synced before 2.13.0 and could push the doc past 1MB). They live in
+  // IndexedDB on each device, and applyRemote/loadPhotos re-attach them.
+  return stripPhotos(j);
 }
+function verCmp(a,b){ const A=String(a||"0").split(".").map(x=>+x||0), B=String(b||"0").split(".").map(x=>+x||0); for(let i=0;i<3;i++){ if((A[i]||0)!==(B[i]||0)) return (A[i]||0)>(B[i]||0)?1:-1; } return 0; }
 function save(){ saveLocal(); updateCloudBtn("pending"); L_pending_push=true; if(window.cloudReady && !_applyingRemote){ clearTimeout(_pushT); _pushT=setTimeout(()=>{ try{ window.cloudPush(cloudCopy()); L_pending_push=false; }catch(e){ updateCloudBtn("offline"); } }, 600); } }
 function load(){ try{ const d=localStorage.getItem(LS_KEY); if(d) Object.assign(state, JSON.parse(d)); }catch(e){} }
 const SYNC_ARRAYS=["carOps","carpetOrders","laundryOrders","expenses","meters","workers","users","managers","storeProducts","storeSales","storePurchases","storeCustomers","storeCash","suppliers","closings","recurring","activity","logins"];
@@ -4002,14 +4062,11 @@ function applyRemote(remote){
   const localLndPrices=Object.assign({}, state.laundryPrices||{});
   const localSeenTs=state.notifSeenTs||0;
   const localDel=state.deleted||{};
-  const pm={};
-  L.carOps.forEach(o=>{ if(o.photos&&o.photos.length) pm["op"+o.id]=o.photos; });
-  L.carpetOrders.forEach(o=>{ if(o.photos&&o.photos.length) pm["or"+o.id]=o.photos; });
-  L.laundryOrders.forEach(o=>{ if(o.photos&&o.photos.length) pm["ln"+o.id]=o.photos; });
+  const pm=Object.assign({}, _photoCache, capturePhotos(state)); // كل الصور المحلية قبل الدمج
   // ⚠️ يجب التقاط بيانات المتجر والموردين المحلية قبل Object.assign وإلا ضاعت (كان خطأ يمحو سجلات المتجر)
   const Lstore={ storeProducts:state.storeProducts||[], storeSales:state.storeSales||[], storePurchases:state.storePurchases||[], storeCustomers:state.storeCustomers||[], storeCash:state.storeCash||[], suppliers:state.suppliers||[], closings:state.closings||[], recurring:state.recurring||[] };
   const localSent=Object.assign({}, state.autoClosingSent||{}); const localTgLast=+state.tgLastUpdate||0;
-  const spm={}; Lstore.storeProducts.forEach(p=>{ if(p.image) spm[p.id]=p.image; });
+  const localAppVer=state.appVer||"0";
   const localRem=Object.assign({}, state.debtReminded||{});
   Object.assign(state, remote);
   { const rr=Object.assign({}, remote.debtReminded||{}); Object.keys(localRem).forEach(k=>{ if(!rr[k]||localRem[k]>rr[k]) rr[k]=localRem[k]; }); state.debtReminded=rr; }
@@ -4035,16 +4092,16 @@ function applyRemote(remote){
   state.storePurchases=mergeById(Lstore.storePurchases, remote.storePurchases, state.deleted);
   state.storeCustomers=mergeById(Lstore.storeCustomers, remote.storeCustomers, state.deleted);
   state.storeCash=mergeById(Lstore.storeCash, remote.storeCash, state.deleted);
-  (state.storeProducts||[]).forEach(p=>{ if(!p.image && spm[p.id]) p.image=spm[p.id]; });
   state.activity=mergeById(L.activity, remote.activity, state.deleted).sort((a,b)=>(a.ts||0)-(b.ts||0)).slice(-400);
   state.notifSeenTs=Math.max(localSeenTs, remote.notifSeenTs||0);
   const cs=Object.assign({}, remote.customers||{});
   Object.keys(L.customers).forEach(k=>{ if(!cs[k]) cs[k]=L.customers[k]; });
   Object.keys(state.deleted).forEach(k=>{ if(k.slice(0,5)!=="cust:") return; const p=k.slice(5), c=cs[p]; if(c && +new Date(c.editedAt||0) > +state.deleted[k]) return; delete cs[p]; });
   state.customers=cs;
-  (state.carOps||[]).forEach(o=>{ o.photos=pm["op"+o.id]||o.photos||[]; });
-  (state.carpetOrders||[]).forEach(o=>{ o.photos=pm["or"+o.id]||o.photos||[]; });
-  (state.laundryOrders||[]).forEach(o=>{ o.photos=pm["ln"+o.id]||o.photos||[]; });
+  attachPhotos(pm);
+  // إصدار التطبيق: إن كان جهاز آخر على إصدار أحدث نعرض شريط التحديث
+  { const rv=remote.appVer||"0"; state.appVer=verCmp(rv,localAppVer)>0?rv:localAppVer;
+    if(window.APP_VERSION && verCmp(rv, window.APP_VERSION)>0 && window.onNewerVersion){ try{ window.onNewerVersion(rv); }catch(e){} } }
   const localHasMore = L.workers.length>(remote.workers||[]).length
     || L.expenses.length>(remote.expenses||[]).length
     || L.carOps.length>(remote.carOps||[]).length
@@ -4117,9 +4174,10 @@ function cloudBtnTap(){
 window.onCloudReady=()=>{ const el=document.getElementById("cloudStat"); if(el){ el.textContent="متصل ☁"; el.style.color="var(--ready)"; } updateCloudBtn("synced"); toast("تم الاتصال بالسحابة ☁"); };
 window.onCloudEmpty=()=>{ try{ if(window.cloudReady) window.cloudPush(cloudCopy()); }catch(e){} };
 window.onCloudError=()=>{ const el=document.getElementById("cloudStat"); if(el){ el.textContent="غير متصل (يعمل محليًا)"; el.style.color="var(--muted)"; } updateCloudBtn("offline"); };
-window.onCloudPushOk=()=>{ const el=document.getElementById("cloudStat"); if(el){ el.textContent="متصل ☁ — آخر مزامنة "+timeStr(new Date()); el.style.color="var(--ready)"; } updateCloudBtn("synced"); };
+let _lastPushOk=0, _lastPushErr=null;
+window.onCloudPushOk=()=>{ _lastPushOk=Date.now(); _lastPushErr=null; const el=document.getElementById("cloudStat"); if(el){ el.textContent="متصل ☁ — آخر مزامنة "+timeStr(new Date()); el.style.color="var(--ready)"; } updateCloudBtn("synced"); };
 let _lastPushErrToast=0;
-window.onCloudPushErr=(e)=>{ const el=document.getElementById("cloudStat"); if(el){ el.textContent="⚠️ فشل حفظ البيانات في السحابة — لم تُحفظ! "+((e&&e.message)||""); el.style.color="var(--unpaid)"; } updateCloudBtn("offline"); const now=Date.now(); if(now-_lastPushErrToast>8000){ _lastPushErrToast=now; try{ toast("⚠️ تعذّر حفظ البيانات في السحابة — تحقّق من الاتصال"); }catch(_){} } };
+window.onCloudPushErr=(e)=>{ _lastPushErr={ts:Date.now(),msg:(e&&e.message)||String(e||"")}; const el=document.getElementById("cloudStat"); if(el){ el.textContent="⚠️ فشل حفظ البيانات في السحابة — لم تُحفظ! "+((e&&e.message)||""); el.style.color="var(--unpaid)"; } updateCloudBtn("offline"); const now=Date.now(); if(now-_lastPushErrToast>8000){ _lastPushErrToast=now; try{ toast("⚠️ تعذّر حفظ البيانات في السحابة — تحقّق من الاتصال"); }catch(_){} } };
 const PALETTES=[
   {k:"teal",  name:"أخضر سماوي", b:"#0f9d8f", b2:"#16b8a6"},
   {k:"aqua",  name:"فيروزي",     b:"#0e8fa8", b2:"#22b6cf"},
@@ -4289,7 +4347,7 @@ function importData(file){
    - الاسترجاع «يُعيد المفقود فقط» ولا يمسح أي شيء أحدث. */
 const BACKUP_KEEP=30, BACKUP_EVERY=20*60*1000, BACKUP_KEYS=["carOps","carpetOrders","laundryOrders","expenses","meters","workers","users","managers","storeProducts","storeSales","storePurchases","storeCustomers","storeCash","suppliers","closings","recurring"];
 let _lastBackupAt=0;
-function _idb(){ return new Promise((res,rej)=>{ try{ if(!window.indexedDB) return rej(new Error("no idb")); const r=indexedDB.open("sadaqa-backups",1); r.onupgradeneeded=()=>{ if(!r.result.objectStoreNames.contains("days")) r.result.createObjectStore("days",{keyPath:"id"}); }; r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }catch(e){ rej(e); } }); }
+function _idb(){ return new Promise((res,rej)=>{ try{ if(!window.indexedDB) return rej(new Error("no idb")); const r=indexedDB.open("sadaqa-backups",2); r.onupgradeneeded=()=>{ if(!r.result.objectStoreNames.contains("days")) r.result.createObjectStore("days",{keyPath:"id"}); if(!r.result.objectStoreNames.contains("photos")) r.result.createObjectStore("photos",{keyPath:"k"}); }; r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }catch(e){ rej(e); } }); }
 async function localBackupPut(rec){ const db=await _idb(); return new Promise((res,rej)=>{ const tx=db.transaction("days","readwrite"); tx.objectStore("days").put(rec); tx.oncomplete=()=>res(); tx.onerror=()=>rej(tx.error); }); }
 async function localBackupAll(){ const db=await _idb(); return new Promise((res,rej)=>{ const rq=db.transaction("days","readonly").objectStore("days").getAll(); rq.onsuccess=()=>res(rq.result||[]); rq.onerror=()=>rej(rq.error); }); }
 async function localBackupGet(id){ const db=await _idb(); return new Promise((res)=>{ const rq=db.transaction("days","readonly").objectStore("days").get(id); rq.onsuccess=()=>res(rq.result||null); rq.onerror=()=>res(null); }); }
@@ -4326,7 +4384,7 @@ function restoreMissing(snap){
   });
   state.customers=state.customers||{};
   Object.keys(snap.customers||{}).forEach(p=>{ if(!state.customers[p]){ state.customers[p]=Object.assign({},snap.customers[p],{editedAt:nowIso}); delete state.deleted["cust:"+p]; added++; } });
-  if(added){ logActivity("استرجاع من نسخة احتياطية", added+" سجل"); save(); }
+  if(added){ attachPhotos(_photoCache); logActivity("استرجاع من نسخة احتياطية", added+" سجل"); save(); }
   render(); return added;
 }
 async function backupSources(){
@@ -4340,6 +4398,36 @@ async function loadBackup(id){
   let cl=null; try{ if(window.cloudReady && window.cloudBackupGet) cl=await window.cloudBackupGet(id); }catch(e){}
   if(loc&&cl) return backupCount(cl)>=(loc.n||0)?cl:loc.data;
   return cl || (loc&&loc.data) || null;
+}
+function _kb(n){ return n>=1048576 ? (n/1048576).toFixed(2)+" MB" : Math.round(n/1024)+" KB"; }
+function renderHealthAdmin(){
+  const host=document.getElementById("healthAdmin"); if(!host) return;
+  const ver=window.APP_VERSION||"—";
+  let cloudJson=""; try{ cloudJson=JSON.stringify(cloudCopy()); }catch(e){}
+  const cloudSize=cloudJson.length, cloudWarn=cloudSize>700000;
+  const localOk=!_localSaveErr && _localSaveOk>0;
+  const photoKeys=Object.keys(_photoCache); let photoN=0, photoB=0;
+  photoKeys.forEach(k=>{ const v=_photoCache[k]; if(Array.isArray(v)){ photoN+=v.length; v.forEach(x=>photoB+=String(x||"").length); } else { photoN++; photoB+=String(v||"").length; } });
+  const counts=[["سيارات","carOps"],["سجاد","carpetOrders"],["ملابس","laundryOrders"],["مصروفات","expenses"],["مبيعات","storeSales"],["مشتريات","storePurchases"],["صندوق","storeCash"],["زبائن","storeCustomers"],["مواد","storeProducts"]]
+    .map(([l,k])=>`${l}: <b>${(state[k]||[]).length}</b>`).join(" · ");
+  const tombs=Object.keys(state.deleted||{}).length;
+  // آخر دخول لكل اسم مع إصداره
+  const seen={}; (state.logins||[]).slice().reverse().forEach(l=>{ if(l&&l.name&&!seen[l.name]) seen[l.name]=l; });
+  const devs=Object.keys(seen).map(n=>{ const l=seen[n]; const old=l.ver && verCmp(l.ver,ver)<0; return `<span class="chip" style="${old?'background:#fdecea;color:#c0392b':''}">${_esc(n)}: ${l.ver?_esc(l.ver):"قديم جدًا"}${old?" ⚠️ حدّث":""} <small>(${_esc(String(l.date||"").slice(0,10))})</small></span>`; }).join(" ");
+  const pushLine = _lastPushErr ? `<span style="color:var(--unpaid)">⚠️ آخر خطأ رفع: ${_esc(_lastPushErr.msg).slice(0,120)} (${timeStr(_lastPushErr.ts)})</span>`
+    : (_lastPushOk ? `<span style="color:var(--ready)">✅ آخر رفع ناجح ${timeStr(_lastPushOk)}</span>` : `<span style="color:var(--muted)">لم يُرفع شيء بعد في هذه الجلسة</span>`);
+  host.innerHTML=`<div style="line-height:2">
+    <div>الإصدار على هذا الجهاز: <b>${_esc(ver)}</b>${(state.appVer&&verCmp(state.appVer,ver)>0)?` <span style="color:var(--unpaid)">⚠️ جهاز آخر على ${_esc(state.appVer)} — حدّث هذا الجهاز</span>`:""}</div>
+    <div>الحفظ على الجهاز: ${localOk?`<span style="color:var(--ready)">✅ يعمل (${_kb(_localSize)} · ${timeStr(_localSaveOk)})</span>`:(_localSaveErr?`<span style="color:var(--unpaid)">⚠️ فاشل: ${_esc(String(_localSaveErr.name||_localSaveErr.message||_localSaveErr)).slice(0,80)} — ${_localSaveFails} مرّة</span>`:`<span style="color:var(--muted)">لم يُحفظ بعد</span>`)}</div>
+    <div>الصور على الجهاز: <b>${photoN}</b> (${_kb(photoB)})${_photoStoreErr?` <span style="color:var(--unpaid)">⚠️ مخزن الصور لا يعمل</span>`:""}</div>
+    <div>السحابة: ${pushLine}</div>
+    <div>حجم البيانات المرفوعة: <b style="${cloudWarn?'color:var(--unpaid)':''}">${_kb(cloudSize)}</b>${cloudWarn?" ⚠️ قريب من الحدّ (1 MB)":" (الحدّ 1 MB)"}</div>
+    <div>السجلات: ${counts} · محذوفات: <b>${tombs}</b></div>
+    <div>الأجهزة والإصدارات: ${devs||"<span class='hint'>—</span>"}</div>
+  </div>
+  <div class="set-row" style="flex-wrap:wrap;gap:8px;margin-top:8px"><button class="mini" id="healthSync">🔁 إعادة المزامنة الآن</button><button class="mini" id="healthRefresh">🔄 تحديث الفحص</button></div>`;
+  document.getElementById("healthSync").onclick=()=>{ saveLocal(); cloudBtnTap(); toast("جارٍ الرفع إلى السحابة…"); setTimeout(renderHealthAdmin,1500); };
+  document.getElementById("healthRefresh").onclick=renderHealthAdmin;
 }
 async function renderBackupAdmin(){
   const host=document.getElementById("backupAdmin"); if(!host) return;
@@ -4780,6 +4868,7 @@ function openSettings(){
   renderCatalogAdmin();
   renderBioSettings();
   renderBackupAdmin();
+  renderHealthAdmin();
   { const mc=document.getElementById("mgrCreate"); if(mc) mc.onclick=createManager; }
   const palRow=document.getElementById("palRow");
   if(palRow){
@@ -5040,7 +5129,7 @@ document.getElementById("rcptTestBtn").onclick=()=>{ setRcptWidth(document.getEl
     currentUser=nm; currentRole=role; currentUserId=uidv||"";
     rememberUser(nm);
     if(!state.logins) state.logins=[];
-    state.logins.push({id:uid(),name:nm,role:role,date:iso(new Date())});
+    state.logins.push({id:uid(),name:nm,role:role,date:iso(new Date()),ver:window.APP_VERSION||""});
     if(state.logins.length>200) state.logins=state.logins.slice(-200);
     unlocked=true;
     saveSession(); armIdle();
@@ -5106,6 +5195,7 @@ document.getElementById("rcptTestBtn").onclick=()=>{ setRcptWidth(document.getEl
 })();
 
 load();
+loadPhotos(); // الصور من IndexedDB (غير متزامنة؛ تُعاد للسجلات ثم يُعاد الرسم)
 function ensureCarNos(){ if(!state.carSeq) state.carSeq={}; (state.carOps||[]).forEach(o=>{ if(!o.no) o.no=carNo(o.vehicle); }); }
 function runMigrations(){
   let changed=false;
@@ -5218,6 +5308,10 @@ setTimeout(()=>{ if(!window.cloudReady){ const el=document.getElementById("cloud
 </script>
 
 <!-- Update banner (shown when a new version is ready) -->
+<div id="storageWarn" style="display:none;position:fixed;left:12px;right:12px;top:8px;z-index:9999;background:#c0392b;color:#fff;border-radius:12px;padding:10px 12px;box-shadow:0 8px 28px rgba(0,0,0,.28);align-items:center;gap:10px;font-weight:700;font-size:.85rem">
+  <span style="flex:1">⚠️ ذاكرة هذا الجهاز ممتلئة: التسجيلات لا تُحفظ عليه. افتح الإعدادات ▸ «🩺 صحة البيانات».</span>
+  <button onclick="this.parentNode.style.display='none'" style="background:transparent;color:#fff;border:1px solid rgba(255,255,255,.6);border-radius:10px;padding:6px 10px;cursor:pointer">إخفاء</button>
+</div>
 <div id="updateBanner" style="display:none;position:fixed;left:12px;right:12px;bottom:12px;z-index:9999;background:#0f9d8f;color:#fff;border-radius:14px;padding:12px 14px;box-shadow:0 8px 28px rgba(0,0,0,.28);display:none;align-items:center;gap:10px;font-weight:700">
   <span style="flex:1">✨ يتوفّر إصدار جديد من التطبيق</span>
   <button id="updateNow" style="background:#fff;color:#0f9d8f;border:none;border-radius:10px;padding:8px 14px;font-weight:800;cursor:pointer">تحديث الآن</button>
@@ -5227,8 +5321,11 @@ setTimeout(()=>{ if(!window.cloudReady){ const el=document.getElementById("cloud
 <!-- PWA: service-worker registration + update/install wiring -->
 <script>
 (function(){
-  var APP_VERSION = "2.12.0";
+  var APP_VERSION = "2.13.0";
+  window.APP_VERSION = APP_VERSION;
   function $(id){ return document.getElementById(id); }
+  // سجّل إصدار هذا الجهاز في الحالة المتزامنة (ليُنبَّه الجهاز القديم)
+  try{ if(typeof state==="object" && typeof verCmp==="function" && verCmp(APP_VERSION, state.appVer||"0")>0){ state.appVer=APP_VERSION; if(typeof save==="function") save(); } }catch(e){}
   function setText(id,t){ var el=$(id); if(el) el.textContent=t; }
 
   var standalone = (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) || window.navigator.standalone === true;
@@ -5241,6 +5338,7 @@ setTimeout(()=>{ if(!window.cloudReady){ const el=document.getElementById("cloud
   function doReload(){ if(reloading) return; reloading = true; window.location.reload(); }
 
   function showBanner(show){ var b=$("updateBanner"); if(b) b.style.display = show ? "flex" : "none"; }
+  window.onNewerVersion = function(v){ var s=document.querySelector("#updateBanner span"); if(s) s.textContent="✨ يتوفّر إصدار أحدث ("+v+") — حدّث الآن"; showBanner(true); };
 
   function applyWaiting(){
     if(reg && reg.waiting){ reg.waiting.postMessage("SKIP_WAITING"); return true; }

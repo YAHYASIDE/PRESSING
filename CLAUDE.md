@@ -192,6 +192,20 @@
   `shopInfo()` و`thanksMsg`/`adMsg`). `waHead`/`waFoot` صارا قالبين. زر «👁 معاينة» (`msgPreview`) و«↺ الافتراضي».
   رسالة المورّد الجديدة `supplierMsg(s)` تُمرَّر لزر واتساب المورّد (`contactBtns(phone,country,text)`).
   `state.debtMsg` القديم يُرحَّل إلى `msgTpl.debt`. القواعد التي يضيفها المالك تُزامَن لكل الأجهزة.
+- **سلامة التخزين (2.13.0) — سبب «التسجيلات تُمحى»:** (1) صور السيارات «قبل/بعد» (`photosBefore`/`photosAfter`)
+  لم تكن تُحذف في `cloudCopy` فكانت تُرفع base64 إلى Firestore حتى يتجاوز المستند 1MB فيفشل **كل** حفظ سحابي؛
+  (2) `saveLocal` كان يبتلع امتلاء `localStorage` (الصور كانت فيه) بصمت فتضيع التسجيلات عند إعادة الفتح.
+  الحل: **كل الصور في IndexedDB** (مخزن `photos` في قاعدة `sadaqa-backups` الإصدار 2، مفتاح = بادئة+id:
+  `cb/ca/op` للسيارات، `or` السجاد، `ln` الملابس، `pi` صورة المادة) عبر `PHOTO_FIELDS`/`stripPhotos`/`slimState`/
+  `capturePhotos`/`attachPhotos`/`photoFlush`/`loadPhotos` (ذاكرة `_photoCache`). `cloudCopy` والنسخ الاحتياطية
+  والحفظ المحلي بلا صور إطلاقًا؛ `applyRemote` و`restoreMissing` يعيدان ربطها. **أي حقل صورة جديد يُضاف إلى
+  `PHOTO_FIELDS` فقط.** `saveLocal()` تُرجع true/false، تعيد المحاولة بعد تقليص `activity`/`logins`، وعند الفشل
+  تُظهر شريطًا أحمر ثابتًا `#storageWarn` + توست. الإعدادات ▸ «🩺 صحة البيانات» (`renderHealthAdmin`): الإصدار،
+  حالة الحفظ المحلي (`_localSaveErr/_localSaveOk/_localSize`)، عدد الصور وحجمها، آخر رفع/خطأ سحابي
+  (`_lastPushOk/_lastPushErr`)، حجم المستند المرفوع (تحذير فوق 700KB)، عدد السجلات والمحذوفات، وإصدار كل
+  جهاز من `state.logins[].ver` (مع ⚠️ للقديم) + زر «إعادة المزامنة الآن». `state.appVer` (مُزامن، يُدمج بالأكبر
+  عبر `verCmp`) يُضبط من سكربت الـ PWA؛ إن كان جهاز آخر على إصدار أحدث يظهر شريط التحديث (`window.onNewerVersion`).
+  السيارات/السجاد/الملابس الجديدة تحمل `editedAt` منذ الإنشاء. الاختبار: `tests/e2e/storage_safety.test.js`.
 - **قاعدة الحذف والاستعادة (2.0.0):** السجلّ يُعتبر محذوفًا فقط إذا كان وقت الـ tombstone
   ≥ `editedAt` للسجلّ (`isDead` في `mergeById`). لذلك السجلّ المُستعاد (editedAt جديد) يعود
   على كل الأجهزة. `tomb(id)` يضع وقتًا = max(الآن، editedAt+1) لتفادي فرق ساعات الأجهزة.
