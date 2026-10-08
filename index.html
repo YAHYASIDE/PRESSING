@@ -182,6 +182,19 @@
   #cdModal,#cdcModal,#closeDayModal{z-index:145}
   .modal-box{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:20px;max-width:340px;width:100%;box-shadow:var(--shadow);max-height:88vh;overflow-y:auto}
   #settingsModal .modal-actions{position:sticky;bottom:-20px;background:var(--surface);padding:12px 0 8px;margin-top:8px;border-top:1px solid var(--line);z-index:2}
+  /* الإعدادات بملء الشاشة مع شريط أيقونات (2.17.0) */
+  #settingsModal{padding:0}
+  #settingsModal .modal-box{max-width:none;width:100%;height:100%;max-height:100%;border-radius:0;padding:10px 14px 0;display:flex;flex-direction:column}
+  @media (min-width:820px){ #settingsModal{padding:20px} #settingsModal .modal-box{max-width:620px;height:auto;max-height:92vh;border-radius:16px} }
+  #settingsModal .modal-box>.set-sec{display:none}
+  #settingsModal.stab-all .modal-box>.set-sec{display:block}
+  #settingsModal.stab-app .modal-box>.set-sec[data-stab="app"],#settingsModal.stab-backup .modal-box>.set-sec[data-stab="backup"],#settingsModal.stab-accounts .modal-box>.set-sec[data-stab="accounts"],#settingsModal.stab-prices .modal-box>.set-sec[data-stab="prices"],#settingsModal.stab-msgs .modal-box>.set-sec[data-stab="msgs"],#settingsModal.stab-alerts .modal-box>.set-sec[data-stab="alerts"]{display:block}
+  .stabs-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+  .stabs{display:grid;grid-template-columns:repeat(6,1fr);gap:4px;position:sticky;top:-10px;background:var(--surface);z-index:3;padding:6px 0 8px;border-bottom:1px solid var(--line);margin-bottom:10px}
+  .stab{border:1px solid var(--line);border-radius:12px;padding:6px 2px 4px;background:var(--chip);color:var(--ink);font-size:1.25rem;line-height:1.1;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;font-family:inherit}
+  .stab span{font-size:.62rem;font-weight:800;white-space:nowrap}
+  .stab.on{background:var(--brand);color:#fff;border-color:var(--brand);box-shadow:var(--shadow)}
+  #settingsModal .modal-actions{margin-top:auto}
   .modal-box h3{margin:0 0 6px;font-size:1.05rem;font-weight:800}
   .modal-box p{margin:0 0 14px;font-size:.85rem;color:var(--muted)}
   .modal-box input{width:100%;padding:12px;border:1px solid var(--line);border-radius:11px;background:var(--input);color:var(--ink);font-size:1.15rem;text-align:center;letter-spacing:4px;margin-bottom:14px}
@@ -786,12 +799,20 @@
 </div>
 <div id="settingsModal" class="modal">
   <div class="modal-box">
-    <h3>الإعدادات</h3>
-    <div class="set-sec">
+    <div class="stabs-head"><h3 style="margin:0">⚙️ الإعدادات</h3><button class="mini" id="setCloseTop" aria-label="إغلاق" style="width:auto;padding:6px 14px;font-weight:800">✕</button></div>
+    <div class="stabs" id="stabs">
+      <button class="stab" data-stab="app">📱<span>التطبيق</span></button>
+      <button class="stab" data-stab="backup">🗂️<span>النسخ</span></button>
+      <button class="stab" data-stab="accounts">👥<span>الحسابات</span></button>
+      <button class="stab" data-stab="prices">💰<span>الأسعار</span></button>
+      <button class="stab" data-stab="msgs">💬<span>الرسائل</span></button>
+      <button class="stab" data-stab="alerts">🔔<span>التنبيهات</span></button>
+    </div>
+    <div class="set-sec" data-stab="app">
       <div class="set-title">🌓 المظهر</div>
       <button class="mini" id="themeBtn" type="button" style="width:100%;font-weight:800"></button>
     </div>
-    <div class="set-sec">
+    <div class="set-sec" data-stab="app">
       <div class="set-title">📱 التطبيق والتحديث</div>
       <div class="set-row" style="flex-wrap:wrap;gap:8px">
         <button class="mini" id="btnInstall" style="display:none">⬇️ تثبيت التطبيق على الهاتف</button>
@@ -802,39 +823,39 @@
         بعد كل تعديل جديد نرفعه، اضغط <b>«تحديث التطبيق الآن»</b> ليجلب أحدث نسخة. يعمل دون إنترنت بعد أول فتح.
       </div>
     </div>
-    <div class="set-sec">
+    <div class="set-sec" data-stab="accounts">
       <div class="set-title">🔐 الدخول بالبصمة</div>
       <div id="bioAdmin"><div class="hint">جارٍ الفحص…</div></div>
       <div class="hint" style="margin-top:6px">البصمة تُفعَّل لكل جهاز على حدة، وتفتح الحساب الذي فعّلها. يبقى الدخول بالكود متاحًا دائمًا.</div>
     </div>
-    <div class="set-sec"><div class="set-title">المزامنة السحابية</div>حالة الاتصال: <b id="cloudStat">جارٍ الاتصال…</b></div>
-    <div class="set-sec">
+    <div class="set-sec" data-stab="app"><div class="set-title">المزامنة السحابية</div>حالة الاتصال: <b id="cloudStat">جارٍ الاتصال…</b></div>
+    <div class="set-sec" data-stab="app">
       <div class="set-title">🩺 صحة البيانات</div>
       <div class="hint" style="margin-bottom:8px">فحص سريع يكشف أي مشكلة في الحفظ قبل أن تضيع بيانات: الحفظ على الجهاز، الرفع إلى السحابة، الصور، وإصدارات الأجهزة.</div>
       <div id="healthAdmin"><div class="hint">جارٍ الفحص…</div></div>
     </div>
-    <div class="set-sec"><div class="set-title">لون التطبيق</div><div class="pal-row" id="palRow"></div></div>
-    <div class="set-sec">
+    <div class="set-sec" data-stab="app"><div class="set-title">لون التطبيق</div><div class="pal-row" id="palRow"></div></div>
+    <div class="set-sec" data-stab="backup">
       <div class="set-title">🗂️ النسخ الاحتياطية اليومية (تلقائية)</div>
       <div class="hint" style="margin-bottom:8px">يحفظ التطبيق نسخة من كل بياناتك كل يوم تلقائيًا — على هذا الجهاز 📱 وفي السحابة ☁️ — لآخر 30 يومًا. «استرجاع» يُعيد السجلات المفقودة فقط ولا يمسح شيئًا.</div>
       <div id="backupAdmin"><div class="hint">جارٍ التحميل…</div></div>
     </div>
-    <div class="set-sec">
+    <div class="set-sec" data-stab="backup">
       <div class="set-title">🕔 نسخ كل 5 دقائق (على هذا الهاتف)</div>
       <div class="hint" style="margin-bottom:8px">كل 5 دقائق، إن تغيّرت البيانات، تُحفظ نسخة جديدة على هذا الجهاز. النسخ السابقة لا تُحذف تلقائيًا (الحذف يدوي فقط).</div>
       <div id="snapAdmin"><div class="hint">جارٍ التحميل…</div></div>
     </div>
-    <div class="set-sec">
+    <div class="set-sec" data-stab="backup">
       <div class="set-title">☁️ Google Drive (نسخة كل 5 دقائق)</div>
       <div class="hint" style="margin-bottom:8px">اربط حساب Google فيرفع التطبيق ملف نسخة جديدًا إلى Drive كل 5 دقائق عند تغيّر البيانات، دون حذف الملفات السابقة.</div>
       <div id="driveAdmin"><div class="hint">جارٍ التحميل…</div></div>
     </div>
-    <div class="set-sec">
+    <div class="set-sec" data-stab="backup">
       <div class="set-title">💾 المساحة</div>
       <div class="hint" style="margin-bottom:8px">كم تبقّى من مساحة التخزين على هذا الجهاز. عند الاقتراب من الامتلاء يظهر تحذير هنا وفي الشاشة الرئيسية.</div>
       <div id="storageAdmin"><div class="hint">جارٍ الفحص…</div></div>
     </div>
-    <div class="set-sec">
+    <div class="set-sec" data-stab="backup">
       <div class="set-title">النسخة الاحتياطية</div>
       <div class="set-row">
         <button class="mini" id="btnExport">تصدير البيانات</button>
@@ -849,27 +870,27 @@
       </div>
       <div class="hint" style="margin-top:6px">يمسح <b>كل شيء</b> نهائيًا (حتى المواد والحسابات) — للبدء من مستودع فارغ تمامًا.</div>
     </div>
-    <div class="set-sec">
+    <div class="set-sec" data-stab="accounts">
       <div class="set-title">كود فتح التطبيق (دائمًا مفعّل)</div>
       <input type="hidden" id="lockToggle" value="1">
       <input type="password" id="lockPinSet" inputmode="numeric" placeholder="كود فتح التطبيق">
       <div class="hint" style="margin-top:6px">يُطلب عند كل فتح للتطبيق. لا يمكن إطفاؤه — يمكنك تغيير الكود فقط.</div>
     </div>
-    <div class="set-sec">
+    <div class="set-sec" data-stab="accounts">
       <div class="set-title">كود العدّادات (تعديل القراءة والسعر)</div>
       <input type="password" id="meterPinSet" inputmode="numeric" placeholder="كود العدّادات">
       <div class="hint" style="margin-top:6px">مستقلّ عن كود فتح التطبيق — اجعله مختلفًا. إن تركته فارغًا يعود للكود الافتراضي.</div>
     </div>
-    <div class="set-sec">
+    <div class="set-sec" data-stab="accounts">
       <div class="set-title">سجلّ الدخول (آخر 20)</div>
       <div id="loginLog" class="hint" style="max-height:150px;overflow-y:auto;line-height:1.9"></div>
     </div>
-    <div class="set-sec">
+    <div class="set-sec" data-stab="accounts">
       <div class="set-title">👷 العمّال المسجّلون</div>
       <div id="workersAdmin"></div>
       <div class="hint" style="margin-top:6px">العمّال يسجّلون أنفسهم من شاشة الدخول (رابط «عامل جديد؟ سجّل هنا»). يمكنك تعطيل أو حذف أي حساب هنا.</div>
     </div>
-    <div class="set-sec">
+    <div class="set-sec" data-stab="accounts">
       <div class="set-title">👔 حسابات المديرين</div>
       <div class="field"><label>اسم المدير</label><input type="text" id="mgrName" placeholder="اسم المدير" autocomplete="off"></div>
       <div class="field"><label>كلمة المرور</label><input type="text" id="mgrPass" placeholder="كلمة مرور المدير" autocomplete="off"></div>
@@ -877,12 +898,12 @@
       <div id="managersAdmin" style="margin-top:10px"></div>
       <div class="hint" style="margin-top:6px">المدير يرى كل شيء (ومنها التقارير والإشعارات) بصلاحيات كاملة تقريبًا كالمالك، ويدخل باسمه وكلمة مروره من شاشة الدخول. يمكنك تعطيل أو حذف أي حساب هنا.</div>
     </div>
-    <div class="set-sec">
+    <div class="set-sec" data-stab="prices">
       <div class="set-title">🧾 الأصناف والأسعار</div>
       <div class="hint" style="margin-bottom:10px">أضِف أو عدّل أو احذف أنواع السيارات والسجاد والملابس وأسعارها. الطلبات السابقة لا تتأثّر.</div>
       <div id="catalogAdmin"></div>
     </div>
-    <div class="set-sec">
+    <div class="set-sec" data-stab="alerts">
       <div class="set-title">🤖 إشعارات Telegram (اختياري)</div>
       <div id="tgLockBar" style="display:flex;gap:8px;align-items:center;margin-bottom:10px"><span class="hint" id="tgLockHint" style="flex:1">🔒 إعدادات البوت مقفولة — لا تتغيّر إلا بكود البوت.</span><button class="mini" id="tgUnlock" type="button" style="font-weight:800">🔓 فتح للتعديل</button></div>
       <fieldset id="tgFields" disabled style="border:0;padding:0;margin:0;min-width:0">
@@ -903,7 +924,7 @@
       <div class="hint" style="margin-bottom:8px">☁️ وإن كان التطبيق مغلقًا على كل الأجهزة، يرد البوت من خادم GitHub تلقائيًا خلال 5–15 دقيقة (ويرسل التقفيل التلقائي أيضًا).</div>
       <div class="hint" style="margin-top:8px;line-height:1.8">الخطوات: 1) راسِل <b>@BotFather</b> وأنشئ بوتًا، والصق <b>Token</b> أعلاه. 2) افتح بوتك في Telegram واضغط <b>Start</b> وأرسل له أي كلمة. 3) اضغط «🔎 جلب تلقائيًا» فيُكتب <b>Chat ID</b> وحده. 4) «إرسال رسالة تجريبية» ثم «حفظ».</div>
     </div>
-    <div class="set-sec">
+    <div class="set-sec" data-stab="alerts">
       <div class="set-title">⚠️ تنبيه الطلبات المتأخرة</div>
       <div class="row2">
         <div class="field"><label>جاهز ولم يُستلم منذ (أيام)</label><input type="number" id="alReady" min="1" value="3"></div>
@@ -911,17 +932,17 @@
       </div>
       <div class="hint">تظهر الطلبات المتأخرة في أعلى الرئيسية مع زر واتساب للزبون.</div>
     </div>
-    <div class="set-sec">
+    <div class="set-sec" data-stab="backup">
       <div class="set-title">📊 تصدير Excel</div>
       <div class="row2"><div class="field"><label>من</label><input type="date" id="xlFrom"></div><div class="field"><label>إلى</label><input type="date" id="xlTo"></div></div>
       <button class="mini" id="xlExport" type="button" style="width:100%;font-weight:800">📊 تصدير كل العمليات للفترة (CSV يفتح في Excel)</button>
     </div>
-    <div class="set-sec">
+    <div class="set-sec" data-stab="app">
       <div class="set-title">🔐 أمان قاعدة البيانات</div>
       <div class="hint" id="authStatus">—</div>
       <div class="hint" style="margin-top:6px">القواعد جاهزة في ملف <b>firestore.rules</b> بالمستودع. بعد تفعيل «Anonymous» في Firebase ▸ Authentication ولصق القواعد، لا يقبل الخادم إلا الأجهزة التي سجّلت دخولًا مجهولًا من التطبيق.</div>
     </div>
-    <div class="set-sec">
+    <div class="set-sec" data-stab="prices">
       <div class="set-title">أسعار استهلاك العدّاد</div>
       <div class="row2">
         <div class="field"><label>سعر كيلو الكهرباء</label><input type="number" id="tarElecSet" min="0" placeholder="0"></div>
@@ -929,7 +950,7 @@
       </div>
       <div class="hint" style="margin-top:6px">اتركها صفرًا لتسجيل الاستهلاك بلا تكلفة.</div>
     </div>
-    <div class="set-sec">
+    <div class="set-sec" data-stab="msgs">
       <div class="set-title">💬 الرسائل (واتساب للزبائن والموردين)</div>
       <div class="hint" style="margin-bottom:8px">كل رسالة يرسلها التطبيق موجودة هنا. الكلمات بين الأقواس {…} تُستبدل تلقائيًا؛ عدّل النص كما تشاء، أو اكتب اسمًا ورقمًا مختلفين مباشرة. اسم المحل والهاتف الافتراضيان من قسم «🧾 الإيصال والطابعة».</div>
       <div class="field"><label>رسالة الشكر {الشكر}</label><input type="text" id="thanksSet" placeholder="مثال: شكرًا لغسلتك عندنا 🌟"></div>
@@ -937,7 +958,7 @@
       <div id="msgTplAdmin"></div>
       <textarea id="debtMsgSet" style="display:none"></textarea>
     </div>
-    <div class="set-sec">
+    <div class="set-sec" data-stab="msgs">
       <div class="set-title">🧾 الإيصال والطابعة</div>
       <div class="row2">
         <div class="field"><label>اسم المحل في الإيصال</label><input type="text" id="shopNameSet" placeholder="مغاسيل صداقة"></div>
@@ -5322,7 +5343,17 @@ function openLndReceipt(o){
 
 /* ---- wire static controls (once) ---- */
 document.getElementById("settingsBtn").onclick=()=>{ requireCode(openSettings, meterCode(), "كود الإعدادات", "أدخل كود الإعدادات للدخول."); };
-function openSettings(){
+const SETTINGS_TABS=["app","backup","accounts","prices","msgs","alerts"];
+function settingsTab(k){
+  if(!SETTINGS_TABS.includes(k) && k!=="all") k="app";
+  const m=document.getElementById("settingsModal"); if(!m) return;
+  m.className="modal "+(k==="all"?"stab-all":"stab-"+k);
+  document.querySelectorAll("#stabs .stab").forEach(b=>b.classList.toggle("on",b.dataset.stab===k));
+  if(k!=="all"){ try{ localStorage.setItem("sadaqa_settings_tab",k); }catch(e){} }
+  const box=m.querySelector(".modal-box"); if(box) box.scrollTop=0;
+}
+function openSettings(tab){
+  { let saved=""; try{ saved=localStorage.getItem("sadaqa_settings_tab")||""; }catch(e){} settingsTab(tab||saved||"app"); }
   document.getElementById("lockPinSet").value=(state.lock&&state.lock.pin)||"0707";
   document.getElementById("meterPinSet").value=state.meterPin||"";
   {
@@ -5583,6 +5614,8 @@ document.getElementById("btnExport").onclick=exportData;
 document.getElementById("fileImport").onchange=(e)=>{ if(e.target.files[0]) importData(e.target.files[0]); };
 document.getElementById("btnReset").onclick=()=>{ if(confirm("سيتم مسح كل البيانات (الطلبات، الزبائن، المصروفات، العمّال، العدّادات) من هذا الجهاز والسحابة نهائيًا. هل أنت متأكد؟")){ resetAllData(); document.getElementById("settingsModal").style.display="none"; } };
 document.getElementById("btnResetFin").onclick=()=>{ if(confirm("تصفير كل الأرباح والخسائر والعمليات (سيارات، سجاد، ملابس، مصروفات، عدّادات، ومبيعات المتجر ومشترياته وصندوقه والسجلّ) والبدء من جديد.\n\nيبقى: المواد والأسعار والأصناف والحسابات والزبائن.\n\nهل أنت متأكد؟")){ requireCode(()=>{ resetFinancials(); document.getElementById("settingsModal").style.display="none"; }, SECRET_CODE, "كود التصفير", "تصفير الحسابات يتطلّب كود التحقق."); } };
+document.querySelectorAll("#stabs .stab").forEach(b=>b.onclick=()=>settingsTab(b.dataset.stab));
+document.getElementById("setCloseTop").onclick=()=>{ document.getElementById("settingsModal").style.display="none"; };
 document.getElementById("setSave").onclick=()=>{
   const pin=document.getElementById("lockPinSet").value.trim()||"0707";
   state.lock={enabled:true,pin:pin};
@@ -5817,7 +5850,7 @@ setTimeout(()=>{ if(!window.cloudReady){ const el=document.getElementById("cloud
 <!-- PWA: service-worker registration + update/install wiring -->
 <script>
 (function(){
-  var APP_VERSION = "2.16.0";
+  var APP_VERSION = "2.17.0";
   window.APP_VERSION = APP_VERSION;
   function $(id){ return document.getElementById(id); }
   // سجّل إصدار هذا الجهاز في الحالة المتزامنة (ليُنبَّه الجهاز القديم)

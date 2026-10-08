@@ -36,7 +36,7 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
   log('normal delete still propagates: '+delOk+' (expect true)');
   // second restore finds nothing new except the newly deleted one
   // settings UI renders list
-  await page.evaluate(()=>openSettings()); await page.waitForTimeout(900);
+  await page.evaluate(()=>openSettings('all')); await page.waitForTimeout(900);
   log('settings backup list shown: '+/سجل/.test(await page.textContent('#bkList'))+' (expect true)');
   // shrink guard: a much smaller snapshot does not overwrite today's local backup
   const guard = await page.evaluate(async()=>{ const d=iso(new Date()); for(let i=0;i<20;i++) state.expenses.push({id:uid(),amount:1,category:'x',reason:'r',date:d,editedAt:d}); await takeBackup(true); const big=(await localBackupGet(ymd(new Date()))).n; state.expenses=[]; _lastBackupAt=0; await takeBackup(false); const after=(await localBackupGet(ymd(new Date()))).n; return {big,after}; });

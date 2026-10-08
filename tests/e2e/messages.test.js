@@ -33,7 +33,7 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
   log('loyalty message: '+(m.includes('لديك 3 من 5')&&m.includes('بعد 1 غسلات'))+' (expect true)');
   log('supplier WA link carries a message with balance: '+(await page.evaluate(()=>{ state.tab='contacts'; state.contactsSub='suppliers'; render(); const a=[...document.querySelectorAll('a.wa-btn')].find(x=>/wa\.me\/22222000000/.test(x.href)); return !!a&&decodeURIComponent(a.href).includes('المستحقّ لكم عندنا: 9,000'); }))+' (expect true)');
   // settings section
-  await page.evaluate(()=>openSettings()); await page.waitForTimeout(300);
+  await page.evaluate(()=>openSettings('all')); await page.waitForTimeout(300);
   log('messages section lists 9 editable templates: '+((await page.$$('[data-msgtpl]')).length===9)+' (expect true)');
   log('debt textarea shows migrated text: '+((await page.inputValue('[data-msgtpl="debt"]'))==='يا {الاسم} عليك {المبلغ}')+' (expect true)');
   await page.click('[data-msg-prev="lnd"]'); await page.waitForTimeout(100);
@@ -47,7 +47,7 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
   log('car message now uses custom header + text: '+(m.startsWith('مغاسيل صداقة — فرع 2\nهاتف 99999999')&&m.includes('سيارتك سيارة صغيرة جاهزة ✅ (S1)')&&m.includes('شكرًا لكم'))+' (expect true)');
   log('templates sync to cloud: '+(await page.evaluate(()=>cloudCopy().msgTpl.car.includes('جاهزة ✅')))+' (expect true)');
   // reset to default
-  await page.evaluate(()=>openSettings()); await page.waitForTimeout(200);
+  await page.evaluate(()=>openSettings('all')); await page.waitForTimeout(200);
   await page.click('[data-msg-reset="car"]'); await page.click('#setSave'); await page.waitForTimeout(200);
   log('reset removes override: '+(await page.evaluate(()=>!('car' in state.msgTpl)))+' (expect true)');
   log('\nERRORS:', errors.length?errors.join('\n'):'NONE ✅');

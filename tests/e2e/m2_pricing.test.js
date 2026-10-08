@@ -51,7 +51,7 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
   await page.click('#editSave'); await page.waitForTimeout(200);
   log('edited length saved: '+(await page.evaluate(()=>{ const x=state.carpetOrders[0]; return x.dims.l===5&&x.price===6000; }))+' (expect true)');
   // catalog toggle
-  await page.evaluate(()=>openSettings()); await page.waitForTimeout(300);
+  await page.evaluate(()=>openSettings('all')); await page.waitForTimeout(300);
   await page.evaluate(()=>{ const cb=document.querySelector('[data-m2="وسادة"]'); cb.checked=true; cb.dispatchEvent(new Event('change')); }); await page.waitForTimeout(150);
   log('catalog toggle marks وسادة as per-metre: '+(await page.evaluate(()=>state.pieceUnit['وسادة']==='m2'))+' (expect true)');
   await page.evaluate(()=>{ const cb=document.querySelector('[data-m2="وسادة"]'); cb.checked=false; cb.dispatchEvent(new Event('change')); });

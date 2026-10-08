@@ -65,7 +65,7 @@ const PX = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAA
   log('saveLocal recovers: '+(r2===true)+' (expect true) | warning hidden again: '+(await page.evaluate(()=>document.getElementById('storageWarn').style.display==='none'))+' (expect true)');
 
   // ===== لوحة صحة البيانات في الإعدادات =====
-  await page.evaluate(()=>openSettings()); await page.waitForTimeout(900);
+  await page.evaluate(()=>openSettings('all')); await page.waitForTimeout(900);
   const h = await page.textContent('#healthAdmin');
   log('health panel shows version: '+h.includes(await page.evaluate(()=>window.APP_VERSION))+' (expect true)');
   log('health panel shows local save OK: '+/الحفظ على الجهاز: ✅/.test(h)+' (expect true)');

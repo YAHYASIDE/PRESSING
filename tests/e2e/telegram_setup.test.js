@@ -13,7 +13,7 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
     if(/getUpdates/.test(u)) return {json:async()=>({ok:true,result:[{update_id:1,message:{chat:{id:987654321,first_name:'يحيى',username:'yahya'},text:'hi'}}]})};
     if(/sendMessage/.test(u)){ const b=JSON.parse(o.body); return {json:async()=>(String(b.chat_id)==='987654321'?{ok:true}:{ok:false,description:'Bad Request: chat not found'})}; }
     return {json:async()=>({})}; }; });
-  await page.evaluate(()=>openSettings()); await page.waitForTimeout(250);
+  await page.evaluate(()=>openSettings('all')); await page.waitForTimeout(250);
   await page.click('#tgUnlock'); await page.fill('#codeInput','32720707'); await page.click('#codeOk'); await page.waitForTimeout(200);
   log('token field is LTR plain: '+(await page.evaluate(()=>{ const cs=getComputedStyle(document.getElementById('tgToken')); return cs.direction==='ltr'&&cs.letterSpacing==='normal'; }))+' (expect true)');
   // the user's mistake: token in both fields

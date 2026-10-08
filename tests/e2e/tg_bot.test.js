@@ -20,7 +20,7 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
     state.notify={telegram:{enabled:true,token:TOKEN,chatId:CHAT}}; state.tgLastUpdate=0; save(); render(); }, {TOKEN,CHAT});
 
   // ===== القفل بكود البوت =====
-  await page.evaluate(()=>openSettings()); await page.waitForTimeout(250);
+  await page.evaluate(()=>openSettings('all')); await page.waitForTimeout(250);
   log('telegram fields locked by default: '+(await page.evaluate(()=>document.getElementById('tgFields').disabled&&document.getElementById('tgToken').matches(':disabled')))+' (expect true)');
   await page.click('#tgUnlock'); await page.fill('#codeInput','1111'); await page.click('#codeOk'); await page.waitForTimeout(200);
   log('wrong code keeps lock: '+(await page.evaluate(()=>document.getElementById('tgFields').disabled))+' (expect true)');
@@ -28,7 +28,7 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
   // save while locked must NOT change bot config even if fields had other values
   await page.click('#setSave'); await page.waitForTimeout(200);
   log('save while locked keeps config: '+(await page.evaluate(({TOKEN,CHAT})=>state.notify.telegram.token===TOKEN&&state.notify.telegram.chatId===CHAT&&state.notify.telegram.enabled,{TOKEN,CHAT}))+' (expect true)');
-  await page.evaluate(()=>openSettings()); await page.waitForTimeout(200);
+  await page.evaluate(()=>openSettings('all')); await page.waitForTimeout(200);
   await page.click('#tgUnlock'); await page.fill('#codeInput','32720707'); await page.click('#codeOk'); await page.waitForTimeout(200);
   log('correct code 32720707 unlocks: '+(await page.evaluate(()=>!document.getElementById('tgFields').disabled))+' (expect true)');
   log('pin field shows 32720707: '+((await page.inputValue('#tgPinSet'))==='32720707')+' (expect true)');

@@ -47,7 +47,7 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
   log('within 5 minutes → wait: '+((await page.evaluate(()=>{ _lastSnapAt=Date.now(); return takeSnapshot(false); }))==='wait')+' (expect true)');
 
   // استرجاع من نسطة: احذف c2 ثم استرجع من آخر نسخة
-  await page.evaluate(()=>openSettings()); await page.waitForTimeout(1000);
+  await page.evaluate(()=>openSettings('all')); await page.waitForTimeout(1000);
   const snapTxt=await page.textContent('#snapAdmin');
   log('snapshot panel shows count 3: '+/عدد النسخ: 3/.test(snapTxt)+' (expect true)');
   log('snapshot panel lists entries with restore: '+((await page.$$('#snapAdmin [data-snap-restore]')).length===3)+' (expect true)');

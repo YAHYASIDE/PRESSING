@@ -13,7 +13,7 @@ const ARDIG=/[٠-٩۰-۹]/; // Arabic-Indic / Extended digits
   await page.goto('http://localhost:8123/index.html',{waitUntil:'load'}); await page.waitForTimeout(1400);
   await page.fill('#lockName','مالك'); await page.fill('#lockInput','0707'); await page.click('#lockEnter'); await page.waitForTimeout(500);
 
-  await page.evaluate(()=>openSettings()); await page.waitForTimeout(300);
+  await page.evaluate(()=>openSettings('all')); await page.waitForTimeout(300);
   log('catalogAdmin present:', !!(await page.$('#catalogAdmin')));
 
   // add carpet piece لحاف = 500

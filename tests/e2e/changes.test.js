@@ -33,7 +33,7 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
   log('loyalty delete visible:', delVisible);
 
   // CHANGE 3: create a manager in settings, then log in as manager
-  await page.evaluate(()=>openSettings()); await page.waitForTimeout(300);
+  await page.evaluate(()=>openSettings('all')); await page.waitForTimeout(300);
   const settingsOpen = await page.isVisible('#settingsModal');
   log('settings modal open:', settingsOpen);
   log('manager section present:', !!(await page.$('#mgrCreate')));

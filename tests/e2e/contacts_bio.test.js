@@ -36,7 +36,7 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
   if(await lockVisible()){ await page.click('#lockBio'); await page.waitForTimeout(1200); }
   log('button fingerprint unlocked:', !(await lockVisible()));
   // settings shows enabled + disable works
-  await page.evaluate(()=>openSettings()); await page.waitForTimeout(500);
+  await page.evaluate(()=>openSettings('all')); await page.waitForTimeout(500);
   log('settings shows enabled:', /مفعّلة على هذا الجهاز/.test(await page.textContent('#bioAdmin')));
   await page.click('#bioOffBtn'); await page.waitForTimeout(300);
   log('disabled -> bio cleared:', await page.evaluate(()=>localStorage.getItem('sadaqa_bio')===null));

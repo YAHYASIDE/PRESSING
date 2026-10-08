@@ -40,7 +40,7 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
   log('message filled (name+amount): '+(msg.includes('أحمد')&&msg.includes('650'))+' (expect true)');
   log('reminded timestamp shown: '+/آخر تذكير/.test(await page.textContent('main'))+' (expect true)');
   // custom template via settings
-  await page.evaluate(()=>openSettings()); await page.waitForTimeout(300);
+  await page.evaluate(()=>openSettings('all')); await page.waitForTimeout(300);
   await page.fill('[data-msgtpl="debt"]','يا {الاسم} عليك {المبلغ} منذ {الأيام} يوم');
   await page.click('#setSave'); await page.waitForTimeout(200);
   const m2 = await page.evaluate(()=>debtMessage(debtors().find(d=>d.name==='أحمد')));
@@ -107,7 +107,7 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
   await page.evaluate(()=>{ document.body.classList.remove('printing-receipt','rcpt-w58'); }); await page.emulateMedia({media:'screen'});
   await page.click('#receiptClose');
   // settings: width select + test receipt
-  await page.evaluate(()=>openSettings()); await page.waitForTimeout(250);
+  await page.evaluate(()=>openSettings('all')); await page.waitForTimeout(250);
   log('width setting reflects device choice: '+(await page.evaluate(()=>document.getElementById('rcptWidthSet').value==='58'))+' (expect true)');
   await page.selectOption('#rcptWidthSet','80'); await page.click('#rcptTestBtn'); await page.waitForTimeout(150);
   log('test receipt opens (80mm): '+/80 ملم/.test(await page.textContent('#receiptContent'))+' (expect true)');
