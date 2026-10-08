@@ -99,7 +99,9 @@
     min-width:20px;height:20px;border-radius:999px;display:grid;place-items:center;padding:0 5px}
   .nav-btn.active .nav-badge{background:rgba(255,255,255,.28)}
 
-  main{flex:1;min-width:0;padding:14px;overflow:auto}
+  main{flex:1;min-width:0;padding:14px;overflow:auto;overflow-x:hidden}
+  .cols>*,.grid>*,.fin-cards>*,.act-cards>*,.row2>*{min-width:0}
+  .panel{min-width:0;max-width:100%}
   .screen{animation:fade .25s ease}
   @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
   .screen-head{display:flex;align-items:center;gap:8px;margin:0 0 8px}
@@ -311,17 +313,27 @@
     nav.side{width:100%;flex-direction:row;overflow-x:auto;padding:4px 6px;gap:4px;order:2;position:sticky;bottom:0;
       background:var(--surface);border-top:1px solid var(--line);border-inline-start:none;z-index:20}
     nav.side{padding:4px 4px calc(4px + env(safe-area-inset-bottom,0px));gap:2px}
-    .nav-btn{flex:1 0 44px;min-width:0;flex-direction:column;gap:2px;padding:5px 2px;font-size:.62rem;text-align:center;border-radius:10px;white-space:nowrap}
+    .nav-btn{flex:1 1 0;min-width:0;flex-direction:column;gap:2px;padding:5px 1px;font-size:.62rem;text-align:center;border-radius:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    @media (max-width:380px){ .nav-btn{font-size:.55rem;letter-spacing:-.01em} }
     .nav-btn svg{width:19px;height:19px}
     .nav-badge{position:absolute;margin:0;top:1px;inset-inline-start:calc(50% + 6px)}
     #toast{bottom:calc(84px + env(safe-area-inset-bottom,0px));max-width:calc(100% - 24px)}
-    .seg{overflow:visible}
+    .seg{overflow-x:auto}
     .seg button{flex:1 1 0;padding:7px 4px;font-size:.76rem;gap:4px;justify-content:center}
+    @media (max-width:380px){ .seg button{font-size:.7rem;padding:7px 2px} }
     .seg button svg{display:none}
     main{order:1;padding:8px}
     .panel{padding:12px}
     .grid{gap:8px}
-    .cols{grid-template-columns:1fr}
+    .cols{grid-template-columns:minmax(0,1fr)}
+    .grid{grid-template-columns:minmax(0,1fr)}
+    .orders{grid-template-columns:minmax(0,1fr)}
+    .act-cards{grid-template-columns:repeat(3,minmax(0,1fr))}
+    .pm-strip{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .stabs{grid-template-columns:repeat(6,minmax(0,1fr))}
+    .tbl-wrap,.panel>div[style*="overflow:auto"]{max-width:100%}
+    .tbl{display:block;overflow-x:auto;max-width:100%;white-space:nowrap}
+    .tbl .empty{white-space:normal}
     .veh-grid{grid-template-columns:repeat(2,1fr)}
     .exp-grid{grid-template-columns:1fr}
     .bd-grid{grid-template-columns:repeat(3,1fr);gap:7px}
@@ -5921,7 +5933,7 @@ setTimeout(()=>{ if(!window.cloudReady){ const el=document.getElementById("cloud
 <!-- PWA: service-worker registration + update/install wiring -->
 <script>
 (function(){
-  var APP_VERSION = "2.20.0";
+  var APP_VERSION = "2.20.1";
   window.APP_VERSION = APP_VERSION;
   function $(id){ return document.getElementById(id); }
   // سجّل إصدار هذا الجهاز في الحالة المتزامنة (ليُنبَّه الجهاز القديم)
