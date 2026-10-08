@@ -1130,6 +1130,27 @@ const EXP_CATS = ["مواد","صيانة","أخرى"];
 
 /* ================= State ================= */
 const now = new Date();
+/* ===== الوقت الصحيح (2.22.0) =====
+   - ساعة الجهاز قد تكون خاطئة: نقيس فرقها عن ساعة الخادم (ترويسة Date في رد HEAD) ونصحّح Date/Date.now داخل التطبيق.
+   - المنطقة الزمنية: الأيام تُحسب دائمًا بتوقيت المحل SHOP_TZ مهما كانت منطقة الهاتف، فلا يختلف «اليوم» بين الأجهزة. */
+const SHOP_TZ="Africa/Nouakchott";
+const RealDate=Date;
+let _clockOffset=0, _clockMeasuredAt=0, _clockWarned=false;
+try{ const c=JSON.parse(localStorage.getItem("sadaqa_clock")||"null"); if(c && typeof c.off==="number" && RealDate.now()-(c.at||0) < 7*86400000){ _clockOffset=c.off; _clockMeasuredAt=c.at; } }catch(e){}
+class ShopDate extends RealDate{ constructor(...a){ if(a.length===0) super(RealDate.now()+_clockOffset); else super(...a); } static now(){ return RealDate.now()+_clockOffset; } }
+try{ window.Date=ShopDate; }catch(e){}
+async function syncClock(){
+  try{ const t0=RealDate.now(); const r=await fetch("./sw.js?clock="+t0,{method:"HEAD",cache:"no-store"}); const t1=RealDate.now();
+    const h=r.headers.get("date"); if(!h) return; const srv=new RealDate(h).getTime(); if(isNaN(srv)) return;
+    const off=srv+(t1-t0)/2-t1; const apply=Math.abs(off)>90000?Math.round(off):0; // دقة ترويسة Date ثانية واحدة؛ نتجاهل الفروق الصغيرة
+    _clockOffset=apply; _clockMeasuredAt=RealDate.now();
+    try{ localStorage.setItem("sadaqa_clock", JSON.stringify({off:apply,at:_clockMeasuredAt,raw:Math.round(off)})); }catch(e){}
+    if(apply && !_clockWarned){ if(typeof unlocked!=="undefined" && unlocked) clockWarnToast(); else _clockWarnPending=true; }
+  }catch(e){}
+}
+let _clockWarnPending=false;
+function clockWarnToast(){ _clockWarned=true; _clockWarnPending=false; try{ toast("⏰ ساعة هذا الجهاز تختلف عن الوقت الحقيقي بـ"+Math.round(Math.abs(_clockOffset)/60000)+" دقيقة — التطبيق يستخدم الوقت الصحيح تلقائيًا"); }catch(e){} }
+function clockInfo(){ let tz=""; try{ tz=Intl.DateTimeFormat().resolvedOptions().timeZone||""; }catch(e){} return {offsetMin:Math.round(_clockOffset/60000), tz, shopTz:SHOP_TZ, measuredAt:_clockMeasuredAt, deviceOffsetMin:-new RealDate().getTimezoneOffset()}; }
 const iso = (d) => d.toISOString();
 const daysAgo = (n) => { const d=new Date(now); d.setDate(d.getDate()-n); return iso(d); };
 const monthAgo = () => iso(new Date(now.getFullYear(), now.getMonth(), 2, 10, 0));
@@ -1198,11 +1219,14 @@ const fmt=(n)=>(Math.round(n*100)/100).toLocaleString("en-US");
 const money=(n)=>fmt(n);
 const isToday=(d)=>{const x=new Date(d);return x.toDateString()===now.toDateString();};
 const isMonth=(d)=>{const x=new Date(d);return x.getMonth()===now.getMonth()&&x.getFullYear()===now.getFullYear();};
-const ymd=(d)=>{const x=new Date(d);return x.getFullYear()+"-"+String(x.getMonth()+1).padStart(2,"0")+"-"+String(x.getDate()).padStart(2,"0");};
+const _ymdFmt=(()=>{ try{ return new Intl.DateTimeFormat("en-CA",{timeZone:SHOP_TZ,year:"numeric",month:"2-digit",day:"2-digit"}); }catch(e){ return null; } })();
+const _tzIsShop=(()=>{ try{ return Intl.DateTimeFormat().resolvedOptions().timeZone===SHOP_TZ; }catch(e){ return false; } })();
+// اليوم بتوقيت المحل (نواكشوط) على كل الأجهزة؛ مسار سريع إن كان الجهاز على التوقيت نفسه
+const ymd=(d)=>{const x=new Date(d); if(isNaN(x)) return ""; if(_tzIsShop||!_ymdFmt) return x.getFullYear()+"-"+String(x.getMonth()+1).padStart(2,"0")+"-"+String(x.getDate()).padStart(2,"0"); return _ymdFmt.format(x);};
 const inRange=(iso)=>{ if(!iso) return false; const d=ymd(iso);return d>=state.dateFrom && d<=state.dateTo;};
 // الطلب «نشط في الفترة» إن سُجّل أو دُفع أو جهز أو سُلّم فيها — فلا يختفي طلب قديم دُفع اليوم من قائمة اليوم (2.14.0)
 const activeInRange=(o)=> !!o && (inRange(o.date) || inRange(o.paidDate) || inRange(o.deliveredDate) || inRange(o.readyDate));
-const timeStr=(d)=>new Date(d).toLocaleTimeString("ar-u-nu-latn",{hour:"2-digit",minute:"2-digit"});
+const timeStr=(d)=>new Date(d).toLocaleTimeString("ar-u-nu-latn",{hour:"2-digit",minute:"2-digit",timeZone:SHOP_TZ});
 function sum(arr,f){return arr.reduce((a,x)=>a+f(x),0);}
 
 function vehIcon(v){
@@ -4327,7 +4351,7 @@ function isPastDay(dateIso){ return ymd(dateIso)<todayStr(); }
 function gateDay(dateIso, cb){ const cd=closedDayOf(dateIso); if(cd) return closedDayGate(cd, cb); if(isPastDay(dateIso)) requireCode(cb, SECRET_CODE, "كود تعديل يوم سابق", "تعديل بيانات يوم سابق يتطلب كود التحقق."); else cb(); }
 // يوم السجلّ المالي = يوم التسجيل أو يوم الدفع (المال استُلم يوم الدفع)
 function gateRec(o, cb){ const d1=closedDayOf(o&&o.date), d2=closedDayOf(o&&o.paidDate); if(d1||d2) return closedDayGate(d1||d2, cb); gateDay(o&&o.date, cb); }
-function chosenDateIso(dateStr){ const t=todayStr(); if(!dateStr||dateStr===t) return iso(new Date()); return new Date(dateStr+"T12:00:00").toISOString(); }
+function chosenDateIso(dateStr){ const t=todayStr(); if(!dateStr||dateStr===t) return iso(new Date()); return new Date(dateStr+"T12:00:00Z").toISOString(); }
 function gateDate(dateStr, commit){ const d=dateStr||todayStr(); if(dayIsClosed(d)) return closedDayGate(d, commit); if(dateStr && dateStr!==todayStr()) requireCode(commit, SECRET_CODE, "كود التاريخ السابق", "التسجيل بتاريخ سابق يتطلّب كود التحقق."); else commit(); }
 function bindHold(el, cb, ms){
   if(!el) return; ms=ms||1000; el.classList.add("hold-btn");
@@ -5050,6 +5074,7 @@ function renderHealthAdmin(){
   const pushLine = _lastPushErr ? `<span style="color:var(--unpaid)">⚠️ آخر خطأ رفع: ${_esc(_lastPushErr.msg).slice(0,120)} (${timeStr(_lastPushErr.ts)})</span>`
     : (_lastPushOk ? `<span style="color:var(--ready)">✅ آخر رفع ناجح ${timeStr(_lastPushOk)}</span>` : `<span style="color:var(--muted)">لم يُرفع شيء بعد في هذه الجلسة</span>`);
   host.innerHTML=`<div style="line-height:2">
+    <div>⏰ الساعة: ${(()=>{ const ci=clockInfo(); const tzNote=ci.tz&&ci.tz!==ci.shopTz?` · منطقة الجهاز ${_esc(ci.tz)} — الأيام تُحسب بتوقيت نواكشوط`:""; return ci.offsetMin?`<span style="color:var(--unpaid)">⚠️ ساعة الجهاز تختلف بـ${Math.abs(ci.offsetMin)} دقيقة (${ci.offsetMin>0?"متأخرة":"متقدمة"}) — التطبيق يصحّحها تلقائيًا</span>`:`<span style="color:var(--ready)">✅ صحيحة</span>`+(ci.measuredAt?"":" (لم تُقارن بالخادم بعد)")+tzNote; })()}</div>
     <div>الإصدار على هذا الجهاز: <b>${_esc(ver)}</b>${(state.appVer&&verCmp(state.appVer,ver)>0)?` <span style="color:var(--unpaid)">⚠️ جهاز آخر على ${_esc(state.appVer)} — حدّث هذا الجهاز</span>`:""}</div>
     <div>الحفظ على الجهاز: ${localOk?`<span style="color:var(--ready)">✅ يعمل (${_kb(_localSize)} · ${timeStr(_localSaveOk)})</span>`:(_localSaveErr?`<span style="color:var(--unpaid)">⚠️ فاشل: ${_esc(String(_localSaveErr.name||_localSaveErr.message||_localSaveErr)).slice(0,80)} — ${_localSaveFails} مرّة</span>`:`<span style="color:var(--muted)">لم يُحفظ بعد</span>`)}</div>
     <div>الصور على الجهاز: <b>${photoN}</b> (${_kb(photoB)})${_photoStoreErr?` <span style="color:var(--unpaid)">⚠️ مخزن الصور لا يعمل</span>`:""}</div>
@@ -5781,6 +5806,7 @@ document.getElementById("rcptTestBtn").onclick=()=>{ setRcptWidth(document.getEl
     if(state.logins.length>200) state.logins=state.logins.slice(-200);
     unlocked=true;
     saveSession(); armIdle();
+    if(_clockWarnPending) setTimeout(clockWarnToast, 1800);
     document.getElementById("lockInput").value=""; document.getElementById("lockName").value=""; document.getElementById("lockInput").type="password";
     _lastAlertTs=Date.now();
     save(); applyLock(); render();
@@ -5843,6 +5869,7 @@ document.getElementById("rcptTestBtn").onclick=()=>{ setRcptWidth(document.getEl
 })();
 
 load();
+syncClock(); setInterval(syncClock, 30*60*1000);
 loadPhotos(); // الصور من IndexedDB (غير متزامنة؛ تُعاد للسجلات ثم يُعاد الرسم)
 function ensureCarNos(){ if(!state.carSeq) state.carSeq={}; (state.carOps||[]).forEach(o=>{ if(!o.no) o.no=carNo(o.vehicle); }); }
 function runMigrations(){
@@ -5973,7 +6000,7 @@ setTimeout(()=>{ if(!window.cloudReady){ const el=document.getElementById("cloud
 <!-- PWA: service-worker registration + update/install wiring -->
 <script>
 (function(){
-  var APP_VERSION = "2.21.0";
+  var APP_VERSION = "2.22.0";
   window.APP_VERSION = APP_VERSION;
   function $(id){ return document.getElementById(id); }
   // سجّل إصدار هذا الجهاز في الحالة المتزامنة (ليُنبَّه الجهاز القديم)

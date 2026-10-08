@@ -307,6 +307,14 @@
   الشبكة → `network`. `driveErr(code,e)` يترجم كل رمز مع خطوة العلاج. زر «🔎 فحص Drive الآن» (`driveDiagnose`) في قسم
   Drive يعرض خطوات ✅/❌: الإنترنت → Firebase محمّل → الحساب → الجلسة → Drive API (`about?fields=user,storageQuota`)
   → المجلد → رفع تجريبي حقيقي، ويتوقف عند أول فشل مع العلاج. الاختبار في `backup5` (محاكاة 403 accessNotConfigured).
+- **الوقت الصحيح (2.22.0) — «تسجيلات اليوم لا تظهر/الوقت خاطئ»:** (1) **ساعة الجهاز:** `syncClock()` عند الفتح وكل 30
+  دقيقة يقيس فرق ساعة الجهاز عن الخادم من ترويسة `Date` لردّ `HEAD ./sw.js?clock=` (دقة ثانية؛ الفروق < 90 ثانية تُهمل)،
+  ويحفظه في `localStorage sadaqa_clock` (صالح 7 أيام دون إنترنت). `Date` نفسه مُستبدل بصنف `ShopDate` (يرث `RealDate`):
+  `new Date()` و`Date.now()` يعيدان الوقت المصحَّح، وكل شيء آخر (parse/UTC/instanceof) كما هو. تنبيه توست بعد الدخول
+  (`clockWarnToast`/`_clockWarnPending`) وسطر «⏰ الساعة» في صحة البيانات (`clockInfo()`). (2) **المنطقة الزمنية:** `ymd()`
+  و`timeStr()` يحسبان بتوقيت المحل `SHOP_TZ="Africa/Nouakchott"` عبر `Intl.DateTimeFormat` (مسار سريع إن كان الجهاز على
+  التوقيت نفسه)، فـ«اليوم» واحد على كل الأجهزة، و`chosenDateIso` يضع ظهر UTC للتاريخ المختار. **قاعدة:** لا تستخدم
+  `getDate/getHours` مباشرة لتحديد اليوم؛ استخدم `ymd`. الاختبار `tests/e2e/clock.test.js` (منطقة كراتشي + انحراف ساعتين).
 - **قاعدة الحذف والاستعادة (2.0.0):** السجلّ يُعتبر محذوفًا فقط إذا كان وقت الـ tombstone
   ≥ `editedAt` للسجلّ (`isDead` في `mergeById`). لذلك السجلّ المُستعاد (editedAt جديد) يعود
   على كل الأجهزة. `tomb(id)` يضع وقتًا = max(الآن، editedAt+1) لتفادي فرق ساعات الأجهزة.
