@@ -20,14 +20,15 @@
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg:#eef3f7; --surface:#ffffff; --ink:#152534; --muted:#5c6f7e; --line:#dbe4ec;
-    --brand:#12507c; --brand-2:#1c6ea4; --teal:#2e7d6e;
-    --wash:#d98a00; --wash-bg:#fdf1de;
-    --ready:#1f9d63; --ready-bg:#e4f6ec;
+    --bg:#eff4f9; --surface:#ffffff; --ink:#0f1f2e; --muted:#5b6f80; --line:#dbe4ee;
+    --brand:#0ea993; --brand-2:#19c9ae; --brand-soft:#e0f7f2; --teal:#0e9f8a;
+    --wash:#f59e0b; --wash-bg:#fff3dc;
+    --ready:#16a34a; --ready-bg:#e1f7ea;
     --done:#64748b; --done-bg:#eef2f6;
-    --unpaid:#d64545; --unpaid-bg:#fbeaea;
-    --paid:#1f9d63; --paid-bg:#e4f6ec;
-    --shadow:0 1px 2px rgba(21,37,52,.06), 0 8px 24px rgba(21,37,52,.06);
+    --unpaid:#e11d48; --unpaid-bg:#fde7ee;
+    --paid:#16a34a; --paid-bg:#e1f7ea;
+    --shadow:0 1px 2px rgba(15,31,46,.05), 0 8px 24px rgba(15,31,46,.07);
+    --shadow-lift:0 4px 10px rgba(15,31,46,.08), 0 16px 36px rgba(15,31,46,.12);
     --radius:16px;
     --soft:#f1f6fa; --soft-hover:#e8eff5; --input:#f7fafc; --chip:#e9f0f6;
     --info-bg:#eaf3fb; --info-line:#cfe1f3; --info-ink:#1c6ea4;
@@ -41,6 +42,34 @@
   .mini:active,.chip:active,.pick:active,.stab:active,.act-card:active,.pm-opt:active,.wk-btn:active{transform:scale(.985)}
   h2,h3{text-wrap:balance}
   .hint{line-height:1.5}
+  /* ===== لمسات وحركة (2.20.0) ===== */
+  @keyframes screenIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+  @keyframes popIn{from{opacity:0;transform:translateY(12px) scale(.98)}to{opacity:1;transform:none}}
+  @keyframes pulseDot{0%,100%{opacity:.95;transform:scale(1)}50%{opacity:.4;transform:scale(.75)}}
+  .screen{animation:screenIn .28s cubic-bezier(.2,.7,.2,1)}
+  .modal{animation:fade .18s ease}
+  .modal-box{animation:popIn .22s cubic-bezier(.2,.7,.2,1)}
+  .order,.metric,.panel,.fin-card,.act-card,.pick,.prod,.stab,.chip,.pm-opt,.seg button,.nav-btn,.mini,.wk-btn,.btn-primary{transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease,background-color .18s ease,color .18s ease,filter .18s ease}
+  @media (hover:hover){ .order:hover,.fin-card:hover,.act-card:hover,.metric:hover{transform:translateY(-2px);box-shadow:var(--shadow-lift)} .pick:hover{transform:translateY(-1px)} }
+  .btn-primary{background:linear-gradient(135deg,var(--brand),var(--brand-2));box-shadow:0 6px 16px rgba(15,31,46,.14)}
+  .btn-primary:active{transform:translateY(1px) scale(.99)}
+  .nav-btn svg{transition:transform .2s cubic-bezier(.2,.7,.2,1)}
+  .nav-btn.active svg{transform:translateY(-1px) scale(1.12)}
+  .badge.b-wash::before,.badge.b-ready::before{animation:pulseDot 1.6s ease-in-out infinite}
+  .panel>h3::before{content:"";display:inline-block;width:4px;height:.85em;border-radius:3px;background:linear-gradient(var(--brand),var(--brand-2));margin-inline-end:8px;vertical-align:-1px}
+  .fin-hero{position:relative;overflow:hidden;background:linear-gradient(135deg,var(--brand) 0%,var(--brand-2) 70%,#1e4fa8 160%)}
+  .fin-hero::after{content:"";position:absolute;width:52%;aspect-ratio:1;border-radius:50%;background:rgba(255,255,255,.12);inset-inline-start:-12%;bottom:-55%;pointer-events:none}
+  .fin-card,.act-card{background:linear-gradient(180deg,var(--surface),var(--surface) 70%,var(--brand-soft))}
+  .act-card.zero{background:var(--surface)}
+  .pick.on{background:var(--brand-soft)}
+  .date-presets .chip.on,.chip.on{box-shadow:0 3px 10px rgba(15,31,46,.14)}
+  details.dash-details>*:not(summary){animation:screenIn .22s ease}
+  header.top{box-shadow:0 2px 12px rgba(15,31,46,.12)}
+  .field input,.field select{transition:border-color .15s,box-shadow .15s,background-color .15s}
+  .field input:focus,.field select:focus{box-shadow:0 0 0 3px var(--brand-soft)}
+  .order.s-wash{background:linear-gradient(90deg,var(--wash-bg) 0,var(--surface) 22%)}
+  .order.s-ready{background:linear-gradient(90deg,var(--ready-bg) 0,var(--surface) 22%)}
+  body.dark .order.s-wash,body.dark .order.s-ready{background:var(--surface)}
   body{font-family:"Tajawal","Segoe UI",Tahoma,Arial,sans-serif;background:var(--bg);color:var(--ink);
     -webkit-font-smoothing:antialiased;min-height:100vh}
   button{font-family:inherit;cursor:pointer}
@@ -311,14 +340,15 @@
   .theme-btn svg{width:17px;height:17px}
   body.dark{
     color-scheme:dark;
-    --bg:#0e1620; --surface:#18222e; --ink:#e7eef5; --muted:#9db0c0; --line:#2a3947;
-    --brand:#2f86c9; --brand-2:#4a9fd8; --teal:#3fae9c;
-    --soft:#141e28; --soft-hover:#1e2b38; --input:#101a24; --chip:#22303e;
+    --bg:#0b1220; --surface:#131c2b; --ink:#e8eef6; --muted:#9fb1c3; --line:#263447;
+    --brand:#19c9ae; --brand-2:#2ee0c5; --brand-soft:#0f2a26; --teal:#3fae9c;
+    --soft:#111a28; --soft-hover:#1b2637; --input:#0f1725; --chip:#1e2a3c;
     --info-bg:#12222e; --info-line:#294256; --info-ink:#8fc4e6;
-    --wash:#e0a83a; --wash-bg:#3a2e12; --ready:#37c088; --ready-bg:#123324;
-    --done:#93a4b4; --done-bg:#232f3a; --unpaid:#e56b6b; --unpaid-bg:#3a1f1f;
-    --paid:#37c088; --paid-bg:#123324;
+    --wash:#fbbf24; --wash-bg:#3a2d0f; --ready:#4ade80; --ready-bg:#11301d;
+    --done:#93a4b4; --done-bg:#232f3a; --unpaid:#fb7185; --unpaid-bg:#3d1a24;
+    --paid:#4ade80; --paid-bg:#11301d;
     --shadow:0 1px 2px rgba(0,0,0,.35),0 10px 26px rgba(0,0,0,.4);
+    --shadow-lift:0 6px 14px rgba(0,0,0,.45),0 18px 40px rgba(0,0,0,.5);
   }
   body.dark input::placeholder{color:#6b7c8b}
   body.dark .theme-btn{background:rgba(255,255,255,.12)}
@@ -4576,17 +4606,18 @@ window.onCloudPushOk=()=>{ _lastPushOk=Date.now(); _lastPushErr=null; const el=d
 let _lastPushErrToast=0;
 window.onCloudPushErr=(e)=>{ _lastPushErr={ts:Date.now(),msg:(e&&e.message)||String(e||"")}; const el=document.getElementById("cloudStat"); if(el){ el.textContent="⚠️ فشل حفظ البيانات في السحابة — لم تُحفظ! "+((e&&e.message)||""); el.style.color="var(--unpaid)"; } updateCloudBtn("offline"); const now=Date.now(); if(now-_lastPushErrToast>8000){ _lastPushErrToast=now; try{ toast("⚠️ تعذّر حفظ البيانات في السحابة — تحقّق من الاتصال"); }catch(_){} } };
 const PALETTES=[
-  {k:"teal",  name:"أخضر سماوي", b:"#0f9d8f", b2:"#16b8a6"},
-  {k:"aqua",  name:"فيروزي",     b:"#0e8fa8", b2:"#22b6cf"},
-  {k:"green", name:"أخضر",       b:"#2f9e6b", b2:"#45bd86"},
-  {k:"blue",  name:"أزرق",       b:"#1c6ea4", b2:"#2f86c9"},
-  {k:"olive", name:"زيتوني",     b:"#6b9e3f", b2:"#8bc45a"}
+  {k:"teal",  name:"أخضر سماوي", b:"#0ea993", b2:"#19c9ae", t:"#e0f7f2", td:"#0f2a26"},
+  {k:"aqua",  name:"فيروزي",     b:"#0891b2", b2:"#22c3e6", t:"#def5fb", td:"#0e2630"},
+  {k:"green", name:"أخضر",       b:"#16a34a", b2:"#34d399", t:"#e2f7ea", td:"#0f2a1a"},
+  {k:"blue",  name:"أزرق",       b:"#2563eb", b2:"#3b82f6", t:"#e4edfd", td:"#121f3a"},
+  {k:"olive", name:"زيتوني",     b:"#65a30d", b2:"#84cc16", t:"#eef7dc", td:"#1c2a0f"}
 ];
 function applyPalette(){
   const pal=PALETTES.find(x=>x.k===state.palette)||PALETTES[0];
   const r=document.documentElement.style;
   r.setProperty("--brand", pal.b);
   r.setProperty("--brand-2", pal.b2);
+  r.setProperty("--brand-soft", (state.dark?pal.td:pal.t)||pal.t);
 }
 function applyTheme(){
   document.body.classList.toggle("dark", !!state.dark);
@@ -5890,7 +5921,7 @@ setTimeout(()=>{ if(!window.cloudReady){ const el=document.getElementById("cloud
 <!-- PWA: service-worker registration + update/install wiring -->
 <script>
 (function(){
-  var APP_VERSION = "2.19.0";
+  var APP_VERSION = "2.20.0";
   window.APP_VERSION = APP_VERSION;
   function $(id){ return document.getElementById(id); }
   // سجّل إصدار هذا الجهاز في الحالة المتزامنة (ليُنبَّه الجهاز القديم)
