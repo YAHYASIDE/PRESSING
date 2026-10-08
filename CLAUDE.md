@@ -206,6 +206,26 @@
   جهاز من `state.logins[].ver` (مع ⚠️ للقديم) + زر «إعادة المزامنة الآن». `state.appVer` (مُزامن، يُدمج بالأكبر
   عبر `verCmp`) يُضبط من سكربت الـ PWA؛ إن كان جهاز آخر على إصدار أحدث يظهر شريط التحديث (`window.onNewerVersion`).
   السيارات/السجاد/الملابس الجديدة تحمل `editedAt` منذ الإنشاء. الاختبار: `tests/e2e/storage_safety.test.js`.
+- **نسخ كل 5 دقائق + Google Drive + المساحة (2.14.0):** (1) **محليًا:** مخزن IndexedDB `snaps` (قاعدة
+  `sadaqa-backups` الإصدار 3) — `takeSnapshot(force)` كل دقيقة يفحص وكل 5 دقائق (`SNAP_EVERY`) يحفظ نسخة
+  **جديدة** `{id:"YYYY-MM-DD_HH-MM-SS-mmm",ts,n,by,size,hash,data}` فقط إن تغيّرت البيانات (`strHash` لـ
+  `cloudCopy()`); **لا تُحذف تلقائيًا أبدًا**؛ الإعدادات ▸ «🕔 نسخ كل 5 دقائق» (`renderSnapAdmin`): القائمة
+  (آخر 20) + استرجاع (`restoreFromSnap` = معاينة + كود + `restoreMissing`) + تنزيل + زر يدوي «حذف الأقدم من 30
+  يومًا» بالكود. (2) **Google Drive:** دخول Google عبر Firebase (`window.driveSignIn` في سكربت الوحدة:
+  `GoogleAuthProvider` بنطاق `drive.file` + `signInWithPopup`، توكن ~55 دقيقة) — إعداد محلي للجهاز في
+  `localStorage sadaqa_drive` `{on,email,token,exp,folderId,last,lastHash,lastErr,count}` (`driveCfg/driveSet/
+  driveTokenOk`). `driveTick` كل دقيقة؛ بعد 5 دقائق من آخر رفع و**إن تغيّرت البيانات** يرفع `driveUpload` ملفًا
+  جديدًا `sadaqa-backup-…json` (multipart) إلى مجلد `DRIVE_FOLDER` (`driveFolderId` يبحث/ينشئ) ولا يحذف شيئًا.
+  401/403 → الجلسة منتهية (`lastErr`، توست كل 30 دقيقة، زر «إعادة الربط»). القائمة `driveList` (آخر 15) والاسترجاع
+  `driveGet(id)` → `restoreFromSnap`. رسائل الخطأ `driveErr`. **تفعيل لمرّة واحدة من المالك:** Firebase ▸
+  Authentication ▸ Google مفعّل + `yahyaside.github.io` في Authorized domains + تفعيل Google Drive API في
+  Google Cloud. يعمل في Chrome/PWA لا داخل APK. (3) **💾 المساحة** (`renderStorageAdmin`/`storageInfo`): شريط
+  localStorage من `LS_LIMIT` (5MB) + `navigator.storage.estimate()` + حجم الصور والنسخ؛ ≥85% تحذير أحمر هنا وتوست
+  (`storageCheckTick`). الاختبار `tests/e2e/backup5.test.js` (Drive مُحاكى بـ `page.route`).
+- **الطلب المدفوع اليوم يبقى في قائمة اليوم (2.14.0):** كانت قوائم السيارات/السجاد/الملابس ترشّح بتاريخ الإنشاء
+  فقط، فطلب قديم دُفع/سُلّم اليوم يختفي من «اليوم» ويظهر في «7 أيام/الكل» بينما الدخل يحسبه اليوم. الآن
+  `activeInRange(o)` = `inRange` لأي من `date/paidDate/deliveredDate/readyDate`، و`inRange(undefined)=false`.
+  الاختبار `tests/e2e/paid_visible.test.js`.
 - **قاعدة الحذف والاستعادة (2.0.0):** السجلّ يُعتبر محذوفًا فقط إذا كان وقت الـ tombstone
   ≥ `editedAt` للسجلّ (`isDead` في `mergeById`). لذلك السجلّ المُستعاد (editedAt جديد) يعود
   على كل الأجهزة. `tomb(id)` يضع وقتًا = max(الآن، editedAt+1) لتفادي فرق ساعات الأجهزة.

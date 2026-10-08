@@ -778,6 +778,21 @@
       <div id="backupAdmin"><div class="hint">جارٍ التحميل…</div></div>
     </div>
     <div class="set-sec">
+      <div class="set-title">🕔 نسخ كل 5 دقائق (على هذا الهاتف)</div>
+      <div class="hint" style="margin-bottom:8px">كل 5 دقائق، إن تغيّرت البيانات، تُحفظ نسخة جديدة على هذا الجهاز. النسخ السابقة لا تُحذف تلقائيًا (الحذف يدوي فقط).</div>
+      <div id="snapAdmin"><div class="hint">جارٍ التحميل…</div></div>
+    </div>
+    <div class="set-sec">
+      <div class="set-title">☁️ Google Drive (نسخة كل 5 دقائق)</div>
+      <div class="hint" style="margin-bottom:8px">اربط حساب Google فيرفع التطبيق ملف نسخة جديدًا إلى Drive كل 5 دقائق عند تغيّر البيانات، دون حذف الملفات السابقة.</div>
+      <div id="driveAdmin"><div class="hint">جارٍ التحميل…</div></div>
+    </div>
+    <div class="set-sec">
+      <div class="set-title">💾 المساحة</div>
+      <div class="hint" style="margin-bottom:8px">كم تبقّى من مساحة التخزين على هذا الجهاز. عند الاقتراب من الامتلاء يظهر تحذير هنا وفي الشاشة الرئيسية.</div>
+      <div id="storageAdmin"><div class="hint">جارٍ الفحص…</div></div>
+    </div>
+    <div class="set-sec">
       <div class="set-title">النسخة الاحتياطية</div>
       <div class="set-row">
         <button class="mini" id="btnExport">تصدير البيانات</button>
@@ -1051,7 +1066,9 @@ const money=(n)=>fmt(n);
 const isToday=(d)=>{const x=new Date(d);return x.toDateString()===now.toDateString();};
 const isMonth=(d)=>{const x=new Date(d);return x.getMonth()===now.getMonth()&&x.getFullYear()===now.getFullYear();};
 const ymd=(d)=>{const x=new Date(d);return x.getFullYear()+"-"+String(x.getMonth()+1).padStart(2,"0")+"-"+String(x.getDate()).padStart(2,"0");};
-const inRange=(iso)=>{const d=ymd(iso);return d>=state.dateFrom && d<=state.dateTo;};
+const inRange=(iso)=>{ if(!iso) return false; const d=ymd(iso);return d>=state.dateFrom && d<=state.dateTo;};
+// الطلب «نشط في الفترة» إن سُجّل أو دُفع أو جهز أو سُلّم فيها — فلا يختفي طلب قديم دُفع اليوم من قائمة اليوم (2.14.0)
+const activeInRange=(o)=> !!o && (inRange(o.date) || inRange(o.paidDate) || inRange(o.deliveredDate) || inRange(o.readyDate));
 const timeStr=(d)=>new Date(d).toLocaleTimeString("ar-u-nu-latn",{hour:"2-digit",minute:"2-digit"});
 function sum(arr,f){return arr.reduce((a,x)=>a+f(x),0);}
 
@@ -1538,7 +1555,7 @@ function screenCars(){
   const oq=(state.carSearch||"").trim();
   const _t=ymd(new Date());
   const periodTxt = (state.dateFrom===state.dateTo) ? (state.dateFrom===_t?"اليوم":state.dateFrom) : `${state.dateFrom} ← ${state.dateTo}`;
-  const listSrc = oq ? state.carOps.filter(o=>((o.no||"").toLowerCase().includes(oq.toLowerCase()))||((o.plate||"").includes(oq))).slice().reverse() : state.carOps.filter(o=>inRange(o.date)).slice().reverse();
+  const listSrc = oq ? state.carOps.filter(o=>((o.no||"").toLowerCase().includes(oq.toLowerCase()))||((o.plate||"").includes(oq))).slice().reverse() : state.carOps.filter(o=>activeInRange(o)).slice().reverse();
   const today=listSrc;
   const total=carIncome(inRange);
   const rows=today.length?today.map(o=>`
@@ -1628,7 +1645,7 @@ function screenCarpets(){
   const _t=ymd(new Date());
   const periodTxt = (state.dateFrom===state.dateTo) ? (state.dateFrom===_t?"اليوم":state.dateFrom) : `${state.dateFrom} ← ${state.dateTo}`;
   const pending=(o)=>!o.cancelled && ((o.status==="wash"||o.status==="ready") || !o.paid);
-  let list=state.carpetOrders.filter(o=> (pending(o)||inRange(o.date)) && (f==="all"?true : f==="unpaid"? !o.paid : o.status===f));
+  let list=state.carpetOrders.filter(o=> (pending(o)||activeInRange(o)) && (f==="all"?true : f==="unpaid"? !o.paid : o.status===f));
   if(q) list=list.filter(o=>((o.customer||"").includes(q))||((o.no||"").includes(q))||((o.phone||"").includes(q)));
   const chips=[{k:"all",t:"الكل"},{k:"wash",t:"قيد الغسيل"},{k:"ready",t:"جاهز"},{k:"done",t:"تم التسليم"},{k:"unpaid",t:"غير مدفوع"}]
     .map(c=>`<button class="chip ${f===c.k?'on':''}" data-filter="${c.k}">${c.t}</button>`).join("");
@@ -1708,7 +1725,7 @@ function screenLaundry(){
   const q=(state.lndSearch||"").trim();
   const _t=ymd(new Date());
   const periodTxt = (state.dateFrom===state.dateTo) ? (state.dateFrom===_t?"اليوم":state.dateFrom) : `${state.dateFrom} ← ${state.dateTo}`;
-  let list=(state.laundryOrders||[]).filter(o=> (laundryPending(o)||inRange(o.date)) && (f==="all"?true : f==="unpaid"? !o.paid : o.status===f));
+  let list=(state.laundryOrders||[]).filter(o=> (laundryPending(o)||activeInRange(o)) && (f==="all"?true : f==="unpaid"? !o.paid : o.status===f));
   if(q) list=list.filter(o=>((o.customer||"").includes(q))||((o.no||"").includes(q))||((o.phone||"").includes(q)));
   const chips=[{k:"all",t:"الكل"},{k:"wash",t:"قيد الغسيل"},{k:"iron",t:"قيد الكي"},{k:"ready",t:"جاهز"},{k:"done",t:"تم التسليم"},{k:"unpaid",t:"غير مدفوع"}]
     .map(c=>`<button class="chip ${f===c.k?'on':''}" data-lndfilter="${c.k}">${c.t}</button>`).join("");
@@ -4347,7 +4364,7 @@ function importData(file){
    - الاسترجاع «يُعيد المفقود فقط» ولا يمسح أي شيء أحدث. */
 const BACKUP_KEEP=30, BACKUP_EVERY=20*60*1000, BACKUP_KEYS=["carOps","carpetOrders","laundryOrders","expenses","meters","workers","users","managers","storeProducts","storeSales","storePurchases","storeCustomers","storeCash","suppliers","closings","recurring"];
 let _lastBackupAt=0;
-function _idb(){ return new Promise((res,rej)=>{ try{ if(!window.indexedDB) return rej(new Error("no idb")); const r=indexedDB.open("sadaqa-backups",2); r.onupgradeneeded=()=>{ if(!r.result.objectStoreNames.contains("days")) r.result.createObjectStore("days",{keyPath:"id"}); if(!r.result.objectStoreNames.contains("photos")) r.result.createObjectStore("photos",{keyPath:"k"}); }; r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }catch(e){ rej(e); } }); }
+function _idb(){ return new Promise((res,rej)=>{ try{ if(!window.indexedDB) return rej(new Error("no idb")); const r=indexedDB.open("sadaqa-backups",3); r.onupgradeneeded=()=>{ const d=r.result; if(!d.objectStoreNames.contains("days")) d.createObjectStore("days",{keyPath:"id"}); if(!d.objectStoreNames.contains("photos")) d.createObjectStore("photos",{keyPath:"k"}); if(!d.objectStoreNames.contains("snaps")) d.createObjectStore("snaps",{keyPath:"id"}); }; r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }catch(e){ rej(e); } }); }
 async function localBackupPut(rec){ const db=await _idb(); return new Promise((res,rej)=>{ const tx=db.transaction("days","readwrite"); tx.objectStore("days").put(rec); tx.oncomplete=()=>res(); tx.onerror=()=>rej(tx.error); }); }
 async function localBackupAll(){ const db=await _idb(); return new Promise((res,rej)=>{ const rq=db.transaction("days","readonly").objectStore("days").getAll(); rq.onsuccess=()=>res(rq.result||[]); rq.onerror=()=>rej(rq.error); }); }
 async function localBackupGet(id){ const db=await _idb(); return new Promise((res)=>{ const rq=db.transaction("days","readonly").objectStore("days").get(id); rq.onsuccess=()=>res(rq.result||null); rq.onerror=()=>res(null); }); }
@@ -4400,6 +4417,159 @@ async function loadBackup(id){
   return cl || (loc&&loc.data) || null;
 }
 function _kb(n){ return n>=1048576 ? (n/1048576).toFixed(2)+" MB" : Math.round(n/1024)+" KB"; }
+/* ================= نسخ كل 5 دقائق (2.14.0) =================
+   - محليًا: مخزن IndexedDB «snaps» — نسخة جديدة كل 5 دقائق إن تغيّرت البيانات، لا تُحذف تلقائيًا أبدًا.
+   - Google Drive: الجهاز المفعّل عليه الخيار يرفع ملف JSON جديدًا كل 5 دقائق إن تغيّرت البيانات
+     (مجلد «مغاسيل صداقة - نسخ احتياطية»)، ولا يحذف الملفات السابقة. */
+const SNAP_EVERY=5*60*1000;
+function strHash(str){ let h=5381; for(let i=0;i<str.length;i++){ h=((h<<5)+h+str.charCodeAt(i))|0; } return (h>>>0).toString(36)+":"+str.length; }
+function snapId(d){ d=d||new Date(); const p=n=>String(n).padStart(2,"0"); return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate())+"_"+p(d.getHours())+"-"+p(d.getMinutes())+"-"+p(d.getSeconds()); }
+let _lastSnapAt=0, _lastSnapHash="", _snapErr=null;
+async function snapAll(){ const db=await _idb(); return new Promise((res,rej)=>{ const rq=db.transaction("snaps","readonly").objectStore("snaps").getAll(); rq.onsuccess=()=>res(rq.result||[]); rq.onerror=()=>rej(rq.error); }); }
+async function snapGet(id){ const db=await _idb(); return new Promise((res)=>{ const rq=db.transaction("snaps","readonly").objectStore("snaps").get(id); rq.onsuccess=()=>res(rq.result||null); rq.onerror=()=>res(null); }); }
+async function snapDel(id){ const db=await _idb(); return new Promise((res)=>{ const tx=db.transaction("snaps","readwrite"); tx.objectStore("snaps").delete(id); tx.oncomplete=()=>res(); tx.onerror=()=>res(); }); }
+async function takeSnapshot(force){
+  const now=Date.now(); if(!force && now-_lastSnapAt<SNAP_EVERY) return "wait";
+  _lastSnapAt=now;
+  try{
+    const data=cloudCopy(), json=JSON.stringify(data), hash=strHash(json), n=backupCount(data);
+    if(!_lastSnapHash){ const all=await snapAll(); if(all.length){ all.sort((a,b)=>b.ts-a.ts); _lastSnapHash=all[0].hash||""; } }
+    if(!force && hash===_lastSnapHash) return "same";
+    if(!force && n===0) return "empty";
+    const db=await _idb(); await new Promise((res,rej)=>{ const tx=db.transaction("snaps","readwrite"); tx.objectStore("snaps").put({id:snapId(new Date(now))+"-"+String(now%1000).padStart(3,"0"),ts:now,n,by:currentUser||"",size:json.length,hash,data}); tx.oncomplete=()=>res(); tx.onerror=()=>rej(tx.error); });
+    _lastSnapHash=hash; _snapErr=null; try{ localStorage.setItem("sadaqa_last_snap", String(now)); }catch(e){}
+    return "ok";
+  }catch(e){ _snapErr=e; return "err"; }
+}
+setInterval(()=>{ if(unlocked) takeSnapshot(false); }, 60*1000);
+async function renderSnapAdmin(){
+  const host=document.getElementById("snapAdmin"); if(!host) return;
+  let all=[]; try{ all=await snapAll(); }catch(e){}
+  all.sort((a,b)=>b.ts-a.ts);
+  const total=all.reduce((t,r)=>t+(r.size||0),0);
+  const dayOf=id=>String(id).slice(0,10), hm=id=>String(id).slice(11,16).replace("-",":");
+  host.innerHTML=`<div class="hint" style="margin-bottom:8px">عدد النسخ: <b>${all.length}</b> · الحجم: <b>${_kb(total)}</b> · آخر نسخة: <b>${all[0]?(dayOf(all[0].id)+" "+hm(all[0].id)):"لا يوجد بعد"}</b>${_snapErr?' <span style="color:var(--unpaid)">⚠️ تعذّر الحفظ</span>':""}</div>
+    <div class="set-row" style="flex-wrap:wrap;gap:8px"><button class="mini" id="snapNow">📸 خذ نسخة الآن</button><button class="mini" id="snapClean">🧹 حذف الأقدم من 30 يومًا</button></div>
+    <div id="snapList" style="margin-top:10px">${all.length?all.slice(0,20).map(r=>`<div class="cat-row"><b class="cat-nm">${dayOf(r.id)} ${hm(r.id)}</b><span class="hint" style="white-space:nowrap">${r.n||0} سجل · ${_kb(r.size||0)}</span><button class="wk-btn" data-snap-restore="${r.id}">↩️ استرجاع</button><button class="wk-btn" data-snap-dl="${r.id}">⬇️</button></div>`).join("")+(all.length>20?`<div class="hint">… و${all.length-20} نسخة أقدم (محفوظة، لا تُحذف تلقائيًا)</div>`:""):`<div class="hint">لا توجد نسخ بعد — تُؤخذ أول نسخة خلال دقيقة من فتح التطبيق.</div>`}</div>`;
+  document.getElementById("snapNow").onclick=async()=>{ const r=await takeSnapshot(true); toast(r==="ok"?"تم حفظ نسخة ✓":"تعذّر حفظ النسخة"); renderSnapAdmin(); renderStorageAdmin(); };
+  document.getElementById("snapClean").onclick=()=>{ const lim=Date.now()-30*86400000, old=all.filter(r=>r.ts<lim); if(!old.length) return toast("لا توجد نسخ أقدم من 30 يومًا");
+    requireCode(async()=>{ for(const r of old) await snapDel(r.id); toast("حُذفت "+old.length+" نسخة قديمة"); renderSnapAdmin(); renderStorageAdmin(); }, SECRET_CODE, "كود الحذف", "حذف "+old.length+" نسخة أقدم من 30 يومًا يتطلّب الكود."); };
+  host.querySelectorAll("[data-snap-restore]").forEach(b=>b.onclick=async()=>{ const r=await snapGet(b.dataset.snapRestore); if(!r) return toast("تعذّر تحميل النسخة"); restoreFromSnap(r.data, b.dataset.snapRestore, renderSnapAdmin); });
+  host.querySelectorAll("[data-snap-dl]").forEach(b=>b.onclick=async()=>{ const r=await snapGet(b.dataset.snapDl); if(!r) return toast("تعذّر تحميل النسخة"); dlJson(r.data, "sadaqa-backup-"+b.dataset.snapDl+".json"); });
+}
+function dlJson(obj,name){ const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([JSON.stringify(obj,null,2)],{type:"application/json"})); a.download=name; document.body.appendChild(a); a.click(); a.remove(); }
+function restoreFromSnap(snap,label,after){
+  const n=restorePreview(snap);
+  if(!n) return toast("لا يوجد شيء مفقود — كل سجلات "+label+" موجودة");
+  if(!confirm("سيُعاد "+n+" سجل موجود في نسخة "+label+" وغير موجود الآن.\nلن يُمسح أي شيء. متابعة؟")) return;
+  requireCode(()=>{ const a=restoreMissing(snap); toast("تمت استعادة "+a+" سجل ✓"); if(after) after(); }, SECRET_CODE, "كود الاسترجاع", "استرجاع البيانات يتطلّب كود التحقق.");
+}
+/* ===== المساحة ===== */
+const LS_LIMIT=5*1024*1024; // الحدّ المعتاد لـ localStorage في المتصفحات
+function _bar(pct,label){ const c=pct>=85?"#c0392b":(pct>=60?"#e67e22":"var(--brand)"); return `<div style="margin:4px 0 8px"><div style="display:flex;justify-content:space-between;font-size:.85rem"><span>${label}</span><b style="color:${c}">${pct}%</b></div><div style="height:10px;border-radius:6px;background:var(--line);overflow:hidden"><div style="width:${Math.min(100,pct)}%;height:100%;background:${c}"></div></div></div>`; }
+async function storageInfo(){
+  let lsBytes=0; try{ for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i); lsBytes+=(k.length+String(localStorage.getItem(k)||"").length)*2; } }catch(e){}
+  let est=null; try{ if(navigator.storage&&navigator.storage.estimate) est=await navigator.storage.estimate(); }catch(e){}
+  let snaps=[]; try{ snaps=await snapAll(); }catch(e){}
+  let photoB=0; Object.keys(_photoCache).forEach(k=>{ const v=_photoCache[k]; if(Array.isArray(v)) v.forEach(x=>photoB+=String(x||"").length); else photoB+=String(v||"").length; });
+  return { lsBytes, lsPct:Math.round(lsBytes/LS_LIMIT*100), est, snapN:snaps.length, snapB:snaps.reduce((t,r)=>t+(r.size||0),0), photoB };
+}
+async function renderStorageAdmin(){
+  const host=document.getElementById("storageAdmin"); if(!host) return;
+  const i=await storageInfo();
+  const devPct=i.est&&i.est.quota?Math.round((i.est.usage||0)/i.est.quota*100):null;
+  const warn=i.lsPct>=85||(devPct!==null&&devPct>=85);
+  host.innerHTML=`${warn?'<div style="color:#c0392b;font-weight:700;margin-bottom:6px">⚠️ المساحة قاربت على الامتلاء — احذف نسخًا قديمة أو صورًا، وتأكد أن المزامنة تعمل.</div>':''}
+    ${_bar(i.lsPct,"ذاكرة التسجيلات (localStorage) — "+_kb(i.lsBytes)+" من "+_kb(LS_LIMIT))}
+    ${devPct!==null?_bar(devPct,"مساحة التطبيق على الجهاز — "+_kb(i.est.usage||0)+" من "+_kb(i.est.quota||0)):'<div class="hint">المتصفح لا يُظهر مساحة الجهاز.</div>'}
+    <div class="hint" style="line-height:1.9">الصور: <b>${_kb(i.photoB)}</b> · نسخ كل 5 دقائق: <b>${i.snapN}</b> (${_kb(i.snapB)})</div>`;
+}
+let _storageWarnedAt=0;
+async function storageCheckTick(){ try{ const i=await storageInfo(); const devPct=i.est&&i.est.quota?Math.round((i.est.usage||0)/i.est.quota*100):0; if((i.lsPct>=85||devPct>=85) && Date.now()-_storageWarnedAt>6*3600*1000){ _storageWarnedAt=Date.now(); toast("⚠️ مساحة التطبيق قاربت على الامتلاء — الإعدادات ▸ 💾 المساحة"); } }catch(e){} }
+setTimeout(storageCheckTick, 8000);
+/* ===== Google Drive ===== */
+const DRIVE_FOLDER="مغاسيل صداقة - نسخ احتياطية";
+function driveCfg(){ try{ return JSON.parse(localStorage.getItem("sadaqa_drive")||"{}")||{}; }catch(e){ return {}; } }
+function driveSet(patch){ const c=Object.assign(driveCfg(), patch); try{ localStorage.setItem("sadaqa_drive", JSON.stringify(c)); }catch(e){} return c; }
+function driveTokenOk(c){ c=c||driveCfg(); return !!(c.token && c.exp && Date.now()<c.exp-60000); }
+async function driveFetch(url,opt){ const c=driveCfg(); if(!driveTokenOk(c)) throw Object.assign(new Error("expired"),{code:"expired"});
+  opt=opt||{}; opt.headers=Object.assign({Authorization:"Bearer "+c.token}, opt.headers||{});
+  const r=await fetch(url,opt);
+  if(r.status===401||r.status===403){ driveSet({token:null,exp:0,lastErr:"انتهت جلسة Google — أعد الربط"}); throw Object.assign(new Error("expired"),{code:"expired"}); }
+  if(!r.ok){ throw new Error("Drive "+r.status); }
+  return r;
+}
+async function driveFolderId(){
+  const c=driveCfg(); if(c.folderId) return c.folderId;
+  const q=encodeURIComponent("name='"+DRIVE_FOLDER+"' and mimeType='application/vnd.google-apps.folder' and trashed=false");
+  const j=await (await driveFetch("https://www.googleapis.com/drive/v3/files?q="+q+"&fields=files(id)&spaces=drive")).json();
+  let id=j.files&&j.files[0]&&j.files[0].id;
+  if(!id){ const r=await driveFetch("https://www.googleapis.com/drive/v3/files?fields=id",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({name:DRIVE_FOLDER,mimeType:"application/vnd.google-apps.folder"})}); id=(await r.json()).id; }
+  driveSet({folderId:id}); return id;
+}
+let _driveBusy=false;
+async function driveUpload(force){
+  const c=driveCfg(); if(!c.on && !force) return "off"; if(_driveBusy) return "busy";
+  if(!driveTokenOk(c)) return "expired";
+  _driveBusy=true;
+  try{
+    const data=cloudCopy(), json=JSON.stringify(data), hash=strHash(json), n=backupCount(data);
+    if(!force && hash===c.lastHash) { driveSet({last:Date.now()}); return "same"; }
+    if(!force && n===0) return "empty";
+    const folder=await driveFolderId();
+    const meta={name:"sadaqa-backup-"+snapId()+".json", parents:[folder], mimeType:"application/json", description:n+" سجل · "+(currentUser||"")};
+    const boundary="sadaqa"+Date.now();
+    const body="--"+boundary+"\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n"+JSON.stringify(meta)+"\r\n--"+boundary+"\r\nContent-Type: application/json\r\n\r\n"+json+"\r\n--"+boundary+"--";
+    const r=await driveFetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name",{method:"POST",headers:{"Content-Type":"multipart/related; boundary="+boundary},body});
+    const f=await r.json();
+    driveSet({last:Date.now(),lastHash:hash,lastErr:"",lastFile:f.name,count:(c.count||0)+1});
+    return "ok";
+  }catch(e){ if(e.code!=="expired") driveSet({lastErr:String(e.message||e)}); return e.code==="expired"?"expired":"err"; }
+  finally{ _driveBusy=false; }
+}
+let _driveExpToast=0;
+async function driveTick(){ const c=driveCfg(); if(!unlocked || !c.on) return; if(Date.now()-(c.last||0) < SNAP_EVERY) return;
+  const r=await driveUpload(false); if(r==="expired" && Date.now()-_driveExpToast>30*60*1000){ _driveExpToast=Date.now(); toast("☁️ انتهت جلسة Google Drive — الإعدادات ▸ Google Drive ▸ إعادة الربط"); } }
+setInterval(driveTick, 60*1000);
+async function driveConnect(){
+  if(!window.driveSignIn) return toast("ربط Google غير متاح الآن (لا اتصال بالسحابة)");
+  try{ const r=await window.driveSignIn(); driveSet({token:r.token,exp:r.exp,email:r.email,on:true,lastErr:""}); toast("تم ربط Google Drive ✓ "+(r.email||"")); try{ await driveFolderId(); }catch(e){} return true; }
+  catch(e){ const code=(e&&e.code)||""; driveSet({lastErr:driveErr(code,e)}); toast("تعذّر الربط: "+driveErr(code,e)); return false; }
+}
+function driveErr(code,e){ if(/operation-not-allowed/.test(code)) return "تسجيل الدخول بـ Google غير مفعّل في Firebase (انظر الخطوات)"; if(/unauthorized-domain/.test(code)) return "النطاق غير مُصرَّح به في Firebase ▸ Authentication ▸ Authorized domains"; if(/popup-blocked/.test(code)) return "المتصفح منع النافذة المنبثقة — اسمح بها ثم أعد المحاولة"; if(/popup-closed|cancelled/.test(code)) return "أُغلقت نافذة Google قبل الإكمال"; return String((e&&e.message)||code||e); }
+async function driveList(){ const folder=await driveFolderId(); const q=encodeURIComponent("'"+folder+"' in parents and trashed=false"); const j=await (await driveFetch("https://www.googleapis.com/drive/v3/files?q="+q+"&orderBy=createdTime desc&pageSize=15&fields=files(id,name,size,createdTime,description)")).json(); return j.files||[]; }
+async function driveGet(id){ return await (await driveFetch("https://www.googleapis.com/drive/v3/files/"+id+"?alt=media")).json(); }
+async function renderDriveAdmin(){
+  const host=document.getElementById("driveAdmin"); if(!host) return;
+  const c=driveCfg(), ok=driveTokenOk(c);
+  const status = c.email ? (ok?`<span style="color:var(--ready)">✅ مرتبط: ${_esc(c.email)}</span>`:`<span style="color:var(--unpaid)">⚠️ ${_esc(c.email)} — انتهت الجلسة، اضغط «إعادة الربط»</span>`) : `<span class="hint">غير مرتبط بعد</span>`;
+  host.innerHTML=`<div style="line-height:2">${status}<br>
+      ${c.on?`آخر رفع: <b>${c.last?(ymd(c.last)+" "+timeStr(c.last)):"—"}</b> · ملفات مرفوعة من هذا الجهاز: <b>${c.count||0}</b>`:""}
+      ${c.lastErr?`<br><span style="color:var(--unpaid)">⚠️ ${_esc(c.lastErr)}</span>`:""}</div>
+    <div class="set-row" style="flex-wrap:wrap;gap:8px;margin-top:6px">
+      <button class="mini" id="driveConnect">${c.email?"🔁 إعادة الربط":"🔗 ربط حساب Google"}</button>
+      ${c.email?`<button class="mini" id="driveNow" ${ok?"":"disabled"}>📤 رفع نسخة الآن</button><button class="mini" id="driveOff">⛔ إلغاء الربط</button>`:""}
+    </div>
+    ${c.email?`<label class="hint" style="display:flex;gap:8px;align-items:center;margin-top:8px"><input type="checkbox" id="driveOn" ${c.on?"checked":""}> 📤 هذا الجهاز يرفع نسخة إلى Google Drive كل 5 دقائق (عند تغيّر البيانات)</label>`:""}
+    <div id="driveList" style="margin-top:10px"></div>
+    <details style="margin-top:8px"><summary class="hint" style="cursor:pointer">⚙️ خطوات التفعيل لمرّة واحدة (صاحب المشروع)</summary><div class="hint" style="line-height:1.9;margin-top:6px">
+      1) Firebase Console ▸ مشروع <b>pressing-sadaga</b> ▸ Authentication ▸ Sign-in method ▸ فعّل <b>Google</b>.<br>
+      2) Authentication ▸ Settings ▸ Authorized domains ▸ أضف <b dir="ltr">yahyaside.github.io</b>.<br>
+      3) Google Cloud Console ▸ نفس المشروع ▸ APIs &amp; Services ▸ Library ▸ فعّل <b>Google Drive API</b>.<br>
+      ثم اضغط «ربط حساب Google» هنا واختر حساب Gmail الذي تريد حفظ النسخ فيه. يعمل في Chrome/التطبيق المثبّت (PWA)، وقد لا يعمل داخل APK.
+      الجلسة تدوم نحو ساعة؛ بعدها اضغط «إعادة الربط» مرّة لتستمر النسخ.</div></details>`;
+  document.getElementById("driveConnect").onclick=async()=>{ await driveConnect(); renderDriveAdmin(); };
+  const now=document.getElementById("driveNow"); if(now) now.onclick=async()=>{ toast("جارٍ الرفع إلى Google Drive…"); const r=await driveUpload(true); toast(r==="ok"?"تم الرفع إلى Google Drive ✓":(r==="expired"?"انتهت الجلسة — أعد الربط":"تعذّر الرفع")); renderDriveAdmin(); };
+  const off=document.getElementById("driveOff"); if(off) off.onclick=()=>{ try{ localStorage.removeItem("sadaqa_drive"); }catch(e){} toast("أُلغي ربط Google Drive"); renderDriveAdmin(); };
+  const on=document.getElementById("driveOn"); if(on) on.onchange=()=>{ driveSet({on:on.checked}); toast(on.checked?"سيرفع هذا الجهاز نسخة كل 5 دقائق":"أُوقف الرفع من هذا الجهاز"); };
+  const list=document.getElementById("driveList");
+  if(c.email && ok){ list.innerHTML='<div class="hint">جارٍ تحميل قائمة النسخ…</div>';
+    try{ const files=await driveList();
+      list.innerHTML=files.length?files.map(f=>`<div class="cat-row"><b class="cat-nm" dir="ltr" style="font-size:.8rem">${_esc(f.name)}</b><span class="hint" style="white-space:nowrap">${_kb(+f.size||0)}</span><button class="wk-btn" data-drive-restore="${_esc(f.id)}">↩️ استرجاع</button></div>`).join("")+`<div class="hint">آخر 15 ملفًا؛ كل الملفات تبقى في مجلد «${DRIVE_FOLDER}» في Drive ولا تُحذف.</div>`:'<div class="hint">لا توجد ملفات بعد في Drive.</div>';
+      list.querySelectorAll("[data-drive-restore]").forEach(b=>b.onclick=async()=>{ toast("جارٍ التنزيل…"); try{ const snap=await driveGet(b.dataset.driveRestore); restoreFromSnap(snap, "Drive", renderDriveAdmin); }catch(e){ toast("تعذّر تنزيل الملف"); } });
+    }catch(e){ list.innerHTML='<div class="hint" style="color:var(--unpaid)">تعذّر جلب القائمة: '+_esc(driveErr((e&&e.code)||"",e))+'</div>'; }
+  } else list.innerHTML="";
+}
 function renderHealthAdmin(){
   const host=document.getElementById("healthAdmin"); if(!host) return;
   const ver=window.APP_VERSION||"—";
@@ -4869,6 +5039,9 @@ function openSettings(){
   renderBioSettings();
   renderBackupAdmin();
   renderHealthAdmin();
+  renderSnapAdmin();
+  renderDriveAdmin();
+  renderStorageAdmin();
   { const mc=document.getElementById("mgrCreate"); if(mc) mc.onclick=createManager; }
   const palRow=document.getElementById("palRow");
   if(palRow){
@@ -5258,7 +5431,7 @@ setTimeout(()=>{ if(!window.cloudReady){ const el=document.getElementById("cloud
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
   import * as FS from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-  import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+  import { getAuth, signInAnonymously, onAuthStateChanged, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
   try{
     const firebaseConfig = {
       apiKey: "AIzaSyAZYQ04I6meipcZkeeMu6Nn1bqLY_vZ8rk",
@@ -5275,6 +5448,9 @@ setTimeout(()=>{ if(!window.cloudReady){ const el=document.getElementById("cloud
     catch(e){ db = FS.getFirestore(app); }
     // تسجيل دخول مجهول (لا يُغيّر شيئًا حتى تُفعَّل قواعد firestore.rules) — لا يوقف التطبيق إن لم يكن مفعّلًا
     try{ const auth=getAuth(app); onAuthStateChanged(auth,(u)=>{ window._authUid=u?u.uid:null; });
+      // ربط Google Drive: دخول بحساب Google بصلاحية drive.file (ملفات التطبيق فقط) — يُرجع توكن ساعة واحدة
+      if(!window.driveSignIn) window.driveSignIn = async () => { const p=new GoogleAuthProvider(); p.addScope("https://www.googleapis.com/auth/drive.file"); p.setCustomParameters({prompt:"select_account"});
+        const r=await signInWithPopup(auth,p); const c=GoogleAuthProvider.credentialFromResult(r); return { token:c&&c.accessToken, email:(r.user&&r.user.email)||"", exp:Date.now()+55*60*1000 }; };
       await Promise.race([ signInAnonymously(auth), new Promise(r=>setTimeout(r,4000)) ]); }catch(e){ console.warn("anon auth", e&&e.code); }
     const ref = FS.doc(db, "appState", "main");
     window.cloudPush = (data) => { FS.setDoc(ref, { data: JSON.stringify(data), ts: Date.now() }).then(()=>{ if(window.onCloudPushOk) window.onCloudPushOk(); }).catch((e)=>{ if(window.onCloudPushErr) window.onCloudPushErr(e); }); };
@@ -5321,7 +5497,7 @@ setTimeout(()=>{ if(!window.cloudReady){ const el=document.getElementById("cloud
 <!-- PWA: service-worker registration + update/install wiring -->
 <script>
 (function(){
-  var APP_VERSION = "2.13.0";
+  var APP_VERSION = "2.14.0";
   window.APP_VERSION = APP_VERSION;
   function $(id){ return document.getElementById(id); }
   // سجّل إصدار هذا الجهاز في الحالة المتزامنة (ليُنبَّه الجهاز القديم)
