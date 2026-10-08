@@ -4003,7 +4003,7 @@ function bindScreen(){
           let c=state.customers[plate]||{plate,stamps:0,totalWashes:0,freeWashes:0};
           if(phone){ c.phone=phone; c.country=country; }
           if(free){c.stamps=0;c.freeWashes++;} else c.stamps++;
-          c.totalWashes++; c.lastVisit=iso(new Date());
+          c.totalWashes++; c.lastVisit=iso(new Date()); c.editedAt=iso(new Date());
           state.customers[plate]=c;
         }
         const opDate=chosenDateIso(carDateV);
@@ -4311,13 +4311,14 @@ function bindScreen(){
     const i=w.absent.findIndex(d=>new Date(d).toDateString()===td);
     if(i>=0){w.absent.splice(i,1);toast("أُلغي غياب اليوم");}
     else {w.absent.push(iso(new Date()));toast("سُجّل غياب اليوم");}
+    w.editedAt=iso(new Date());
     saveLocal(); try{ if(window.cloudReady) window.cloudPush(cloudCopy()); }catch(e){}; render();});
   document.querySelectorAll("[data-paybtn]").forEach(b=>b.onclick=()=>{
     const w=state.workers.find(x=>x.id===b.dataset.paybtn);
     const amt=+document.querySelector(`[data-payin="${b.dataset.paybtn}"]`).value;
     if(!(amt>0)) return toast("أدخل المبلغ");
     const nEl=document.querySelector(`[data-paynote="${b.dataset.paybtn}"]`);
-    w.payments.push({id:uid(),amount:amt,note:(nEl&&nEl.value.trim())||"",date:iso(new Date())});
+    w.payments.push({id:uid(),amount:amt,note:(nEl&&nEl.value.trim())||"",date:iso(new Date())}); w.editedAt=iso(new Date());
     toast("سُجّل عليه (دفعة/سلفة)"); saveLocal(); try{ if(window.cloudReady) window.cloudPush(cloudCopy()); }catch(e){}; render();});
   document.querySelectorAll("[data-creditbtn]").forEach(b=>b.onclick=()=>{
     const w=state.workers.find(x=>x.id===b.dataset.creditbtn);
@@ -4325,7 +4326,7 @@ function bindScreen(){
     const amt=+document.querySelector(`[data-creditin="${b.dataset.creditbtn}"]`).value;
     if(!(amt>0)) return toast("أدخل المبلغ");
     const nEl2=document.querySelector(`[data-creditnote="${b.dataset.creditbtn}"]`);
-    w.credits.push({id:uid(),amount:amt,note:(nEl2&&nEl2.value.trim())||"",date:iso(new Date())});
+    w.credits.push({id:uid(),amount:amt,note:(nEl2&&nEl2.value.trim())||"",date:iso(new Date())}); w.editedAt=iso(new Date());
     toast("سُجّل له (مستحق/مكافأة)"); saveLocal(); try{ if(window.cloudReady) window.cloudPush(cloudCopy()); }catch(e){}; render();});
   document.querySelectorAll("[data-wstate]").forEach(b=>b.onclick=()=>openWorkerStatement(b.dataset.wstate));
   document.querySelectorAll("[data-del-worker]").forEach(b=>b.onclick=()=>{
@@ -4515,6 +4516,33 @@ function mergeById(localArr, remoteArr, del){
   });
   return [...out.values()];
 }
+/* دمج العمّال والزبائن دون فقدان (2.23.0):
+   - العامل سجلّ واحد فيه مصفوفات متداخلة (payments/credits/absent). كان الدمج يختار النسخة الأحدث كاملة فتضيع
+     دفعات سُجّلت على جهاز آخر. الآن: الحقول من الأحدث + اتحاد المصفوفات المتداخلة بالمعرّف.
+   - زبائن الولاء (state.customers بالمفتاح plate): كانت النسخة البعيدة تفوز دائمًا؛ الآن الأحدث (editedAt ثم lastVisit)
+     تفوز ويُؤخذ أكبر عدد غسلات/أختام إن تساوى. */
+function _unionById(a,b,keyOf){ const out=[]; const seen=new Set(); const k=(x)=>keyOf?keyOf(x):(x&&x.id)||JSON.stringify(x);
+  (a||[]).concat(b||[]).forEach(x=>{ if(x==null) return; const key=k(x); if(seen.has(key)) return; seen.add(key); out.push(x); }); return out; }
+function mergeWorker(l,r){
+  if(!l) return r; if(!r) return l;
+  const newer = (+new Date(l.editedAt||0) >= +new Date(r.editedAt||0)) ? l : r;
+  const w=Object.assign({}, newer);
+  w.payments=_unionById(l.payments, r.payments, x=>x.id||(x.date+"|"+x.amount+"|"+(x.note||"")));
+  w.credits=_unionById(l.credits, r.credits, x=>x.id||(x.date+"|"+x.amount+"|"+(x.note||"")));
+  w.absent=_unionById(l.absent, r.absent, d=>ymd(d));
+  // الحذف الموثّق لدفعة: مجموعة معرّفات محذوفة على السجل (اختياري)
+  const gone=new Set([...(l.removed||[]),...(r.removed||[])]); if(gone.size){ w.removed=[...gone]; w.payments=w.payments.filter(x=>!gone.has(x.id)); w.credits=w.credits.filter(x=>!gone.has(x.id)); }
+  return w;
+}
+function mergeWorkers(localArr, remoteArr, del){
+  const out=new Map();
+  (remoteArr||[]).forEach(r=>{ if(r&&r.id && !isDead(r,del)) out.set(r.id,r); });
+  (localArr||[]).forEach(l=>{ if(!l||!l.id||isDead(l,del)) return; out.set(l.id, out.has(l.id)?mergeWorker(l,out.get(l.id)):l); });
+  return [...out.values()];
+}
+function _custTs(c){ return Math.max(+new Date((c&&c.editedAt)||0)||0, +new Date((c&&c.lastVisit)||0)||0); }
+function mergeCustomer(l,r){ if(!l) return r; if(!r) return l; const tl=_custTs(l), tr=_custTs(r);
+  if(tl!==tr) return tl>tr?l:r; return ((+l.totalWashes||0)+(+l.stamps||0)) >= ((+r.totalWashes||0)+(+r.stamps||0)) ? l : r; }
 function applyRemote(remote){
   _applyingRemote=true;
   const unmigrated = (remote.codesV!==3);
@@ -4536,7 +4564,7 @@ function applyRemote(remote){
   state.carOps=mergeById(L.carOps, remote.carOps, state.deleted);
   state.carpetOrders=mergeById(L.carpetOrders, remote.carpetOrders, state.deleted);
   state.expenses=mergeById(L.expenses, remote.expenses, state.deleted);
-  state.workers=mergeById(L.workers, remote.workers, state.deleted);
+  state.workers=mergeWorkers(L.workers, remote.workers, state.deleted);
   state.meters=mergeById(L.meters, remote.meters, state.deleted);
   state.logins=mergeById(L.logins, remote.logins, state.deleted).sort((a,b)=>new Date(a.date)-new Date(b.date)).slice(-200);
   state.users=mergeById(L.users, remote.users, state.deleted);
@@ -4558,7 +4586,7 @@ function applyRemote(remote){
   state.activity=mergeById(L.activity, remote.activity, state.deleted).sort((a,b)=>(a.ts||0)-(b.ts||0)).slice(-400);
   state.notifSeenTs=Math.max(localSeenTs, remote.notifSeenTs||0);
   const cs=Object.assign({}, remote.customers||{});
-  Object.keys(L.customers).forEach(k=>{ if(!cs[k]) cs[k]=L.customers[k]; });
+  Object.keys(L.customers).forEach(k=>{ cs[k]=cs[k]?mergeCustomer(L.customers[k],cs[k]):L.customers[k]; });
   Object.keys(state.deleted).forEach(k=>{ if(k.slice(0,5)!=="cust:") return; const p=k.slice(5), c=cs[p]; if(c && +new Date(c.editedAt||0) > +state.deleted[k]) return; delete cs[p]; });
   state.customers=cs;
   attachPhotos(pm);
@@ -4835,7 +4863,8 @@ setInterval(()=>{ if(unlocked) takeBackup(false); }, 5*60*1000);
 document.addEventListener("visibilitychange", ()=>{ if(document.hidden && unlocked) takeBackup(false); });
 function restorePreview(snap){
   let n=0;
-  BACKUP_KEYS.forEach(k=>{ const ids=new Set((state[k]||[]).map(x=>x&&x.id)); (snap[k]||[]).forEach(r=>{ if(r&&r.id&&!ids.has(r.id)) n++; }); });
+  BACKUP_KEYS.forEach(k=>{ const ids=new Set((state[k]||[]).map(x=>x&&x.id)); (snap[k]||[]).forEach(r=>{ if(r&&r.id&&!ids.has(r.id)) n++;
+    else if(k==="workers"&&r&&r.id){ const w=(state.workers||[]).find(x=>x&&x.id===r.id); if(!w) return; const cnt=o=>(o.payments||[]).length+(o.credits||[]).length+(o.absent||[]).length; const m=mergeWorker(w,r); if(cnt(m)>cnt(w)) n+=cnt(m)-cnt(w); } }); });
   Object.keys(snap.customers||{}).forEach(p=>{ if(!(state.customers||{})[p]) n++; });
   return n;
 }
@@ -4844,7 +4873,8 @@ function restoreMissing(snap){
   let added=0; const nowIso=iso(new Date()); if(!state.deleted) state.deleted={};
   BACKUP_KEYS.forEach(k=>{
     const cur=state[k]=state[k]||[]; const ids=new Set(cur.map(x=>x&&x.id));
-    (snap[k]||[]).forEach(r=>{ if(r&&r.id&&!ids.has(r.id)){ cur.push(Object.assign({},r,{editedAt:nowIso})); ids.add(r.id); delete state.deleted["rec:"+r.id]; added++; } });
+    (snap[k]||[]).forEach(r=>{ if(r&&r.id&&!ids.has(r.id)){ cur.push(Object.assign({},r,{editedAt:nowIso})); ids.add(r.id); delete state.deleted["rec:"+r.id]; added++; }
+      else if(k==="workers" && r&&r.id){ const w=cur.find(x=>x&&x.id===r.id); if(!w) return; const before=(w.payments||[]).length+(w.credits||[]).length+(w.absent||[]).length; const m=mergeWorker(w,r); const after=(m.payments||[]).length+(m.credits||[]).length+(m.absent||[]).length; if(after>before){ Object.assign(w,{payments:m.payments,credits:m.credits,absent:m.absent,editedAt:nowIso}); added+=after-before; } } });
   });
   state.customers=state.customers||{};
   Object.keys(snap.customers||{}).forEach(p=>{ if(!state.customers[p]){ state.customers[p]=Object.assign({},snap.customers[p],{editedAt:nowIso}); delete state.deleted["cust:"+p]; added++; } });
@@ -6000,7 +6030,7 @@ setTimeout(()=>{ if(!window.cloudReady){ const el=document.getElementById("cloud
 <!-- PWA: service-worker registration + update/install wiring -->
 <script>
 (function(){
-  var APP_VERSION = "2.22.0";
+  var APP_VERSION = "2.23.0";
   window.APP_VERSION = APP_VERSION;
   function $(id){ return document.getElementById(id); }
   // سجّل إصدار هذا الجهاز في الحالة المتزامنة (ليُنبَّه الجهاز القديم)
