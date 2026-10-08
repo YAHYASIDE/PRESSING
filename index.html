@@ -179,7 +179,7 @@
   #lightbox img{max-width:100%;max-height:100%;border-radius:10px}
   .modal{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:110;display:none;align-items:center;justify-content:center;padding:20px}
   #codeModal{z-index:150} /* نافذة الكود تعلو الإعدادات وغيرها */
-  #cdModal,#cdcModal{z-index:145}
+  #cdModal,#cdcModal,#closeDayModal{z-index:145}
   .modal-box{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:20px;max-width:340px;width:100%;box-shadow:var(--shadow);max-height:88vh;overflow-y:auto}
   #settingsModal .modal-actions{position:sticky;bottom:-20px;background:var(--surface);padding:12px 0 8px;margin-top:8px;border-top:1px solid var(--line);z-index:2}
   .modal-box h3{margin:0 0 6px;font-size:1.05rem;font-weight:800}
@@ -353,6 +353,14 @@
   .pm-opt{flex:1 1 0;min-width:68px;padding:7px 6px;border:1.5px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);font-weight:800;font-size:.8rem;cursor:pointer;font-family:inherit;white-space:nowrap}
   .pm-opt.on{border-color:var(--brand);background:var(--brand);color:#fff}
   .pm-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:8px}
+  /* الملخص المالي للمغسلة (2.16.0) */
+  .fin-hero{border-radius:14px;padding:12px 14px;color:#fff;background:linear-gradient(135deg,var(--brand),#1b4f8a);margin-bottom:8px;box-shadow:var(--shadow)}
+  .fin-hero .fh-l{font-size:.8rem;opacity:.9}.fin-hero .fh-v{font-size:1.5rem;font-weight:900;line-height:1.3}.fin-hero .fh-s{font-size:.78rem;opacity:.9;display:flex;gap:10px;flex-wrap:wrap;margin-top:4px}
+  .fin-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:8px;margin:0 0 8px}
+  .fin-card{border-radius:12px;padding:9px 10px;background:var(--surface);border:1px solid var(--line);border-inline-start:4px solid var(--fc,var(--brand));box-shadow:var(--shadow)}
+  .fin-card .fl{font-size:.74rem;color:var(--muted);font-weight:700}.fin-card .fv{font-weight:900;font-size:1rem;color:var(--fc,var(--ink))}.fin-card .fs{font-size:.7rem;color:var(--muted)}
+  .fin-title{font-weight:800;font-size:.95rem;margin:6px 0 6px}
+  .day-row{cursor:pointer}.day-row:hover{background:var(--chip)}
   .pm-chip{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:6px 4px;text-align:center;box-shadow:var(--shadow)}
   .pm-chip span{display:block;font-size:.7rem;font-weight:700;color:var(--muted)}
   .pm-chip b{display:block;font-size:.9rem}
@@ -742,6 +750,16 @@
       <button class="btn-primary" id="cdRequest" style="width:auto;flex:1">✏️ طلب تعديل اليوم</button>
       <button class="btn-primary" id="cdGo" style="width:auto;flex:1;display:none">متابعة</button>
       <button class="mini" id="cdCancel">إلغاء</button>
+    </div>
+  </div>
+</div>
+<div id="closeDayModal" class="modal">
+  <div class="modal-box" style="max-height:90vh;overflow:auto">
+    <h3>🔒 إغلاق يوم المغسلة</h3>
+    <div id="cdyBody"></div>
+    <div class="modal-actions" style="margin-top:10px">
+      <button class="btn-primary" id="closeDayOk" style="width:auto;flex:1">✅ تأكيد إغلاق اليوم وإضافة الدخل إلى المتجر</button>
+      <button class="mini" id="closeDayCancel">إلغاء</button>
     </div>
   </div>
 </div>
@@ -1549,6 +1567,7 @@ function screenDashboard(){
       ${currentRole!=="worker"?`<button class="mini" id="openClosing" style="background:var(--brand);color:#fff;border-color:var(--brand)">🧾 تقفيل اليوم</button>`:""}${(state.dateFrom===state.dateTo)?dayStatusChip(state.dateFrom):""}
     </div>
     ${overdueHTML()}
+    ${laundryFinHTML(laundryFin(F),"🧺 ملخص المغسلة — "+periodLabel)}
     ${(()=>{ const r=payBreakdown(F); return `<div class="pm-strip">${PAY_METHODS.map(m=>`<div class="pm-chip ${m.k}"><span>${m.ic} ${m.t}</span><b>${money(r[m.k].inc)}</b></div>`).join("")}</div>`; })()}
     <div class="grid metrics">
       ${breakdown(`دخل ${periodLabel} حسب النوع`,incItems,{label:`إجمالي دخل ${periodLabel}`,val:inc})}
@@ -2051,36 +2070,56 @@ function rcptFooter(extra){ const si=shopInfo(); return `<div class="rcpt-foot">
 const CD_WINDOW=15*60*1000;
 const DAY_STATUS={open:{ic:"🟢",t:"مفتوح"},pending:{ic:"🟡",t:"بانتظار المراجعة"},locked:{ic:"🔒",t:"مغلق"},edited:{ic:"🔵",t:"تم تعديل بعد الإغلاق"},mismatch:{ic:"⚠️",t:"غير متطابق"}};
 function closingIdOf(day){ return "LaundryClosing-"+day; }
-function transferIdOf(day,m){ return "LaundryTransfer-"+day+"-"+m; }
+function transferIdOf(day){ return "LaundryTransfer-"+day; }
 function dayIsClosed(day){ const c=closingOf(day); return !!(c&&c.locked); }
 function closedDayOf(dateIso){ if(!dateIso) return null; const d=ymd(dateIso); return dayIsClosed(d)?d:null; }
 function recClosed(o){ return closedDayOf(o&&o.date)||closedDayOf(o&&o.paidDate); }
 function dayStatus(day){ const c=closingOf(day); if(!c||!c.locked) return "open"; if(c.status==="pending" && Date.now()-(+new Date(c.pendingAt||0))<CD_WINDOW) return "pending"; if(c.verify&&c.verify.ok===false) return "mismatch"; return (c.edits||0)>0?"edited":"locked"; }
 function dayStatusChip(day){ const k=dayStatus(day), d=DAY_STATUS[k]; return `<span class="chip ${k==='open'?'':'on'}" data-daystat="${day}" style="${k==='mismatch'?'background:#fdecea;color:#c0392b':k==='edited'?'background:#e3f0ff;color:#1b4f8a':k==='pending'?'background:#fff6d6;color:#8a6d00':''}">${d.ic} ${d.t}</span>`; }
 function cdLaundryArrays(){ return {carOps:state.carOps||[], carpetOrders:state.carpetOrders||[], laundryOrders:state.laundryOrders||[]}; }
-function daySnapshot(day){
-  const inDay=(x)=>!!x && ymd(x)===day;
-  const by={}; PAY_METHODS.forEach(m=>by[m.k]=0);
-  let services=0, paidSvc=0, debts=0, n=0;
-  const A=cdLaundryArrays();
-  const isPaid=(k,o)=> k==="carOps" ? o.paid!==false : !!o.paid;
-  Object.keys(A).forEach(k=>A[k].forEach(o=>{ if(!o||o.cancelled) return; const price=+o.price||0;
-    if(inDay(o.date)){ services+=price; n++; if(isPaid(k,o)) paidSvc+=price; else debts+=price; }
-    if(isPaid(k,o) && price>0 && inDay(o.paidDate||o.date)) by[normPM(o.payMethod)]+=price; }));
-  const received=PAY_METHODS.reduce((t,m)=>t+by[m.k],0);
-  const expenses=sum((state.expenses||[]).filter(e=>!e.cancelled&&inDay(e.date)),e=>+e.amount||0);
-  return {day,services,paidSvc,debts,n,by,received,expenses};
+/* المالية الموحّدة للمغسلة (2.16.0): F(iso) فلتر الفترة.
+   services = خدمات سُجّلت في الفترة؛ paidSame = منها ما دُفع في نفس يوم التسجيل؛ newDebts = services − paidSame (دين عند التسجيل)؛
+   collected = ديون أيام سابقة دُفعت في الفترة؛ received = المستلم فعليًا في الفترة (بيوم الدفع) = paidSame + collected.
+   by[method] المستلم حسب طريقة الدفع؛ bank = مصرفي+سداد (تحويلات بنكية)؛ svc/bySvc/debtSvc حسب الخدمة (lnd/rug/car). */
+const SVC_META={lnd:{t:"الملابس",ic:"👕",c:"#7b4bd6"},rug:{t:"الأفرشة والسجاد",ic:"🛋️",c:"#2e9e6b"},car:{t:"السيارات",ic:"🚗",c:"#1b6ea4"}};
+const PM_GROUPS=[{k:"cash",t:"كاش",ic:"💵",c:"#e67e22",pm:["cash"]},{k:"bankily",t:"Bankily",ic:"🏦",c:"#1e9e5a",pm:["bankily"]},{k:"bank",t:"تحويلات بنكية",ic:"📱",c:"#1b6ea4",pm:["masrvi","sedad"]}];
+function laundryFin(F){
+  const z=()=>{ const o={}; PAY_METHODS.forEach(m=>o[m.k]=0); return o; };
+  const r={services:0,n:0,paidSame:0,newDebts:0,collected:0,received:0,by:z(),bySvc:{lnd:0,rug:0,car:0},svc:{lnd:0,rug:0,car:0},debtSvc:{lnd:0,rug:0,car:0},nUnpaid:0};
+  const src=[["car",state.carOps,o=>o.paid!==false],["rug",state.carpetOrders,o=>!!o.paid],["lnd",state.laundryOrders,o=>!!o.paid]];
+  src.forEach(([k,arr,isPaid])=>(arr||[]).forEach(o=>{ if(!o||o.cancelled) return; const price=+o.price||0; if(price<=0) return;
+    const inD=F(o.date), paid=isPaid(o), pd=paid?(o.paidDate||o.date):null, same=paid && ymd(pd)===ymd(o.date);
+    if(inD){ r.services+=price; r.n++; r.svc[k]+=price; if(same) r.paidSame+=price; else { r.newDebts+=price; r.debtSvc[k]+=price; if(!paid) r.nUnpaid++; } }
+    if(paid && F(pd)){ r.received+=price; r.by[normPM(o.payMethod)]+=price; r.bySvc[k]+=price; if(!same) r.collected+=price; } }));
+  r.bank=r.by.masrvi+r.by.sedad; r.group={cash:r.by.cash,bankily:r.by.bankily,bank:r.bank};
+  r.expenses=sum((state.expenses||[]).filter(e=>!e.cancelled&&F(e.date)),e=>+e.amount||0);
+  return r;
 }
-function dayTransferred(day){ const r={}; PAY_METHODS.forEach(m=>r[m.k]=0); (state.storeCash||[]).forEach(m=>{ if(m.day!==day||!(m.kind==="lndTransfer"||m.kind==="lndAdj")) return; r[normPM(m.payMethod)]+=(m.type==="in"?1:-1)*(+m.amount||0); }); r.total=PAY_METHODS.reduce((t,m)=>t+r[m.k],0); return r; }
+function daySnapshot(day){ const r=laundryFin(x=>!!x&&ymd(x)===day); r.day=day; r.paidSvc=r.paidSame; r.debts=r.newDebts; return r; }
+// حركة صندوق حسب طريقة الدفع: حركات الإغلاق/التسوية تحمل تفصيلًا pm{method:±amount}، وغيرها بطريقة واحدة
+function moveByMethod(m,k){ if(m.pm) return +m.pm[k]||0; return normPM(m.payMethod)===k ? (m.type==="in"?1:-1)*(+m.amount||0) : 0; }
+function dayTransferred(day){ const r={}; PAY_METHODS.forEach(m=>r[m.k]=0); (state.storeCash||[]).forEach(m=>{ if(m.day!==day||!(m.kind==="lndTransfer"||m.kind==="lndAdj")) return; PAY_METHODS.forEach(x=>{ r[x.k]+=moveByMethod(m,x.k); }); }); r.total=PAY_METHODS.reduce((t,m)=>t+r[m.k],0); return r; }
+function laundryFinHTML(f,title,opts){
+  opts=opts||{}; const g=f.group||{cash:f.by.cash,bankily:f.by.bankily,bank:(f.by.masrvi||0)+(f.by.sedad||0)};
+  const card=(ic,l,v,c,sub)=>`<div class="fin-card" style="--fc:${c}"><div class="fl">${ic} ${l}</div><div class="fv">${money(v)}</div>${sub?`<div class="fs">${sub}</div>`:""}</div>`;
+  return `<div class="fin-wrap">${title?`<div class="fin-title">${title}</div>`:""}
+    <div class="fin-hero"><div class="fh-l">💰 إجمالي الإيرادات (الخدمات)</div><div class="fh-v">${money(f.services)} ${CUR}</div>
+      <div class="fh-s"><span>✅ المستلم فعليًا: <b>${money(f.received)}</b></span><span>🔴 ديون جديدة: <b>${money(f.newDebts)}</b></span>${f.collected?`<span>💠 ديون محصّلة: <b>${money(f.collected)}</b></span>`:""}</div></div>
+    <div class="fin-cards">${PM_GROUPS.map(p=>card(p.ic,p.t,g[p.k],p.c)).join("")}${card("🔴","ديون جديدة",f.newDebts,"#c0392b",f.nUnpaid?f.nUnpaid+" غير مدفوع":"")}</div>
+    <div class="fin-cards">${["lnd","rug","car"].map(k=>card(SVC_META[k].ic,"دخل "+SVC_META[k].t,f.svc[k],SVC_META[k].c,"مستلم "+money(f.bySvc[k])+(f.debtSvc[k]?" · دين "+money(f.debtSvc[k]):""))).join("")}</div>
+    ${opts.full?`<div class="fin-cards">${card("🧾","إجمالي الخدمات",f.services,"var(--brand)")}${card("💳","المدفوع (نفس اليوم)",f.paidSame,"#1e9e5a")}${card("💠","ديون محصّلة",f.collected,"#1b6ea4","من أيام سابقة")}${card("💰","صافي المستلم",f.received,"#e67e22","يُحوَّل للمتجر")}</div>`:""}
+  </div>`;
+}
 function closeDay(day){
   if(dayIsClosed(day)) return {ok:false,msg:"هذا اليوم مغلق مسبقًا"};
   if(day>todayStr()) return {ok:false,msg:"لا يمكن إغلاق يوم في المستقبل"};
   const now=iso(new Date()), snap=daySnapshot(day);
   let c=closingOf(day); if(!c){ c={id:closingIdOf(day),day,date:now}; state.closings.push(c); }
-  const ids=[];
-  PAY_METHODS.forEach(m=>{ const amt=Math.round(snap.by[m.k]); if(amt<=0) return; const id=transferIdOf(day,m.k);
-    if(!(state.storeCash||[]).some(x=>x.id===id)){ state.storeCash.push({id,type:"in",amount:amt,reason:"تحويل دخل المغسلة "+day,kind:"lndTransfer",day,customerId:null,ref:closingIdOf(day),payMethod:m.k,date:now,by:currentUser,editedAt:now}); }
-    ids.push(id); });
+  const ids=[]; const amt=Math.round(snap.received);
+  if(amt>0){ const id=transferIdOf(day);
+    // حركة واحدة لليوم بمعرّف ثابت — إن وُجدت (من جهاز آخر/تحديث/إعادة محاولة) لا تُنشأ ثانية
+    if(!(state.storeCash||[]).some(x=>x.id===id)){ state.storeCash.push({id,type:"in",amount:amt,reason:"تحويل دخل المغسلة "+day,kind:"lndTransfer",day,customerId:null,ref:closingIdOf(day),payMethod:"cash",pm:Object.assign({},snap.by),svc:Object.assign({},snap.bySvc),fin:{services:snap.services,paidSame:snap.paidSame,newDebts:snap.newDebts,collected:snap.collected,received:snap.received,svc:Object.assign({},snap.svc)},date:now,by:currentUser,editedAt:now}); }
+    ids.push(id); }
   Object.assign(c,{cid:closingIdOf(day),locked:true,status:"locked",closedAt:now,closedBy:currentUser,snap,transferred:Object.assign({},snap.by),transfers:ids,edits:c.edits||0,editedAt:now});
   c.verify=verifyDay(day);
   logActivity("إغلاق يوم المغسلة", day+" · محوّل للمتجر "+money(snap.received)+" "+CUR);
@@ -2174,12 +2213,14 @@ function cdCommit(recs,after,totals,adj){
   const e=_cdEdit; _cdEdit=null; if(!e) return;
   const now=iso(new Date()), c=closingOf(e.day); const editId=uid();
   const adjIds=[];
-  adj.forEach(a=>{ const id="LaundryAdj-"+e.day+"-"+a.k+"-"+Date.now().toString(36); state.storeCash.push({id,type:a.d>0?"in":"out",amount:Math.round(Math.abs(a.d)),reason:"تسوية دخل المغسلة "+e.day+" ("+(a.d>0?"+":"−")+money(Math.abs(a.d))+")",kind:"lndAdj",day:e.day,ref:transferIdOf(e.day,a.k),editId,customerId:null,payMethod:a.k,date:now,by:currentUser,editedAt:now}); adjIds.push(id);
-    if(c){ c.transferred=c.transferred||{}; c.transferred[a.k]=a.neu; } });
+  if(adj.length){ const net=adj.reduce((t,a)=>t+a.d,0); const pm={}; adj.forEach(a=>{ pm[a.k]=Math.round(a.d); }); const id="LaundryAdj-"+e.day+"-"+Date.now().toString(36);
+    state.storeCash.push({id,type:net>=0?"in":"out",amount:Math.round(Math.abs(net)),reason:"تسوية دخل المغسلة "+e.day+" ("+(net>=0?"+":"−")+money(Math.abs(net))+")",kind:"lndAdj",day:e.day,ref:transferIdOf(e.day),editId,customerId:null,payMethod:"cash",pm,date:now,by:currentUser,editedAt:now}); adjIds.push(id);
+    if(c){ c.transferred=c.transferred||{}; adj.forEach(a=>{ c.transferred[a.k]=a.neu; }); } }
+  if(c){ c.snap=after; }
   const kind=totals.length?totals.filter(t=>!/المدفوع من|صافي المستلم/.test(t.t)).map(t=>t.t).join("، ")||"إجماليات":"بيانات";
   const first=totals.find(t=>PAY_METHODS.some(m=>m.t===t.t))||totals.find(t=>t.t==="صافي المستلم")||totals[0]||null;
   const entry={id:editId,cid:c?(c.cid||c.id):closingIdOf(e.day),day:e.day,ts:now,by:currentUser,role:currentRole,reason:e.reason,kind,
-    before:e.before,after,totals,records:recs,adjustments:adj.map((a,i)=>Object.assign({},a,{id:adjIds[i]})),
+    before:e.before,after,totals,records:recs,adjustments:adj.map(a=>Object.assign({},a,{id:adjIds[0]||null})),
     headline:first?{t:first.t,before:first.before,after:first.after,diff:first.diff}:null,transferBefore:e.before.received,transferAfter:after.received};
   state.closedDayEdits.push(entry);
   if(c){ c.edits=(c.edits||0)+1; c.status="edited"; delete c.pendingAt; c.lastEditId=editId; c.verify=verifyDay(e.day); c.editedAt=now; entry.verified=c.verify.ok; entry.issues=c.verify.issues; }
@@ -2188,6 +2229,60 @@ function cdCommit(recs,after,totals,adj){
   save(); render();
   if(c&&!c.verify.ok){ toast("⚠️ عدم تطابق مالي بعد التعديل — راجع تقفيل اليوم"); try{ alert("⚠️ عدم تطابق مالي في يوم "+e.day+":\n"+c.verify.issues.join("\n")+"\n\nالتعديل مسجّل لكن اليوم مُعلَّم «غير متطابق» حتى تُعالَج المشكلة."); }catch(_){ } }
   else toast("✅ تم التعديل وتوثيقه"+(adj.length?" وأُضيفت التسوية للمتجر":""));
+}
+function openTransferDetail(id){
+  const m=(state.storeCash||[]).find(x=>x.id===id); if(!m) return;
+  const c=closingOf(m.day); const fin=m.fin||(c&&c.snap)||daySnapshot(m.day); const pm=m.pm||{}; const svc=m.svc||fin.bySvc||{};
+  const ed=m.editId?(state.closedDayEdits||[]).find(e=>e.id===m.editId):null;
+  const row=(l,v,b)=>`<div class="rcpt-row"${b?' style="font-weight:800"':''}><span>${l}</span><b>${v}</b></div>`;
+  document.getElementById("receiptContent").innerHTML=`<div class="rcpt">${rcptHeader(m.kind==="lndAdj"?"تسوية دخل المغسلة":"تحويل دخل المغسلة")}
+    ${row("📅 التاريخ",ymd(m.date)+" "+timeStr(m.date))}${row("🧺 المصدر","المغسلة — يوم "+m.day)}${row("🆔 المعرّف",`<span dir="ltr" style="font-size:.75rem">${_esc(m.id)}</span>`)}
+    ${m.kind==="lndTransfer"?`<div class="rcpt-sec">حسب الخدمة</div>${["lnd","rug","car"].map(k=>row(SVC_META[k].ic+" "+SVC_META[k].t,money(svc[k]||0))).join("")}
+      <div class="rcpt-sec">حسب طريقة الدفع</div>${PM_GROUPS.map(p=>row(p.ic+" "+p.t,money(p.pm.reduce((t,k)=>t+(+pm[k]||0),0)))).join("")}
+      <div class="rcpt-sec">الديون</div>${row("🔴 ديون جديدة",money(fin.newDebts||0))}${row("💠 ديون محصّلة",money(fin.collected||0))}${row("🧾 إجمالي الخدمات",money(fin.services||0))}
+      <div class="rcpt-total"><span>💰 المبلغ المحوّل فعليًا إلى المتجر</span><b>+${money(m.amount)} ${CUR}</b></div>`
+    :`<div class="rcpt-sec">التسوية حسب طريقة الدفع</div>${PAY_METHODS.filter(x=>pm[x.k]).map(x=>row(x.ic+" "+x.t,(pm[x.k]>0?"+":"−")+money(Math.abs(pm[x.k])))).join("")}
+      ${row("🔗 مرتبطة بالتحويل",`<span dir="ltr" style="font-size:.75rem">${_esc(m.ref||"")}</span>`)}${ed?row("📝 السبب",_esc(ed.reason||"")):""}${ed?row("👤 المعدِّل",_esc(ed.by||"")):""}
+      <div class="rcpt-total"><span>صافي التسوية</span><b>${m.type==="in"?"+":"−"}${money(m.amount)} ${CUR}</b></div>`}
+    ${row("👤 بواسطة",_esc(m.by||""))}
+    <div class="no-print" style="margin-top:8px"><button class="mini" id="tdOpenDay" style="width:100%">📊 فتح تقرير يوم ${m.day}</button></div>
+    ${rcptFooter("")}</div>`;
+  document.getElementById("receiptModal").style.display="flex";
+  const b=document.getElementById("tdOpenDay"); if(b) b.onclick=()=>openClosing(m.day);
+}
+function transfersSummary(F){
+  const days=(state.closings||[]).filter(c=>c.locked&&!c.cancelled&&F(c.day+"T12:00:00"));
+  const r={n:days.length,total:0,cash:0,bankily:0,bank:0,newDebts:0,collected:0,services:0,days:[]};
+  days.forEach(c=>{ const t=dayTransferred(c.day), f=daySnapshot(c.day); r.total+=t.total; r.cash+=t.cash; r.bankily+=t.bankily; r.bank+=t.masrvi+t.sedad; r.newDebts+=f.newDebts; r.collected+=f.collected; r.services+=f.services; r.days.push({day:c.day,t,f}); });
+  return r;
+}
+function transfersReportHTML(F,periodTxt){
+  const r=transfersSummary(F);
+  const card=(ic,l,v,c,sub)=>`<div class="fin-card" style="--fc:${c}"><div class="fl">${ic} ${l}</div><div class="fv">${typeof v==="number"?money(v):v}</div>${sub?`<div class="fs">${sub}</div>`:""}</div>`;
+  return `<div class="panel" style="margin-bottom:16px"><h3>🧺 دخل المغسلة المحوّل إلى المتجر (${periodTxt})</h3>
+    <div class="fin-cards">${card("🔒","أيام مغلقة",String(r.n),"var(--brand)")}${card("💰","إجمالي المحوّل",r.total,"#e67e22")}${card("🧾","إجمالي الخدمات",r.services,"var(--brand)")}</div>
+    <div class="fin-cards">${card("💵","كاش",r.cash,"#e67e22")}${card("🏦","Bankily",r.bankily,"#1e9e5a")}${card("📱","تحويلات بنكية",r.bank,"#1b6ea4")}${card("🔴","ديون جديدة",r.newDebts,"#c0392b")}${card("💠","ديون محصّلة",r.collected,"#1b6ea4")}</div>
+    <div class="hint">كل يوم مغلق = حركة واحدة في صندوق المتجر مرتبطة بمصدرها (المغسلة)، وأي تعديل لاحق = تسوية مرتبطة بالحركة الأصلية.</div></div>`;
+}
+function laundryDaysLogHTML(){
+  const set=new Set((state.closings||[]).filter(c=>c.locked&&!c.cancelled).map(c=>c.day));
+  const srcs=[state.carOps,state.carpetOrders,state.laundryOrders]; const lim=ymd(new Date(Date.now()-45*86400000));
+  srcs.forEach(a=>(a||[]).forEach(o=>{ if(o&&!o.cancelled&&o.date){ const d=ymd(o.date); if(d>=lim) set.add(d); } }));
+  const days=[...set].sort().reverse().slice(0,60);
+  const rows=days.map(d=>{ const f=daySnapshot(d), t=dayTransferred(d), closed=dayIsClosed(d); return `<tr class="day-row" data-dayrep="${d}"><td>${d}</td><td class="amt">${money(f.services)}</td><td class="amt">${money(f.received)}</td><td class="amt" style="color:var(--unpaid)">${money(f.newDebts)}</td><td class="amt">${closed?money(t.total):"—"}</td><td>${dayStatusChip(d)}</td></tr>`; }).join("");
+  return `<div class="panel" style="margin-bottom:16px"><h3>📒 سجل أيام المغسلة</h3>
+    ${days.length?`<div style="overflow:auto"><table class="tbl"><thead><tr><th>التاريخ</th><th>إجمالي الخدمات</th><th>المستلم</th><th>ديون جديدة</th><th>المحوّل للمتجر</th><th>الحالة</th></tr></thead><tbody>${rows}</tbody></table></div><div class="hint">اضغط أي يوم لفتح تقريره الكامل.</div>`:`<div class="hint">لا توجد أيام بعد.</div>`}</div>`;
+}
+function openCloseDayConfirm(day){
+  const f=daySnapshot(day); const m=document.getElementById("closeDayModal"); if(!m) return;
+  const row=(l,v,c)=>`<div class="rcpt-row"><span>${l}</span><b style="${c?'color:'+c:''}">${money(v)} ${CUR}</b></div>`;
+  document.getElementById("cdyBody").innerHTML=`<p>هل تريد إغلاق يوم <b>${day}</b> وتحويل دخل المغسلة إلى حساب المتجر؟</p>
+    ${row("🧾 إجمالي الخدمات",f.services)}${row("💵 المدفوع نقدًا",f.by.cash,"#e67e22")}${row("🏦 Bankily",f.by.bankily,"#1e9e5a")}${row("📱 التحويلات البنكية",f.bank,"#1b6ea4")}${row("🔴 الديون (لا تُحوَّل)",f.newDebts,"#c0392b")}${f.collected?row("💠 ديون محصّلة اليوم",f.collected,"#1b6ea4"):""}
+    <div class="rcpt-total"><span>💰 إجمالي ما سيُحوَّل للمتجر</span><b>${money(f.received)} ${CUR}</b></div>
+    <div class="hint">تُنشأ حركة واحدة بمعرّف <span dir="ltr">${transferIdOf(day)}</span> — لا تتكرر مهما أُعيدت المحاولة.</div>`;
+  m.style.display="flex";
+  document.getElementById("closeDayOk").onclick=()=>{ m.style.display="none"; requireCode(()=>{ const r=closeDay(day); toast(r.ok?"🔒 أُغلق اليوم وأُضيف الدخل إلى المتجر":r.msg); openClosing(day); }, SECRET_CODE, "كود إغلاق اليوم", "إغلاق اليوم يتطلّب كود التحقق."); };
+  document.getElementById("closeDayCancel").onclick=()=>{ m.style.display="none"; };
 }
 function closedEditsReportHTML(){
   const list=(state.closedDayEdits||[]).slice().sort((a,b)=>(b.ts||"").localeCompare(a.ts||""));
@@ -2203,7 +2298,7 @@ function openClosedEdit(id){
     <div class="rcpt-sec">السجلات المعدّلة</div>${(x.records||[]).map(r=>`<div class="rcpt-row" style="flex-direction:column;align-items:flex-start"><b>${r.kind}: ${_esc(r.label)}</b>${r.changes.map(ch=>`<span style="font-size:.85rem">${ch[0]}: ${_esc(ch[1])} → <b>${_esc(ch[2])}</b></span>`).join("")}</div>`).join("")}
     ${(x.totals||[]).length?`<div class="rcpt-sec">الإجماليات</div>${x.totals.map(t=>`<div class="rcpt-row"><span>${t.t}</span><b>${money(t.before)} → ${money(t.after)} (${t.diff>0?"+":"−"}${money(Math.abs(t.diff))})</b></div>`).join("")}`:""}
     <div class="rcpt-sec">🏪 المتجر</div><div class="rcpt-row"><span>المحوّل قبل التعديل</span><b>${money(x.transferBefore||0)}</b></div><div class="rcpt-row"><span>الصحيح بعد التعديل</span><b>${money(x.transferAfter||0)}</b></div>
-    ${(x.adjustments||[]).length?x.adjustments.map(a=>`<div class="rcpt-row"><span>تسوية ${a.t} (${_esc(a.id||"")} ← ${_esc(transferIdOf(x.day,a.k))})</span><b>${a.d>0?"+":"−"}${money(Math.abs(a.d))} ${CUR}</b></div>`).join(""):`<div class="hint" style="text-align:center">لا تسوية</div>`}
+    ${(x.adjustments||[]).length?x.adjustments.map(a=>`<div class="rcpt-row"><span>تسوية ${a.t} (${_esc(a.id||"")} ← ${_esc(transferIdOf(x.day))})</span><b>${a.d>0?"+":"−"}${money(Math.abs(a.d))} ${CUR}</b></div>`).join(""):`<div class="hint" style="text-align:center">لا تسوية</div>`}
     <div class="rcpt-paid ${x.verified===false?'no':'ok'}">${x.verified===false?"⚠️ عدم تطابق: "+_esc((x.issues||[]).join(" | ")):"✔ التطابق المالي سليم"}</div>
     ${rcptFooter("")}</div>`;
   document.getElementById("receiptModal").style.display="flex";
@@ -2386,21 +2481,23 @@ function openClosing(day){
     : `<div class="rcpt-row"${r[0]==="t"?' style="font-weight:800"':''}><span>${r[1]}</span><b>${money(r[2])}</b></div>`).join("");
   document.getElementById("receiptContent").innerHTML=`
     <div class="rcpt">
-      ${rcptHeader("تقفيل اليوم — "+day)}
+      ${rcptHeader("📊 تقرير اليوم — "+day)}
       <div class="no-print" style="display:flex;gap:8px;align-items:center;margin-bottom:8px"><input type="date" id="closingDay" value="${day}" max="${ymd(new Date())}" style="flex:1"><button class="mini" id="closingWa">📤 إرسال واتساب</button></div>
       <div style="text-align:center;margin-bottom:6px">${dayStatusChip(day)}</div>
+      ${laundryFinHTML(daySnapshot(day),"",{full:true})}
+      <div class="rcpt-sec">🧾 تقفيل اليوم (التفاصيل)</div>
       ${(()=>{ const c=closingOf(day); if(!(c&&c.locked)) return ""; const t=dayTransferred(day); return `<div class="rcpt-sec">🔒 الإغلاق</div><div class="rcpt-row"><span>أُغلق</span><b>${ymd(c.closedAt||c.date)} ${timeStr(c.closedAt||c.date)} · ${_esc(c.closedBy||"")}</b></div><div class="rcpt-row"><span>المعرّف</span><b dir="ltr" style="font-size:.75rem">${_esc(c.cid||c.id)}</b></div>${PAY_METHODS.filter(m=>t[m.k]).map(m=>`<div class="rcpt-row"><span>محوّل للمتجر ${m.ic} ${m.t}</span><b>${money(t[m.k])}</b></div>`).join("")}<div class="rcpt-row" style="font-weight:800"><span>إجمالي المحوّل للمتجر</span><b>${money(t.total)}</b></div>${(c.edits||0)?`<div class="rcpt-row"><span>تعديلات بعد الإغلاق</span><b>${c.edits}</b></div>`:""}${c.verify&&!c.verify.ok?`<div class="rcpt-paid no">⚠️ ${_esc(c.verify.issues.join(" | "))}</div>`:""}`; })()}
       ${body}
       ${(()=>{ const c=cashCountOf(day); return c?`<div class="rcpt-sec">🧮 جرد الصندوق</div><div class="rcpt-row"><span>المتوقع</span><b>${money(c.expected)}</b></div><div class="rcpt-row"><span>الفعلي في الدرج</span><b>${money(c.actual)}</b></div><div class="rcpt-paid ${c.diff===0?'ok':'no'}">${c.diff===0?"✔ مطابق":(c.diff>0?"زيادة ":"⚠️ عجز ")+money(Math.abs(c.diff))+" "+CUR}</div>${c.note?`<div class="hint" style="text-align:center">${_esc(c.note)}</div>`:""}<div class="hint" style="text-align:center">بواسطة ${_esc(c.by||"")} · ${ymd(c.editedAt||c.date)} ${timeStr(c.editedAt||c.date)}</div>`:""; })()}
       ${currentRole!=="worker"?`<div class="no-print cash-count"><div class="cc-title">🧮 جرد الكاش ${cashCountOf(day)?"(تعديل)":""}</div><div class="hint">الكاش المتوقع من حركات اليوم: <b>${money(s.pay.cash.net)} ${CUR}</b></div>
         <div class="row2" style="margin-top:6px"><div class="field"><label>الكاش الفعلي في الدرج</label><input id="ccActual" type="number" min="0" value="${cashCountOf(day)?cashCountOf(day).actual:""}" placeholder="عدّ الدرج"></div><div class="field"><label>ملاحظة</label><input id="ccNote" type="text" value="${_esc((cashCountOf(day)||{}).note||"")}" placeholder="اختياري"></div></div>
         <button class="btn-primary" id="ccSave" style="width:100%">💾 حفظ الجرد</button></div>
-        <div class="no-print" style="margin-top:8px">${dayIsClosed(day)?`<button class="mini" id="cdRequestBtn" style="width:100%">✏️ طلب تعديل هذا اليوم</button>`:`<button class="btn-primary" id="closeDayBtn" style="width:100%;background:#c0392b;border-color:#c0392b">🔒 إغلاق يوم المغسلة وتحويل الدخل إلى المتجر</button><div class="hint" style="text-align:center">المستلم فعليًا اليوم: <b>${money(daySnapshot(day).received)} ${CUR}</b> يُحوَّل إلى صندوق المتجر حسب طريقة الدفع. بعد الإغلاق لا تُعدَّل بيانات اليوم إلا بطلب موثق.</div>`}</div>`:""}
+        <div class="no-print" style="margin-top:8px">${dayIsClosed(day)?`<button class="mini" id="cdRequestBtn" style="width:100%">✏️ طلب تعديل هذا اليوم</button>`:`<button class="btn-primary" id="closeDayBtn" style="width:100%;background:#c0392b;border-color:#c0392b">🔒 إغلاق يوم المغسلة</button><div class="hint" style="text-align:center">المستلم فعليًا: <b>${money(daySnapshot(day).received)} ${CUR}</b> يُحوَّل إلى حساب المتجر بحركة واحدة (الديون لا تُحوَّل). بعد الإغلاق لا تُعدَّل بيانات اليوم إلا بطلب موثق.</div>`}</div>`:""}
       ${rcptFooter(currentUser?("أعدّه: "+_esc(currentUser)):"")}
     </div>`;
   document.getElementById("receiptModal").style.display="flex";
   const dIn=document.getElementById("closingDay"); if(dIn) dIn.onchange=()=>openClosing(dIn.value||day);
-  const cdb=document.getElementById("closeDayBtn"); if(cdb) cdb.onclick=()=>{ if(!confirm("إغلاق يوم "+day+" وتحويل "+money(daySnapshot(day).received)+" "+CUR+" إلى صندوق المتجر؟\nبعد الإغلاق لا تُعدَّل بيانات اليوم إلا بطلب تعديل موثق.")) return; requireCode(()=>{ const r=closeDay(day); toast(r.ok?"🔒 أُغلق اليوم وحُوّل الدخل إلى المتجر":r.msg); openClosing(day); }, SECRET_CODE, "كود إغلاق اليوم", "إغلاق اليوم يتطلّب كود التحقق."); };
+  const cdb=document.getElementById("closeDayBtn"); if(cdb) cdb.onclick=()=>openCloseDayConfirm(day);
   const cdr=document.getElementById("cdRequestBtn"); if(cdr) cdr.onclick=()=>{ document.getElementById("receiptModal").style.display="none"; closedDayGate(day, ()=>{ toast("افتح شاشة السيارات/السجاد/الملابس/المصروفات وعدّل ما تريد — سيظهر ملخص التأكيد عند الحفظ"); }); };
   const ccs=document.getElementById("ccSave"); if(ccs) ccs.onclick=()=>{ const v=document.getElementById("ccActual").value; if(v===""||!(+v>=0)) return toast("أدخل الكاش الفعلي"); const c=saveCashCount(day,+v,document.getElementById("ccNote").value); toast(c.diff===0?"✔ الصندوق مطابق":(c.diff>0?"زيادة ":"⚠️ عجز ")+money(Math.abs(c.diff))+" "+CUR); openClosing(day); };
   const wa=document.getElementById("closingWa"); if(wa) wa.onclick=()=>{
@@ -2834,16 +2931,17 @@ function storeScreenCashbox(){
   const periodTxt=(state.dateFrom===state.dateTo)?(state.dateFrom===_t?"اليوم":state.dateFrom):`${state.dateFrom} ← ${state.dateTo}`;
   const F=(d)=>inRange(d);
   const moves=(state.storeCash||[]).filter(m=>inRange(m.date)).slice().reverse().slice(0,60).map(m=>`
-    <tr><td>${ymd(m.date)}<div style="font-size:.7rem;color:var(--muted)">${timeStr(m.date)}</div></td>
+    <tr ${m.kind?`class="day-row" data-cash-view="${m.id}" title="اضغط للتفاصيل"`:""}><td>${ymd(m.date)}<div style="font-size:.7rem;color:var(--muted)">${timeStr(m.date)}</div></td>
       <td><span class="badge ${m.type==='in'?'b-paid':'b-unpaid'}">${m.type==='in'?'وارد':'صادر'}</span></td>
-      <td>${m.reason||'—'}${m.kind==='lndTransfer'?' <span class="badge b-done">🔒 تحويل</span>':m.kind==='lndAdj'?` <span class="badge b-wash">تسوية</span>`:''}<div style="font-size:.7rem;color:var(--muted)">${pmLabel(m.payMethod)}${m.ref&&m.kind==='lndAdj'?` · مرتبط بـ ${_esc(m.ref)}`:''}</div></td>
+      <td>${m.reason||'—'}${m.kind==='lndTransfer'?' <span class="badge b-done">🧺 المغسلة</span>':m.kind==='lndAdj'?` <span class="badge b-wash">تسوية</span>`:''}<div style="font-size:.7rem;color:var(--muted)">${m.pm?PAY_METHODS.filter(x=>m.pm[x.k]).map(x=>x.t+" "+money(m.pm[x.k])).join(" · ")||pmLabel(m.payMethod):pmLabel(m.payMethod)}${m.ref&&m.kind==='lndAdj'?` · مرتبط بـ ${_esc(m.ref)}`:''}</div></td>
       <td class="amt" style="color:${m.type==='in'?'var(--ready)':'var(--unpaid)'}">${m.type==='in'?'+':'−'}${money(m.amount)}</td>
       <td style="text-align:left">${m.kind?'':`<button class="icon-btn" data-cash-del="${m.id}" title="حذف">${svg(I.trash)}</button>`}</td></tr>`).join("")||`<tr><td colspan="5"><div class="empty">${svg(I.empty)}لا توجد حركات في هذه الفترة.</div></td></tr>`;
   return `
     <div class="panel" style="text-align:center;margin-bottom:14px">
       <div class="l" style="color:var(--muted);font-weight:700">رصيد الصندوق الحالي</div>
+      ${(()=>{ const r=transfersSummary(F); return r.n?`<div class="hint">🧺 دخل المغسلة المحوّل (${periodTxt}): <b>${money(r.total)} ${CUR}</b> · ${r.n} يوم مغلق</div>`:""; })()}
       <div class="big-balance">${money(cashboxBalance())} ${CUR}</div>
-      <div class="pm-strip" style="margin:8px 0 0">${PAY_METHODS.map(m=>{ const b=sum((state.storeCash||[]).filter(x=>normPM(x.payMethod)===m.k),x=>x.type==="in"?(+x.amount||0):-(+x.amount||0)); return `<div class="pm-chip ${m.k}"><span>${m.ic} ${m.t}</span><b>${money(b)}</b></div>`; }).join("")}</div>
+      <div class="pm-strip" style="margin:8px 0 0">${PAY_METHODS.map(m=>{ const b=sum(state.storeCash||[],x=>moveByMethod(x,m.k)); return `<div class="pm-chip ${m.k}"><span>${m.ic} ${m.t}</span><b>${money(b)}</b></div>`; }).join("")}</div>
     </div>
     <div class="store-stat">
       <div class="s"><div class="v" style="color:var(--ready)">${money(storeSalesIncome(F))}</div><div class="l">مبيعات (${periodTxt})</div></div>
@@ -3062,6 +3160,7 @@ function bindStore(){
   // Cashbox
   const ci=document.getElementById("cashInBtn"); if(ci) ci.onclick=()=>{ const a=+document.getElementById("cashAmt").value||0; const r=(document.getElementById("cashReason").value||"").trim(); if(!(a>0)) return toast("أدخل مبلغًا"); addCashMove("in",a,r||"إيداع يدوي",null,null,pmVal("cashPm")); logActivity("إيداع صندوق",money(a)+" "+CUR); toast("تم الإيداع"); render(); };
   const co=document.getElementById("cashOutBtn"); if(co) co.onclick=()=>{ const a=+document.getElementById("cashAmt").value||0; const r=(document.getElementById("cashReason").value||"").trim(); if(!(a>0)) return toast("أدخل مبلغًا"); addCashMove("out",a,r||"سحب يدوي",null,null,pmVal("cashPm")); logActivity("سحب صندوق",money(a)+" "+CUR); toast("تم السحب"); render(); };
+  document.querySelectorAll("[data-cash-view]").forEach(tr=>tr.onclick=(ev)=>{ if(ev.target.closest("button")) return; openTransferDetail(tr.dataset.cashView); });
   document.querySelectorAll("[data-cash-del]").forEach(b=>b.onclick=()=>{ const m=(state.storeCash||[]).find(x=>x.id===b.dataset.cashDel); if(m&&m.kind) return toast("🔒 حركة إغلاق/تسوية — لا تُحذف"); requireCode(()=>{ tomb(b.dataset.cashDel); state.storeCash=state.storeCash.filter(x=>x.id!==b.dataset.cashDel); toast("تم الحذف"); render(); }, SECRET_CODE, "كود الحذف", "حذف حركة الصندوق يتطلب الكود."); });
   // store pay modal buttons
   const spOk=document.getElementById("storePayOk"); if(spOk) spOk.onclick=confirmStorePay;
@@ -3576,6 +3675,7 @@ function openMonthlyPrint(){
 function bindReports(){
   if(state.tab!=="reports") return;
   document.querySelectorAll("[data-cde]").forEach(tr=>tr.onclick=()=>openClosedEdit(tr.dataset.cde));
+  document.querySelectorAll("[data-dayrep]").forEach(tr=>tr.onclick=()=>openClosing(tr.dataset.dayrep));
   const sel=document.getElementById("repMonth"); if(sel) sel.onchange=()=>{ _repMonth=sel.value; render(); };
   const wa=document.getElementById("repMonthWa"); if(wa) wa.onclick=()=>{ const text=monthlyText(); try{ if(navigator.share){ navigator.share({text}).catch(()=>{}); return; } }catch(e){} window.open("https://wa.me/?text="+encodeURIComponent(text),"_blank"); };
   const pr=document.getElementById("repMonthPrint"); if(pr) pr.onclick=openMonthlyPrint;
@@ -3657,6 +3757,8 @@ function screenReports(){
     </div>
     ${payBreakdownHTML(UF,"الدخل حسب طريقة الدفع ("+uPeriod+")")}
     ${workersReportHTML(UF,uPeriod)}
+    ${transfersReportHTML(UF,uPeriod)}
+    ${laundryDaysLogHTML()}
     ${closingsReportHTML()}
     ${closedEditsReportHTML()}
     ${monthlyReportHTML()}
@@ -5706,7 +5808,7 @@ setTimeout(()=>{ if(!window.cloudReady){ const el=document.getElementById("cloud
 <!-- PWA: service-worker registration + update/install wiring -->
 <script>
 (function(){
-  var APP_VERSION = "2.15.0";
+  var APP_VERSION = "2.16.0";
   window.APP_VERSION = APP_VERSION;
   function $(id){ return document.getElementById(id); }
   // سجّل إصدار هذا الجهاز في الحالة المتزامنة (ليُنبَّه الجهاز القديم)

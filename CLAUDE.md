@@ -247,6 +247,23 @@
   cancelledAt`) بدل الإزالة (سيارات/سجاد/ملابس/مصروفات؛ `manualExp` يستثني الملغى). إضافة مصروف بتاريخ سابق صارت تمرّ
   بـ`gateDate`. التقارير ▸ «📋 سجل تعديلات الأيام المغلقة» (`closedEditsReportHTML`، الضغط → `openClosedEdit`). **تحصيل
   دين قديم اليوم لا يحتاج طلبًا** (المال يُستلم اليوم: يُحسب بيوم الدفع). الاختبار `tests/e2e/closed_days.test.js`.
+- **الطبقة المالية للمغسلة (2.16.0):** `laundryFin(F)` هو المصدر الوحيد للأرقام: `services` (خدمات سُجّلت في الفترة)،
+  `paidSame` (دُفعت في نفس يوم التسجيل)، `newDebts = services − paidSame`، `collected` (ديون أيام سابقة دُفعت في الفترة)،
+  `received = paidSame + collected` (بيوم الدفع)، `by[method]`، `bank = masrvi+sedad` («تحويلات بنكية»)، `group{cash,bankily,bank}`،
+  `svc/bySvc/debtSvc{lnd,rug,car}`، `nUnpaid`، `expenses`. `daySnapshot(day)` = نفسها ليوم واحد (+ `paidSvc/debts` أسماء توافقية).
+  **الدين لا يُحوَّل:** المحوّل للمتجر = `received` فقط؛ تسديد الدين لاحقًا يُحسب «تحصيلًا» في يوم الدفع. **حركة واحدة لكل يوم**
+  `LaundryTransfer-{day}` (`kind:"lndTransfer"`, `day`, `pm{method}`, `svc{lnd,rug,car}`, `fin{services,paidSame,newDebts,collected,
+  received,svc}`)؛ التسوية بعد التعديل حركة واحدة `LaundryAdj-{day}-{ts}` بـ`pm` موقّعة (`amount`=|الصافي|، النوع حسب الإشارة).
+  `moveByMethod(m,k)` يقرأ `pm` إن وُجد وإلا `payMethod` (رصيد كل طريقة في الصندوق و`dayTransferred`). الواجهة: `laundryFinHTML(fin,
+  title,{full})` (بطاقات `.fin-hero/.fin-cards/.fin-card`، `PM_GROUPS`, `SVC_META`) أعلى الرئيسية «🧺 ملخص المغسلة» (يتبع فلتر
+  الفترة) وفي «📊 تقرير اليوم» (نافذة التقفيل، `openClosing`) مع «🧾 تقفيل اليوم (التفاصيل)». زر «🔒 إغلاق يوم المغسلة» →
+  `openCloseDayConfirm(day)` (`#closeDayModal`: الخدمات/كاش/Bankily/تحويلات/الديون لا تُحوَّل/إجمالي المحوّل) → `#closeDayOk` → كود →
+  `closeDay`. صندوق المتجر: سطر التحويل يحمل شارة «🧺 المغسلة» وتفصيل الطرق، والضغط عليه (`data-cash-view` → `openTransferDetail`)
+  يعرض التاريخ/المصدر/حسب الخدمة/حسب الطريقة/الديون الجديدة والمحصّلة/المحوّل فعليًا + زر فتح تقرير اليوم. التقارير:
+  `transfersSummary(F)`/`transfersReportHTML` (أيام مغلقة، إجمالي المحوّل، كاش/Bankily/تحويلات، ديون جديدة/محصّلة) و
+  `laundryDaysLogHTML` (📒 سجل أيام المغسلة: التاريخ/الخدمات/المستلم/ديون جديدة/المحوّل/الحالة، الضغط يفتح التقرير). السيناريو
+  الكامل في `tests/e2e/laundry_finance.test.js` (30,000 كاش + 20,000 Bankily + 20,000 مصرفي + 30,000 دين → 100,000/70,000/30,000
+  → حركة واحدة 70,000 → تحديث الصفحة وإعادة الدمج بلا تكرار).
 - **قاعدة الحذف والاستعادة (2.0.0):** السجلّ يُعتبر محذوفًا فقط إذا كان وقت الـ tombstone
   ≥ `editedAt` للسجلّ (`isDead` في `mergeById`). لذلك السجلّ المُستعاد (editedAt جديد) يعود
   على كل الأجهزة. `tomb(id)` يضع وقتًا = max(الآن، editedAt+1) لتفادي فرق ساعات الأجهزة.

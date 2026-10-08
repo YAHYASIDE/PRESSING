@@ -29,17 +29,20 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
   log('snapshot: services 60,000: '+(snap.services===60000)+' (expect true) | received 55,000: '+(snap.received===55000)+' (expect true) | debts 5,000: '+(snap.debts===5000)+' (expect true) | bankily 45,000: '+(snap.by.bankily===45000)+' (expect true)');
   await page.evaluate(d=>openClosing(d),Y); await page.waitForTimeout(300);
   log('close button shown for owner: '+(await page.isVisible('#closeDayBtn'))+' (expect true)');
-  await page.click('#closeDayBtn'); await code(); await page.waitForTimeout(300);
+  await page.click('#closeDayBtn'); await page.waitForTimeout(200);
+  log('close confirmation modal shows transfer 55,000 and debts 5,000: '+(await page.isVisible('#closeDayModal') && /55,000/.test(await page.textContent('#cdyBody')) && /5,000/.test(await page.textContent('#cdyBody')))+' (expect true)');
+  await page.click('#closeDayOk'); await code(); await page.waitForTimeout(300);
   const after=await page.evaluate(d=>({ st:dayStatus(d), c:closingOf(d), moves:state.storeCash.filter(m=>m.kind==='lndTransfer').map(m=>({id:m.id,amt:m.amount,pm:m.payMethod,type:m.type})), bal:cashboxBalance(), t:dayTransferred(d) }),Y);
   log('day locked: '+(after.st==='locked')+' (expect true) | closing id deterministic: '+(after.c.id==='LaundryClosing-'+Y)+' (expect true)');
-  log('two transfers (cash+bankily) with deterministic ids: '+(after.moves.length===2 && after.moves.some(m=>m.id==='LaundryTransfer-'+Y+'-bankily'&&m.amt===45000) && after.moves.some(m=>m.id==='LaundryTransfer-'+Y+'-cash'&&m.amt===10000))+' (expect true)');
+  log('ONE transfer movement 55,000 with deterministic id and breakdown: '+(after.moves.length===1 && after.moves[0].id==='LaundryTransfer-'+Y && after.moves[0].amt===55000 && after.moves[0].type==='in')+' (expect true)');
+  log('transfer breakdown bankily 45,000 / cash 10,000: '+(await page.evaluate(d=>{ const m=state.storeCash.find(x=>x.id==='LaundryTransfer-'+d); return m.pm.bankily===45000 && m.pm.cash===10000 && m.svc.car===45000 && m.svc.rug===10000 && m.fin.newDebts===5000; },Y))+' (expect true)');
   log('cashbox balance 55,000: '+(after.bal===55000)+' (expect true) | dayTransferred total 55,000: '+(after.t.total===55000)+' (expect true)');
   log('verify ok after closing: '+(after.c.verify&&after.c.verify.ok===true)+' (expect true)');
   log('modal shows locked status and transfer: '+/🔒 مغلق/.test(await page.textContent('#receiptContent'))+' (expect true)');
   // لا تكرار: إغلاق مرة أخرى / إعادة الدمج من جهاز آخر
   const again=await page.evaluate(d=>closeDay(d),Y);
   const dup=await page.evaluate(d=>{ const r=JSON.parse(JSON.stringify(cloudCopy())); applyRemote(r); return state.storeCash.filter(m=>m.kind==='lndTransfer').length; },Y);
-  log('second close refused: '+(again.ok===false)+' (expect true) | re-merge keeps exactly 2 transfers: '+(dup===2)+' (expect true)');
+  log('second close refused: '+(again.ok===false)+' (expect true) | re-merge keeps exactly 1 transfer: '+(dup===1)+' (expect true)');
   // الدخل غير مضاعف: التحويل ليس دخلًا للمتجر
   const pb=await page.evaluate(d=>payBreakdown(x=>ymd(x)===d),Y);
   log('transfer not counted as store income: '+(pb.bankily.store===0 && pb.cash.store===0 && pb.bankily.lnd===45000)+' (expect true)');
@@ -71,8 +74,8 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
   await page.click('#cdcOk'); await page.waitForTimeout(400);
   const res=await page.evaluate(d=>({ st:dayStatus(d), c:closingOf(d), adj:state.storeCash.filter(m=>m.kind==='lndAdj'), edits:state.closedDayEdits, bal:cashboxBalance(), t:dayTransferred(d), price:state.carOps[0].price }),Y);
   log('price updated: '+(res.price===50000)+' (expect true) | status edited: '+(res.st==='edited')+' (expect true)');
-  log('adjustment +5,000 bankily linked to original transfer: '+(res.adj.length===1 && res.adj[0].type==='in' && res.adj[0].amount===5000 && res.adj[0].payMethod==='bankily' && res.adj[0].ref==='LaundryTransfer-'+Y+'-bankily')+' (expect true)');
-  log('no duplicate transfer created: '+(await page.evaluate(()=>state.storeCash.filter(m=>m.kind==="lndTransfer").length===2))+' (expect true)');
+  log('adjustment +5,000 bankily linked to original transfer: '+(res.adj.length===1 && res.adj[0].type==='in' && res.adj[0].amount===5000 && res.adj[0].pm.bankily===5000 && res.adj[0].ref==='LaundryTransfer-'+Y)+' (expect true)');
+  log('no duplicate transfer created: '+(await page.evaluate(()=>state.storeCash.filter(m=>m.kind==="lndTransfer").length===1))+' (expect true)');
   log('cashbox 60,000 and transferred 60,000: '+(res.bal===60000 && res.t.total===60000 && res.t.bankily===50000)+' (expect true)');
   const e=res.edits[0];
   log('audit entry: '+(res.edits.length===1 && e.day===Y && e.by==='مالك' && /بدل 50,000/.test(e.reason) && e.headline && e.headline.before===45000 && e.headline.after===50000 && e.headline.diff===5000)+' (expect true)');
@@ -101,7 +104,7 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
   await page.click('#cdcOk'); await page.waitForTimeout(400);
   const cz=await page.evaluate(d=>({ o:state.carpetOrders.find(x=>x.id==='rug1'), adj:state.storeCash.filter(m=>m.kind==='lndAdj'), t:dayTransferred(d), bal:cashboxBalance(), c:closingOf(d) }),Y);
   log('record kept and cancelled (not deleted): '+(!!cz.o && cz.o.cancelled===true && /مكرر/.test(cz.o.cancelReason))+' (expect true)');
-  log('cash adjustment −10,000 out: '+(cz.adj.length===2 && cz.adj.some(a=>a.type==='out'&&a.amount===10000&&a.payMethod==='cash'))+' (expect true) | transferred cash now 0 and total 50,000: '+(cz.t.cash===0&&cz.t.total===50000&&cz.bal===50000)+' (expect true)');
+  log('cash adjustment −10,000 out: '+(cz.adj.length===2 && cz.adj.some(a=>a.type==='out'&&a.amount===10000&&a.pm.cash===-10000))+' (expect true) | transferred cash now 0 and total 50,000: '+(cz.t.cash===0&&cz.t.total===50000&&cz.bal===50000)+' (expect true)');
   log('closing edits count 2 and verify ok: '+(cz.c.edits===2 && cz.c.verify.ok)+' (expect true)');
   log('transfer/adjustment movements have no delete button: '+(await page.evaluate(()=>{ state.tab='store'; state.storeSub='cashbox'; state.dateFrom='1970-01-01'; state.dateTo=ymd(new Date()); render(); return document.querySelectorAll('[data-cash-del]').length===0 && document.querySelectorAll('.badge').length>0; }))+' (expect true)');
 
@@ -124,7 +127,7 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
   // دخل الرئيسية لليوم المغلق يعكس التعديل
   log('period summary bankily after edit 50,000: '+(await page.evaluate(d=>periodSummary(d,d).pay.bankily.lnd===50000,Y))+' (expect true)');
   // ===== 8) الفحص يكشف عدم التطابق لو تلاعب أحد بحركة الصندوق =====
-  const vr=await page.evaluate(d=>{ const m=state.storeCash.find(x=>x.id==='LaundryTransfer-'+d+'-bankily'); m.amount=1; const v=verifyDay(d); m.amount=45000; return v; },Y);
+  const vr=await page.evaluate(d=>{ const m=state.storeCash.find(x=>x.id==='LaundryTransfer-'+d); const keep=m.pm.bankily; m.pm.bankily=1; const v=verifyDay(d); m.pm.bankily=keep; return v; },Y);
   log('verify flags mismatch: '+(vr.ok===false && vr.issues.length>=1)+' (expect true)');
 
   log('\nERRORS:', errors.length?errors.join('\n'):'NONE ✅');
