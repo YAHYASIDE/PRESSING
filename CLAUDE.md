@@ -301,6 +301,12 @@
   `minmax(0,1fr)`، القائمة السفلية `flex:1 1 0` مع قصّ النص (خط أصغر ≤380px)، الجداول `.tbl` على الهاتف
   `display:block;overflow-x:auto;white-space:nowrap` فتتمرّر داخل نفسها، و`.seg` تتمرّر عند الضيق. أداة القياس:
   سكربت Playwright يفحص `scrollWidth` والعناصر الخارجة عن العرض على 360/390/412 (في المحادثة).
+- **تشخيص Google Drive (2.21.0):** `driveFetch` يصنّف خطأ Google من جسم الرد: 401 → `expired`؛ 403 بـ`accessNotConfigured`/
+  «has not been used/disabled» → `apiOff` (Drive API غير مفعّل في Google Cloud — **لا** يمسح التوكن)؛ `insufficientPermissions`
+  → `scope`؛ quota → `quota`؛ غيره `forbidden` مع نص Google؛ 404 → `notFound` (يصفّر `folderId` ليُنشأ المجلد)؛ فشل
+  الشبكة → `network`. `driveErr(code,e)` يترجم كل رمز مع خطوة العلاج. زر «🔎 فحص Drive الآن» (`driveDiagnose`) في قسم
+  Drive يعرض خطوات ✅/❌: الإنترنت → Firebase محمّل → الحساب → الجلسة → Drive API (`about?fields=user,storageQuota`)
+  → المجلد → رفع تجريبي حقيقي، ويتوقف عند أول فشل مع العلاج. الاختبار في `backup5` (محاكاة 403 accessNotConfigured).
 - **قاعدة الحذف والاستعادة (2.0.0):** السجلّ يُعتبر محذوفًا فقط إذا كان وقت الـ tombstone
   ≥ `editedAt` للسجلّ (`isDead` في `mergeById`). لذلك السجلّ المُستعاد (editedAt جديد) يعود
   على كل الأجهزة. `tomb(id)` يضع وقتًا = max(الآن، editedAt+1) لتفادي فرق ساعات الأجهزة.

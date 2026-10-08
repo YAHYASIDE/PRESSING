@@ -4917,10 +4917,18 @@ function driveSet(patch){ const c=Object.assign(driveCfg(), patch); try{ localSt
 function driveTokenOk(c){ c=c||driveCfg(); return !!(c.token && c.exp && Date.now()<c.exp-60000); }
 async function driveFetch(url,opt){ const c=driveCfg(); if(!driveTokenOk(c)) throw Object.assign(new Error("expired"),{code:"expired"});
   opt=opt||{}; opt.headers=Object.assign({Authorization:"Bearer "+c.token}, opt.headers||{});
-  const r=await fetch(url,opt);
-  if(r.status===401||r.status===403){ driveSet({token:null,exp:0,lastErr:"انتهت جلسة Google — أعد الربط"}); throw Object.assign(new Error("expired"),{code:"expired"}); }
-  if(!r.ok){ throw new Error("Drive "+r.status); }
-  return r;
+  let r; try{ r=await fetch(url,opt); }catch(e){ throw Object.assign(new Error("network"),{code:"network"}); }
+  if(r.ok) return r;
+  // تصنيف خطأ Google بدقة (كان كل 401/403 يُعرض «انتهت الجلسة» حتى لو كان Drive API غير مفعّل)
+  let body=null; try{ body=await r.json(); }catch(e){}
+  const err=(body&&body.error)||{}; const reasons=(err.errors||[]).map(x=>x.reason||"").join(",")+" "+(err.status||"")+" "+(err.message||"");
+  let code="http"+r.status;
+  if(r.status===401) code="expired";
+  else if(r.status===403){ if(/accessNotConfigured|SERVICE_DISABLED|has not been used|is disabled|API has not been enabled/i.test(reasons)) code="apiOff"; else if(/insufficientPermissions|ACCESS_TOKEN_SCOPE_INSUFFICIENT|insufficient/i.test(reasons)) code="scope"; else if(/dailyLimit|rateLimit|quota/i.test(reasons)) code="quota"; else code="forbidden"; }
+  else if(r.status===404) code="notFound";
+  const e=Object.assign(new Error(code),{code,status:r.status,detail:(err.message||"").slice(0,200)});
+  if(code==="expired"||code==="scope"){ driveSet({token:null,exp:0,lastErr:driveErr(code,e)}); } else driveSet({lastErr:driveErr(code,e)});
+  throw e;
 }
 async function driveFolderId(){
   const c=driveCfg(); if(c.folderId) return c.folderId;
@@ -4947,8 +4955,26 @@ async function driveUpload(force){
     const f=await r.json();
     driveSet({last:Date.now(),lastHash:hash,lastErr:"",lastFile:f.name,count:(c.count||0)+1});
     return "ok";
-  }catch(e){ if(e.code!=="expired") driveSet({lastErr:String(e.message||e)}); return e.code==="expired"?"expired":"err"; }
+  }catch(e){ if(e.code==="notFound") driveSet({folderId:null}); driveSet({lastErr:driveErr(e.code,e)}); return e.code==="expired"?"expired":"err"; }
   finally{ _driveBusy=false; }
+}
+/* فحص Drive خطوة بخطوة — يعرض بالعربية أي خطوة فشلت ولماذا */
+async function driveDiagnose(){
+  const steps=[]; const ok=(t,d)=>steps.push({ok:true,t,d}); const bad=(t,d)=>steps.push({ok:false,t,d});
+  if(!navigator.onLine) bad("الإنترنت","الجهاز غير متصل الآن"); else ok("الإنترنت","متصل");
+  if(!window.driveSignIn) bad("Firebase","لم يُحمَّل اتصال Firebase (لا إنترنت عند فتح التطبيق؟) — أعد فتح التطبيق مع الإنترنت ثم جرّب"); else ok("Firebase","جاهز");
+  const c=driveCfg();
+  if(!c.email) { bad("الحساب","لم يُربط حساب Google بعد — اضغط «ربط حساب Google»"); return steps; }
+  ok("الحساب",c.email);
+  if(!driveTokenOk(c)) { bad("الجلسة","انتهت جلسة Google (تدوم نحو ساعة) — اضغط «إعادة الربط»"); return steps; }
+  ok("الجلسة","صالحة حتى "+timeStr(c.exp));
+  try{ const j=await (await driveFetch("https://www.googleapis.com/drive/v3/about?fields=user,storageQuota")).json(); ok("Drive API","يستجيب"+(j.user&&j.user.emailAddress?" — "+j.user.emailAddress:"")+(j.storageQuota&&j.storageQuota.limit?" · المساحة المتبقية "+_kb(Math.max(0,(+j.storageQuota.limit)-(+j.storageQuota.usage||0))):"")); }
+  catch(e){ bad("Drive API",driveErr(e.code,e)); return steps; }
+  try{ const id=await driveFolderId(); ok("المجلد","«"+DRIVE_FOLDER+"» جاهز ("+id+")"); }
+  catch(e){ bad("المجلد",driveErr(e.code,e)); return steps; }
+  try{ const r=await driveUpload(true); if(r==="ok") ok("رفع تجريبي","رُفع ملف نسخة الآن بنجاح ✓"); else bad("رفع تجريبي",driveCfg().lastErr||r); }
+  catch(e){ bad("رفع تجريبي",driveErr(e.code,e)); }
+  return steps;
 }
 let _driveExpToast=0;
 async function driveTick(){ const c=driveCfg(); if(!unlocked || !c.on) return; if(Date.now()-(c.last||0) < SNAP_EVERY) return;
@@ -4959,7 +4985,16 @@ async function driveConnect(){
   try{ const r=await window.driveSignIn(); driveSet({token:r.token,exp:r.exp,email:r.email,on:true,lastErr:""}); toast("تم ربط Google Drive ✓ "+(r.email||"")); try{ await driveFolderId(); }catch(e){} return true; }
   catch(e){ const code=(e&&e.code)||""; driveSet({lastErr:driveErr(code,e)}); toast("تعذّر الربط: "+driveErr(code,e)); return false; }
 }
-function driveErr(code,e){ if(/operation-not-allowed/.test(code)) return "تسجيل الدخول بـ Google غير مفعّل في Firebase (انظر الخطوات)"; if(/unauthorized-domain/.test(code)) return "النطاق غير مُصرَّح به في Firebase ▸ Authentication ▸ Authorized domains"; if(/popup-blocked/.test(code)) return "المتصفح منع النافذة المنبثقة — اسمح بها ثم أعد المحاولة"; if(/popup-closed|cancelled/.test(code)) return "أُغلقت نافذة Google قبل الإكمال"; return String((e&&e.message)||code||e); }
+function driveErr(code,e){ code=String(code||(e&&e.code)||"");
+  if(code==="apiOff") return "Google Drive API غير مفعّل لمشروع Firebase (pressing-sadaga). افتح Google Cloud Console ▸ APIs & Services ▸ Library ▸ Google Drive API ▸ Enable، ثم أعد الربط";
+  if(code==="scope") return "لم تُمنح صلاحية Drive للتطبيق — أعد الربط واقبل صلاحية «عرض وإدارة ملفات التطبيق في Drive»";
+  if(code==="expired") return "انتهت جلسة Google — أعد الربط";
+  if(code==="network") return "لا يوجد اتصال بالإنترنت أو Google محجوب على هذه الشبكة";
+  if(code==="quota") return "تجاوزت حصة Google Drive مؤقتًا — حاول بعد قليل";
+  if(code==="forbidden") return "رفض Google الطلب (403): "+((e&&e.detail)||"تحقق من Drive API والصلاحيات");
+  if(code==="notFound") return "المجلد غير موجود في Drive (ربما حُذف) — سيُنشأ من جديد عند الرفع";
+  if(/network-request-failed/.test(code)) return "فشل الاتصال بـ Google — تحقق من الإنترنت";
+  if(/operation-not-allowed/.test(code)) return "تسجيل الدخول بـ Google غير مفعّل في Firebase (انظر الخطوات)"; if(/unauthorized-domain/.test(code)) return "النطاق غير مُصرَّح به في Firebase ▸ Authentication ▸ Authorized domains"; if(/popup-blocked/.test(code)) return "المتصفح منع النافذة المنبثقة — اسمح بها ثم أعد المحاولة"; if(/popup-closed|cancelled/.test(code)) return "أُغلقت نافذة Google قبل الإكمال"; return String((e&&e.message)||code||e); }
 async function driveList(){ const folder=await driveFolderId(); const q=encodeURIComponent("'"+folder+"' in parents and trashed=false"); const j=await (await driveFetch("https://www.googleapis.com/drive/v3/files?q="+q+"&orderBy=createdTime desc&pageSize=15&fields=files(id,name,size,createdTime,description)")).json(); return j.files||[]; }
 async function driveGet(id){ return await (await driveFetch("https://www.googleapis.com/drive/v3/files/"+id+"?alt=media")).json(); }
 async function renderDriveAdmin(){
@@ -4972,7 +5007,9 @@ async function renderDriveAdmin(){
     <div class="set-row" style="flex-wrap:wrap;gap:8px;margin-top:6px">
       <button class="mini" id="driveConnect">${c.email?"🔁 إعادة الربط":"🔗 ربط حساب Google"}</button>
       ${c.email?`<button class="mini" id="driveNow" ${ok?"":"disabled"}>📤 رفع نسخة الآن</button><button class="mini" id="driveOff">⛔ إلغاء الربط</button>`:""}
+      <button class="mini" id="driveDiag">🔎 فحص Drive الآن</button>
     </div>
+    <div id="driveDiagOut" style="margin-top:6px"></div>
     ${c.email?`<label class="hint" style="display:flex;gap:8px;align-items:center;margin-top:8px"><input type="checkbox" id="driveOn" ${c.on?"checked":""}> 📤 هذا الجهاز يرفع نسخة إلى Google Drive كل 5 دقائق (عند تغيّر البيانات)</label>`:""}
     <div id="driveList" style="margin-top:10px"></div>
     <details style="margin-top:8px"><summary class="hint" style="cursor:pointer">⚙️ خطوات التفعيل لمرّة واحدة (صاحب المشروع)</summary><div class="hint" style="line-height:1.9;margin-top:6px">
@@ -4982,6 +5019,9 @@ async function renderDriveAdmin(){
       ثم اضغط «ربط حساب Google» هنا واختر حساب Gmail الذي تريد حفظ النسخ فيه. يعمل في Chrome/التطبيق المثبّت (PWA)، وقد لا يعمل داخل APK.
       الجلسة تدوم نحو ساعة؛ بعدها اضغط «إعادة الربط» مرّة لتستمر النسخ.</div></details>`;
   document.getElementById("driveConnect").onclick=async()=>{ await driveConnect(); renderDriveAdmin(); };
+  document.getElementById("driveDiag").onclick=async()=>{ const out=document.getElementById("driveDiagOut"); out.innerHTML='<div class="hint">جارٍ الفحص…</div>'; const steps=await driveDiagnose();
+    out.innerHTML=`<div class="panel" style="padding:8px 10px">${steps.map(s=>`<div style="display:flex;gap:8px;align-items:flex-start;padding:4px 0;border-bottom:1px dashed var(--line)"><span>${s.ok?"✅":"❌"}</span><div><b>${_esc(s.t)}</b><div class="hint" style="margin:0">${_esc(s.d)}</div></div></div>`).join("")}${steps.every(s=>s.ok)?'<div style="color:var(--ready);font-weight:800;margin-top:6px">كل شيء يعمل ✓</div>':'<div style="color:var(--unpaid);font-weight:800;margin-top:6px">توقّف عند أول خطوة ❌ — نفّذ ما بجانبها ثم أعد الفحص</div>'}</div>`;
+    const c2=driveCfg(); const st=document.querySelector("#driveAdmin > div"); if(st && c2.lastErr && !steps.every(s=>s.ok)){} };
   const now=document.getElementById("driveNow"); if(now) now.onclick=async()=>{ toast("جارٍ الرفع إلى Google Drive…"); const r=await driveUpload(true); toast(r==="ok"?"تم الرفع إلى Google Drive ✓":(r==="expired"?"انتهت الجلسة — أعد الربط":"تعذّر الرفع")); renderDriveAdmin(); };
   const off=document.getElementById("driveOff"); if(off) off.onclick=()=>{ try{ localStorage.removeItem("sadaqa_drive"); }catch(e){} toast("أُلغي ربط Google Drive"); renderDriveAdmin(); };
   const on=document.getElementById("driveOn"); if(on) on.onchange=()=>{ driveSet({on:on.checked}); toast(on.checked?"سيرفع هذا الجهاز نسخة كل 5 دقائق":"أُوقف الرفع من هذا الجهاز"); };
@@ -5933,7 +5973,7 @@ setTimeout(()=>{ if(!window.cloudReady){ const el=document.getElementById("cloud
 <!-- PWA: service-worker registration + update/install wiring -->
 <script>
 (function(){
-  var APP_VERSION = "2.20.1";
+  var APP_VERSION = "2.21.0";
   window.APP_VERSION = APP_VERSION;
   function $(id){ return document.getElementById(id); }
   // سجّل إصدار هذا الجهاز في الحالة المتزامنة (ليُنبَّه الجهاز القديم)

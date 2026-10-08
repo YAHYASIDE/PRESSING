@@ -16,7 +16,9 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
     const req=route.request(), url=req.url(), m=req.method();
     const json=(o,status)=>route.fulfill({status:status||200,contentType:'application/json',headers:{'Access-Control-Allow-Origin':'*','Access-Control-Allow-Headers':'*'},body:JSON.stringify(o)});
     if(m==='OPTIONS') return route.fulfill({status:204,headers:{'Access-Control-Allow-Origin':'*','Access-Control-Allow-Headers':'*','Access-Control-Allow-Methods':'*'}});
-    if(drive.expired) return json({error:'expired'},401);
+    if(drive.expired) return json({error:{code:401,message:'Invalid Credentials',errors:[{reason:'authError'}]}},401);
+    if(drive.apiOff) return json({error:{code:403,message:'Google Drive API has not been used in project 621001945109 before or it is disabled.',errors:[{reason:'accessNotConfigured'}],status:'PERMISSION_DENIED'}},403);
+    if(/\/drive\/v3\/about/.test(url)) return json({user:{emailAddress:'test@gmail.com'},storageQuota:{limit:'16106127360',usage:'1000000'}});
     if(/\/upload\/drive\/v3\/files/.test(url)){ drive.uploads++; const body=req.postData()||''; const meta=JSON.parse(body.split('\r\n\r\n')[1].split('\r\n')[0]); const data=body.split('\r\n\r\n')[2].split('\r\n--')[0]; const f={id:'f'+drive.uploads,name:meta.name,size:String(data.length),createdTime:new Date().toISOString(),data}; drive.files.unshift(f); return json({id:f.id,name:f.name}); }
     if(/\/drive\/v3\/files\/f\d+\?alt=media/.test(url)){ const id=url.match(/files\/(f\d+)/)[1]; const f=drive.files.find(x=>x.id===id); return route.fulfill({status:200,contentType:'application/json',headers:{'Access-Control-Allow-Origin':'*'},body:f.data}); }
     if(/\/drive\/v3\/files\?/.test(url) && m==='POST'){ drive.folder='fold1'; return json({id:'fold1'}); }
@@ -105,6 +107,22 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
   log('relink restores token: '+(await page.evaluate(()=>driveTokenOk()))+' (expect true)');
   await page.click('#driveOff'); await page.waitForTimeout(200);
   log('unlink clears config: '+(await page.evaluate(()=>!driveCfg().email && !driveCfg().on))+' (expect true)');
+  // ===== الفحص خطوة بخطوة =====
+  await page.evaluate(()=>{ window.driveSignIn=async()=>({token:'tok2',email:'test@gmail.com',exp:Date.now()+3600000}); });
+  await page.click('#driveConnect'); await page.waitForTimeout(500);
+  await page.click('#driveDiag'); await page.waitForTimeout(800);
+  let dg=await page.textContent('#driveDiagOut');
+  log('diagnose all green: '+(/كل شيء يعمل/.test(dg) && /Drive API/.test(dg) && /رفع تجريبي/.test(dg) && !/❌/.test(dg))+' (expect true)');
+  drive.apiOff=true;
+  await page.click('#driveDiag'); await page.waitForTimeout(800);
+  dg=await page.textContent('#driveDiagOut');
+  log('diagnose explains Drive API disabled with remedy: '+(/❌/.test(dg) && /Drive API غير مفعّل/.test(dg) && /Google Cloud Console/.test(dg))+' (expect true)');
+  log('apiOff does NOT clear the token (not a session problem): '+(await page.evaluate(()=>driveTokenOk()))+' (expect true)');
+  log('panel shows the precise error: '+(await page.evaluate(()=>/Drive API غير مفعّل/.test(driveCfg().lastErr||'')))+' (expect true)');
+  drive.apiOff=false;
+  await page.evaluate(()=>{ try{ localStorage.removeItem('sadaqa_drive'); }catch(e){} renderDriveAdmin(); }); await page.waitForTimeout(300);
+  await page.click('#driveDiag'); await page.waitForTimeout(300);
+  log('diagnose without account says link first: '+/لم يُربط حساب Google/.test(await page.textContent('#driveDiagOut'))+' (expect true)');
   // رسائل الخطأ المترجمة
   log('error translation: '+(await page.evaluate(()=>/غير مفعّل في Firebase/.test(driveErr('auth/operation-not-allowed',{})) && /Authorized domains/.test(driveErr('auth/unauthorized-domain',{}))))+' (expect true)');
 
