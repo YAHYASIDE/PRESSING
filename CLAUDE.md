@@ -275,6 +275,13 @@
   حسب صنف النافذة `stab-{k}`. `settingsTab(k)` يبدّل ويحفظ آخر تبويب محليًا (`sadaqa_settings_tab`)؛ `openSettings(tab)` يفتح
   التبويب المطلوب أو الأخير؛ `settingsTab("all")`/`openSettings("all")` تعرض كل الأقسام (تستخدمها الاختبارات). زر إغلاق علوي
   `#setCloseTop`. الاختبار `tests/e2e/settings_tabs.test.js`.
+- **الرئيسية بثلاث طبقات (2.18.0) — قرار المجلس:** `screenDashboard` صارت: «📌 أرقام الفترة» (`laundryFinHTML` + صف بطاقات
+  الربح المجمّع/المغسلة/المتجر للمالك والمدير فقط) → «⚠️ يحتاج إجراء» (`overdueHTML` + ثلاث بطاقات `.act-card` قابلة للضغط:
+  مستحقّات غير مدفوعة → `contacts▸debts`، سجاد قيد الغسيل → `carpets`، ملابس قيد العمل → `laundry` عبر `[data-go]`/
+  `[data-go-sub]` في `bindScreen`) → «🔒 نهاية اليوم» (زر `#openClosing` باسم «📊 تقرير اليوم / الإغلاق» + شارة حالة اليوم +
+  زرا التقرير). كل لوحات «حسب النوع» وشريط طرق الدفع داخل `<details id="dashDetails" class="dash-details">` مطوية افتراضيًا
+  (الحالة محلية `sadaqa_dash_details`). العناوين `.dash-sec`. الاختبار `tests/e2e/dashboard_layers.test.js`. سجل قرارات
+  المجلس في `.claude/skills/council/decisions.md`.
 - **قاعدة الحذف والاستعادة (2.0.0):** السجلّ يُعتبر محذوفًا فقط إذا كان وقت الـ tombstone
   ≥ `editedAt` للسجلّ (`isDead` في `mergeById`). لذلك السجلّ المُستعاد (editedAt جديد) يعود
   على كل الأجهزة. `tomb(id)` يضع وقتًا = max(الآن، editedAt+1) لتفادي فرق ساعات الأجهزة.

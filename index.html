@@ -568,6 +568,20 @@
   .photo-btn{background:#0e8fa8}
 
   .report-btns{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+  /* الرئيسية بثلاث طبقات (2.18.0) */
+  .dash-sec{display:flex;align-items:center;gap:8px;font-size:.8rem;font-weight:800;color:var(--muted);margin:14px 0 6px}
+  .dash-sec::after{content:"";flex:1;height:1px;background:var(--line)}
+  .act-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:6px}
+  .act-card{border-radius:12px;padding:9px 10px;background:var(--surface);border:1px solid var(--line);border-inline-start:4px solid var(--fc,var(--brand));box-shadow:var(--shadow);cursor:pointer;text-align:start;font-family:inherit;color:var(--ink)}
+  .act-card .fl{font-size:.72rem;color:var(--muted);font-weight:700}.act-card .fv{font-weight:900;font-size:1rem;color:var(--fc,var(--ink))}.act-card .fs{font-size:.7rem;color:var(--muted)}
+  .act-card.zero{opacity:.6;border-inline-start-color:var(--line)}
+  details.dash-details{border:1px solid var(--line);border-radius:12px;background:var(--surface);padding:0 12px;margin:10px 0}
+  details.dash-details>summary{cursor:pointer;list-style:none;font-weight:800;padding:11px 0;display:flex;justify-content:space-between;align-items:center}
+  details.dash-details>summary::-webkit-details-marker{display:none}
+  details.dash-details>summary::after{content:"▾";color:var(--muted)}
+  details.dash-details[open]>summary::after{content:"▴"}
+  details.dash-details .grid.metrics{margin:0 0 12px}
+  .day-end{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px}
   .report-btns .mini{background:var(--info-bg);color:var(--brand);border-color:var(--brand-2);font-weight:700}
 
   .hold-btn{position:relative;overflow:hidden;touch-action:none}
@@ -1582,19 +1596,28 @@ function screenDashboard(){
   return `
     <div class="screen-head"><h2>الصفحة الرئيسية</h2><span>${periodLabel==="اليوم"?new Date().toLocaleDateString("ar-u-nu-latn",{weekday:"long",day:"numeric",month:"long"}):`${state.dateFrom} ← ${state.dateTo}`}</span></div>
     ${dateBarHTML()}
-    <div class="report-btns">
+    <div class="dash-sec">📌 أرقام ${periodLabel}</div>
+    ${laundryFinHTML(laundryFin(F),"")}
+    ${currentRole!=="worker"?`<div class="fin-cards">${M.slice(0,3).map(m=>`<div class="fin-card" style="--fc:${m.c}"><div class="fl">${m.label}</div><div class="fv">${m.val}</div>${m.sub?`<div class="fs">${m.sub}</div>`:""}</div>`).join("")}</div>`:""}
+    <div class="dash-sec">⚠️ يحتاج إجراء</div>
+    ${overdueHTML()}
+    <div class="act-cards">
+      <button class="act-card ${duesCount?'':'zero'}" style="--fc:var(--unpaid)" data-go="contacts" data-go-sub="debts"><div class="fl">💳 مستحقّات غير مدفوعة</div><div class="fv">${money(duesAmt)}</div><div class="fs">${duesCount} طلب (سيارات+سجاد+ملابس)</div></button>
+      <button class="act-card ${washing?'':'zero'}" style="--fc:var(--wash)" data-go="carpets"><div class="fl">🧺 سجاد قيد الغسيل</div><div class="fv">${washing}</div><div class="fs">بقيمة ${money(washingAmt)}</div></button>
+      <button class="act-card ${lndActive?'':'zero'}" style="--fc:var(--ready)" data-go="laundry"><div class="fl">👕 ملابس قيد العمل</div><div class="fv">${lndActive}</div><div class="fs">بقيمة ${money(lndActiveAmt)}</div></button>
+    </div>
+    <div class="dash-sec">🔒 نهاية اليوم</div>
+    <div class="day-end">
+      ${currentRole!=="worker"?`<button class="mini" id="openClosing" style="background:var(--brand);color:#fff;border-color:var(--brand)">📊 تقرير اليوم / الإغلاق</button>`:""}${(state.dateFrom===state.dateTo)?dayStatusChip(state.dateFrom):""}
       <button class="mini" id="sendReport">📤 التقرير الكامل</button>
       <button class="mini" id="sendReport2">📤 تقرير الدخل (− مصروفات عامة)</button>
-      ${currentRole!=="worker"?`<button class="mini" id="openClosing" style="background:var(--brand);color:#fff;border-color:var(--brand)">🧾 تقفيل اليوم</button>`:""}${(state.dateFrom===state.dateTo)?dayStatusChip(state.dateFrom):""}
     </div>
-    ${overdueHTML()}
-    ${laundryFinHTML(laundryFin(F),"🧺 ملخص المغسلة — "+periodLabel)}
+    <details class="dash-details" id="dashDetails" ${_dashDetailsOpen()?"open":""}><summary>📂 التفاصيل حسب النوع وطريقة الدفع</summary>
     ${(()=>{ const r=payBreakdown(F); const apps=BANK_APPS.reduce((t,k)=>t+r[k].inc,0); return `<div class="pm-strip" style="grid-template-columns:repeat(2,1fr)"><div class="pm-chip cash"><span>💵 كاش</span><b>${money(r.cash.inc)}</b></div><div class="pm-chip bankily" style="cursor:pointer" onclick="toggleBankApps(this)" title="اضغط لعرض التطبيقات"><span>📱 التطبيقات البنكية <span data-bank-arrow>${_bankOpen?"▴":"▾"}</span></span><b>${money(apps)}</b></div></div><div class="pm-strip" data-bank-detail style="grid-template-columns:repeat(3,1fr);${_bankOpen?"":"display:none"}">${BANK_APPS.map(k=>{ const m=PAY_METHODS.find(x=>x.k===k); return `<div class="pm-chip ${m.k}"><span>${m.ic} ${m.t}</span><b>${money(r[k].inc)}</b></div>`; }).join("")}</div>`; })()}
     <div class="grid metrics">
       ${breakdown(`دخل ${periodLabel} حسب النوع`,incItems,{label:`إجمالي دخل ${periodLabel}`,val:inc})}
       ${breakdown(`مصروف ${periodLabel} حسب النوع`,expItems,{label:`إجمالي مصروف ${periodLabel}`,val:exp})}
-      ${M.map(m=>`<div class="metric"><div class="ic" style="background:${m.bg}">${svg(m.ic,m.c)}</div>
-        <div class="label">${m.label}</div><div class="value">${m.val}</div>${m.sub?`<div style="font-size:.76rem;color:var(--muted);font-weight:600;margin-top:3px">${m.sub}</div>`:""}</div>`).join("")}
+
       <div class="metric veh-card">
         <div class="veh-head"><span class="label" style="margin:0">سيارات ${periodLabel} حسب النوع</span></div>
         <div class="veh-grid">
@@ -1613,8 +1636,10 @@ function screenDashboard(){
           ${lndItems.map(v=>`<div class="veh-item" style="background:${v.bg}"><span class="vic">${svg(I.fabric)}</span><span><span class="vc">${v.count}</span><span class="vl">${v.label}</span></span></div>`).join("")}
         </div>
       </div>
-    </div>`;
+    </div>
+    </details>`;
 }
+function _dashDetailsOpen(){ try{ return localStorage.getItem("sadaqa_dash_details")==="1"; }catch(e){ return false; } }
 
 function screenCars(){
   const oq=(state.carSearch||"").trim();
@@ -3841,6 +3866,8 @@ function render(){
 }
 
 function bindScreen(){
+  { const dd=document.getElementById("dashDetails"); if(dd) dd.ontoggle=()=>{ try{ localStorage.setItem("sadaqa_dash_details", dd.open?"1":"0"); }catch(e){} };
+    document.querySelectorAll("[data-go]").forEach(b=>b.onclick=()=>{ state.tab=b.dataset.go; if(b.dataset.goSub&&b.dataset.go==="contacts") state.contactsSub=b.dataset.goSub; render(); }); }
   // dashboard date filter
   const df=document.getElementById("dateFrom"), dtI=document.getElementById("dateTo");
   if(df){
@@ -5850,7 +5877,7 @@ setTimeout(()=>{ if(!window.cloudReady){ const el=document.getElementById("cloud
 <!-- PWA: service-worker registration + update/install wiring -->
 <script>
 (function(){
-  var APP_VERSION = "2.17.0";
+  var APP_VERSION = "2.18.0";
   window.APP_VERSION = APP_VERSION;
   function $(id){ return document.getElementById(id); }
   // سجّل إصدار هذا الجهاز في الحالة المتزامنة (ليُنبَّه الجهاز القديم)
