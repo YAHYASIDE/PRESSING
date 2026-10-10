@@ -322,6 +322,18 @@
   و`mergeCustomer` = الأحدث بـ`editedAt` ثم `lastVisit` ثم الأكثر غسلات. كل تسجيل دفعة/مستحق/غياب يختم `w.editedAt`، وتحديث
   زبون الولاء يختم `c.editedAt`. `restoreMissing` يُعيد الدفعات/المستحقات/الغياب الناقصة لعامل موجود (يحسبها في العدد).
   **قاعدة:** أي سجل يحوي مصفوفة متداخلة يحتاج دمجًا بالاتحاد لا بالاستبدال. الاختبار `tests/e2e/merge_nested.test.js`.
+- **ديون يدوية له/عليه في «المتجر ▸ الديون» (2.24.0):** مصفوفة مُزامنة `state.storeDebts`
+  `{id,customerId,dir:"on"|"for",amount,paidAmount,paid,note,cash,payMethod,date,by,editedAt}` (في SYNC_ARRAYS/BACKUP_KEYS/
+  Lstore/resetFinancials/CSV «الديون اليدوية»). زر «➕ إضافة دين يدوي» (`manualDebtFormHTML`, مسودة `_mdDraft`) يفتح نموذجًا:
+  الاتجاه **عليه** (يدين لنا) / **له** (ندين له)، الزبون من `storeCustomers` أو «➕ زبون جديد…» (اسم + هاتف، يُنشأ أو يُربط
+  بالرقم المكرّر)، المبلغ، **الوصف إلزامي**، وخانة اختيارية «عبر الصندوق» (عليه = سلفة نقدية → حركة صادر؛ له = استلمناه →
+  حركة وارد؛ `ref`=معرّف الدين، `#mdPm`). `doManualDebtSave`. **الحساب:** `debtOutstanding`, `custManualDebts(id,dir)`,
+  `custManualOn`, `custCredit`; `custBalance` = فواتير بالدين + ديون «عليه» (فتدخل في `debtors()` كعنصر «📝 دين يدوي»
+  بالوصف، و`totalReceivables`, والبوت، وشاشة الزبائن). `allocatePayment` يسدّد الفواتير والديون اليدوية معًا الأقدم أولًا.
+  ديون «له» **لا تُخصم من دينه** بل تظهر مستقلة («وله عندنا») وفي «الدائنون — علينا» كبطاقات زبائن (`custCreditors`) بزر
+  «💸 تسديد له» (`_storePayCtx.kind="custCredit"` → `allocateCredit` + حركة صادر). الحذف `deleteManualDebt` بالكود + tombstone
+  (مالك/مدير). كشفا الحساب (`openCustStatement`/`openDirStatement`) يعرضان الأقسام الجديدة وسطر «له عندنا». لا تُحسب بيعًا ولا
+  ربحًا. الاختبار `tests/e2e/manual_debts.test.js`.
 - **قاعدة الحذف والاستعادة (2.0.0):** السجلّ يُعتبر محذوفًا فقط إذا كان وقت الـ tombstone
   ≥ `editedAt` للسجلّ (`isDead` في `mergeById`). لذلك السجلّ المُستعاد (editedAt جديد) يعود
   على كل الأجهزة. `tomb(id)` يضع وقتًا = max(الآن، editedAt+1) لتفادي فرق ساعات الأجهزة.
