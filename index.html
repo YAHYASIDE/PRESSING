@@ -1191,6 +1191,8 @@ const state = {
   storeCustomers:[],        /* {id,name,phone,country,isLaundry,note,by,editedAt} */
   storeCash:[],             /* حركات الصندوق: {id,type:"in"|"out",amount,reason,customerId,ref,date,by,editedAt} */
   storeDebts:[],            /* ديون يدوية: {id,customerId,dir:"on"(عليه)|"for"(له),amount,paidAmount,paid,note,cash,payMethod,date,by,editedAt,cancelled} */
+  depotMoves:[],            /* دبو (المستودع): {id,type:"in"|"out"|"toStore",productId,name,qty,note,date,by,editedAt} */
+  depotSearch:"",
   storeSeq:0, storePurSeq:0,
   storeSub:"pos", storeProdSearch:"", storeSaleSearch:"", storeCustSearch:"", storeSaleFilter:"all",
   suppliers:[],             /* الموردون: {id,name,phone,country,category,note,by,editedAt} */
@@ -1512,6 +1514,7 @@ function renderNav(){
     {id:"cars",label:"السيارات",icon:I.car},
     {id:"laundry",label:"الملابس",icon:I.fabric,badge:lndUnpaid},
     {id:"carpets",label:"السجاد",icon:I.rug,badge:unpaid},
+    {id:"depot",label:"دبو",icon:I.box},
     {id:"store",label:"المتجر",icon:I.shop,badge:storeLow},
     {id:"contacts",label:"الزبائن",icon:I.usertag},
     {id:"expenses",label:"المصروفات",icon:I.wallet},
@@ -1967,6 +1970,98 @@ function screenLaundry(){
         <div class="grid orders">${cards}</div>
       </div>
     </div>`;
+}
+/* ================= دبو (Dépôt) — مستودع البضاعة ================= */
+/* مخزن منفصل عن المتجر: إدخال بضاعة إليه، إخراج منه، أو تحويل منه إلى مخزون المتجر (يزيد stock المادة). لا مال هنا. */
+const DEPOT_TYPES={in:{t:"إدخال إلى دبو",ic:"📥",badge:"b-paid"},out:{t:"إخراج من دبو",ic:"📤",badge:"b-unpaid"},toStore:{t:"تحويل إلى المتجر",ic:"🏪",badge:"b-done"}};
+let _dpDraft={type:"in",prod:""};
+function depotStock(pid){ return sum((state.depotMoves||[]).filter(m=>!m.cancelled&&m.productId===pid),m=>m.type==="in"?(+m.qty||0):-(+m.qty||0)); }
+function depotItems(){ const map=new Map(); (state.depotMoves||[]).forEach(m=>{ if(m.cancelled) return; const p=storeProd(m.productId); const cur=map.get(m.productId)||{productId:m.productId,name:(p&&p.name)||m.name||"?",unit:(p&&p.unit)||"",qty:0,last:""}; cur.qty+=m.type==="in"?(+m.qty||0):-(+m.qty||0); if((m.date||"")>cur.last) cur.last=m.date||""; map.set(m.productId,cur); }); return [...map.values()].sort((a,b)=>b.qty-a.qty||a.name.localeCompare(b.name,"ar")); }
+function screenDepot(){
+  const E=_esc, q=(state.depotSearch||"").trim(), d=_dpDraft, isNew=d.prod==="__new";
+  const prods=(state.storeProducts||[]).filter(p=>!p.archived).slice().sort((a,b)=>(a.name||"").localeCompare(b.name||"","ar"));
+  let items=depotItems(); const totalQty=sum(items,x=>x.qty), nItems=items.filter(x=>x.qty>0).length;
+  if(q) items=items.filter(x=>x.name.includes(q));
+  const today=ymd(new Date()); const nToday=(state.depotMoves||[]).filter(m=>!m.cancelled&&ymd(m.date)===today).length;
+  const selStock=d.prod&&!isNew?depotStock(d.prod):0;
+  const rows=items.length?items.map(x=>{ const p=storeProd(x.productId); return `<tr>
+      <td><b>${E(x.name)}</b>${x.unit?` <small style="color:var(--muted)">${E(x.unit)}</small>`:""}</td>
+      <td class="amt" style="font-weight:800;color:${x.qty>0?'var(--brand)':'var(--muted)'}">${fmt(x.qty)}</td>
+      <td class="amt">${p?fmt(+p.stock||0):"—"}</td>
+      <td style="text-align:left;white-space:nowrap">${x.qty>0?`<button class="mini" data-dp-quick="toStore" data-dp-pid="${x.productId}">🏪 تحويل</button> <button class="mini" data-dp-quick="out" data-dp-pid="${x.productId}">📤 إخراج</button>`:`<button class="mini" data-dp-quick="in" data-dp-pid="${x.productId}">📥 إدخال</button>`}</td></tr>`; }).join("")
+    :`<tr><td colspan="4"><div class="empty">${svg(I.empty)}${q?"لا توجد مادة مطابقة.":"المستودع فارغ — سجّل أول إدخال."}</div></td></tr>`;
+  const moves=(state.depotMoves||[]).filter(m=>!m.cancelled).slice().sort((a,b)=>(b.date||"").localeCompare(a.date||"")).slice(0,50).map(m=>{ const T=DEPOT_TYPES[m.type]||DEPOT_TYPES.in; return `<tr>
+      <td>${ymd(m.date)}<div style="font-size:.7rem;color:var(--muted)">${timeStr(m.date)}</div></td>
+      <td><span class="badge ${T.badge}">${T.ic} ${T.t}</span></td>
+      <td><b>${E((storeProd(m.productId)||{}).name||m.name||"")}</b>${m.note?`<div style="font-size:.72rem;color:var(--muted)">${E(m.note)}</div>`:""}<div style="font-size:.7rem;color:var(--muted)">${E(m.by||"")}</div></td>
+      <td class="amt" style="font-weight:800;color:${m.type==='in'?'var(--ready)':'var(--unpaid)'}">${m.type==='in'?'+':'−'}${fmt(m.qty)}</td>
+      <td style="text-align:left">${currentRole!=="worker"?`<button class="icon-btn" data-dp-del="${m.id}" title="حذف">${svg(I.trash)}</button>`:""}</td></tr>`; }).join("")||`<tr><td colspan="5"><div class="empty">${svg(I.empty)}لا حركات بعد.</div></td></tr>`;
+  return `
+    <div class="screen-head"><h2>📦 دبو — المستودع</h2><span>مخزن البضاعة خارج المحل: إدخال، إخراج، وتحويل إلى مخزون المتجر</span></div>
+    <div class="store-stat">
+      <div class="s"><div class="v" style="color:var(--brand)">${fmt(nItems)}</div><div class="l">مادة في دبو</div></div>
+      <div class="s"><div class="v">${fmt(totalQty)}</div><div class="l">إجمالي القطع</div></div>
+      <div class="s"><div class="v" style="color:var(--ready)">${fmt(nToday)}</div><div class="l">حركات اليوم</div></div>
+    </div>
+    <div class="cols">
+      <div class="panel">
+        <h3>حركة في دبو</h3>
+        <div class="seg" style="margin-bottom:8px">${Object.keys(DEPOT_TYPES).map(k=>`<button type="button" data-dptype="${k}" class="${d.type===k?'on':''}">${DEPOT_TYPES[k].ic} ${DEPOT_TYPES[k].t}</button>`).join("")}</div>
+        <div class="field"><label>المادة</label><select id="dpProd"><option value="">— اختر مادة —</option>${prods.map(p=>`<option value="${p.id}" ${d.prod===p.id?"selected":""}>${E(p.name)} · دبو ${fmt(depotStock(p.id))}${p.unit?" "+E(p.unit):""}</option>`).join("")}<option value="__new" ${isNew?"selected":""}>➕ مادة جديدة…</option></select></div>
+        <div id="dpNewWrap" style="${isNew?"":"display:none"}"><div class="row2"><div class="field"><label>اسم المادة الجديدة <span style="color:var(--unpaid)">*</span></label><input id="dpNewName" type="text" placeholder="الاسم"></div><div class="field"><label>الوحدة</label><input id="dpNewUnit" type="text" placeholder="قطعة / كرتون / لتر"></div></div><div class="hint" style="margin-bottom:8px">تُضاف المادة إلى قائمة مواد المتجر بمخزون 0 (تحدّد أسعارها لاحقًا من المتجر ▸ المواد).</div></div>
+        <div class="row2">
+          <div class="field"><label>الكمية</label><input id="dpQty" type="number" min="0" inputmode="decimal" placeholder="0">${d.type!=="in"&&d.prod&&!isNew?`<div class="hint">المتاح في دبو: <b>${fmt(selStock)}</b></div>`:""}</div>
+          <div class="field"><label>ملاحظة</label><input id="dpNote" type="text" placeholder="${d.type==="in"?"مثال: وصلت من المورّد":d.type==="out"?"مثال: تالف / أُخذت للمغسلة":"مثال: لرفّ المحل"}"></div>
+        </div>
+        <button class="btn-primary" id="dpSave" style="width:100%">💾 ${DEPOT_TYPES[d.type].ic} ${DEPOT_TYPES[d.type].t}</button>
+        <div class="hint" style="margin-top:6px">${d.type==="toStore"?"يُنقص دبو ويزيد مخزون المتجر بنفس الكمية.":d.type==="out"?"يُنقص دبو فقط (لا يمسّ مخزون المتجر ولا الصندوق).":"يزيد دبو فقط (لا يمسّ مخزون المتجر ولا الصندوق)."}</div>
+      </div>
+      <div>
+        <input class="search-inp" id="depotSearch" type="text" placeholder="بحث عن مادة" value="${E(q)}">
+        <div class="panel">
+          <h3>ما في دبو الآن</h3>
+          <div class="tbl-wrap"><table class="tbl"><thead><tr><th>المادة</th><th>في دبو</th><th>في المتجر</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>
+        </div>
+        <div class="panel" style="margin-top:14px">
+          <h3>آخر الحركات</h3>
+          <div class="tbl-wrap"><table class="tbl"><thead><tr><th>التاريخ</th><th>النوع</th><th>المادة</th><th>الكمية</th><th></th></tr></thead><tbody>${moves}</tbody></table></div>
+        </div>
+      </div>
+    </div>`;
+}
+function doDepotSave(){
+  const type=DEPOT_TYPES[_dpDraft.type]?_dpDraft.type:"in";
+  const sel=document.getElementById("dpProd"); let pid=sel?sel.value:"";
+  const qty=+document.getElementById("dpQty").value||0; const note=(document.getElementById("dpNote").value||"").trim();
+  if(!(qty>0)) return toast("أدخل الكمية");
+  if(pid==="__new"){
+    const name=(document.getElementById("dpNewName").value||"").trim(); if(!name) return toast("أدخل اسم المادة الجديدة");
+    const unit=(document.getElementById("dpNewUnit").value||"").trim();
+    const dup=(state.storeProducts||[]).find(p=>!p.archived&&(p.name||"").trim()===name);
+    if(dup){ pid=dup.id; toast("المادة «"+dup.name+"» موجودة من قبل — سُجّلت عليها"); }
+    else { const p={id:uid(),name,unit,buyPrice:0,sellPrice:0,stock:0,minStock:0,by:currentUser,editedAt:iso(new Date())}; state.storeProducts.push(p); pid=p.id; logActivity("مادة جديدة (من دبو)",name); }
+  }
+  const p=storeProd(pid); if(!p) return toast("اختر المادة");
+  if(type!=="in" && qty>depotStock(pid)) return toast("الكمية أكبر من المتاح في دبو ("+fmt(depotStock(pid))+")");
+  const d=iso(new Date());
+  state.depotMoves.push({id:uid(),type,productId:pid,name:p.name,qty,note,date:d,by:currentUser,editedAt:d});
+  if(type==="toStore"){ p.stock=(+p.stock||0)+qty; p.editedAt=d; }
+  logActivity("دبو: "+DEPOT_TYPES[type].t, p.name+" × "+fmt(qty)+(note?" · "+note:""));
+  _dpDraft={type,prod:""}; toast(DEPOT_TYPES[type].ic+" تم ✓"); render();
+}
+function deleteDepotMove(id){
+  const m=(state.depotMoves||[]).find(x=>x.id===id); if(!m) return;
+  requireCode(()=>{ const p=storeProd(m.productId); if(m.type==="toStore"&&p){ p.stock=Math.max(0,(+p.stock||0)-(+m.qty||0)); p.editedAt=iso(new Date()); }
+    tomb(m.id); state.depotMoves=state.depotMoves.filter(x=>x.id!==id); logActivity("حذف حركة دبو",(p?p.name:m.name||"")+" × "+fmt(m.qty)); toast("تم الحذف"); render(); }, SECRET_CODE, "حذف حركة دبو", (DEPOT_TYPES[m.type]||{}).t+" · "+(m.name||"")+" × "+fmt(m.qty));
+}
+function bindDepot(){
+  if(state.tab!=="depot") return;
+  document.querySelectorAll("[data-dptype]").forEach(b=>b.onclick=()=>{ _dpDraft.type=b.dataset.dptype; render(); });
+  const sel=document.getElementById("dpProd"); if(sel) sel.onchange=()=>{ _dpDraft.prod=sel.value; const w=document.getElementById("dpNewWrap"); const isNew=sel.value==="__new"; if(w) w.style.display=isNew?"":"none"; if(isNew){ const n=document.getElementById("dpNewName"); if(n) n.focus(); } else { const n=document.getElementById("dpNewName"); if(n) n.value=""; if(_dpDraft.type!=="in") render(); } };
+  const ds=document.getElementById("depotSearch"); if(ds) ds.oninput=()=>{ state.depotSearch=ds.value; _refocus="depotSearch"; render(); };
+  const sv=document.getElementById("dpSave"); if(sv) sv.onclick=doDepotSave;
+  document.querySelectorAll("[data-dp-quick]").forEach(b=>b.onclick=()=>{ _dpDraft={type:b.dataset.dpQuick,prod:b.dataset.dpPid}; render(); setTimeout(()=>{ const q=document.getElementById("dpQty"); if(q) q.focus(); },50); });
+  document.querySelectorAll("[data-dp-del]").forEach(b=>b.onclick=()=>deleteDepotMove(b.dataset.dpDel));
 }
 /* ================= المتجر: مساعدات ================= */
 function storeProd(id){ return (state.storeProducts||[]).find(p=>p.id===id); }
@@ -2605,6 +2700,7 @@ function exportCSV(from,to){
   sec("مبيعات المتجر",["التاريخ","رقم","الزبون","الأصناف","الإجمالي","المدفوع","المتبقي","طريقة الدفع","بواسطة"],(state.storeSales||[]).filter(o=>F(o.date)).map(o=>[ymd(o.date),o.no,o.customerName,(o.items||[]).map(i=>i.name+" ×"+i.qty).join(" | "),o.total,o.paidAmount||0,o.cancelled?"ملغاة":saleOutstanding(o),o.paid?pmLabel(o.payMethod):"",o.by]));
   sec("مشتريات المتجر",["التاريخ","رقم","المورّد","الأصناف","الإجمالي","المدفوع","المتبقي","بواسطة"],(state.storePurchases||[]).filter(o=>F(o.date)).map(o=>[ymd(o.date),o.no,o.supplier,(o.items||[]).map(i=>i.name+" ×"+i.qty).join(" | "),o.total,purPaidAmt(o),purOutstanding(o),o.by]));
   sec("الديون اليدوية",["التاريخ","الزبون","الاتجاه","الوصف","المبلغ","المسدَّد","المتبقي","عبر الصندوق","بواسطة"],(state.storeDebts||[]).filter(x=>F(x.date)).map(x=>{ const c=storeCust(x.customerId); return [ymd(x.date),c?c.name:"",(x.dir||"on")==="on"?"عليه":"له",x.note,x.amount,x.paidAmount||0,x.cancelled?"ملغاة":debtOutstanding(x),x.cash?pmLabel(x.payMethod):"لا",x.by]; }));
+  sec("دبو (المستودع)",["التاريخ","النوع","المادة","الكمية","ملاحظة","بواسطة"],(state.depotMoves||[]).filter(m=>!m.cancelled&&F(m.date)).map(m=>[ymd(m.date),(DEPOT_TYPES[m.type]||{}).t||m.type,(storeProd(m.productId)||{}).name||m.name||"",m.type==="in"?m.qty:-(+m.qty||0),m.note,m.by]));
   sec("حركات الصندوق",["التاريخ","النوع","البيان","المبلغ","طريقة الدفع","بواسطة"],(state.storeCash||[]).filter(m=>F(m.date)).map(m=>[ymd(m.date),m.type==="in"?"وارد":"صادر",m.reason,m.amount,pmLabel(m.payMethod),m.by]));
   sec("المصروفات",["التاريخ","الفئة","البيان","المبلغ","طريقة الدفع","بواسطة"],(state.expenses||[]).filter(e=>F(e.date)).map(e=>[ymd(e.date),e.category,e.reason,e.amount,pmLabel(e.payMethod),e.by]));
   sec("جرد الصندوق",["اليوم","المتوقع","الفعلي","الفرق","ملاحظة","بواسطة"],(state.closings||[]).filter(c=>hasCashCount(c)&&c.day>=from&&c.day<=to).map(c=>[c.day,c.expected,c.actual,c.diff,c.note,c.by]));
@@ -4065,7 +4161,7 @@ function screenReports(){
 function render(){
   renderNav();
   updateNotifBadge();
-  const map={dashboard:screenDashboard,cars:screenCars,laundry:screenLaundry,carpets:screenCarpets,store:screenStore,contacts:screenContacts,expenses:screenExpenses,reports:screenReports};
+  const map={dashboard:screenDashboard,cars:screenCars,laundry:screenLaundry,carpets:screenCarpets,depot:screenDepot,store:screenStore,contacts:screenContacts,expenses:screenExpenses,reports:screenReports};
   document.getElementById("main").innerHTML=`<div class="screen">${(map[state.tab]||screenDashboard)()}</div>`;
   bindScreen();
 }
@@ -4335,6 +4431,8 @@ function bindScreen(){
   document.querySelectorAll("[data-lnd-wa]").forEach(b=>b.onclick=()=>{ const o=(state.laundryOrders||[]).find(x=>x.id===b.dataset.lndWa); if(o) openLndWa(o); });
   document.querySelectorAll("[data-lnd-receipt]").forEach(b=>b.onclick=()=>{ const o=(state.laundryOrders||[]).find(x=>x.id===b.dataset.lndReceipt); if(o) openLndReceipt(o); });
 
+  // depot (دبو — المستودع)
+  bindDepot();
   // store (المتجر)
   bindStore();
   // contacts (الزبائن والموردون)
@@ -4514,7 +4612,7 @@ function meterCode(){ return (state.meterPin&&state.meterPin.trim())?state.meter
 
 /* ============ persistence + theme + logo ============ */
 const LS_KEY="sadaqa_laundry_v1";
-const CLOUD_OMIT=["tab","expSub","carpetFilter","cpSearch","custSearch","expSearch","carSearch","lndSearch","lndFilter","storeSub","storeProdSearch","storeSaleSearch","storeCustSearch","storeSaleFilter","contactsSub","contactSearch","supplierSearch","debtSort","debtView","debtKind","secDebtOpen","dateFrom","dateTo","dark","palette"];
+const CLOUD_OMIT=["tab","expSub","carpetFilter","cpSearch","custSearch","expSearch","carSearch","lndSearch","lndFilter","storeSub","storeProdSearch","storeSaleSearch","storeCustSearch","storeSaleFilter","contactsSub","contactSearch","supplierSearch","debtSort","debtView","debtKind","secDebtOpen","depotSearch","dateFrom","dateTo","dark","palette"];
 let _applyingRemote=false, _pushT=null;
 let L_pending_push=false;
 // ===== الصور (2.13.0): تُحفظ في IndexedDB لا في localStorage ولا في السحابة =====
@@ -4588,7 +4686,7 @@ function verCmp(a,b){ const A=String(a||"0").split(".").map(x=>+x||0), B=String(
 let _cdEdit=null, _cdConfirmOpen=false;
 function save(){ saveLocal(); if(_cdEdit && !_cdConfirmOpen){ setTimeout(cdAfterSave,0); } updateCloudBtn("pending"); L_pending_push=true; if(window.cloudReady && !_applyingRemote){ clearTimeout(_pushT); _pushT=setTimeout(()=>{ try{ window.cloudPush(cloudCopy()); L_pending_push=false; }catch(e){ updateCloudBtn("offline"); } }, 600); } }
 function load(){ try{ const d=localStorage.getItem(LS_KEY); if(d) Object.assign(state, JSON.parse(d)); }catch(e){} }
-const SYNC_ARRAYS=["carOps","carpetOrders","laundryOrders","expenses","meters","workers","users","managers","storeProducts","storeSales","storePurchases","storeCustomers","storeCash","storeDebts","suppliers","closings","recurring","activity","logins","closedDayEdits"];
+const SYNC_ARRAYS=["carOps","carpetOrders","laundryOrders","expenses","meters","workers","users","managers","storeProducts","storeSales","storePurchases","storeCustomers","storeCash","storeDebts","depotMoves","suppliers","closings","recurring","activity","logins","closedDayEdits"];
 function _editedAtOf(id){ for(const k of SYNC_ARRAYS){ const r=(state[k]||[]).find(x=>x&&x.id===id); if(r) return +new Date(r.editedAt||0)||0; } return 0; }
 function tombTs(id){ return Math.max(Date.now(), _editedAtOf(id)+1); }
 function tomb(id){ if(!state.deleted) state.deleted={}; state.deleted["rec:"+id]=tombTs(id); }
@@ -4680,7 +4778,7 @@ function applyRemote(remote){
   const localDel=state.deleted||{};
   const pm=Object.assign({}, _photoCache, capturePhotos(state)); // كل الصور المحلية قبل الدمج
   // ⚠️ يجب التقاط بيانات المتجر والموردين المحلية قبل Object.assign وإلا ضاعت (كان خطأ يمحو سجلات المتجر)
-  const Lstore={ storeProducts:state.storeProducts||[], storeSales:state.storeSales||[], storePurchases:state.storePurchases||[], storeCustomers:state.storeCustomers||[], storeCash:state.storeCash||[], storeDebts:state.storeDebts||[], suppliers:state.suppliers||[], closings:state.closings||[], recurring:state.recurring||[] };
+  const Lstore={ storeProducts:state.storeProducts||[], storeSales:state.storeSales||[], storePurchases:state.storePurchases||[], storeCustomers:state.storeCustomers||[], storeCash:state.storeCash||[], storeDebts:state.storeDebts||[], depotMoves:state.depotMoves||[], suppliers:state.suppliers||[], closings:state.closings||[], recurring:state.recurring||[] };
   const localSent=Object.assign({}, state.autoClosingSent||{}); const localTgLast=+state.tgLastUpdate||0;
   const localAppVer=state.appVer||"0";
   const localRem=Object.assign({}, state.debtReminded||{});
@@ -4710,6 +4808,7 @@ function applyRemote(remote){
   state.storeCustomers=mergeById(Lstore.storeCustomers, remote.storeCustomers, state.deleted);
   state.storeCash=mergeById(Lstore.storeCash, remote.storeCash, state.deleted);
   state.storeDebts=mergeById(Lstore.storeDebts, remote.storeDebts, state.deleted);
+  state.depotMoves=mergeById(Lstore.depotMoves, remote.depotMoves, state.deleted);
   state.activity=mergeById(L.activity, remote.activity, state.deleted).sort((a,b)=>(a.ts||0)-(b.ts||0)).slice(-400);
   state.notifSeenTs=Math.max(localSeenTs, remote.notifSeenTs||0);
   const cs=Object.assign({}, remote.customers||{});
@@ -4980,7 +5079,7 @@ function importData(file){
    - محليًا على الجهاز (IndexedDB) + في السحابة (backups/{يوم}) — آخر 30 يومًا.
    - نسخة لكل يوم تُحدَّث كل 20 دقيقة على الأكثر أثناء العمل.
    - الاسترجاع «يُعيد المفقود فقط» ولا يمسح أي شيء أحدث. */
-const BACKUP_KEEP=30, BACKUP_EVERY=20*60*1000, BACKUP_KEYS=["carOps","carpetOrders","laundryOrders","expenses","meters","workers","users","managers","storeProducts","storeSales","storePurchases","storeCustomers","storeCash","storeDebts","suppliers","closings","recurring","closedDayEdits"];
+const BACKUP_KEEP=30, BACKUP_EVERY=20*60*1000, BACKUP_KEYS=["carOps","carpetOrders","laundryOrders","expenses","meters","workers","users","managers","storeProducts","storeSales","storePurchases","storeCustomers","storeCash","storeDebts","depotMoves","suppliers","closings","recurring","closedDayEdits"];
 let _lastBackupAt=0;
 function _idb(){ return new Promise((res,rej)=>{ try{ if(!window.indexedDB) return rej(new Error("no idb")); const r=indexedDB.open("sadaqa-backups",3); r.onupgradeneeded=()=>{ const d=r.result; if(!d.objectStoreNames.contains("days")) d.createObjectStore("days",{keyPath:"id"}); if(!d.objectStoreNames.contains("photos")) d.createObjectStore("photos",{keyPath:"k"}); if(!d.objectStoreNames.contains("snaps")) d.createObjectStore("snaps",{keyPath:"id"}); }; r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }catch(e){ rej(e); } }); }
 async function localBackupPut(rec){ const db=await _idb(); return new Promise((res,rej)=>{ const tx=db.transaction("days","readwrite"); tx.objectStore("days").put(rec); tx.oncomplete=()=>res(); tx.onerror=()=>rej(tx.error); }); }
@@ -5302,12 +5401,12 @@ function resetFinancials(){
   const tombArr=(arr)=>{ (arr||[]).forEach(o=>{ if(o&&o.id) D["rec:"+o.id]=Math.max(Date.now(), (+new Date(o.editedAt||0)||0)+1); }); };
   tombArr(state.carOps); tombArr(state.carpetOrders); tombArr(state.laundryOrders);
   tombArr(state.expenses); tombArr(state.meters);
-  tombArr(state.storeSales); tombArr(state.storePurchases); tombArr(state.storeCash); tombArr(state.storeDebts);
+  tombArr(state.storeSales); tombArr(state.storePurchases); tombArr(state.storeCash); tombArr(state.storeDebts); tombArr(state.depotMoves);
   tombArr(state.activity); tombArr(state.closings); tombArr(state.closedDayEdits);
   state.closings=[]; state.autoClosingSent={}; state.closedDayEdits=[];
   state.carOps=[]; state.carpetOrders=[]; state.laundryOrders=[];
   state.expenses=[]; state.meters=[];
-  state.storeSales=[]; state.storePurchases=[]; state.storeCash=[]; state.storeDebts=[];
+  state.storeSales=[]; state.storePurchases=[]; state.storeCash=[]; state.storeDebts=[]; state.depotMoves=[];
   state.activity=[];
   state.orderSeq=0; state.carSeq={}; state.lndSeq=0; state.storeSeq=0; state.storePurSeq=0;
   Object.keys(state.customers||{}).forEach(k=>{ const c=state.customers[k]; if(c){ c.stamps=0; c.totalWashes=0; c.freeWashes=0; } });
@@ -6082,6 +6181,7 @@ function runMigrations(){
   if(!state.storeCustomers) state.storeCustomers=[];
   if(!state.storeCash) state.storeCash=[];
   if(!state.storeDebts) state.storeDebts=[];
+  if(!state.depotMoves) state.depotMoves=[];
   if(typeof state.storeSeq!=="number") state.storeSeq=(state.storeSales||[]).length;
   if(typeof state.storePurSeq!=="number") state.storePurSeq=(state.storePurchases||[]).length;
   if(!state.storeSub) state.storeSub="pos";
@@ -6178,7 +6278,7 @@ setTimeout(()=>{ if(!window.cloudReady){ const el=document.getElementById("cloud
 <!-- PWA: service-worker registration + update/install wiring -->
 <script>
 (function(){
-  var APP_VERSION = "2.24.2";
+  var APP_VERSION = "2.25.0";
   window.APP_VERSION = APP_VERSION;
   function $(id){ return document.getElementById(id); }
   // سجّل إصدار هذا الجهاز في الحالة المتزامنة (ليُنبَّه الجهاز القديم)

@@ -343,6 +343,13 @@
   مضى أكثر من `PULL_STALE_MS` (60 ثانية) على آخر استلام: بعد الدخول، عند العودة للتطبيق (`visibilitychange`)، عند عودة
   الإنترنت (`online`)، وبعد الاتصال بالسحابة. زر «🔁 إعادة المزامنة الآن» صار سحبًا ثم رفعًا، وصحة البيانات تعرض
   «الاستلام من السحابة: آخر استلام/آخر خطأ سحب» (`_lastPullErr`). الاختبار `tests/e2e/cloud_pull.test.js` (cloudPull مُحاكى).
+- **تبويب «دبو» = مستودع البضاعة (2.25.0):** تبويب `depot` في القائمة السفلية بعد السجاد (لكل الأدوار)، `screenDepot`/
+  `bindDepot`. مخزن منفصل عن المتجر **بلا مال**: مصفوفة مُزامنة `state.depotMoves` `{id,type:"in"|"out"|"toStore",productId,
+  name,qty,note,date,by,editedAt}` (SYNC_ARRAYS/BACKUP_KEYS/Lstore/resetFinancials/CSV «دبو (المستودع)»). المواد هي مواد
+  المتجر نفسها (`storeProducts`) أو «➕ مادة جديدة…» تُنشأ بمخزون 0. `depotStock(pid)` = Σإدخال − Σإخراج − Σتحويل؛
+  `depotItems()` للجدول (في دبو / في المتجر + أزرار سريعة `data-dp-quick`). **التحويل إلى المتجر** يزيد `p.stock`؛ الإخراج
+  يُنقص دبو فقط؛ لا يُسمح بإخراج/تحويل أكبر من المتاح. الحذف بالكود (`deleteDepotMove`، يعكس زيادة المتجر إن كان تحويلًا)
+  + tombstone. مسودة `_dpDraft{type,prod}`، بحث `state.depotSearch` في `CLOUD_OMIT`. الاختبار `tests/e2e/depot.test.js`.
 - **قاعدة الحذف والاستعادة (2.0.0):** السجلّ يُعتبر محذوفًا فقط إذا كان وقت الـ tombstone
   ≥ `editedAt` للسجلّ (`isDead` في `mergeById`). لذلك السجلّ المُستعاد (editedAt جديد) يعود
   على كل الأجهزة. `tomb(id)` يضع وقتًا = max(الآن، editedAt+1) لتفادي فرق ساعات الأجهزة.
