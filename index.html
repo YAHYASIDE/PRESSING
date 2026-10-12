@@ -2757,7 +2757,7 @@ function manualDebtFormHTML(){
         <button type="button" data-mddir="for" class="${d.dir==="for"?"on":""}">📤 له — ندين له</button>
       </div>
       <div class="field"><label>الزبون</label><select id="mdCust"><option value="">— اختر زبونًا —</option>${custs.map(c=>`<option value="${c.id}" ${d.cust===c.id?"selected":""}>${E(c.name)}${c.phone?" · "+E(c.phone):""}</option>`).join("")}<option value="__new" ${isNew?"selected":""}>➕ زبون جديد…</option></select></div>
-      ${isNew?`<div class="row2"><div class="field"><label>اسم الزبون الجديد</label><input id="mdNewName" type="text" placeholder="الاسم"></div><div class="field"><label>الهاتف (اختياري)</label><div class="phone-row"><select id="mdNewCountry" class="cc-select">${countryOpts()}</select><input id="mdNewPhone" class="phone-inp" type="tel" inputmode="numeric" maxlength="9" placeholder="رقم الهاتف"></div></div></div>`:""}
+      <div id="mdNewWrap" style="${isNew?"":"display:none"}"><div class="field"><label>اسم الزبون الجديد <span style="color:var(--unpaid)">*</span></label><input id="mdNewName" type="text" placeholder="الاسم"></div><div class="field"><label>الهاتف (اختياري)</label><div class="phone-row"><select id="mdNewCountry" class="cc-select">${countryOpts()}</select><input id="mdNewPhone" class="phone-inp" type="tel" inputmode="numeric" maxlength="9" placeholder="رقم الهاتف"></div></div></div>
       <div class="row2">
         <div class="field"><label>المبلغ (${CUR})</label><input id="mdAmt" type="number" min="0" inputmode="decimal" placeholder="0"></div>
         <div class="field"><label>الوصف <span style="color:var(--unpaid)">*</span></label><input id="mdNote" type="text" placeholder="${d.dir==="on"?"مثال: سلفة نقدية / رصيد سابق":"مثال: دفع مقدّمًا / اقترضنا منه"}"></div>
@@ -2825,8 +2825,9 @@ function doManualDebtSave(){
     const name=(document.getElementById("mdNewName").value||"").trim(); if(!name) return toast("أدخل اسم الزبون الجديد");
     const phone=(document.getElementById("mdNewPhone").value||"").trim(), country=document.getElementById("mdNewCountry").value;
     if(phone && !validPhone(phone)) return toast("رقم الهاتف يجب أن يكون 8 أرقام");
-    const dup=phone && (state.storeCustomers||[]).find(c=>normPhone(c.phone)===normPhone(phone));
-    if(dup){ custId=dup.id; toast("هذا الرقم محفوظ باسم «"+dup.name+"» — سُجّل عليه"); }
+    const dup=(phone && (state.storeCustomers||[]).find(c=>normPhone(c.phone)===normPhone(phone)))
+           || (!phone && (state.storeCustomers||[]).find(c=>!c.isLaundry && (c.name||"").trim()===name));
+    if(dup){ custId=dup.id; toast("الزبون «"+dup.name+"» محفوظ من قبل — سُجّل عليه"); }
     else { const c={id:uid(),name,phone,country,isLaundry:false,note:"",by:currentUser,editedAt:iso(new Date())}; state.storeCustomers.push(c); custId=c.id; logActivity("زبون متجر جديد",name); }
   }
   const c=storeCust(custId); if(!c) return toast("اختر الزبون");
@@ -2853,7 +2854,7 @@ function bindDebtsUI(){
   const mdo=document.getElementById("mdOpen"); if(mdo) mdo.onclick=()=>{ _mdDraft.open=true; render(); };
   const mdc=document.getElementById("mdClose"); if(mdc) mdc.onclick=()=>{ _mdDraft={dir:_mdDraft.dir,cust:"",open:false}; render(); };
   document.querySelectorAll("[data-mddir]").forEach(b=>b.onclick=()=>{ _mdDraft.dir=b.dataset.mddir; render(); });
-  const mdCust=document.getElementById("mdCust"); if(mdCust) mdCust.onchange=()=>{ _mdDraft.cust=mdCust.value; if(mdCust.value==="__new"){ render(); setTimeout(()=>{ const n=document.getElementById("mdNewName"); if(n) n.focus(); },50); } };
+  const mdCust=document.getElementById("mdCust"); if(mdCust) mdCust.onchange=()=>{ _mdDraft.cust=mdCust.value; const w=document.getElementById("mdNewWrap"); const isNew=mdCust.value==="__new"; if(w) w.style.display=isNew?"":"none"; if(isNew){ const n=document.getElementById("mdNewName"); if(n) n.focus(); } else { const n=document.getElementById("mdNewName"), p=document.getElementById("mdNewPhone"); if(n) n.value=""; if(p) p.value=""; } };
   const mdCash=document.getElementById("mdCash"); if(mdCash) mdCash.onchange=()=>{ const w=document.getElementById("mdPmWrap"); if(w) w.style.display=mdCash.checked?"":"none"; };
   const mds=document.getElementById("mdSave"); if(mds) mds.onclick=doManualDebtSave;
   const dso=document.getElementById("debtSort"); if(dso) dso.onchange=()=>{ state.debtSort=dso.value; render(); };
@@ -6177,7 +6178,7 @@ setTimeout(()=>{ if(!window.cloudReady){ const el=document.getElementById("cloud
 <!-- PWA: service-worker registration + update/install wiring -->
 <script>
 (function(){
-  var APP_VERSION = "2.24.1";
+  var APP_VERSION = "2.24.2";
   window.APP_VERSION = APP_VERSION;
   function $(id){ return document.getElementById(id); }
   // سجّل إصدار هذا الجهاز في الحالة المتزامنة (ليُنبَّه الجهاز القديم)

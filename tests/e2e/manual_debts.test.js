@@ -75,6 +75,15 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
   await page.click('#mdOpen'); await page.waitForTimeout(150); await page.click('[data-mddir="on"]'); await page.waitForTimeout(150);
   await page.selectOption('#mdCust','__new'); await page.waitForTimeout(200);
   log('choosing «new customer» reveals name/phone fields: '+((await page.isVisible('#mdNewName')) && (await page.isVisible('#mdNewPhone')))+' (expect true)');
+  // الرجوع إلى زبون محفوظ يخفي خانات الزبون الجديد (كانت تبقى ظاهرة)
+  await page.selectOption('#mdCust','cu1'); await page.waitForTimeout(150);
+  log('switching back to a saved customer hides the new-customer fields: '+(!(await page.isVisible('#mdNewName')))+' (expect true)');
+  await page.selectOption('#mdCust','__new'); await page.waitForTimeout(150);
+  // اسم موجود بلا هاتف → يُربط بالزبون المحفوظ بدل تكراره
+  await page.fill('#mdNewName','سالم'); await page.fill('#mdAmt','100'); await page.fill('#mdNote','اختبار تكرار'); await page.click('#mdSave'); await page.waitForTimeout(300);
+  log('existing name without phone is linked, not duplicated: '+(await page.evaluate(()=>state.storeCustomers.filter(c=>c.name==='سالم').length===1 && state.storeDebts.some(x=>x.note==='اختبار تكرار'&&x.customerId==='cu1')))+' (expect true)');
+  await page.click('#mdOpen'); await page.waitForTimeout(150); await page.click('[data-mddir="on"]'); await page.waitForTimeout(150);
+  await page.selectOption('#mdCust','__new'); await page.waitForTimeout(150);
   await page.fill('#mdNewName','خالد'); await page.fill('#mdNewPhone','33445566'); await page.fill('#mdAmt','700'); await page.fill('#mdNote','سلفة نقدية'); await page.check('#mdCash'); await page.click('#mdSave'); await page.waitForTimeout(300);
   r=await page.evaluate(()=>{ const c=state.storeCustomers.find(x=>x.name==='خالد'); const x=state.storeDebts.find(y=>c&&y.customerId===c.id); const m=state.storeCash.find(m=>x&&m.ref===x.id); return { c:!!c, phone:c&&c.phone, x:!!x, cashOut:m&&m.type==='out'&&m.amount===700&&m.payMethod==='cash', bal:c?custBalance(c.id):-1, box:cashboxBalance() }; });
   log('new customer created with phone and a 700 cash loan (cash-out movement): '+(r.c && r.phone==='33445566' && r.x && r.cashOut && r.bal===700)+' (expect true) | box 500+4,000+1,000−700=4,800: '+(r.box===4800)+' (expect true)');
