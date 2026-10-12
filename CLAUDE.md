@@ -343,13 +343,24 @@
   مضى أكثر من `PULL_STALE_MS` (60 ثانية) على آخر استلام: بعد الدخول، عند العودة للتطبيق (`visibilitychange`)، عند عودة
   الإنترنت (`online`)، وبعد الاتصال بالسحابة. زر «🔁 إعادة المزامنة الآن» صار سحبًا ثم رفعًا، وصحة البيانات تعرض
   «الاستلام من السحابة: آخر استلام/آخر خطأ سحب» (`_lastPullErr`). الاختبار `tests/e2e/cloud_pull.test.js` (cloudPull مُحاكى).
-- **تبويب «دبو» = مستودع البضاعة (2.25.0):** تبويب `depot` في القائمة السفلية بعد السجاد (لكل الأدوار)، `screenDepot`/
-  `bindDepot`. مخزن منفصل عن المتجر **بلا مال**: مصفوفة مُزامنة `state.depotMoves` `{id,type:"in"|"out"|"toStore",productId,
-  name,qty,note,date,by,editedAt}` (SYNC_ARRAYS/BACKUP_KEYS/Lstore/resetFinancials/CSV «دبو (المستودع)»). المواد هي مواد
-  المتجر نفسها (`storeProducts`) أو «➕ مادة جديدة…» تُنشأ بمخزون 0. `depotStock(pid)` = Σإدخال − Σإخراج − Σتحويل؛
-  `depotItems()` للجدول (في دبو / في المتجر + أزرار سريعة `data-dp-quick`). **التحويل إلى المتجر** يزيد `p.stock`؛ الإخراج
-  يُنقص دبو فقط؛ لا يُسمح بإخراج/تحويل أكبر من المتاح. الحذف بالكود (`deleteDepotMove`، يعكس زيادة المتجر إن كان تحويلًا)
-  + tombstone. مسودة `_dpDraft{type,prod}`، بحث `state.depotSearch` في `CLOUD_OMIT`. الاختبار `tests/e2e/depot.test.js`.
+- **تبويب «دبو» = مصنع الطوب (2.26.0؛ حلّ محلّ «مستودع» 2.25.0 الذي كان فهمًا خاطئًا):** تبويب `brick` بعد السجاد لكل
+  الأدوار، `screenBrick`/`bindBrick`، تبويبات فرعية `BRICK_SUBS` (الملخص/الإنتاج/المبيعات/المواد/المصاريف/الديون/الصندوق،
+  `state.brickSub` و`brickSearch` في `CLOUD_OMIT`). **وحدة مستقلة بصندوقها وربحها.** مصفوفات مُزامنة (SYNC_ARRAYS/BACKUP_KEYS/
+  Lstore/resetFinancials/CSV خمسة أقسام «دبو — …»): `brickPurchases` (شراء إسمنت/تراب/أخرى `BRICK_MAT`، بالكمية وسعر الوحدة،
+  مورّد عبر `ensureSupplier`، مدفوع أو دين `paidAmount`)، `brickBatches` (خلطة: `cementBags,sandLoads,bricks,workerPay,
+  workerPaidAmt,workerPaid,workers` — الأجرة **بالخلطة**، تُدفع فورًا أو تبقى «أجور لم تُدفع»)، `brickSales` (بيع طوب بالعدد ×
+  `unitPrice`، نقدًا بطريقة دفع أو **بالدين** لزبون من `storeCustomers`/زبون جديد؛ `brickCfg.price` يتذكّر آخر سعر)،
+  `brickExpenses` (`BRICK_EXP` ماء/كهرباء/نقل/أخرى، تُخصم فورًا)، `brickCash` (صندوق دبو؛ `addBrickCash(type,amount,reason,ref,
+  method)`، `ref`=معرّف السجل فيُحذف معه). **الحساب:** `brickMatStock(mat)` = مشترى − مستعمل، `brickAvgCost(mat)`، `brickStock()`
+  = منتج − مباع، `brickFin(F)` → {purchases,wages,expenses,sales,salesPaid,newDebts,cost,profit,produced,sold,matUsed,prodCost,
+  **costPerBrick** = (مواد الخلطات بمتوسط الشراء + أجور + مصاريف) ÷ المنتج, pm, custDebt,supDebt,wageDues,stock,cement,sand,box}.
+  الربح = مبيعات − (شراء + أجور + مصاريف) بتاريخ كلٍّ. **التكامل:** `periodSummary` يُرجع `brick`/`brickFin` و`group` يشمل دبو؛
+  بطاقة «ربح دبو» في الرئيسية (`M.slice(0,4)`) وقسم «🧱 دبو» في الربح الموحّد والتقرير؛ `tgSummaryText` سطر دبو؛ ديون
+  الطوب في `debtors()` بنوع **`brick`** (`DEBT_KINDS`/`DEBT_KEYS` صار فيه brick؛ `sectionDebtsHTML("brick")` أعلى المبيعات).
+  التحصيل/التسديد/دفع الأجرة عبر `openStorePay` بـ`_storePayCtx.kind` = `brickSale`/`brickPur`/`brickWage` (أزرار
+  `#storePayOk/#storePayCancel` تُربط في `bindBrick` أيضًا). الحذف `brickDelete(kind,id)` بالكود + tombstone (مع حركات
+  الصندوق المرتبطة). إيصال `openBrickReceipt`. مسودة `_bkDraft{cust,paid,purPaid,wagePaid,mat,exp}`. الاختبار
+  `tests/e2e/brick.test.js` (سيناريو كامل: شراء → خلطتان → بيع نقدًا/دين → مصروف → تحصيل/تسديد → حذف → مزامنة).
 - **قاعدة الحذف والاستعادة (2.0.0):** السجلّ يُعتبر محذوفًا فقط إذا كان وقت الـ tombstone
   ≥ `editedAt` للسجلّ (`isDead` في `mergeById`). لذلك السجلّ المُستعاد (editedAt جديد) يعود
   على كل الأجهزة. `tomb(id)` يضع وقتًا = max(الآن، editedAt+1) لتفادي فرق ساعات الأجهزة.

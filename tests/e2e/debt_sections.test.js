@@ -20,7 +20,7 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
   const a=d.find(x=>x.n==='أهل دار أنفع');
   log('per-kind totals (car 500, rug 700, lnd 2000, store 300): '+(!!a&&a.by.car===500&&a.by.rug===700&&a.by.lnd===2000&&a.by.store===300&&a.t===3500)+' (expect true)');
   await page.click('[data-tab="contacts"]'); await page.click('[data-csub="debts"]'); await page.waitForTimeout(250);
-  log('section buttons shown with totals: '+((await page.$$('[data-debtkind]')).length===5&&/🚗 السيارات/.test(await page.textContent('.debt-kinds')))+' (expect true)');
+  log('section buttons shown with totals: '+((await page.$$('[data-debtkind]')).length===6&&/🚗 السيارات/.test(await page.textContent('.debt-kinds')))+' (expect true)');
   let txt=await page.textContent('main');
   log('"all" view shows per-section breakdown on card: '+(/السيارات: 500/.test(txt)&&/الملابس: 2,000/.test(txt))+' (expect true)');
   await page.click('[data-debtkind="car"]'); await page.waitForTimeout(250); txt=await page.textContent('main');
