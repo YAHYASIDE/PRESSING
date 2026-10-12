@@ -4776,7 +4776,23 @@ function openWorkerStatement(id){
   document.getElementById("wsModal").style.display="flex";
 }
 document.getElementById("wsClose").onclick=()=>{ document.getElementById("wsModal").style.display="none"; };
-window.onCloudState=applyRemote;
+let _lastPullOk=0, _lastPullErr=null, _pullBusy=false;
+window.onCloudState=(remote)=>{ _lastPullOk=Date.now(); _lastPullErr=null; return applyRemote(remote); };
+/* سحب من الخادم ثم رفع: يعالج حالة «المستمع الحي توقّف» (الهاتف نام طويلًا/غلاف APK) فلا تصل تسجيلات الأجهزة الأخرى */
+async function cloudResync(silent){
+  if(!window.cloudReady||!window.cloudPull){ if(!silent) toast("لا يوجد اتصال بالسحابة"); return false; }
+  if(_pullBusy) return false; _pullBusy=true;
+  let ok=false;
+  try{ ok=await window.cloudPull(); }catch(e){ _lastPullErr={ts:Date.now(),msg:String((e&&(e.code||e.message))||e)}; }
+  _pullBusy=false;
+  try{ window.cloudPush(cloudCopy()); }catch(e){}
+  if(!silent) toast(ok?"تم السحب من السحابة ✓":"تعذّر السحب من السحابة"+(_lastPullErr?" — "+_lastPullErr.msg:""));
+  return ok;
+}
+const PULL_STALE_MS=60*1000;
+function cloudResyncIfStale(){ if(unlocked && Date.now()-_lastPullOk>PULL_STALE_MS) cloudResync(true); }
+document.addEventListener("visibilitychange", ()=>{ if(!document.hidden) setTimeout(cloudResyncIfStale, 300); });
+window.addEventListener("online", ()=>setTimeout(cloudResyncIfStale, 1500));
 function updateCloudBtn(st){
   const btn=document.getElementById("cloudBtn"); if(!btn)return;
   btn.classList.remove("synced","pending","offline");
@@ -4788,7 +4804,7 @@ function cloudBtnTap(){
   if(window.cloudReady){ updateCloudBtn("pending"); try{ window.cloudPush(cloudCopy()); }catch(e){ updateCloudBtn("offline"); } }
   else{ updateCloudBtn("offline"); toast("لا يوجد اتصال بالسحابة"); }
 }
-window.onCloudReady=()=>{ const el=document.getElementById("cloudStat"); if(el){ el.textContent="متصل ☁"; el.style.color="var(--ready)"; } updateCloudBtn("synced"); toast("تم الاتصال بالسحابة ☁"); };
+window.onCloudReady=()=>{ const el=document.getElementById("cloudStat"); if(el){ el.textContent="متصل ☁"; el.style.color="var(--ready)"; } updateCloudBtn("synced"); toast("تم الاتصال بالسحابة ☁"); setTimeout(cloudResyncIfStale, 4000); };
 window.onCloudEmpty=()=>{ try{ if(window.cloudReady) window.cloudPush(cloudCopy()); }catch(e){} };
 window.onCloudError=()=>{ const el=document.getElementById("cloudStat"); if(el){ el.textContent="غير متصل (يعمل محليًا)"; el.style.color="var(--muted)"; } updateCloudBtn("offline"); };
 let _lastPushOk=0, _lastPushErr=null;
@@ -5235,12 +5251,13 @@ function renderHealthAdmin(){
     <div>الحفظ على الجهاز: ${localOk?`<span style="color:var(--ready)">✅ يعمل (${_kb(_localSize)} · ${timeStr(_localSaveOk)})</span>`:(_localSaveErr?`<span style="color:var(--unpaid)">⚠️ فاشل: ${_esc(String(_localSaveErr.name||_localSaveErr.message||_localSaveErr)).slice(0,80)} — ${_localSaveFails} مرّة</span>`:`<span style="color:var(--muted)">لم يُحفظ بعد</span>`)}</div>
     <div>الصور على الجهاز: <b>${photoN}</b> (${_kb(photoB)})${_photoStoreErr?` <span style="color:var(--unpaid)">⚠️ مخزن الصور لا يعمل</span>`:""}</div>
     <div>السحابة: ${pushLine}</div>
+    <div>الاستلام من السحابة: ${_lastPullErr?`<span style="color:var(--unpaid)">⚠️ آخر خطأ سحب: ${_esc(_lastPullErr.msg).slice(0,120)} (${timeStr(_lastPullErr.ts)})</span>`:(_lastPullOk?`<span style="color:var(--ready)">✅ آخر استلام ${timeStr(_lastPullOk)}</span>`:`<span style="color:var(--unpaid)">⚠️ لم يصل شيء من السحابة في هذه الجلسة — اضغط «إعادة المزامنة الآن»</span>`)}</div>
     <div>حجم البيانات المرفوعة: <b style="${cloudWarn?'color:var(--unpaid)':''}">${_kb(cloudSize)}</b>${cloudWarn?" ⚠️ قريب من الحدّ (1 MB)":" (الحدّ 1 MB)"}</div>
     <div>السجلات: ${counts} · محذوفات: <b>${tombs}</b></div>
     <div>الأجهزة والإصدارات: ${devs||"<span class='hint'>—</span>"}</div>
   </div>
   <div class="set-row" style="flex-wrap:wrap;gap:8px;margin-top:8px"><button class="mini" id="healthSync">🔁 إعادة المزامنة الآن</button><button class="mini" id="healthRefresh">🔄 تحديث الفحص</button></div>`;
-  document.getElementById("healthSync").onclick=()=>{ saveLocal(); cloudBtnTap(); toast("جارٍ الرفع إلى السحابة…"); setTimeout(renderHealthAdmin,1500); };
+  document.getElementById("healthSync").onclick=async()=>{ saveLocal(); toast("جارٍ السحب من السحابة ثم الرفع…"); await cloudResync(false); setTimeout(renderHealthAdmin,1200); };
   document.getElementById("healthRefresh").onclick=renderHealthAdmin;
 }
 async function renderBackupAdmin(){
@@ -5962,6 +5979,7 @@ document.getElementById("rcptTestBtn").onclick=()=>{ setRcptWidth(document.getEl
     if(state.logins.length>200) state.logins=state.logins.slice(-200);
     unlocked=true;
     saveSession(); armIdle();
+    setTimeout(cloudResyncIfStale, 800);
     if(_clockWarnPending) setTimeout(clockWarnToast, 1800);
     document.getElementById("lockInput").value=""; document.getElementById("lockName").value=""; document.getElementById("lockInput").type="password";
     _lastAlertTs=Date.now();
@@ -6114,6 +6132,8 @@ setTimeout(()=>{ if(!window.cloudReady){ const el=document.getElementById("cloud
       await Promise.race([ signInAnonymously(auth), new Promise(r=>setTimeout(r,4000)) ]); }catch(e){ console.warn("anon auth", e&&e.code); }
     const ref = FS.doc(db, "appState", "main");
     window.cloudPush = (data) => { FS.setDoc(ref, { data: JSON.stringify(data), ts: Date.now() }).then(()=>{ if(window.onCloudPushOk) window.onCloudPushOk(); }).catch((e)=>{ if(window.onCloudPushErr) window.onCloudPushErr(e); }); };
+    // سحب إجباري من الخادم (لا من الكاش المحلي) — يُستخدم عند فتح التطبيق وعند «إعادة المزامنة» إن توقّف المستمع الحي
+    window.cloudPull = async () => { const s = await FS.getDocFromServer(ref); if (!s.exists()) return false; const remote = JSON.parse(s.data().data); if (window.onCloudState) window.onCloudState(remote); return true; };
     // ===== نسخ احتياطية يومية: مستند لكل يوم backups/{YYYY-MM-DD} + فهرس صغير backups/_index =====
     const idxRef = FS.doc(db, "backups", "_index");
     const readIdx = async () => { try { const s = await FS.getDoc(idxRef); return (s.exists() && s.data().days) || {}; } catch(e){ return {}; } };
@@ -6157,7 +6177,7 @@ setTimeout(()=>{ if(!window.cloudReady){ const el=document.getElementById("cloud
 <!-- PWA: service-worker registration + update/install wiring -->
 <script>
 (function(){
-  var APP_VERSION = "2.24.0";
+  var APP_VERSION = "2.24.1";
   window.APP_VERSION = APP_VERSION;
   function $(id){ return document.getElementById(id); }
   // سجّل إصدار هذا الجهاز في الحالة المتزامنة (ليُنبَّه الجهاز القديم)

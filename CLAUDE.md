@@ -334,6 +334,13 @@
   «💸 تسديد له» (`_storePayCtx.kind="custCredit"` → `allocateCredit` + حركة صادر). الحذف `deleteManualDebt` بالكود + tombstone
   (مالك/مدير). كشفا الحساب (`openCustStatement`/`openDirStatement`) يعرضان الأقسام الجديدة وسطر «له عندنا». لا تُحسب بيعًا ولا
   ربحًا. الاختبار `tests/e2e/manual_debts.test.js`.
+- **سحب إجباري من السحابة (2.24.1) — «المشرف يرى عمليات اليوم وأنا لا»:** المستند في Firestore كان يحوي التسجيلات، لكن
+  هاتف المالك لم يستلمها لأن المستمع الحي `onSnapshot` قد يتوقّف بصمت (نوم طويل/غلاف APK)، ولم يكن في التطبيق أي **سحب**
+  يدوي (زر «إعادة المزامنة» كان يرفع فقط). الآن: `window.cloudPull()` (`getDocFromServer` — من الخادم لا من الكاش) →
+  `onCloudState` (يختم `_lastPullOk`) → `applyRemote`. `cloudResync(silent)` = سحب ثم رفع؛ `cloudResyncIfStale()` يسحب إن
+  مضى أكثر من `PULL_STALE_MS` (60 ثانية) على آخر استلام: بعد الدخول، عند العودة للتطبيق (`visibilitychange`)، عند عودة
+  الإنترنت (`online`)، وبعد الاتصال بالسحابة. زر «🔁 إعادة المزامنة الآن» صار سحبًا ثم رفعًا، وصحة البيانات تعرض
+  «الاستلام من السحابة: آخر استلام/آخر خطأ سحب» (`_lastPullErr`). الاختبار `tests/e2e/cloud_pull.test.js` (cloudPull مُحاكى).
 - **قاعدة الحذف والاستعادة (2.0.0):** السجلّ يُعتبر محذوفًا فقط إذا كان وقت الـ tombstone
   ≥ `editedAt` للسجلّ (`isDead` في `mergeById`). لذلك السجلّ المُستعاد (editedAt جديد) يعود
   على كل الأجهزة. `tomb(id)` يضع وقتًا = max(الآن، editedAt+1) لتفادي فرق ساعات الأجهزة.
