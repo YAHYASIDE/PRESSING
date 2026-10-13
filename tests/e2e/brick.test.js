@@ -15,15 +15,15 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
 
   log('nav has «دبو» after carpets: '+(await page.evaluate(()=>{ const t=[...document.querySelectorAll('.nav-btn')].map(b=>b.dataset.tab); return t.indexOf('brick')===t.indexOf('carpets')+1; }))+' (expect true)');
   await page.click('[data-tab="brick"]'); await page.waitForTimeout(300);
-  log('brick screen has 7 sub-tabs and opens on the summary: '+(await page.evaluate(()=>document.querySelectorAll('[data-bksub]').length===8 && /ربح دبو/.test(document.querySelector('main').textContent)))+' (expect true)');
+  log('brick screen has 7 sub-tabs and opens on the summary: '+(await page.evaluate(()=>document.querySelectorAll('[data-bksub]').length===9 && /ربح دبو/.test(document.querySelector('main').textContent)))+' (expect true)');
 
   // 1) شراء 10 أكياس إسمنت × 2,000 = 20,000 مدفوع كاش من مورّد «شركة الإسمنت»
   await page.click('[data-bksub="purchases"]'); await page.waitForTimeout(250);
-  await page.fill('#bkPurQty','10'); await page.fill('#bkPurCost','2000'); await page.fill('#bkPurSup','شركة الإسمنت'); await page.click('#bkPurSave'); await page.waitForTimeout(300);
+  await page.fill('#bkPurQty','10'); await page.fill('#bkPurCost','2000'); await page.selectOption('#bkPurParty','__new'); await page.waitForTimeout(80); await page.fill('#bkPurSup','شركة الإسمنت'); await page.click('#bkPurSave'); await page.waitForTimeout(300);
   let r=await page.evaluate(()=>({ n:state.brickPurchases.length, p:state.brickPurchases[0], cement:brickMatStock('cement'), box:brickCashBalance(), sup:state.suppliers.length, move:state.brickCash[0] }));
   log('cement purchase: 10 bags, 20,000 paid, cash out, supplier created: '+(r.n===1 && r.p.material==='cement' && r.p.total===20000 && r.p.paid && r.cement===10 && r.box===-20000 && r.sup===1 && r.move.type==='out' && r.move.ref===r.p.id)+' (expect true)');
   // شراء 4 حمولات تراب × 5,000 بالدين
-  await page.click('[data-bkmat="sand"]'); await page.waitForTimeout(200); await page.fill('#bkPurQty','4'); await page.fill('#bkPurCost','5000'); await page.fill('#bkPurSup','بوبكر'); await page.uncheck('#bkPurPaid'); await page.click('#bkPurSave'); await page.waitForTimeout(300);
+  await page.click('[data-bkmat="sand"]'); await page.waitForTimeout(200); await page.fill('#bkPurQty','4'); await page.fill('#bkPurCost','5000'); await page.selectOption('#bkPurParty','__new'); await page.waitForTimeout(80); await page.fill('#bkPurSup','بوبكر'); await page.uncheck('#bkPurPaid'); await page.click('#bkPurSave'); await page.waitForTimeout(300);
   r=await page.evaluate(()=>({ sand:brickMatStock('sand'), out:brickOut(state.brickPurchases[1]), box:brickCashBalance(), avgC:brickAvgCost('cement'), avgS:brickAvgCost('sand') }));
   log('sand on credit: 4 loads, 20,000 owed to supplier, cash unchanged, averages 2,000/5,000: '+(r.sand===4 && r.out===20000 && r.box===-20000 && r.avgC===2000 && r.avgS===5000)+' (expect true)');
 

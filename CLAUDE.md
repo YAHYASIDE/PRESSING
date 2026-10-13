@@ -389,6 +389,17 @@
   «▶ إرسال التالي»، علامة ✓) في الزبائن ▸ الديون ودبو (`[data-remind-all]`). **بلا كسور:** `buildOrderFromLines` يقرّب سعر
   القطعة، وترحيل `priceRoundV` قرّب الطلبات القديمة (مثل L2026-10-007)، والسجاد/الملابس بلا هاتف تطلب تأكيدًا.
   الاختبار `tests/e2e/brick_types.test.js`.
+- **دبو: تكلفة الطوبة والربح + البحث + الحمّالون (2.30.0):** **تكلفة الطوبة** `brickBatchCost(b)` = (خنشات × متوسط سعر الخنشة
+  + فياجات × متوسط الفياج + أجرة الخلطة) ÷ الطوب، و`brickTypeCost(k)` متوسط مرجَّح لخلطات النوع (بلا الرصيد الافتتاحي) — **محسوبة
+  دائمًا** فتتغيّر فورًا عند تعديل خلطة أو سعر شراء. تظهر في بطاقة الخلطة وتوست الحفظ، ومخزون الأنواع في الملخص، وتقرير اليوم.
+  **ربح البيع** `brickSaleProfit(s)` = (سعر البيع − تكلفة النوع) × العدد: في بطاقة البيع، وتلميح حيّ `#bkProfitHint` في النموذج
+  (ربح الطوبة وربح البيع). **البحث عن الأطراف:** `#bkPurFind`/`#bkCustFind` يرشّحان القائمة ويختاران أول تطابق؛ الشراء صار
+  بقائمة زبائن + موردين (`#bkPurParty`، «➕ مورّد جديد…» باسم وهاتف) ويُسجَّل `partyType/partyId` (الشراء من زبون ممكن ويدخل
+  رصيده وكشفه وتسديده). **الحمّالون** تبويب `porters` (`brickScreenPorters`): `state.brickPorters` {name,phone} و`state.brickLoads`
+  {porterId,kind:bricks|cement|other `BRICK_LOADK`,qty,rate,amount,paidAmount,paid,payMethod} (مُزامنة، CSV «دبو — الحمّالون»)؛
+  المبلغ تلقائي = الكمية × السعر (`brickCfg.loadRate[kind]` يُتذكَّر)؛ دفع فوري من الصندوق أو مستحق؛ «💵 دفع له» `brickPorterSettle`
+  (`_storePayCtx.kind="brickPorter"`) وكشف `openPorterStatement`؛ أجور الحمل تدخل `brickFin.wages` (تكلفة) و`porterDues`،
+  وتظهر في «الديون والحسابات»؛ التعديل `bload` والحذف `load:`. الاختبار `tests/e2e/brick_porters.test.js`.
 - **تعديل أي عملية سابقة (2.29.0):** محرّر موحّد في `#editModal` (`_editCtx.type="gen"`) — `REC_EDIT` (exp, ssale, spur,
   sdebt, scash, bsale, bpur, bbatch, bexp, bledger, bcash) + `openRecEdit(kind,id)`/`recEditSave` وحقول `reF` (`re_*`)، والزر
   `recEditBtn(kind,id)` = `[data-rec-edit="kind:id"]` (مالك/مدير فقط؛ يُربط في `bindScreen`؛ المصروف يمرّ بـ`gateRec`). القواعد:
