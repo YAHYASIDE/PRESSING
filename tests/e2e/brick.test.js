@@ -27,7 +27,7 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
   r=await page.evaluate(()=>({ sand:brickMatStock('sand'), out:brickOut(state.brickPurchases[1]), box:brickCashBalance(), avgC:brickAvgCost('cement'), avgS:brickAvgCost('sand') }));
   log('sand on credit: 4 loads, 20,000 owed to supplier, cash unchanged, averages 2,000/5,000: '+(r.sand===4 && r.out===20000 && r.box===-20000 && r.avgC===2000 && r.avgS===5000)+' (expect true)');
 
-  // 2) خلطة: 2 كيس + 1 حمولة → 300 طوبة، أجرة 3,000 مدفوعة
+  // 2) خلطة: 2 خنشة + 1 فياج → 300 طوبة، أجرة 3,000 مدفوعة
   await page.click('[data-bksub="batches"]'); await page.waitForTimeout(250);
   await page.fill('#bkBags','2'); await page.fill('#bkLoads','1'); await page.fill('#bkBricks','300'); await page.fill('#bkWage','3000'); await page.fill('#bkWorkers','سيدي وعمر'); await page.click('#bkBatchSave'); await page.waitForTimeout(300);
   r=await page.evaluate(()=>({ b:state.brickBatches[0], stock:brickStock(), cement:brickMatStock('cement'), sand:brickMatStock('sand'), box:brickCashBalance() }));
@@ -103,13 +103,13 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
   // المورّد بوبكر يشتري 30 طوبة آجلًا → يصير مدينًا لنا 3,000
   const supId=await page.evaluate(()=>state.suppliers.find(x=>x.name==='بوبكر').id);
   await page.click('[data-bksub="sales"]'); await page.waitForTimeout(250); await page.click('[data-bkpaid="0"]'); await page.waitForTimeout(200);
-  await page.selectOption('#bkCust','s:'+supId); await page.fill('#bkQty','30'); await page.fill('#bkPrice','100'); await page.click('#bkSaleSave'); await page.waitForTimeout(300);
+  await page.selectOption('#bkCust','s:'+supId); await page.fill('#bkPartyPhone','33445566'); await page.fill('#bkQty','30'); await page.fill('#bkPrice','100'); await page.click('#bkSaleSave'); await page.waitForTimeout(300);
   r=await page.evaluate(()=>{ const s=state.brickSales[state.brickSales.length-1]; const P=brickParties().find(p=>p.type==='sup'); return { pt:s.partyType, name:s.customerName, bal:P&&P.balance, stock:brickStock(), d:debtors().find(x=>x.name==='بوبكر') }; });
   log('credit sale to a supplier: party=sup, بوبكر now owes 3,000, stock 20, in debtors with kind brick: '+(r.pt==='sup' && r.name==='بوبكر' && r.bal===3000 && r.stock===20 && r.d && r.d.by.brick===3000)+' (expect true)');
   // كشف حساب محمد بالرصيد الجاري وهاتفه
   await page.evaluate(()=>openBrickStatement('cust','cu1')); await page.waitForTimeout(200);
   r=await page.evaluate(()=>{ const t=document.getElementById('receiptContent').textContent; const rows=brickPartyRows('cust','cu1'); return { t, n:rows.length, last:rows[rows.length-1].balance }; });
-  log('statement: phone, sale, payment, ledger rows with running balance ending at 10,000: '+(/22334455/.test(r.t) && /بيع طوب/.test(r.t) && /دفعة على/.test(r.t) && /أخذ بلا فاتورة/.test(r.t) && r.n===4 && r.last===10000 && /10,000/.test(r.t))+' (expect true)');
+  log('statement: phone, sale, payment, ledger rows with running balance ending at 10,000: '+(/22334455/.test(r.t) && /بيع 15 بريك/.test(r.t) && /دفعة على/.test(r.t) && /أخذ بلا فاتورة/.test(r.t) && r.n===4 && r.last===10000 && /10,000/.test(r.t))+' (expect true)');
   await page.evaluate(()=>{ document.getElementById('receiptModal').style.display='none'; });
   // تقارير دبو: تقرير اليوم والشهر وكشوف الحسابات
   await page.click('[data-bksub="reports"]'); await page.waitForTimeout(300);

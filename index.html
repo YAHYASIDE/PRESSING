@@ -1332,7 +1332,7 @@ function dimsText(x){ const d=x&&x.dims; if(!d) return ""; return `${fmt(+d.l)} 
 function orderNotesHTML(o){ const L=isMultiOrder(o)?o.items.filter(i=>i.note).map(i=>`${_esc(i.type)}: ${_esc(i.note)}`):(o.note?[_esc(o.note)]:[]); return L.length?`<div class="meta order-note">📝 ${L.join(" · ")}</div>`:""; }
 function combinedService(lines){ const sv=[...new Set(lines.map(l=>l.service).filter(Boolean))]; return sv.length===1?sv[0]:"غسيل وكي"; }
 function buildOrderFromLines(lines,kind){
-  const L=lines.map(l=>{ const count=Math.max(1,+l.count||1); let unit=+l.unit||0; const x={type:l.type,count,unit,price:unit*count}; if(kind==="lnd") x.service=l.service||"غسيل وكي"; const n=(l.note||"").trim(); if(n) x.note=n;
+  const L=lines.map(l=>{ const count=Math.max(1,+l.count||1); let unit=Math.round(+l.unit||0); const x={type:l.type,count,unit,price:unit*count}; if(kind==="lnd") x.service=l.service||"غسيل وكي"; const n=(l.note||"").trim(); if(n) x.note=n;
     if(l.dims&&+l.dims.l>0){ const len=Math.round((+l.dims.l)*100)/100, m2=+l.dims.m2||0; x.dims={l:len,m2}; x.unit=Math.round(len*m2); x.price=x.unit*count; } return x; });
   const price=sum(L,l=>l.price), count=sum(L,l=>l.count);
   if(L.length===1){ const r={items:null,type:L[0].type,count:L[0].count,unit:L[0].unit,price:L[0].price,note:L[0].note||"",dims:L[0].dims||null}; if(kind==="lnd") r.service=L[0].service; return r; }
@@ -1981,10 +1981,24 @@ function screenLaundry(){
 /* ================= دبو — مصنع الطوب (وحدة مستقلة: صندوق وربح خاصّان) ================= */
 /* نشتري ترابًا وإسمنتًا (brickPurchases)، نخلطهما في خلطات تُنتج طوبًا وتُدفع أجرتها بالخلطة (brickBatches)،
    نبيع الطوب بالعدد نقدًا أو بالدين (brickSales)، ومصاريف ماء/كهرباء… (brickExpenses)، وكل المال في صندوق دبو (brickCash). */
-const BRICK_MAT={cement:{t:"إسمنت",unit:"كيس",ic:"🪨"},sand:{t:"تراب",unit:"حمولة",ic:"⛰️"},other:{t:"أخرى",unit:"",ic:"📦"}};
+const BRICK_MAT={cement:{t:"إسمنت",unit:"خنشة",ic:"🪨"},sand:{t:"تراب",unit:"فياج",ic:"⛰️"},other:{t:"أخرى",unit:"",ic:"📦"}};
 const BRICK_EXP={water:{t:"ماء",ic:"💧"},power:{t:"كهرباء/وقود",ic:"⚡"},transport:{t:"نقل",ic:"🚚"},other:{t:"أخرى",ic:"📦"}};
 const BRICK_SUBS=[{k:"home",t:"الملخص",ic:"📊"},{k:"batches",t:"الإنتاج",ic:"🧱"},{k:"sales",t:"المبيعات",ic:"💰"},{k:"purchases",t:"المواد",ic:"🛒"},{k:"expenses",t:"المصاريف",ic:"💸"},{k:"debts",t:"الديون والحسابات",ic:"📌"},{k:"reports",t:"التقارير",ic:"📈"},{k:"cash",t:"الصندوق",ic:"🏦"}];
 const BRICK_LKIND={cash:{t:"مال",ic:"💵"},bricks:{t:"طوب",ic:"🧱"},other:{t:"أخرى",ic:"📦"}};
+/* أنواع الطوب: لكل نوع سعر بيع وأجرة العامل لكل خنشة إسمنت (قابلة للتعديل). السجلات القديمة بلا نوع = «15 بريك» */
+const BRICK_TYPES_DEFAULT=[{k:"t15",name:"15 بريك",price:0,wage:1300},{k:"t56",name:"56 وردي",price:0,wage:1300},{k:"t20k",name:"20 كري",price:0,wage:1300},{k:"t20b",name:"20 بليه",price:0,wage:1300}];
+function brickTypes(){ const c=brickCfg(); if(!Array.isArray(c.types)||!c.types.length) c.types=JSON.parse(JSON.stringify(BRICK_TYPES_DEFAULT)); return c.types; }
+function bType(x){ return (x&&x.btype)||"t15"; }
+function brickType(k){ const T=brickTypes(); return T.find(t=>t.k===k)||T[0]; }
+function brickTypeName(x){ const t=brickTypes().find(t=>t.k===bType(x)); return t?t.name:"طوب"; }
+function brickTypeOpts(sel){ return brickTypes().map(t=>`<option value="${t.k}" ${sel===t.k?"selected":""}>${_esc(t.name)} · المخزون ${fmt(brickStock(t.k))}</option>`).join(""); }
+function brickStockText(){ return brickTypes().map(t=>t.name+": "+fmt(brickStock(t.k))).join(" · "); }
+function brickLowCementCheck(){ const c=brickCfg(), lim=+c.lowCement>0?+c.lowCement:20, left=brickMatStock("cement");
+  if(left<lim){ if(!c.lowAlerted){ c.lowAlerted=true; const msg="⚠️ دبو: الإسمنت المتبقي "+fmt(left)+" خنشة (الحد "+fmt(lim)+")"; logActivity("دبو: الإسمنت قليل",fmt(left)+" خنشة"); try{ notifyTelegram(msg); }catch(e){} toast(msg); } }
+  else if(c.lowAlerted) c.lowAlerted=false; }
+function brickRequirePhone(pt,inputId){ if(!pt||pt.phone) return null; const el=document.getElementById(inputId); const ph=el?(el.value||"").trim():"";
+  if(!ph) return "أدخل رقم هاتف «"+pt.name+"» (إلزامي في الدين)"; if(!validPhone(ph)) return "رقم الهاتف يجب أن يكون 8 أرقام";
+  const rec=pt.type==="sup"?supplierById(pt.id):storeCust(pt.id); if(rec){ rec.phone=ph; rec.editedAt=iso(new Date()); } pt.phone=ph; return null; }
 function brickCfg(){ if(!state.brickCfg||typeof state.brickCfg!=="object") state.brickCfg={price:0,workerPerBatch:0}; return state.brickCfg; }
 function brickSeqNo(arr,prefix,dateISO){ const d=new Date(dateISO), pre=prefix+String(d.getFullYear())+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"; let max=0; (arr||[]).forEach(o=>{ if(typeof o.no==="string"&&o.no.startsWith(pre)){ const s=parseInt(o.no.slice(pre.length),10); if(s>max) max=s; } }); return pre+String(max+1).padStart(3,"0"); }
 function brickOut(x){ return x.cancelled?0:Math.max(0,(+x.total||0)-(+x.paidAmount||0)); }
@@ -1992,14 +2006,14 @@ function brickWageOut(b){ return b.cancelled?0:Math.max(0,(+b.workerPay||0)-(+b.
 function brickLive(arr){ return (arr||[]).filter(x=>!x.cancelled); }
 function brickMatStock(mat){ const bought=sum(brickLive(state.brickPurchases).filter(p=>p.material===mat),p=>+p.qty||0); const used=sum(brickLive(state.brickBatches),b=>mat==="cement"?(+b.cementBags||0):mat==="sand"?(+b.sandLoads||0):0); return bought-used; }
 function brickAvgCost(mat){ const L=brickLive(state.brickPurchases).filter(p=>p.material===mat); const q=sum(L,p=>+p.qty||0); return q>0?sum(L,p=>+p.total||0)/q:0; }
-function brickStock(){ return sum(brickLive(state.brickBatches),b=>+b.bricks||0)-sum(brickLive(state.brickSales),s=>+s.qty||0)-sum(brickLive(state.brickLedger).filter(x=>x.kind==="bricks"),x=>(x.dir==="on"?1:-1)*(+x.qty||0)); }
+function brickStock(k){ const f=x=>!k||bType(x)===k; return sum(brickLive(state.brickBatches).filter(f),b=>+b.bricks||0)-sum(brickLive(state.brickSales).filter(f),s=>+s.qty||0)-sum(brickLive(state.brickLedger).filter(x=>x.kind==="bricks"&&f(x)),x=>(x.dir==="on"?1:-1)*(+x.qty||0)); }
 function brickCashIn(F){ return sum((state.brickCash||[]).filter(m=>m.type==="in"&&F(m.date)),m=>+m.amount||0); }
 function brickCashOut(F){ return sum((state.brickCash||[]).filter(m=>m.type==="out"&&F(m.date)),m=>+m.amount||0); }
 function brickCashBalance(){ return brickCashIn(()=>true)-brickCashOut(()=>true); }
 function addBrickCash(type,amount,reason,ref,method){ if(!(amount>0)) return; state.brickCash.push({id:uid(),type,amount:+amount||0,reason:reason||"",ref:ref||null,payMethod:normPM(method),date:iso(new Date()),by:currentUser,editedAt:iso(new Date())}); }
 /* الطبقة المالية لدبو في فترة F */
 function brickFin(F){
-  const B=brickLive(state.brickBatches).filter(b=>F(b.date)), P=brickLive(state.brickPurchases).filter(p=>F(p.date)), S=brickLive(state.brickSales).filter(s=>F(s.date)), E=brickLive(state.brickExpenses).filter(e=>F(e.date));
+  const B=brickLive(state.brickBatches).filter(b=>F(b.date)&&!b.opening), P=brickLive(state.brickPurchases).filter(p=>F(p.date)&&!p.opening), S=brickLive(state.brickSales).filter(s=>F(s.date)), E=brickLive(state.brickExpenses).filter(e=>F(e.date));
   const LG=brickLive(state.brickLedger).filter(x=>F(x.date)&&x.kind!=="cash");
   const ledgerInc=sum(LG.filter(x=>x.dir==="on"),x=>+x.amount||0)-sum(LG.filter(x=>x.dir==="for"&&x.kind==="bricks"),x=>+x.amount||0), ledgerCost=sum(LG.filter(x=>x.dir==="for"&&x.kind==="other"),x=>+x.amount||0);
   const purchases=sum(P,p=>+p.total||0), wages=sum(B,b=>+b.workerPay||0), expenses=sum(E,e=>+e.amount||0)+ledgerCost, sales=sum(S,s=>+s.total||0)+ledgerInc;
@@ -2035,7 +2049,7 @@ function brickParties(){
 /* كشف حساب طرف: كل القيود بترتيب زمني مع رصيد جارٍ (مدين = عليه، دائن = له) */
 function brickPartyRows(type,id){
   const pt=brickParty(type,id); if(!pt) return []; const rows=[];
-  brickLive(state.brickSales).forEach(x=>{ const pp=brickSaleParty(x); if(pp.type!==type||pp.id!==id) return; rows.push({date:x.date,label:"🧱 بيع طوب "+x.no+" ("+fmt(x.qty)+" × "+money(x.unitPrice)+")"+(x.paid&&x.payMethod?" · "+pmLabel(x.payMethod):""),debit:+x.total||0,credit:0,ref:x.id});
+  brickLive(state.brickSales).forEach(x=>{ const pp=brickSaleParty(x); if(pp.type!==type||pp.id!==id) return; rows.push({date:x.date,label:"🧱 بيع "+brickTypeName(x)+" "+x.no+" ("+fmt(x.qty)+" × "+money(x.unitPrice)+(x.transport&&x.transportBy==="cust"?" + نقل "+money(x.transport):"")+")"+(x.paid&&x.payMethod?" · "+pmLabel(x.payMethod):""),debit:+x.total||0,credit:0,ref:x.id});
     (state.brickCash||[]).forEach(m=>{ if(m.ref===x.id&&m.type==="in") rows.push({date:m.date,label:"💵 دفعة على "+x.no+" · "+pmLabel(m.payMethod),debit:0,credit:+m.amount||0,ref:m.id}); }); });
   if(type==="sup") brickLive(state.brickPurchases).forEach(x=>{ if(x.supplierId!==id) return; rows.push({date:x.date,label:"🛒 شراء "+(x.name||"")+" "+x.no+" ("+fmt(x.qty)+" × "+money(x.unitCost)+")",debit:0,credit:+x.total||0,ref:x.id});
     (state.brickCash||[]).forEach(m=>{ if(m.ref===x.id&&m.type==="out") rows.push({date:m.date,label:"💸 تسديد على "+x.no+" · "+pmLabel(m.payMethod),debit:+m.amount||0,credit:0,ref:m.id}); }); });
@@ -2062,15 +2076,22 @@ function screenBrick(){
     ${(sub!=="debts"&&sub!=="reports")?dateBarHTML():""}
     ${body}`;
 }
-function brickScreenHome(){
+function brickScreenHome(){ return brickStockByTypeHTML()+brickScreenHomeBase()+(currentRole!=="worker"?brickTypesAdminHTML():""); }
+function brickStockByTypeHTML(){ return `<div class="panel" style="margin-bottom:12px"><h3>🧱 مخزون الطوب حسب النوع</h3><div class="store-stat">${brickTypes().map(t=>`<div class="s"><div class="v" style="color:var(--brand)">${fmt(brickStock(t.k))}</div><div class="l">${_esc(t.name)}${+t.price?" · "+money(t.price):""}</div></div>`).join("")}</div></div>`; }
+function brickTypesAdminHTML(){ const c=brickCfg(); return `<details class="panel" style="margin-top:12px"${_bkDraft.typesOpen?" open":""} id="bkTypesBox"><summary style="font-weight:800;cursor:pointer">⚙️ أنواع الطوب والأسعار والأجرة</summary>
+  <div class="tbl-wrap" style="margin-top:8px"><table class="tbl"><thead><tr><th>النوع</th><th>سعر الطوبة</th><th>أجرة الخنشة</th></tr></thead><tbody>${brickTypes().map(t=>`<tr><td><input data-bkt-name="${t.k}" type="text" value="${_esc(t.name)}" style="min-width:110px"></td><td><input data-bkt-price="${t.k}" type="number" min="0" value="${+t.price||""}" placeholder="0" style="max-width:110px"></td><td><input data-bkt-wage="${t.k}" type="number" min="0" value="${+t.wage||0}" style="max-width:110px"></td></tr>`).join("")}</tbody></table></div>
+  <div class="row2" style="margin-top:8px"><div class="field"><label>➕ نوع جديد</label><input id="bkTypeNew" type="text" placeholder="مثال: 10 بريك"></div><div class="field"><label>⚠️ نبّهني إن قلّ الإسمنت عن (خنشة)</label><input id="bkLowCement" type="number" min="0" value="${+c.lowCement>0?+c.lowCement:20}"></div></div>
+  <button class="btn-primary" id="bkTypesSave" style="width:100%">💾 حفظ الأنواع</button>
+  <div class="hint" style="margin-top:6px">الأجرة في الخلطة = عدد خنشات الإسمنت × أجرة الخنشة لنوعها. سعر الطوبة يُملأ تلقائيًا في البيع. التنبيه يصل إلى Telegram.</div></details>`; }
+function brickScreenHomeBase(){
   const F=(d)=>inRange(d), f=brickFin(F), pt=brickPeriodTxt();
   const stock=brickStock(), cement=brickMatStock("cement"), sand=brickMatStock("sand");
-  const lowCement=cement<=2, lowSand=sand<=0;
+  const lowCement=cement<(+brickCfg().lowCement>0?+brickCfg().lowCement:20), lowSand=sand<=0;
   return `
     <div class="store-stat">
       <div class="s"><div class="v" style="color:var(--brand)">${fmt(stock)}</div><div class="l">🧱 طوب جاهز في المخزون</div></div>
-      <div class="s"><div class="v" style="color:${lowCement?'var(--unpaid)':'var(--ink)'}">${fmt(cement)}</div><div class="l">🪨 أكياس إسمنت${lowCement?" ⚠️":""}</div></div>
-      <div class="s"><div class="v" style="color:${lowSand?'var(--unpaid)':'var(--ink)'}">${fmt(sand)}</div><div class="l">⛰️ حمولات تراب${lowSand?" ⚠️":""}</div></div>
+      <div class="s"><div class="v" style="color:${lowCement?'var(--unpaid)':'var(--ink)'}">${fmt(cement)}</div><div class="l">🪨 خنشات إسمنت${lowCement?" ⚠️":""}</div></div>
+      <div class="s"><div class="v" style="color:${lowSand?'var(--unpaid)':'var(--ink)'}">${fmt(sand)}</div><div class="l">⛰️ فياجات تراب${lowSand?" ⚠️":""}</div></div>
       <div class="s"><div class="v" style="color:${f.box<0?'var(--unpaid)':'var(--ready)'}">${money(f.box)}</div><div class="l">🏦 صندوق دبو</div></div>
     </div>
     <div class="panel">
@@ -2082,7 +2103,7 @@ function brickScreenHome(){
         <div class="s"><div class="v" style="color:var(--wash)">${f.costPerBrick?money(Math.round(f.costPerBrick*100)/100):"—"}</div><div class="l">تكلفة الطوبة الواحدة</div></div>
       </div>
       ${(()=>{ const row=(l,v,c,b)=>`<div style="display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px solid var(--line);${b?'font-weight:800':''}"><span>${l}</span><b class="amt" style="color:${c||'inherit'};white-space:nowrap">${v}</b></div>`;
-        return row("🧱 الإنتاج",`${fmt(f.produced)} طوبة`)+`<div class="hint" style="margin:-4px 0 4px">${fmt(f.nBatches)} خلطة · ${fmt(f.bags)} كيس إسمنت · ${fmt(f.loads)} حمولة تراب</div>`
+        return row("🧱 الإنتاج",`${fmt(f.produced)} طوبة`)+`<div class="hint" style="margin:-4px 0 4px">${fmt(f.nBatches)} خلطة · ${fmt(f.bags)} خنشة إسمنت · ${fmt(f.loads)} فياج تراب</div>`
           +row("🛒 شراء مواد",money(f.purchases),"var(--unpaid)")+row("👷 أجور الخلطات",money(f.wages),"var(--unpaid)")+row("💸 مصاريف (ماء/كهرباء…)",money(f.expenses),"var(--unpaid)")
           +row("💰 مبيعات",money(f.sales),"var(--ready)")+`<div class="hint" style="margin:-4px 0 4px">مستلم ${money(f.salesPaid)} · دين جديد ${money(f.newDebts)}</div>`
           +row("📈 الربح",money(f.profit),f.profit<0?"var(--unpaid)":"var(--brand)",true); })()}
@@ -2099,10 +2120,10 @@ function brickScreenBatches(){
   const E=_esc, cfg=brickCfg(), L=brickLive(state.brickBatches).filter(b=>inRange(b.date)).slice().sort((a,b)=>(b.date||"").localeCompare(a.date||""));
   const cards=L.length?L.map(b=>`
     <div class="order">
-      <div class="cust">🧱 ${E(b.no)} <span class="badge ${brickWageOut(b)>0?'b-unpaid':'b-paid'}">${brickWageOut(b)>0?'أجرة غير مدفوعة':'الأجرة مدفوعة'}</span></div>
+      <div class="cust">🧱 ${E(b.no)} · ${E(brickTypeName(b))}${b.opening?' <span class="badge b-done">رصيد افتتاحي</span>':''} <span class="badge ${brickWageOut(b)>0?'b-unpaid':'b-paid'}">${brickWageOut(b)>0?'أجرة غير مدفوعة':'الأجرة مدفوعة'}</span></div>
       <div class="meta">${ymd(b.date)} ${timeStr(b.date)} · ${E(b.by||"")}</div>
       <div class="price">${fmt(b.bricks)} طوبة</div>
-      <div class="meta">🪨 ${fmt(b.cementBags)} كيس · ⛰️ ${fmt(b.sandLoads)} حمولة · 👷 ${money(b.workerPay)}${b.workers?" ("+E(b.workers)+")":""}</div>
+      <div class="meta">🪨 ${fmt(b.cementBags)} خنشة · ⛰️ ${fmt(b.sandLoads)} فياج · 👷 ${money(b.workerPay)}${b.workers?" ("+E(b.workers)+")":""}</div>
       ${b.note?`<div class="meta">${E(b.note)}</div>`:""}
       <div class="order-acts-sub">
         ${brickWageOut(b)>0?`<button class="mini act-pay" data-bk-wage="${b.id}">👷 دفع الأجرة ${money(brickWageOut(b))}</button>`:""}
@@ -2113,13 +2134,14 @@ function brickScreenBatches(){
     <div class="cols">
       <div class="panel">
         <h3>خلطة جديدة</h3>
+        <div class="field"><label>نوع الطوب</label><select id="bkType">${brickTypeOpts(_bkDraft.btype||brickTypes()[0].k)}</select></div>
         <div class="row2">
-          <div class="field"><label>🪨 أكياس الإسمنت</label><input id="bkBags" type="number" min="0" inputmode="decimal" value="1"><div class="hint">المتاح: ${fmt(brickMatStock("cement"))}</div></div>
-          <div class="field"><label>⛰️ حمولات التراب</label><input id="bkLoads" type="number" min="0" step="0.5" inputmode="decimal" value="1"><div class="hint">المتاح: ${fmt(brickMatStock("sand"))}</div></div>
+          <div class="field"><label>🪨 خنشات الإسمنت</label><input id="bkBags" type="number" min="0" inputmode="decimal" value="20"><div class="hint">المتاح: ${fmt(brickMatStock("cement"))}</div></div>
+          <div class="field"><label>⛰️ فياجات التراب</label><input id="bkLoads" type="number" min="0" step="0.5" inputmode="decimal" value="6"><div class="hint">المتاح: ${fmt(brickMatStock("sand"))}</div></div>
         </div>
         <div class="row2">
-          <div class="field"><label>🧱 عدد الطوب المنتج <span style="color:var(--unpaid)">*</span></label><input id="bkBricks" type="number" min="0" inputmode="numeric" placeholder="0"></div>
-          <div class="field"><label>👷 أجرة العمّال للخلطة</label><input id="bkWage" type="number" min="0" inputmode="decimal" value="${+cfg.workerPerBatch||0}"></div>
+          <div class="field"><label>🧱 عدد الطوب المنتج <span style="color:var(--unpaid)">*</span></label><input id="bkBricks" type="number" min="0" inputmode="numeric" placeholder="${(()=>{ const last=brickLive(state.brickBatches).filter(b=>!b.opening&&bType(b)===(_bkDraft.btype||brickTypes()[0].k)).sort((a,b)=>(b.date||"").localeCompare(a.date||""))[0]; return last?"آخر مرة "+fmt(last.bricks):"0"; })()}"></div>
+          <div class="field"><label>👷 أجرة العمّال للخلطة</label><input id="bkWage" type="number" min="0" inputmode="decimal" value="${20*(+brickType(_bkDraft.btype||brickTypes()[0].k).wage||0)}"><div class="hint" id="bkWageHint">خنشات × ${money(+brickType(_bkDraft.btype||brickTypes()[0].k).wage||0)}</div></div>
         </div>
         <div class="field"><label>العمّال (اختياري)</label><input id="bkWorkers" type="text" placeholder="أسماء من خلطوا"></div>
         <label class="sw" style="margin:4px 0 8px"><input type="checkbox" id="bkWagePaid" ${_bkDraft.wagePaid?"checked":""}> 💵 دُفعت الأجرة الآن من صندوق دبو</label>
@@ -2142,7 +2164,7 @@ function brickScreenSales(){
       ${s.phone?`<div class="meta">📞 ${E(s.phone)}</div>`:""}
       <div class="meta">${E(s.no)} · ${ymd(s.date)} ${timeStr(s.date)} · ${E(s.by||"")}</div>
       <div class="price" style="color:${out>0?'var(--unpaid)':'var(--ready)'}">${money(s.total)} ${CUR}</div>
-      <div class="meta">${fmt(s.qty)} طوبة × ${money(s.unitPrice)}${out>0&&out<(+s.total||0)?` · متبقٍ <b>${money(out)}</b>`:""}</div>
+      <div class="meta">${E(brickTypeName(s))}: ${fmt(s.qty)} طوبة × ${money(s.unitPrice)}${s.transport?` · 🚚 نقل ${money(s.transport)} ${s.transportBy==="cust"?"على الزبون":"علينا"}`:""}${out>0&&out<(+s.total||0)?` · متبقٍ <b>${money(out)}</b>`:""}</div>
       ${s.note?`<div class="meta">${E(s.note)}</div>`:""}
       <div class="order-acts-sub">
         ${out>0?`<button class="mini act-pay" data-bk-collect="${s.id}">💵 تحصيل</button>`:""}
@@ -2157,12 +2179,15 @@ function brickScreenSales(){
         <h3>بيع طوب</h3>
         <div class="field"><label>الطرف (زبون أو مورّد)</label><select id="bkCust">${brickPartyOpts(_bkDraft.cust,true)}</select></div>
         <div id="bkNewWrap" style="${isNew?"":"display:none"}"><div class="field"><label>اسم الزبون الجديد <span style="color:var(--unpaid)">*</span></label><input id="bkNewName" type="text" placeholder="الاسم"></div><div class="field"><label>الهاتف (اختياري)</label><div class="phone-row"><select id="bkNewCountry" class="cc-select">${countryOpts()}</select><input id="bkNewPhone" class="phone-inp" type="tel" inputmode="numeric" maxlength="9" placeholder="رقم الهاتف"></div></div></div>
+        ${(()=>{ const st=_bkDraft.stype||brickTypes()[0].k, T=brickType(st); return `<div class="field"><label>نوع الطوب</label><select id="bkSaleType">${brickTypeOpts(st)}</select></div>
         <div class="row2">
-          <div class="field"><label>عدد الطوب <span style="color:var(--unpaid)">*</span></label><input id="bkQty" type="number" min="0" inputmode="numeric" placeholder="0"><div class="hint">المخزون: ${fmt(brickStock())}</div></div>
-          <div class="field"><label>سعر الطوبة</label><input id="bkPrice" type="number" min="0" inputmode="decimal" value="${+cfg.price||""}"></div>
-        </div>
+          <div class="field"><label>عدد الطوب <span style="color:var(--unpaid)">*</span></label><input id="bkQty" type="number" min="0" inputmode="numeric" placeholder="0"><div class="hint" id="bkStockHint">المخزون: ${fmt(brickStock(st))}</div></div>
+          <div class="field"><label>سعر الطوبة</label><input id="bkPrice" type="number" min="0" inputmode="decimal" value="${+T.price||+cfg.price||""}"></div>
+        </div>`; })()}
+        <div class="field"><label>🚚 النقل</label><div class="seg">${[["none","بلا نقل"],["cust","على الزبون"],["us","علينا"]].map(([k,t])=>`<button type="button" data-bktr="${k}" class="${(_bkDraft.tr||"none")===k?"on":""}">${t}</button>`).join("")}</div></div>
+        <div style="${(_bkDraft.tr||"none")==="none"?"display:none":""}"><div class="field"><label>أجرة النقل</label><input id="bkTrAmt" type="number" min="0" inputmode="decimal" placeholder="0"><div class="hint">${_bkDraft.tr==="cust"?"تُضاف إلى الفاتورة":"تُسجَّل مصروف نقل من صندوق دبو"}</div></div>${_bkDraft.tr==="us"?pmPickerHTML("bkTrPm","النقل من أي حساب"):""}</div>
         <div class="seg" style="margin-bottom:8px"><button type="button" data-bkpaid="1" class="${_bkDraft.paid?'on':''}">💵 بيع نقدي</button><button type="button" data-bkpaid="0" class="${_bkDraft.paid?'':'on'}">📝 بيع آجل (دين)</button></div>
-        <div style="${_bkDraft.paid?"":"display:none"}">${pmPickerHTML("bkSalePm","طريقة الدفع (كاش / بنكيلي / مصرفي / سداد)")}</div>${_bkDraft.paid?"":`<div class="hint" style="margin-bottom:8px">يُسجَّل دينًا على الطرف المختار ويظهر في «الديون والحسابات» وكشف حسابه.</div>`}
+        <div style="${_bkDraft.paid?"":"display:none"}">${pmPickerHTML("bkSalePm","طريقة الدفع (كاش / بنكيلي / مصرفي / سداد)")}</div>${_bkDraft.paid?"":`<div class="field"><label>📞 هاتف الطرف (إلزامي في الآجل إن لم يكن محفوظًا)</label><input id="bkPartyPhone" class="phone-inp" type="tel" inputmode="numeric" maxlength="9" placeholder="رقم الهاتف" style="width:100%"></div><div class="hint" style="margin-bottom:8px">يُسجَّل دينًا على الطرف المختار ويظهر في «الديون والحسابات» وكشف حسابه.</div>`}
         <div class="field"><label>ملاحظة</label><input id="bkSaleNote" type="text" placeholder="اختياري"></div>
         <button class="btn-primary" id="bkSaleSave" style="width:100%">💾 ${_bkDraft.paid?"تسجيل البيع النقدي":"تسجيل البيع الآجل"}</button>
       </div>
@@ -2176,7 +2201,7 @@ function brickScreenPurchases(){
   const E=_esc, L=brickLive(state.brickPurchases).filter(p=>inRange(p.date)).slice().sort((a,b)=>(b.date||"").localeCompare(a.date||""));
   const cards=L.length?L.map(p=>{ const out=brickOut(p), M=BRICK_MAT[p.material]||BRICK_MAT.other; return `
     <div class="order">
-      <div class="cust">${M.ic} ${E(p.material==="other"?(p.name||"مواد"):M.t)} <span class="badge ${out>0?'b-unpaid':'b-paid'}">${out>0?'دين للمورّد':'مدفوع'}</span></div>
+      <div class="cust">${M.ic} ${E(p.material==="other"?(p.name||"مواد"):M.t)}${p.opening?' <span class="badge b-done">رصيد افتتاحي</span>':''} <span class="badge ${out>0?'b-unpaid':'b-paid'}">${out>0?'دين للمورّد':'مدفوع'}</span></div>
       <div class="meta">${E(p.no)} · ${ymd(p.date)} · ${p.supplier?"🏭 "+E(p.supplier):"بلا مورّد"}</div>
       <div class="price" style="color:var(--unpaid)">${money(p.total)} ${CUR}</div>
       <div class="meta">${fmt(p.qty)} ${E(p.unit||M.unit)} × ${money(p.unitCost)}${out>0&&out<(+p.total||0)?` · متبقٍ <b>${money(out)}</b>`:""}</div>
@@ -2189,9 +2214,15 @@ function brickScreenPurchases(){
   const sups=(state.suppliers||[]).map(s=>`<option value="${E(s.name)}">`).join("");
   return `
     <div class="store-stat">
-      <div class="s"><div class="v">${fmt(brickMatStock("cement"))}</div><div class="l">🪨 أكياس إسمنت متاحة · متوسط ${money(brickAvgCost("cement"))}/كيس</div></div>
-      <div class="s"><div class="v">${fmt(brickMatStock("sand"))}</div><div class="l">⛰️ حمولات تراب متاحة · متوسط ${money(brickAvgCost("sand"))}/حمولة</div></div>
+      <div class="s"><div class="v">${fmt(brickMatStock("cement"))}</div><div class="l">🪨 خنشات إسمنت متاحة · متوسط ${money(brickAvgCost("cement"))}/خنشة</div></div>
+      <div class="s"><div class="v">${fmt(brickMatStock("sand"))}</div><div class="l">⛰️ فياجات تراب متاحة · متوسط ${money(brickAvgCost("sand"))}/فياج</div></div>
     </div>
+    ${currentRole!=="worker"?`<details class="panel" style="margin-bottom:12px" id="bkOpenBox"><summary style="font-weight:800;cursor:pointer">📦 رصيد افتتاحي — ما عندك الآن قبل البدء</summary>
+      <div class="hint" style="margin:6px 0">يُدخل المخزون الموجود فعلًا دون أن يُحسب شراءً أو إنتاجًا أو ربحًا في الفترة. للديون القديمة على الأطراف استعمل «الديون والحسابات ▸ قيد» من نوع «مال» بلا صندوق.</div>
+      <div class="row2">${brickTypes().map(t=>`<div class="field"><label>🧱 ${_esc(t.name)} (طوبة)</label><input data-bkop-type="${t.k}" type="number" min="0" inputmode="numeric" placeholder="0"></div>`).join("")}</div>
+      <div class="row2"><div class="field"><label>🪨 خنشات إسمنت</label><input id="bkOpCement" type="number" min="0" inputmode="decimal" placeholder="0"></div><div class="field"><label>سعر الخنشة (للتكلفة)</label><input id="bkOpCementCost" type="number" min="0" inputmode="decimal" placeholder="0"></div></div>
+      <div class="row2"><div class="field"><label>⛰️ فياجات تراب</label><input id="bkOpSand" type="number" min="0" step="0.5" inputmode="decimal" placeholder="0"></div><div class="field"><label>سعر الفياج (للتكلفة)</label><input id="bkOpSandCost" type="number" min="0" inputmode="decimal" placeholder="0"></div></div>
+      <button class="btn-primary" id="bkOpSave" style="width:100%">💾 حفظ الرصيد الافتتاحي</button></details>`:""}
     <div class="cols">
       <div class="panel">
         <h3>شراء مواد</h3>
@@ -2273,24 +2304,25 @@ function brickScreenDebts(){
       <h3>➕ قيد على حساب طرف</h3>
       <div class="field"><label>الطرف</label><select id="bkLParty">${brickPartyOpts(d.lparty||"",false)}</select></div>
       <div id="bkLNewWrap" style="${isNew?"":"display:none"}"><div class="field"><label>اسم الزبون الجديد <span style="color:var(--unpaid)">*</span></label><input id="bkLNewName" type="text" placeholder="الاسم"></div><div class="field"><label>الهاتف (اختياري)</label><div class="phone-row"><select id="bkLNewCountry" class="cc-select">${countryOpts()}</select><input id="bkLNewPhone" class="phone-inp" type="tel" inputmode="numeric" maxlength="9" placeholder="رقم الهاتف"></div></div></div>
+      ${(d.ldir||"on")==="on"?`<div class="field"><label>📞 هاتف الطرف (إلزامي إن لم يكن محفوظًا)</label><input id="bkLPartyPhone" class="phone-inp" type="tel" inputmode="numeric" maxlength="9" placeholder="رقم الهاتف" style="width:100%"></div>`:""}
       <div class="seg" style="margin-bottom:8px"><button type="button" data-bkldir="on" class="${(d.ldir||"on")==="on"?"on":""}">📥 عليه — يدين لنا</button><button type="button" data-bkldir="for" class="${d.ldir==="for"?"on":""}">📤 له — ندين له</button></div>
       <div class="seg" style="margin-bottom:8px">${Object.keys(BRICK_LKIND).map(k=>`<button type="button" data-bklkind="${k}" class="${(d.lkind||"cash")===k?"on":""}">${BRICK_LKIND[k].ic} ${BRICK_LKIND[k].t}</button>`).join("")}</div>
       <div class="row2">
         <div class="field"><label>المبلغ (${CUR}) <span style="color:var(--unpaid)">*</span></label><input id="bkLAmt" type="number" min="0" inputmode="decimal" placeholder="0"></div>
-        ${(d.lkind||"cash")==="bricks"?`<div class="field"><label>عدد الطوب</label><input id="bkLQty" type="number" min="0" inputmode="numeric" placeholder="0"><div class="hint">المخزون: ${fmt(brickStock())}</div></div>`:`<div class="field"><label>البيان</label><input id="bkLNote" type="text" placeholder="${(d.ldir||"on")==="on"?"مثال: سلفة / رصيد سابق":"مثال: دفع مقدّمًا / اشترينا منه"}"></div>`}
+        ${(d.lkind||"cash")==="bricks"?`<div class="field"><label>عدد الطوب</label><input id="bkLQty" type="number" min="0" inputmode="numeric" placeholder="0"><select id="bkLType" style="margin-top:6px">${brickTypeOpts(brickTypes()[0].k)}</select></div>`:`<div class="field"><label>البيان</label><input id="bkLNote" type="text" placeholder="${(d.ldir||"on")==="on"?"مثال: سلفة / رصيد سابق":"مثال: دفع مقدّمًا / اشترينا منه"}"></div>`}
       </div>
       ${(d.lkind||"cash")==="bricks"?`<div class="field"><label>البيان</label><input id="bkLNote" type="text" placeholder="${(d.ldir||"on")==="on"?"أخذ طوبًا بلا فاتورة":"ردّ طوبًا"}"></div>`:""}
       ${(d.lkind||"cash")==="cash"?`<label class="sw" style="margin:4px 0 8px"><input type="checkbox" id="bkLCash" ${d.lcash?"checked":""}> ${(d.ldir||"on")==="on"?"💵 خرج المال من صندوق دبو الآن (سلفة)":"💵 دخل المال إلى صندوق دبو الآن (دفعة منه)"}</label><div id="bkLPmWrap" style="${d.lcash?"":"display:none"}">${pmPickerHTML("bkLPm","الحساب")}</div>`:""}
       <div class="set-row" style="gap:8px"><button class="btn-primary" id="bkLSave" style="flex:1">💾 تسجيل القيد</button><button class="mini" id="bkLClose">إلغاء</button></div>
-      <div class="hint" style="margin-top:6px">مال: دفعة أو سلفة (لا تُحسب دخلًا). طوب: أخذه «عليه» يُنقص المخزون ويُحسب بيعًا، وردّه «له» يعيده. أخرى: «عليه» دخل لنا، «له» تكلفة علينا.</div>
+      <div class="hint" style="margin-top:6px">دين قديم: اختر «مال» بلا صندوق. مال: دفعة أو سلفة (لا تُحسب دخلًا). طوب: أخذه «عليه» يُنقص المخزون ويُحسب بيعًا، وردّه «له» يعيده. أخرى: «عليه» دخل لنا، «له» تكلفة علينا.</div>
     </div>`:`<button class="mini" id="bkLOpen" style="width:100%;margin-bottom:10px;font-weight:800">➕ قيد يدوي على طرف (دفع مال / أخذ طوب / أي شيء — له أو عليه)</button>`}
-    <input class="search-inp" id="brickSearch" type="text" placeholder="بحث بالاسم أو الهاتف" value="${E(q)}">
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px"><input class="search-inp" id="brickSearch" type="text" placeholder="بحث بالاسم أو الهاتف" value="${E(q)}" style="flex:1;margin:0">${remindAllList("brick").length?`<button class="mini" data-remind-all="brick">📣 تذكير الجميع (${remindAllList("brick").length})</button>`:""}</div>
     <div class="grid orders">${cards}</div>
     ${ledgerRecent?`<div class="panel" style="margin-top:12px"><h3>📝 آخر القيود اليدوية</h3><div class="tbl-wrap"><table class="tbl"><thead><tr><th>التاريخ</th><th>الطرف</th><th>المبلغ</th><th>القيد</th><th></th></tr></thead><tbody>${ledgerRecent}</tbody></table></div></div>`:""}
     <div class="panel" style="margin-top:12px"><h3>👷 أجور الخلطات غير المدفوعة</h3><div class="grid orders">${wCards}</div></div>`;
 }
 function brickDayFin(day){ return brickFin(x=>ymd(x)===day); }
-function brickReportText(day){ const f=brickDayFin(day); return `🧱 *دبو — تقرير ${day}*\n━━━━━━━━━━\n🧱 الإنتاج: ${fmt(f.produced)} طوبة (${fmt(f.nBatches)} خلطة)\n💰 المبيعات: ${money(f.sales)} (${fmt(f.sold)} طوبة) — مستلم ${money(f.salesPaid)} · آجل ${money(f.newDebts)}\n🛒 شراء مواد: ${money(f.purchases)}\n👷 أجور: ${money(f.wages)}\n💸 مصاريف: ${money(f.expenses)}\n📈 الربح: ${money(f.profit)} ${CUR}\n🏦 صافي الصندوق: ${money(PAY_METHODS.reduce((t,m)=>t+f.pm[m.k].net,0))}\n📦 المخزون الآن: ${fmt(brickStock())} طوبة · 🪨 ${fmt(brickMatStock("cement"))} كيس · ⛰️ ${fmt(brickMatStock("sand"))} حمولة\n📌 لنا ${money(f.custDebt)} · علينا ${money(f.supDebt)}`; }
+function brickReportText(day){ const f=brickDayFin(day); return `🧱 *دبو — تقرير ${day}*\n━━━━━━━━━━\n🧱 الإنتاج: ${fmt(f.produced)} طوبة (${fmt(f.nBatches)} خلطة)\n💰 المبيعات: ${money(f.sales)} (${fmt(f.sold)} طوبة) — مستلم ${money(f.salesPaid)} · آجل ${money(f.newDebts)}\n🛒 شراء مواد: ${money(f.purchases)}\n👷 أجور: ${money(f.wages)}\n💸 مصاريف: ${money(f.expenses)}\n📈 الربح: ${money(f.profit)} ${CUR}\n🏦 صافي الصندوق: ${money(PAY_METHODS.reduce((t,m)=>t+f.pm[m.k].net,0))}\n📦 المخزون الآن: ${brickStockText()} · 🪨 ${fmt(brickMatStock("cement"))} خنشة · ⛰️ ${fmt(brickMatStock("sand"))} فياج\n📌 لنا ${money(f.custDebt)} · علينا ${money(f.supDebt)}`; }
 function brickScreenReports(){
   const E=_esc, today=ymd(new Date()); const day=state.brickRepDay||today; const month=state.brickRepMonth||today.slice(0,7);
   const f=brickDayFin(day);
@@ -2334,7 +2366,8 @@ function doBrickLedgerSave(){
   const amount=+document.getElementById("bkLAmt").value||0; const qEl=document.getElementById("bkLQty"); const qty=qEl?(+qEl.value||0):0; const nEl=document.getElementById("bkLNote"); const note=nEl?(nEl.value||"").trim():"";
   if(!(amount>0)) return toast("أدخل المبلغ");
   if(kind==="bricks"&&!(qty>0)) return toast("أدخل عدد الطوب");
-  if(kind==="bricks"&&dir==="on"&&qty>brickStock()) return toast("المخزون لا يكفي (المتاح "+fmt(brickStock())+")");
+  const ltype=(document.getElementById("bkLType")||{}).value||brickTypes()[0].k;
+  if(kind==="bricks"&&dir==="on"&&qty>brickStock(ltype)) return toast("المخزون لا يكفي (المتاح "+fmt(brickStock(ltype))+")");
   if(key==="__new"){
     const name=(document.getElementById("bkLNewName").value||"").trim(); if(!name) return toast("أدخل اسم الزبون الجديد");
     const phone=(document.getElementById("bkLNewPhone").value||"").trim(), country=document.getElementById("bkLNewCountry").value;
@@ -2343,8 +2376,9 @@ function doBrickLedgerSave(){
     if(dup){ key="c:"+dup.id; toast("الزبون «"+dup.name+"» محفوظ من قبل"); } else { const c={id:uid(),name,phone,country,isLaundry:false,note:"",by:currentUser,editedAt:iso(new Date())}; state.storeCustomers.push(c); key="c:"+c.id; logActivity("زبون جديد (دبو)",name); }
   }
   const pt=brickPartyFromKey(key); if(!pt) return toast("اختر الطرف");
+  if(dir==="on"){ const er=brickRequirePhone(pt,"bkLPartyPhone"); if(er) return toast(er); }
   const cashEl=document.getElementById("bkLCash"); const cash=kind==="cash"&&!!(cashEl&&cashEl.checked); const dt=iso(new Date());
-  const x={id:uid(),partyType:pt.type,partyId:pt.id,dir,kind,amount,qty:kind==="bricks"?qty:0,note,cash,payMethod:cash?pmVal("bkLPm"):undefined,date:dt,by:currentUser,editedAt:dt};
+  const x={id:uid(),partyType:pt.type,partyId:pt.id,dir,kind,amount,qty:kind==="bricks"?qty:0,btype:kind==="bricks"?ltype:undefined,note,cash,payMethod:cash?pmVal("bkLPm"):undefined,date:dt,by:currentUser,editedAt:dt};
   state.brickLedger.push(x);
   if(cash){ if(dir==="on") addBrickCash("out",amount,"سلفة لـ "+pt.name+(note?" — "+note:""),x.id,x.payMethod); else addBrickCash("in",amount,"دفعة من "+pt.name+(note?" — "+note:""),x.id,x.payMethod); }
   logActivity("دبو: قيد "+(dir==="on"?"عليه":"له"),pt.name+" · "+BRICK_LKIND[kind].t+" · "+money(amount)+(qty?" · "+fmt(qty)+" طوبة":"")+(note?" · "+note:""));
@@ -2389,10 +2423,11 @@ function doBrickBatchSave(){
   const workers=(document.getElementById("bkWorkers").value||"").trim(), note=(document.getElementById("bkNote").value||"").trim(), paid=!!document.getElementById("bkWagePaid").checked;
   if(!(bricks>0)) return toast("أدخل عدد الطوب المنتج");
   if(bags>brickMatStock("cement")) toast("⚠️ الإسمنت المسجّل أقل من المستعمل — سجّل الشراء لاحقًا");
-  const d=iso(new Date()), b={id:uid(),no:brickSeqNo(state.brickBatches,"K",d),cementBags:bags,sandLoads:loads,bricks,workerPay:wage,workerPaidAmt:paid?wage:0,workerPaid:paid||wage<=0,workers,note,date:d,by:currentUser,editedAt:d};
+  const btype=(document.getElementById("bkType")||{}).value||brickTypes()[0].k;
+  const d=iso(new Date()), b={id:uid(),no:brickSeqNo(state.brickBatches,"K",d),btype,cementBags:bags,sandLoads:loads,bricks,workerPay:wage,workerPaidAmt:paid?wage:0,workerPaid:paid||wage<=0,workers,note,date:d,by:currentUser,editedAt:d};
   if(paid&&wage>0){ b.payMethod=pmVal("bkBatchPm"); addBrickCash("out",wage,"أجرة خلطة "+b.no+(workers?" — "+workers:""),b.id,b.payMethod); }
-  state.brickBatches.push(b); brickCfg().workerPerBatch=wage; _bkDraft.wagePaid=paid; pmReset("bkBatchPm");
-  logActivity("دبو: خلطة",b.no+" · "+fmt(bricks)+" طوبة · أجرة "+money(wage)+(paid?" (مدفوعة)":" (دين)"));
+  state.brickBatches.push(b); _bkDraft.btype=btype; _bkDraft.wagePaid=paid; pmReset("bkBatchPm"); brickLowCementCheck();
+  logActivity("دبو: خلطة",b.no+" · "+brickTypeName(b)+" · "+fmt(bricks)+" طوبة · أجرة "+money(wage)+(paid?" (مدفوعة)":" (دين)"));
   toast("🧱 سُجّلت الخلطة ✓"); render();
 }
 function doBrickSaleSave(){
@@ -2400,22 +2435,37 @@ function doBrickSaleSave(){
   const qty=+document.getElementById("bkQty").value||0, price=+document.getElementById("bkPrice").value||0, note=(document.getElementById("bkSaleNote").value||"").trim(), paid=!!_bkDraft.paid;
   if(!(qty>0)) return toast("أدخل عدد الطوب");
   if(!(price>0)) return toast("أدخل سعر الطوبة");
-  if(qty>brickStock()) return toast("المخزون لا يكفي (المتاح "+fmt(brickStock())+")");
+  const btype=(document.getElementById("bkSaleType")||{}).value||brickTypes()[0].k;
+  if(qty>brickStock(btype)) return toast("المخزون لا يكفي (المتاح من "+brickType(btype).name+": "+fmt(brickStock(btype))+")");
+  const tr=_bkDraft.tr||"none", trAmt=tr==="none"?0:(+((document.getElementById("bkTrAmt")||{}).value)||0);
+  if(tr!=="none"&&!(trAmt>0)) return toast("أدخل أجرة النقل أو اختر «بلا نقل»");
   if(key==="__new"){
     const name=(document.getElementById("bkNewName").value||"").trim(); if(!name) return toast("أدخل اسم الزبون الجديد");
     const phone=(document.getElementById("bkNewPhone").value||"").trim(), country=document.getElementById("bkNewCountry").value;
+    if(!paid&&!phone) return toast("البيع الآجل يحتاج رقم هاتف الزبون");
     if(phone && !validPhone(phone)) return toast("رقم الهاتف يجب أن يكون 8 أرقام");
     const dup=(phone && (state.storeCustomers||[]).find(c=>normPhone(c.phone)===normPhone(phone))) || (!phone && (state.storeCustomers||[]).find(c=>!c.isLaundry&&(c.name||"").trim()===name));
     if(dup){ key="c:"+dup.id; toast("الزبون «"+dup.name+"» محفوظ من قبل"); } else { const c={id:uid(),name,phone,country,isLaundry:false,note:"",by:currentUser,editedAt:iso(new Date())}; state.storeCustomers.push(c); key="c:"+c.id; logActivity("زبون جديد (دبو)",name); }
   }
   const pt=key?brickPartyFromKey(key):null; if(key&&!pt) return toast("اختر الطرف");
   if(!paid&&!pt) return toast("البيع الآجل يحتاج زبونًا أو مورّدًا باسم");
-  const total=qty*price, d=iso(new Date());
-  const s={id:uid(),no:brickSeqNo(state.brickSales,"BS",d),partyType:pt?pt.type:null,partyId:pt?pt.id:null,customerId:pt&&pt.type==="cust"?pt.id:null,customerName:pt?pt.name:"زبون نقدي",phone:pt?pt.phone:"",country:pt?pt.country:"222",qty,unitPrice:price,total,paidAmount:paid?total:0,paid,note,date:d,by:currentUser,editedAt:d};
+  if(!paid){ const er=brickRequirePhone(pt,"bkPartyPhone"); if(er) return toast(er); }
+  const total=qty*price+(tr==="cust"?trAmt:0), d=iso(new Date());
+  const s={id:uid(),no:brickSeqNo(state.brickSales,"BS",d),btype,transport:trAmt||undefined,transportBy:trAmt?tr:undefined,partyType:pt?pt.type:null,partyId:pt?pt.id:null,customerId:pt&&pt.type==="cust"?pt.id:null,customerName:pt?pt.name:"زبون نقدي",phone:pt?pt.phone:"",country:pt?pt.country:"222",qty,unitPrice:price,total,paidAmount:paid?total:0,paid,note,date:d,by:currentUser,editedAt:d};
   if(paid){ s.payMethod=pmVal("bkSalePm"); s.paidDate=d; addBrickCash("in",total,"بيع طوب "+s.no+(pt?" — "+pt.name:""),s.id,s.payMethod); }
-  state.brickSales.push(s); brickCfg().price=price; _bkDraft.cust=""; pmReset("bkSalePm");
-  logActivity("دبو: بيع طوب "+(paid?"نقدي":"آجل"),s.no+" · "+fmt(qty)+" × "+money(price)+" = "+money(total)+(paid?" ("+pmLabel(s.payMethod)+")":" (دين · "+s.customerName+")"));
+  state.brickSales.push(s); brickCfg().price=price; brickType(btype).price=price; _bkDraft.cust=""; _bkDraft.stype=btype; pmReset("bkSalePm");
+  if(tr==="us"&&trAmt>0){ const e={id:uid(),category:"transport",amount:trAmt,note:"نقل "+s.no+(pt?" — "+pt.name:""),payMethod:pmVal("bkTrPm"),ref:s.id,date:d,by:currentUser,editedAt:d}; state.brickExpenses.push(e); addBrickCash("out",trAmt,"نقل "+s.no,e.id,e.payMethod); pmReset("bkTrPm"); }
+  _bkDraft.tr="none";
+  logActivity("دبو: بيع طوب "+(paid?"نقدي":"آجل"),s.no+" · "+brickTypeName(s)+" · "+fmt(qty)+" × "+money(price)+" = "+money(total)+(paid?" ("+pmLabel(s.payMethod)+")":" (دين · "+s.customerName+")"));
   toast(paid?"💰 تم البيع النقدي ✓":"📝 سُجّل البيع الآجل ✓"); render();
+}
+function doBrickOpeningSave(){
+  const d=iso(new Date()); let n=0;
+  document.querySelectorAll("[data-bkop-type]").forEach(el=>{ const q=+el.value||0; if(q>0){ const t=el.dataset.bkopType; state.brickBatches.push({id:uid(),no:brickSeqNo(state.brickBatches,"K",d),btype:t,opening:true,cementBags:0,sandLoads:0,bricks:q,workerPay:0,workerPaidAmt:0,workerPaid:true,note:"رصيد افتتاحي",date:d,by:currentUser,editedAt:d}); n++; } });
+  [["cement","bkOpCement","bkOpCementCost"],["sand","bkOpSand","bkOpSandCost"]].forEach(([m,qi,ci])=>{ const q=+document.getElementById(qi).value||0, c=+document.getElementById(ci).value||0; if(q>0){ state.brickPurchases.push({id:uid(),no:brickSeqNo(state.brickPurchases,"BP",d),material:m,name:BRICK_MAT[m].t,unit:BRICK_MAT[m].unit,qty:q,unitCost:c,total:q*c,supplier:"",supplierId:null,paid:true,paidAmount:q*c,opening:true,note:"رصيد افتتاحي",date:d,by:currentUser,editedAt:d}); n++; } });
+  if(!n) return toast("أدخل كمية واحدة على الأقل");
+  logActivity("دبو: رصيد افتتاحي",brickStockText()+" · إسمنت "+fmt(brickMatStock("cement"))+" · تراب "+fmt(brickMatStock("sand")));
+  brickLowCementCheck(); toast("📦 حُفظ الرصيد الافتتاحي ✓"); render();
 }
 function doBrickPurSave(){
   const mat=BRICK_MAT[_bkDraft.mat||"cement"]?(_bkDraft.mat||"cement"):"cement";
@@ -2428,7 +2478,7 @@ function doBrickPurSave(){
   if(paid&&total>0){ p.payMethod=pmVal("bkPurPm"); addBrickCash("out",total,"شراء "+name+" "+p.no+(supplier?" — "+supplier:""),p.id,p.payMethod); }
   state.brickPurchases.push(p); _bkDraft.purPaid=paid; pmReset("bkPurPm");
   logActivity("دبو: شراء مواد",p.no+" · "+name+" "+fmt(qty)+" · "+money(total)+(paid?"":" (دين)"));
-  toast("🛒 سُجّل الشراء ✓"); render();
+  brickLowCementCheck(); toast("🛒 سُجّل الشراء ✓"); render();
 }
 function doBrickExpSave(){
   const cat=BRICK_EXP[_bkDraft.exp||"water"]?(_bkDraft.exp||"water"):"water";
@@ -2448,7 +2498,7 @@ function brickDelete(kind,id){
   const arrs={batch:"brickBatches",sale:"brickSales",pur:"brickPurchases",exp:"brickExpenses",cash:"brickCash",ledger:"brickLedger"}; const key=arrs[kind]; if(!key) return;
   const x=(state[key]||[]).find(r=>r.id===id); if(!x) return;
   requireCode(()=>{ tomb(x.id); state[key]=state[key].filter(r=>r.id!==id);
-    if(kind!=="cash"){ (state.brickCash||[]).filter(m=>m.ref===id).forEach(m=>tomb(m.id)); state.brickCash=state.brickCash.filter(m=>m.ref!==id); }
+    if(kind!=="cash"){ const linked=(state.brickExpenses||[]).filter(e=>e.ref===id); linked.forEach(e=>tomb(e.id)); state.brickExpenses=(state.brickExpenses||[]).filter(e=>e.ref!==id); const refs=new Set([id,...linked.map(e=>e.id)]); (state.brickCash||[]).filter(m=>refs.has(m.ref)).forEach(m=>tomb(m.id)); state.brickCash=state.brickCash.filter(m=>!refs.has(m.ref)); }
     logActivity("دبو: حذف",kind+" · "+(x.no||x.reason||x.note||"")+" · "+money(x.total||x.amount||x.workerPay||0)); toast("تم الحذف"); render(); }, SECRET_CODE, "حذف من دبو", (x.no||"")+" "+money(x.total||x.amount||0)+" "+CUR);
 }
 function openBrickReceipt(s){
@@ -2456,7 +2506,8 @@ function openBrickReceipt(s){
   document.getElementById("receiptContent").innerHTML=`<div class="rcpt">${rcptHeader("🧱 فاتورة طوب — "+_esc(s.no))}
     <div class="rcpt-row"><span>التاريخ</span><b>${ymd(s.date)} ${timeStr(s.date)}</b></div>
     <div class="rcpt-row"><span>الزبون</span><b>${_esc(s.customerName||"زبون نقدي")}${c&&c.phone?" · "+_esc(c.phone):""}</b></div>
-    <div class="rcpt-row"><span>${fmt(s.qty)} طوبة × ${money(s.unitPrice)}</span><b>${money(s.total)}</b></div>
+    <div class="rcpt-row"><span>${_esc(brickTypeName(s))}: ${fmt(s.qty)} طوبة × ${money(s.unitPrice)}</span><b>${money((+s.qty||0)*(+s.unitPrice||0))}</b></div>
+    ${s.transport&&s.transportBy==="cust"?`<div class="rcpt-row"><span>🚚 النقل</span><b>${money(s.transport)}</b></div>`:""}
     ${s.note?`<div class="rcpt-row"><span>ملاحظة</span><b>${_esc(s.note)}</b></div>`:""}
     <div class="rcpt-total"><span>الإجمالي</span><b>${money(s.total)} ${CUR}</b></div>
     <div class="rcpt-row"><span>المدفوع</span><b>${money(Math.min(+s.total||0,+s.paidAmount||0))}${s.paid&&s.payMethod?" ("+pmLabel(s.payMethod)+")":""}</b></div>
@@ -2496,6 +2547,19 @@ function bindBrick(){
   const rm=document.getElementById("bkRepMonth"); if(rm) rm.onchange=()=>{ state.brickRepMonth=rm.value||ymd(new Date()).slice(0,7); render(); };
   document.querySelectorAll("[data-bk-dayjump]").forEach(b=>b.onclick=()=>{ const k=+b.dataset.bkDayjump; if(k===0) state.brickRepDay=ymd(new Date()); else { const cur=state.brickRepDay||ymd(new Date()); const dt=new Date(cur+"T12:00:00Z"); dt.setUTCDate(dt.getUTCDate()+k); state.brickRepDay=dt.toISOString().slice(0,10); } render(); });
   document.querySelectorAll("[data-bk-day]").forEach(b=>b.onclick=()=>{ state.brickRepDay=b.dataset.bkDay; render(); try{ window.scrollTo({top:0,behavior:"smooth"}); }catch(e){} });
+  // أنواع الطوب + الخلطة + البيع + الرصيد الافتتاحي
+  const bt=document.getElementById("bkType"), bb=document.getElementById("bkBags"), bw=document.getElementById("bkWage");
+  const updWage=()=>{ if(!bt||!bb||!bw) return; const T=brickType(bt.value); if(!bw.dataset.touched) bw.value=Math.round((+bb.value||0)*(+T.wage||0)); const h=document.getElementById("bkWageHint"); if(h) h.textContent="خنشات × "+money(+T.wage||0); };
+  if(bt) bt.onchange=()=>{ _bkDraft.btype=bt.value; updWage(); const bk=document.getElementById("bkBricks"); if(bk){ const last=brickLive(state.brickBatches).filter(b=>!b.opening&&bType(b)===bt.value).sort((a,b)=>(b.date||"").localeCompare(a.date||""))[0]; bk.placeholder=last?"آخر مرة "+fmt(last.bricks):"0"; } };
+  if(bb) bb.oninput=updWage; if(bw) bw.oninput=()=>{ bw.dataset.touched="1"; };
+  const st=document.getElementById("bkSaleType"); if(st) st.onchange=()=>{ _bkDraft.stype=st.value; const T=brickType(st.value); const pr=document.getElementById("bkPrice"); if(pr&&+T.price) pr.value=+T.price; const h=document.getElementById("bkStockHint"); if(h) h.textContent="المخزون: "+fmt(brickStock(st.value)); };
+  document.querySelectorAll("[data-bktr]").forEach(b=>b.onclick=()=>{ _bkDraft.tr=b.dataset.bktr; render(); });
+  on("bkOpSave",()=>requireCode(doBrickOpeningSave,SECRET_CODE,"رصيد افتتاحي لدبو","يُضاف المخزون الموجود الآن"));
+  const tb=document.getElementById("bkTypesBox"); if(tb) tb.ontoggle=()=>{ _bkDraft.typesOpen=tb.open; };
+  on("bkTypesSave",()=>{ const T=brickTypes(); T.forEach(t=>{ const n=document.querySelector(`[data-bkt-name="${t.k}"]`), pr=document.querySelector(`[data-bkt-price="${t.k}"]`), w=document.querySelector(`[data-bkt-wage="${t.k}"]`); if(n&&n.value.trim()) t.name=n.value.trim(); if(pr) t.price=+pr.value||0; if(w) t.wage=+w.value||0; });
+    const nw=(document.getElementById("bkTypeNew").value||"").trim(); if(nw){ if(T.some(t=>t.name===nw)) return toast("النوع موجود"); T.push({k:"t"+uid().slice(-6),name:nw,price:0,wage:+(T[0]&&T[0].wage)||1300}); }
+    const lc=+document.getElementById("bkLowCement").value||0; brickCfg().lowCement=lc>0?lc:20; brickCfg().lowAlerted=false; brickLowCementCheck();
+    logActivity("دبو: أنواع الطوب",T.map(t=>t.name+" "+money(t.price)+"/أجرة "+money(t.wage)).join(" · ")); toast("حُفظت الأنواع ✓"); render(); });
   on("bkRepWa",()=>{ const t=brickReportText(state.brickRepDay||ymd(new Date())); window.open("https://wa.me/?text="+encodeURIComponent(t),"_blank"); });
 }
 /* ================= المتجر: مساعدات ================= */
@@ -2620,6 +2684,17 @@ function sendDebtReminder(key,kind){
   logActivity("تذكير دين",(d.name||d.phone)+" · "+money(d.total)+" "+CUR+(kind&&kind!=="all"?" ("+debtKindLabel(kind)+")":""));
   save(); window.open(`https://wa.me/${ph}?text=${encodeURIComponent(debtMessage(d))}`,"_blank"); render();
 }
+function remindAllList(kind){ return debtors().map(d=>debtorForKind(d,kind||"all")).filter(d=>d.total>0&&waPhoneFull(d.phone,d.country)).sort((a,b)=>b.total-a.total); }
+function openRemindAll(kind){
+  kind=kind||"all"; let m=document.getElementById("remindAllModal");
+  if(!m){ m=document.createElement("div"); m.id="remindAllModal"; m.className="modal"; m.innerHTML=`<div class="modal-box" style="max-width:480px"><h3 id="raTitle">📣 تذكير الجميع</h3><div class="hint" style="margin-bottom:8px">اضغط «إرسال» لكل زبون (أو «التالي») فتفتح رسالة واتساب جاهزة. يُعلَّم ✓ بعد الإرسال.</div><div id="raBody" style="max-height:60vh;overflow:auto"></div><div class="modal-actions" style="margin-top:10px"><button class="btn-primary" id="raNext" style="flex:1">▶ إرسال التالي</button><button class="mini" id="raClose">إغلاق</button></div></div>`; document.body.appendChild(m); m.querySelector("#raClose").onclick=()=>{ m.style.display="none"; }; }
+  const L=remindAllList(kind), sent=new Set(), today=ymd(new Date()), rem=state.debtReminded||{};
+  m.querySelector("#raTitle").textContent="📣 تذكير الجميع"+(kind!=="all"?" — "+debtKindLabel(kind):"")+" ("+L.length+")";
+  const draw=()=>{ m.querySelector("#raBody").innerHTML=L.length?L.map(d=>{ const done=sent.has(d.key)||(rem[d.key]&&ymd(rem[d.key])===today); return `<div class="sd-row" style="opacity:${done?.55:1}"><div class="sd-main"><b>${_esc(d.name||"بدون اسم")}</b> <span class="hint">📞 ${_esc(d.phone)}</span><div class="hint">${d.count} · منذ ${d.days} يوم${rem[d.key]?" · آخر تذكير "+ymd(rem[d.key]):""}</div></div><b class="sd-amt">${money(d.total)}</b><button class="mini ${done?"":"act-pay"}" data-ra-send="${_esc(d.key)}">${done?"✓ أُرسل":"💬 إرسال"}</button></div>`; }).join(""):`<div class="hint">لا يوجد مدين له رقم هاتف.</div>`;
+    m.querySelectorAll("[data-ra-send]").forEach(b=>b.onclick=()=>{ sendDebtReminder(b.dataset.raSend,kind); sent.add(b.dataset.raSend); draw(); }); };
+  m.querySelector("#raNext").onclick=()=>{ const nx=L.find(d=>!sent.has(d.key)&&!(rem[d.key]&&ymd(rem[d.key])===today)); if(!nx) return toast("أُرسلت كل التذكيرات ✓"); sendDebtReminder(nx.key,kind); sent.add(nx.key); draw(); };
+  draw(); m.style.display="flex";
+}
 function contactsDebts(noStats,fixedKind){
   const E=_esc, q=(state.contactSearch||"").trim();
   const kind=fixedKind||(DEBT_KINDS.some(x=>x.k===state.debtKind)?state.debtKind:"all");
@@ -2666,6 +2741,7 @@ function contactsDebts(noStats,fixedKind){
     </div>`}
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
       <input class="search-inp" id="contactSearch" type="text" placeholder="بحث بالاسم أو الهاتف" value="${E(q)}" style="flex:1;margin:0">
+      ${(()=>{ const n=remindAllList(kind).length; return n?`<button class="mini" data-remind-all="${kind}">📣 تذكير الجميع (${n})</button>`:""; })()}
       <select id="debtSort" style="max-width:170px"><option value="amt">الأكبر مبلغًا</option><option value="old" ${sortOld?"selected":""}>الأقدم أولًا</option></select>
     </div>
     <div class="hint" style="margin-bottom:8px">${fixedKind?"ديون المتجر فقط (فواتير بالدين). ديون المغاسيل تظهر في شاشة كل قسم وفي «الزبائن والموردون ▸ الديون».":kind==="all"?"كل الأقسام معًا، مجمّعة حسب رقم الهاتف. اختر قسمًا في الأعلى لعرض ديونه وحده.":"ديون "+debtKindLabel(kind)+" فقط — التذكير يُرسل بمبلغ هذا القسم."} نص الرسالة يُعدَّل من الإعدادات.</div>
@@ -3138,7 +3214,7 @@ function exportCSV(from,to){
   sec("مبيعات المتجر",["التاريخ","رقم","الزبون","الأصناف","الإجمالي","المدفوع","المتبقي","طريقة الدفع","بواسطة"],(state.storeSales||[]).filter(o=>F(o.date)).map(o=>[ymd(o.date),o.no,o.customerName,(o.items||[]).map(i=>i.name+" ×"+i.qty).join(" | "),o.total,o.paidAmount||0,o.cancelled?"ملغاة":saleOutstanding(o),o.paid?pmLabel(o.payMethod):"",o.by]));
   sec("مشتريات المتجر",["التاريخ","رقم","المورّد","الأصناف","الإجمالي","المدفوع","المتبقي","بواسطة"],(state.storePurchases||[]).filter(o=>F(o.date)).map(o=>[ymd(o.date),o.no,o.supplier,(o.items||[]).map(i=>i.name+" ×"+i.qty).join(" | "),o.total,purPaidAmt(o),purOutstanding(o),o.by]));
   sec("الديون اليدوية",["التاريخ","الزبون","الاتجاه","الوصف","المبلغ","المسدَّد","المتبقي","عبر الصندوق","بواسطة"],(state.storeDebts||[]).filter(x=>F(x.date)).map(x=>{ const c=storeCust(x.customerId); return [ymd(x.date),c?c.name:"",(x.dir||"on")==="on"?"عليه":"له",x.note,x.amount,x.paidAmount||0,x.cancelled?"ملغاة":debtOutstanding(x),x.cash?pmLabel(x.payMethod):"لا",x.by]; }));
-  sec("دبو — الخلطات",["التاريخ","رقم","أكياس إسمنت","حمولات تراب","الطوب المنتج","أجرة العمّال","مدفوعة","العمّال","ملاحظة","بواسطة"],brickLive(state.brickBatches).filter(b=>F(b.date)).map(b=>[ymd(b.date),b.no,b.cementBags,b.sandLoads,b.bricks,b.workerPay,brickWageOut(b)>0?"لا":"نعم",b.workers,b.note,b.by]));
+  sec("دبو — الخلطات",["التاريخ","رقم","خنشات إسمنت","فياجات تراب","الطوب المنتج","أجرة العمّال","مدفوعة","العمّال","ملاحظة","بواسطة"],brickLive(state.brickBatches).filter(b=>F(b.date)).map(b=>[ymd(b.date),b.no,b.cementBags,b.sandLoads,b.bricks,b.workerPay,brickWageOut(b)>0?"لا":"نعم",b.workers,b.note,b.by]));
   sec("دبو — مبيعات الطوب",["التاريخ","رقم","الزبون","العدد","سعر الطوبة","الإجمالي","المدفوع","المتبقي","طريقة الدفع","بواسطة"],brickLive(state.brickSales).filter(x=>F(x.date)).map(x=>[ymd(x.date),x.no,x.customerName,x.qty,x.unitPrice,x.total,x.paidAmount||0,brickOut(x),x.paid?pmLabel(x.payMethod):"",x.by]));
   sec("دبو — شراء المواد",["التاريخ","رقم","المادة","الكمية","سعر الوحدة","الإجمالي","المدفوع","المتبقي","المورّد","بواسطة"],brickLive(state.brickPurchases).filter(x=>F(x.date)).map(x=>[ymd(x.date),x.no,x.name,x.qty,x.unitCost,x.total,x.paidAmount||0,brickOut(x),x.supplier,x.by]));
   sec("دبو — المصاريف",["التاريخ","النوع","البيان","المبلغ","طريقة الدفع","بواسطة"],brickLive(state.brickExpenses).filter(x=>F(x.date)).map(x=>[ymd(x.date),(BRICK_EXP[x.category]||{}).t||x.category,x.note,x.amount,pmLabel(x.payMethod),x.by]));
@@ -4754,6 +4830,7 @@ function bindScreen(){
       const lines=invDraft.cp.slice();
       if(!lines.length || invDirty.cp){ const l=cpLine(); const er=cpCheck(l); if(er) return toast(er); lines.push(l); }
       if(!validPhone(cpph)) return toast("رقم الهاتف يجب أن يكون 8 أرقام");
+      if(!cpph && !confirm("لا يوجد رقم هاتف لهذا الزبون — لن تستطيع تذكيره بالدين على واتساب.\nهل تحفظ بلا رقم؟")) return;
       const cpDateV=(document.getElementById("cpDate")||{}).value||todayStr();
       const commit=()=>{
         lines.forEach(l=>{ state.piecePrices[l.type]=l.dims?(+l.dims.m2||0):(+l.unit||0); });
@@ -4835,6 +4912,7 @@ function bindScreen(){
       const lines=invDraft.lnd.slice();
       if(!lines.length || invDirty.lnd){ const l=lndLine(); if(!(l.unit>0)) return toast("أدخل سعرًا صحيحًا"); if(!(l.count>0)) return toast("أدخل عددًا صحيحًا"); lines.push(l); }
       if(!validPhone(ph)) return toast("رقم الهاتف يجب أن يكون 8 أرقام");
+      if(!ph && !confirm("لا يوجد رقم هاتف لهذا الزبون — لن تستطيع تذكيره بالدين على واتساب.\nهل تحفظ بلا رقم؟")) return;
       const dateV=(document.getElementById("lndDate")||{}).value||todayStr();
       const commit=()=>{
         lines.forEach(l=>{ state.laundryPrices[l.type+"|"+l.service]=+l.unit; });
@@ -4895,6 +4973,7 @@ function bindScreen(){
 
   // brick (دبو — مصنع الطوب)
   bindBrick();
+  document.querySelectorAll("[data-remind-all]").forEach(b=>b.onclick=()=>openRemindAll(b.dataset.remindAll));
   // store (المتجر)
   bindStore();
   // contacts (الزبائن والموردون)
@@ -6314,7 +6393,7 @@ let _tgUnlocked=false, _tgAwaitDate=false, _tgPolling=false, _tgLastReply="", _t
 function tgIsResponder(){ try{ return localStorage.getItem("sadaqa_tg_responder")==="1"; }catch(e){ return false; } }
 function tgSetResponder(on){ try{ localStorage.setItem("sadaqa_tg_responder", on?"1":"0"); }catch(e){} }
 function tgRespStatusUI(){ const el=document.getElementById("tgRespStatus"); if(!el) return; el.textContent=tgIsResponder()?("✅ مفعّل على هذا الجهاز — يجب أن يبقى التطبيق مفتوحًا ليردّ البوت."+(_tgLastReply?(" آخر رد: "+_tgLastReply):"")):"غير مفعّل على هذا الجهاز (فعّله على هاتفك أو جهاز المحل الذي يبقى مفتوحًا)."; }
-const TG_KB={keyboard:[["📊 اليوم","📅 أمس","🗓️ تاريخ"],["🚗 السيارات","🧺 السجاد","👕 الملابس"],["💸 المصروفات","📌 الديون","🧾 التقفيل"]],resize_keyboard:true};
+const TG_KB={keyboard:[["📊 اليوم","📅 أمس","🗓️ تاريخ"],["🚗 السيارات","🧺 السجاد","👕 الملابس"],["💸 المصروفات","📌 الديون","🧾 التقفيل"],["🧱 دبو"]],resize_keyboard:true};
 function tgParseDate(t){
   t=(t||"").trim().replace(/[٠-٩]/g,d=>"٠١٢٣٤٥٦٧٨٩".indexOf(d));
   let m=t.match(/(\d{4})-(\d{1,2})-(\d{1,2})/); if(m) return m[1]+"-"+m[2].padStart(2,"0")+"-"+m[3].padStart(2,"0");
@@ -6365,6 +6444,7 @@ function tgHandleText(text){
   const t=(text||"").trim(); if(!t) return null;
   if(/^\/start|مساعدة|❓|^help$/i.test(t)){ _tgAwaitDate=false; return `أهلًا 👋 أنا بوت ${shopInfo().name}.\nاختر من الأزرار، أو أرسل تاريخًا مثل 2026-10-04 أو 04/10/2026، أو «من 2026-10-01 إلى 2026-10-05»، أو شهرًا مثل 2026-10.\nيمكنك أيضًا: «السيارات أمس»، «الملابس 2026-10-03».`; }
   if(/🗓️|^تاريخ$/.test(t)){ _tgAwaitDate=true; return "أرسل التاريخ بالشكل 2026-10-04 (أو شهرًا 2026-10، أو «من … إلى …»)."; }
+  if(/دبو|🧱|طوب/.test(t)){ const per0=tgPeriod(t); const day=per0?per0[0]:ymd(new Date()); _tgAwaitDate=false; const P=brickParties(); return brickReportText(day).replace(/\*/g,"")+"\n━━━━━━━━━━\n📌 أكبر المدينين:\n"+(P.filter(x=>x.balance>0).slice(0,8).map(x=>"• "+x.name+(x.phone?" ("+x.phone+")":"")+" — "+money(x.balance)).join("\n")||"لا يوجد"); }
   const kinds=[["cars",/سيارات|🚗/],["rugs",/سجاد|أفرشة|افرشة|🧺/],["lnd",/ملابس|👕/],["exp",/مصروف|مصاريف|💸/],["debts",/ديون|دين|📌/],["close",/تقفيل|🧾/]];
   const kind=(kinds.find(k=>k[1].test(t))||[])[0];
   let per=tgPeriod(t); const today=ymd(new Date());
@@ -6644,6 +6724,12 @@ function runMigrations(){
   if(!state.storeCustomers) state.storeCustomers=[];
   if(!state.storeCash) state.storeCash=[];
   if(!state.storeDebts) state.storeDebts=[];
+  // أسعار بلا كسور (مرة واحدة): تقريب أسعار الطلبات القديمة التي فيها كسور
+  if(!state.priceRoundV){ state.priceRoundV=1; const dRound=iso(new Date());
+    ["carpetOrders","laundryOrders","carOps"].forEach(k=>(state[k]||[]).forEach(o=>{ let ch=false;
+      if(Array.isArray(o.items)) o.items.forEach(i=>{ if((+i.unit||0)%1){ i.unit=Math.round(+i.unit); i.price=i.unit*(+i.count||1); ch=true; } else if((+i.price||0)%1){ i.price=Math.round(+i.price); ch=true; } });
+      if(ch||(+o.price||0)%1){ o.price=Array.isArray(o.items)?sum(o.items,i=>+i.price||0):Math.round(+o.price||0); if((+o.unit||0)%1) o.unit=Math.round(+o.unit); ch=true; }
+      if(ch) o.editedAt=dRound; })); }
   ["brickBatches","brickPurchases","brickSales","brickExpenses","brickCash","brickLedger"].forEach(k=>{ if(!Array.isArray(state[k])) state[k]=[]; });
   if(!state.brickCfg||typeof state.brickCfg!=="object") state.brickCfg={price:0,workerPerBatch:0};
   if(typeof state.storeSeq!=="number") state.storeSeq=(state.storeSales||[]).length;
@@ -6742,7 +6828,7 @@ setTimeout(()=>{ if(!window.cloudReady){ const el=document.getElementById("cloud
 <!-- PWA: service-worker registration + update/install wiring -->
 <script>
 (function(){
-  var APP_VERSION = "2.27.0";
+  var APP_VERSION = "2.28.0";
   window.APP_VERSION = APP_VERSION;
   function $(id){ return document.getElementById(id); }
   // سجّل إصدار هذا الجهاز في الحالة المتزامنة (ليُنبَّه الجهاز القديم)
