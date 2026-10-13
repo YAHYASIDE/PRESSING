@@ -361,6 +361,18 @@
   `#storePayOk/#storePayCancel` تُربط في `bindBrick` أيضًا). الحذف `brickDelete(kind,id)` بالكود + tombstone (مع حركات
   الصندوق المرتبطة). إيصال `openBrickReceipt`. مسودة `_bkDraft{cust,paid,purPaid,wagePaid,mat,exp}`. الاختبار
   `tests/e2e/brick.test.js` (سيناريو كامل: شراء → خلطتان → بيع نقدًا/دين → مصروف → تحصيل/تسديد → حذف → مزامنة).
+  **حسابات الأطراف (2.27.0):** الطرف = زبون (`storeCustomers`) **أو مورّد** (`suppliers`) — مورّد الإسمنت قد يشتري طوبًا.
+  `brickParty(type,id)`/`brickPartyFromKey("c:id"|"s:id")`/`brickPartyOpts(sel,allowCash)` (قائمة مجمّعة زبائن/موردون/زبون جديد).
+  البيع صار `partyType:"cust"|"sup"` + `partyId` (و`customerId` للتوافق)، **بيع نقدي** (كاش/بنكيلي/مصرفي/سداد) أو **بيع آجل**
+  لأي طرف. قيود يدوية مُزامنة `brickLedger` `{partyType,partyId,dir:"on"|"for",kind:cash|bricks|other,amount,qty,note,cash,
+  payMethod}`: مال (دفعة/سلفة، لا تُحسب دخلًا، مع خيار عبر الصندوق)، طوب (عليه = أخذ بلا فاتورة → ينقص المخزون ويُحسب بيعًا؛
+  له = ردّ)، أخرى (عليه دخل / له تكلفة) — `brickStock()` و`brickFin` يراعيانها. **رصيد الطرف** `brickParties()` = مبيعات آجلة
+  غير مسدَّدة + قيود عليه − مشتريات غير مسدَّدة − قيود له (موجب = عليه لنا). كشف حساب `brickPartyRows`/`openBrickStatement`
+  (كل القيود بترتيب زمني ورصيد جارٍ + الهاتف). التحصيل/التسديد على مستوى الطرف `brickPartySettle` (`_storePayCtx.kind=
+  "brickParty"`, يسدّد الأقدم أولًا والزائد قيدًا). «الديون والحسابات»: بطاقات الأطراف بالهاتف/الرصيد/تحصيل/تسديد/قيد/كشف/
+  تذكير واتساب + آخر القيود + أجور الخلطات. تبويب **«📈 التقارير»** `brickScreenReports`: تقرير يوم (اختيار اليوم `state.brickRepDay`
+  محلي، أمس/اليوم، واتساب `brickReportText`)، تقرير شهر `brickRepMonth` (صف لكل يوم، الضغط يفتح اليوم)، وقائمة كشوف الحسابات.
+  `debtors()` يأخذ رصيد الطرف الموجب لنوع `brick`. CSV قسم «دبو — قيود الحسابات».
 - **قاعدة الحذف والاستعادة (2.0.0):** السجلّ يُعتبر محذوفًا فقط إذا كان وقت الـ tombstone
   ≥ `editedAt` للسجلّ (`isDead` في `mergeById`). لذلك السجلّ المُستعاد (editedAt جديد) يعود
   على كل الأجهزة. `tomb(id)` يضع وقتًا = max(الآن، editedAt+1) لتفادي فرق ساعات الأجهزة.

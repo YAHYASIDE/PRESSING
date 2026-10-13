@@ -15,7 +15,7 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
 
   log('nav has «دبو» after carpets: '+(await page.evaluate(()=>{ const t=[...document.querySelectorAll('.nav-btn')].map(b=>b.dataset.tab); return t.indexOf('brick')===t.indexOf('carpets')+1; }))+' (expect true)');
   await page.click('[data-tab="brick"]'); await page.waitForTimeout(300);
-  log('brick screen has 7 sub-tabs and opens on the summary: '+(await page.evaluate(()=>document.querySelectorAll('[data-bksub]').length===7 && /ربح دبو/.test(document.querySelector('main').textContent)))+' (expect true)');
+  log('brick screen has 7 sub-tabs and opens on the summary: '+(await page.evaluate(()=>document.querySelectorAll('[data-bksub]').length===8 && /ربح دبو/.test(document.querySelector('main').textContent)))+' (expect true)');
 
   // 1) شراء 10 أكياس إسمنت × 2,000 = 20,000 مدفوع كاش من مورّد «شركة الإسمنت»
   await page.click('[data-bksub="purchases"]'); await page.waitForTimeout(250);
@@ -47,7 +47,7 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
   log('selling more than stock is refused: '+(await page.evaluate(()=>state.brickSales.length===1 && /لا يكفي/.test(document.getElementById('toast').textContent)))+' (expect true)');
   await page.click('[data-bkpaid="0"]'); await page.waitForTimeout(250); await page.fill('#bkQty','100'); await page.click('#bkSaleSave'); await page.waitForTimeout(250);
   log('credit sale without a customer is refused: '+(await page.evaluate(()=>state.brickSales.length===1 && /يحتاج زبونًا/.test(document.getElementById('toast').textContent)))+' (expect true)');
-  await page.selectOption('#bkCust','cu1'); await page.fill('#bkQty','100'); await page.click('#bkSaleSave'); await page.waitForTimeout(300);
+  await page.selectOption('#bkCust','c:cu1'); await page.fill('#bkQty','100'); await page.click('#bkSaleSave'); await page.waitForTimeout(300);
   r=await page.evaluate(()=>({ s:state.brickSales[1], stock:brickStock(), box:brickCashBalance(), d:debtors().find(x=>x.name==='محمد'), fin:brickFin(()=>true) }));
   log('credit sale 100×100 to محمد: unpaid 10,000, stock 100, box unchanged: '+(r.s.total===10000 && !r.s.paid && r.s.customerId==='cu1' && r.stock===100 && r.box===17000 && r.fin.custDebt===10000)+' (expect true)');
   log('brick debt appears in the general debtors list under kind «brick»: '+(!!r.d && r.d.by.brick===10000 && r.d.n.brick===1)+' (expect true)');
@@ -62,11 +62,11 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
 
   // 5) الديون: تحصيل من محمد 4,000 كاش، تسديد بوبكر 20,000، دفع أجرة الخلطة الثانية
   await page.click('[data-bksub="debts"]'); await page.waitForTimeout(250);
-  log('debts tab lists customer, supplier and wage dues: '+(await page.evaluate(()=>{ const t=document.querySelector('main').textContent; return /محمد/.test(t) && /بوبكر/.test(t) && /سيدي وعمر|K20/.test(t) && document.querySelectorAll('[data-bk-collect]').length===1 && document.querySelectorAll('[data-bk-paypur]').length===1 && document.querySelectorAll('[data-bk-wage]').length===1; }))+' (expect true)');
-  await page.click('[data-bk-collect]'); await page.waitForTimeout(200); await page.fill('#storePayAmt','4000'); await page.click('#storePayOk'); await page.waitForTimeout(300);
+  log('debts tab lists customer, supplier and wage dues: '+(await page.evaluate(()=>{ const t=document.querySelector('main').textContent; return /محمد/.test(t) && /بوبكر/.test(t) && /سيدي وعمر|K20/.test(t) && document.querySelectorAll('[data-bk-pcollect]').length===1 && document.querySelectorAll('[data-bk-ppay]').length===1 && document.querySelectorAll('[data-bk-wage]').length===1 && /22334455/.test(t); }))+' (expect true)');
+  await page.click('[data-bk-pcollect]'); await page.waitForTimeout(200); await page.fill('#storePayAmt','4000'); await page.click('#storePayOk'); await page.waitForTimeout(300);
   r=await page.evaluate(()=>({ out:brickOut(state.brickSales[1]), box:brickCashBalance(), d:debtors().find(x=>x.name==='محمد') }));
   log('partial collection 4,000: 6,000 left, box 19,500, debtors updated: '+(r.out===6000 && r.box===19500 && r.d && r.d.by.brick===6000)+' (expect true)');
-  await page.click('[data-bk-paypur]'); await page.waitForTimeout(200); await page.click('#storePayOk'); await page.waitForTimeout(300);
+  await page.click('[data-bk-ppay]'); await page.waitForTimeout(200); await page.click('#storePayOk'); await page.waitForTimeout(300);
   await page.click('[data-bk-wage]'); await page.waitForTimeout(200); await page.click('#storePayOk'); await page.waitForTimeout(300);
   r=await page.evaluate(()=>({ sup:brickOut(state.brickPurchases[1]), wage:brickWageOut(state.brickBatches[1]), box:brickCashBalance(), fin:brickFin(()=>true) }));
   log('supplier and wage paid in full: box 19,500−20,000−3,000=−3,500, no supplier/wage dues: '+(r.sup===0 && r.wage===0 && r.box===-3500 && r.fin.supDebt===0 && r.fin.wageDues===0)+' (expect true)');
@@ -89,9 +89,39 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
   log('CSV export has brick sections: '+(await page.evaluate(()=>{ const c=exportCSV('2000-01-01',ymd(new Date())); return /دبو — الخلطات/.test(c) && /دبو — مبيعات الطوب/.test(c) && /دبو — الصندوق/.test(c); }))+' (expect true)');
   log('bot summary mentions دبو: '+(await page.evaluate(()=>/🧱 دبو/.test(tgSummaryText(ymd(new Date()),ymd(new Date())))))+' (expect true)');
 
+  // 7b) قيود الحسابات: محمد أخذ 50 طوبة بلا فاتورة بقيمة 5,000 (عليه) → المخزون ينقص ويُحسب بيعًا
+  await page.click('[data-tab="brick"]'); await page.waitForTimeout(200); await page.click('[data-bksub="debts"]'); await page.waitForTimeout(250);
+  await page.click('#bkLOpen'); await page.waitForTimeout(200); await page.selectOption('#bkLParty','c:cu1'); await page.click('[data-bklkind="bricks"]'); await page.waitForTimeout(200);
+  await page.fill('#bkLAmt','5000'); await page.fill('#bkLQty','50'); await page.fill('#bkLNote','أخذ بلا فاتورة'); await page.click('#bkLSave'); await page.waitForTimeout(300);
+  r=await page.evaluate(()=>({ x:state.brickLedger[0], stock:brickStock(), bal:brickParties().find(p=>p.key==='c:cu1').balance, sales:brickFin(()=>true).sales, box:brickCashBalance() }));
+  log('ledger «bricks on» 50 → stock 50, محمد owes 6,000+5,000=11,000, counted as sales, no cash: '+(r.x.kind==='bricks' && r.x.dir==='on' && r.stock===50 && r.bal===11000 && r.sales===55000 && r.box===8000)+' (expect true)');
+  // محمد دفع 1,000 مال دخل الصندوق (له)
+  await page.click('[data-bk-ladd="c:cu1"]'); await page.waitForTimeout(250); await page.click('[data-bkldir="for"]'); await page.waitForTimeout(200); await page.click('[data-bklkind="cash"]'); await page.waitForTimeout(200);
+  await page.fill('#bkLAmt','1000'); await page.fill('#bkLNote','دفعة'); await page.check('#bkLCash'); await page.waitForTimeout(100); await page.click('#bkLSave'); await page.waitForTimeout(300);
+  r=await page.evaluate(()=>({ bal:brickParties().find(p=>p.key==='c:cu1').balance, box:brickCashBalance(), m:state.brickCash[state.brickCash.length-1], d:debtors().find(x=>x.name==='محمد') }));
+  log('ledger «cash for» 1,000 with cashbox: balance 10,000, box 9,000, cash-in linked, debtors updated: '+(r.bal===10000 && r.box===9000 && r.m.type==='in' && r.m.amount===1000 && r.d && r.d.by.brick===10000)+' (expect true)');
+  // المورّد بوبكر يشتري 30 طوبة آجلًا → يصير مدينًا لنا 3,000
+  const supId=await page.evaluate(()=>state.suppliers.find(x=>x.name==='بوبكر').id);
+  await page.click('[data-bksub="sales"]'); await page.waitForTimeout(250); await page.click('[data-bkpaid="0"]'); await page.waitForTimeout(200);
+  await page.selectOption('#bkCust','s:'+supId); await page.fill('#bkQty','30'); await page.fill('#bkPrice','100'); await page.click('#bkSaleSave'); await page.waitForTimeout(300);
+  r=await page.evaluate(()=>{ const s=state.brickSales[state.brickSales.length-1]; const P=brickParties().find(p=>p.type==='sup'); return { pt:s.partyType, name:s.customerName, bal:P&&P.balance, stock:brickStock(), d:debtors().find(x=>x.name==='بوبكر') }; });
+  log('credit sale to a supplier: party=sup, بوبكر now owes 3,000, stock 20, in debtors with kind brick: '+(r.pt==='sup' && r.name==='بوبكر' && r.bal===3000 && r.stock===20 && r.d && r.d.by.brick===3000)+' (expect true)');
+  // كشف حساب محمد بالرصيد الجاري وهاتفه
+  await page.evaluate(()=>openBrickStatement('cust','cu1')); await page.waitForTimeout(200);
+  r=await page.evaluate(()=>{ const t=document.getElementById('receiptContent').textContent; const rows=brickPartyRows('cust','cu1'); return { t, n:rows.length, last:rows[rows.length-1].balance }; });
+  log('statement: phone, sale, payment, ledger rows with running balance ending at 10,000: '+(/22334455/.test(r.t) && /بيع طوب/.test(r.t) && /دفعة على/.test(r.t) && /أخذ بلا فاتورة/.test(r.t) && r.n===4 && r.last===10000 && /10,000/.test(r.t))+' (expect true)');
+  await page.evaluate(()=>{ document.getElementById('receiptModal').style.display='none'; });
+  // تقارير دبو: تقرير اليوم والشهر وكشوف الحسابات
+  await page.click('[data-bksub="reports"]'); await page.waitForTimeout(300);
+  r=await page.evaluate(()=>{ const t=document.querySelector('main').textContent; const f=brickDayFin(ymd(new Date())); return { t, ok:/ربح اليوم/.test(t) && /ربح الشهر/.test(t) && /كشوف الحسابات/.test(t), sales:f.sales, stmts:document.querySelectorAll('[data-bk-stmt]').length, rows:document.querySelectorAll('[data-bk-day]').length, wa:/واتساب/.test(t), phone:/22334455/.test(t) }; });
+  log('reports tab: day + month + statements list with phones, today row and WhatsApp: '+(r.ok && r.sales===58000 && r.stmts>=2 && r.rows===1 && r.wa && r.phone)+' (expect true)');
+  await page.click('[data-bk-dayjump="-1"]'); await page.waitForTimeout(250);
+  log('yesterday has zero sales: '+(await page.evaluate(()=>brickDayFin(state.brickRepDay).sales===0 && state.brickRepDay<ymd(new Date())))+' (expect true)');
+  await page.click('[data-bk-dayjump="0"]'); await page.waitForTimeout(200);
+  log('report text for WhatsApp mentions profit: '+(await page.evaluate(()=>/الربح/.test(brickReportText(ymd(new Date())))))+' (expect true)');
   // 8) المزامنة: خلطة من جهاز آخر تُضاف ولا تضيع المحلية؛ النسخة السحابية تحوي مصفوفات دبو
-  r=await page.evaluate(()=>{ const remote=JSON.parse(JSON.stringify(cloudCopy())); const mine=state.brickBatches.length; remote.brickBatches=[{id:'rb1',no:'K2026-10-099',cementBags:1,sandLoads:1,bricks:150,workerPay:0,workerPaid:true,date:iso(new Date()),by:'أنفع',editedAt:iso(new Date())}]; applyRemote(remote); const cc=cloudCopy(); return { n:state.brickBatches.length, mine, stock:brickStock(), inCloud:['brickBatches','brickPurchases','brickSales','brickExpenses','brickCash'].every(k=>Array.isArray(cc[k])) }; });
-  log('merge keeps local batches and adds remote (stock 250): '+(r.n===r.mine+1 && r.stock===250 && r.inCloud)+' (expect true)');
+  r=await page.evaluate(()=>{ const remote=JSON.parse(JSON.stringify(cloudCopy())); const mine=state.brickBatches.length; remote.brickBatches=[{id:'rb1',no:'K2026-10-099',cementBags:1,sandLoads:1,bricks:150,workerPay:0,workerPaid:true,date:iso(new Date()),by:'أنفع',editedAt:iso(new Date())}]; applyRemote(remote); const cc=cloudCopy(); return { n:state.brickBatches.length, mine, stock:brickStock(), inCloud:['brickBatches','brickPurchases','brickSales','brickExpenses','brickCash','brickLedger'].every(k=>Array.isArray(cc[k])) }; });
+  log('merge keeps local batches and adds remote (stock 20+150=170): '+(r.n===r.mine+1 && r.stock===170 && r.inCloud)+' (expect true)');
   // إيصال بيع
   await page.evaluate(()=>openBrickReceipt(state.brickSales[1])); await page.waitForTimeout(200);
   log('brick receipt shows qty×price and remaining debt: '+(await page.evaluate(()=>{ const t=document.getElementById('receiptContent').textContent; return /100 طوبة × 100/.test(t) && /المتبقي/.test(t) && /6,000/.test(t); }))+' (expect true)');
