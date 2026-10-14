@@ -68,7 +68,7 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
 
   // ===== دبو: شراء 10 خنشات × 3,600 مدفوع، خلطة 300 طوبة بأجرة مدفوعة، بيع نقدي 100 × 120، قيد مال عبر الصندوق، مصروف
   await page.evaluate(()=>{ const d=iso(new Date());
-    state.brickPurchases.push({id:'bp1',no:'BP1',material:'cement',name:'إسمنت',unit:'خنشة',qty:10,unitCost:3600,total:36000,paid:true,paidAmount:36000,payMethod:'cash',date:d,editedAt:d}); addBrickCash('out',36000,'شراء','bp1','cash');
+    state.brickPurchases.push({id:'bp1',no:'BP1',material:'cement',name:'إسمنت',unit:'خنشة',qty:10,unitCost:3600,total:36000,paid:true,paidAmount:36000,payMethod:'cash',date:d,editedAt:d}); addBrickCash('out',36000,'شراء','bp1','cash'); state.brickPurchases.push({id:'bp2',no:'BP2',material:'sand',name:'تراب',unit:'فياج',qty:5,unitCost:15000,total:75000,paid:true,paidAmount:75000,opening:true,date:d,editedAt:d});
     state.brickBatches.push({id:'bb1',no:'K1',btype:'t15',cementBags:5,sandLoads:2,bricks:300,workerPay:6500,workerPaidAmt:6500,workerPaid:true,date:d,editedAt:d}); addBrickCash('out',6500,'أجرة','bb1','cash');
     state.brickSales.push({id:'bs1',no:'BS1',btype:'t15',partyType:null,partyId:null,customerName:'زبون نقدي',qty:100,unitPrice:120,total:12000,paidAmount:12000,paid:true,payMethod:'cash',date:d,editedAt:d}); addBrickCash('in',12000,'بيع','bs1','cash');
     state.brickLedger.push({id:'bl1',partyType:'cust',partyId:'cu1',dir:'for',kind:'cash',amount:2000,qty:0,note:'دفعة',cash:true,payMethod:'cash',date:d,editedAt:d}); addBrickCash('in',2000,'دفعة','bl1','cash');

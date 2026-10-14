@@ -2015,6 +2015,10 @@ function brickSeqNo(arr,prefix,dateISO){ const d=new Date(dateISO), pre=prefix+S
 function brickOut(x){ return x.cancelled?0:Math.max(0,(+x.total||0)-(+x.paidAmount||0)); }
 function brickWageOut(b){ return b.cancelled?0:Math.max(0,(+b.workerPay||0)-(+b.workerPaidAmt||0)); }
 function brickLive(arr){ return (arr||[]).filter(x=>!x.cancelled); }
+function brickMatShort(bags,loads,ex){ /* ما ينقص لخلطة: ex = خلطة قيد التعديل تُستثنى موادها */
+  const c=brickMatStock("cement")+(ex?+ex.cementBags||0:0), s=brickMatStock("sand")+(ex?+ex.sandLoads||0:0); const L=[];
+  if(bags>c) L.push("الإسمنت: المتاح "+fmt(Math.max(0,c))+" خنشة والمطلوب "+fmt(bags)); if(loads>s) L.push("التراب: المتاح "+fmt(Math.max(0,s))+" فياج والمطلوب "+fmt(loads)); return L; }
+function brickMatShortMsg(L){ return "⛔ لا يمكن الإنتاج قبل شراء المواد — "+L.join(" · ")+". سجّل الشراء في «المواد» أولًا"; }
 function brickMatStock(mat){ const bought=sum(brickLive(state.brickPurchases).filter(p=>p.material===mat),p=>+p.qty||0); const used=sum(brickLive(state.brickBatches),b=>mat==="cement"?(+b.cementBags||0):mat==="sand"?(+b.sandLoads||0):0); return bought-used; }
 function brickAvgCost(mat){ const L=brickLive(state.brickPurchases).filter(p=>p.material===mat); const q=sum(L,p=>+p.qty||0); return q>0?sum(L,p=>+p.total||0)/q:(+((brickCfg().lastCost||{})[mat])||0); }
 function brickStock(k){ const f=x=>!k||bType(x)===k; return sum(brickLive(state.brickBatches).filter(f),b=>+b.bricks||0)-sum(brickLive(state.brickSales).filter(f),s=>+s.qty||0)-sum(brickLive(state.brickLedger).filter(x=>x.kind==="bricks"&&f(x)),x=>(x.dir==="on"?1:-1)*(+x.qty||0)); }
@@ -2165,6 +2169,7 @@ function brickScreenBatches(){
           <div class="field"><label>🧱 عدد الطوب المنتج <span style="color:var(--unpaid)">*</span></label><input id="bkBricks" type="number" min="0" inputmode="numeric" placeholder="${(()=>{ const last=brickLive(state.brickBatches).filter(b=>!b.opening&&bType(b)===(_bkDraft.btype||brickTypes()[0].k)).sort((a,b)=>(b.date||"").localeCompare(a.date||""))[0]; return last?"آخر مرة "+fmt(last.bricks):"0"; })()}"></div>
           <div class="field"><label>👷 أجرة العمّال للخلطة</label><input id="bkWage" type="number" min="0" inputmode="decimal" value="${20*(+brickType(_bkDraft.btype||brickTypes()[0].k).wage||0)}"><div class="hint" id="bkWageHint">خنشات × ${money(+brickType(_bkDraft.btype||brickTypes()[0].k).wage||0)}</div></div>
         </div>
+        <div id="bkMatAvail" style="margin:4px 0 6px;padding:8px 12px;border-radius:12px;border:2px solid transparent;background:var(--chip);font-size:.88rem"></div>
         <div id="bkBatchCost" style="margin:4px 0 10px;padding:10px 12px;border-radius:12px;background:var(--chip);font-weight:800"></div>
         ${(()=>{ const P=(state.brickPorters||[]).slice().sort((a,b)=>((brickPersonRole(a)==="worker"?0:1)-(brickPersonRole(b)==="worker"?0:1))||(a.name||"").localeCompare(b.name||"","ar")); const sel=_bkDraft.batchWorker!=null?_bkDraft.batchWorker:(P[0]?P[0].id:""); return `<div class="field"><label>👷 العامل (تُضاف الأجرة إلى حسابه)</label><select id="bkWorker"><option value="">— بلا حساب (للمجموعة) —</option>${P.map(p=>`<option value="${p.id}" ${sel===p.id?"selected":""}>${_esc(p.name)}${p.phone?" · "+_esc(p.phone):""} — ${brickPersonBalance(p.id)>=0?"له "+money(brickPersonBalance(p.id)):"عليه سلفة "+money(-brickPersonBalance(p.id))}</option>`).join("")}<option value="__new" ${sel==="__new"?"selected":""}>➕ عامل جديد…</option></select></div>
         <div id="bkWorkerNewWrap" style="${sel==="__new"?"":"display:none"}"><div class="field"><label>اسم العامل</label><input id="bkWorkerName" type="text" placeholder="الاسم"></div><div class="field"><label>الهاتف</label><div class="phone-row"><select id="bkWorkerCountry" class="cc-select">${countryOpts()}</select><input id="bkWorkerPhone" class="phone-inp" type="tel" inputmode="numeric" maxlength="9" placeholder="رقم الهاتف"></div></div></div>`; })()}
@@ -2557,7 +2562,7 @@ function doBrickBatchSave(){
     const ex=(state.brickPorters||[]).find(x=>(ph&&normPhone(x.phone)===normPhone(ph))||(x.name||"").trim()===nm); if(ex) wid=ex.id; else { const pr={id:uid(),name:nm,phone:ph,country:document.getElementById("bkWorkerCountry").value,role:"worker",editedAt:iso(new Date())}; state.brickPorters.push(pr); wid=pr.id; } }
   const wkr=wid?brickPorter(wid):null; const workers=wkr?wkr.name:"", note=(document.getElementById("bkNote").value||"").trim(), paid=!!document.getElementById("bkWagePaid").checked;
   if(!(bricks>0)) return toast("أدخل عدد الطوب المنتج");
-  if(bags>brickMatStock("cement")) toast("⚠️ الإسمنت المسجّل أقل من المستعمل — سجّل الشراء لاحقًا");
+  const short=brickMatShort(bags,loads); if(short.length) return toast(brickMatShortMsg(short));
   const btype=(document.getElementById("bkType")||{}).value||brickTypes()[0].k;
   const d=iso(new Date()), b={id:uid(),no:brickSeqNo(state.brickBatches,"K",d),btype,cementBags:bags,sandLoads:loads,bricks,workerPay:wage,workerId:wkr?wkr.id:null,workerPaidAmt:paid?wage:0,workerPaid:paid||wage<=0,workers,note,date:d,by:currentUser,editedAt:d};
   if(paid&&wage>0){ b.payMethod=pmVal("bkBatchPm"); addBrickCash("out",wage,"أجرة خلطة "+b.no+(workers?" — "+workers:""),b.id,b.payMethod); }
@@ -2640,6 +2645,7 @@ function doBrickCashMove(type){
 function brickDelete(kind,id){
   const arrs={batch:"brickBatches",sale:"brickSales",pur:"brickPurchases",exp:"brickExpenses",cash:"brickCash",ledger:"brickLedger",load:"brickLoads"}; const key=arrs[kind]; if(!key) return;
   const x=(state[key]||[]).find(r=>r.id===id); if(!x) return;
+  if(kind==="pur"&&(x.material==="cement"||x.material==="sand")&&brickMatStock(x.material)-(+x.qty||0)<0) return toast("⛔ لا يمكن حذف هذا الشراء: "+(x.material==="cement"?"الإسمنت":"التراب")+" مستعمل في الخلطات (احذف أو عدّل الخلطة أولًا)");
   requireCode(()=>{ tomb(x.id); state[key]=state[key].filter(r=>r.id!==id);
     if(kind!=="cash"){ const lds=(state.brickLoads||[]).filter(l=>l.ref===id); lds.forEach(l=>tomb(l.id)); state.brickLoads=(state.brickLoads||[]).filter(l=>l.ref!==id); (state.brickCash||[]).filter(m=>lds.some(l=>l.id===m.ref)).forEach(m=>tomb(m.id)); state.brickCash=state.brickCash.filter(m=>!lds.some(l=>l.id===m.ref));
       const linked=(state.brickExpenses||[]).filter(e=>e.ref===id); linked.forEach(e=>tomb(e.id)); state.brickExpenses=(state.brickExpenses||[]).filter(e=>e.ref!==id); const refs=new Set([id,...linked.map(e=>e.id)]); (state.brickCash||[]).filter(m=>refs.has(m.ref)).forEach(m=>tomb(m.id)); state.brickCash=state.brickCash.filter(m=>!refs.has(m.ref)); }
@@ -2699,6 +2705,9 @@ function bindBrick(){
   const bwk=document.getElementById("bkWorker"); if(bwk) bwk.onchange=()=>{ _bkDraft.batchWorker=bwk.value; const w=document.getElementById("bkWorkerNewWrap"); if(w) w.style.display=bwk.value==="__new"?"":"none"; };
   const updBatchCost=()=>{ const box=document.getElementById("bkBatchCost"); if(!box) return; const g=id=>+((document.getElementById(id)||{}).value)||0; const bags=g("bkBags"), lds=g("bkLoads"), br=g("bkBricks"), w=g("bkWage");
     const cc=brickAvgCost("cement"), sc=brickAvgCost("sand"), mat=bags*cc+lds*sc, tot=mat+w;
+    const short=brickMatShort(bags,lds), sv=document.getElementById("bkBatchSave"), av=document.getElementById("bkMatAvail");
+    if(av){ av.innerHTML=`📦 المتاح الآن: 🪨 إسمنت <b>${fmt(Math.max(0,brickMatStock("cement")))}</b> خنشة · ⛰️ تراب <b>${fmt(Math.max(0,brickMatStock("sand")))}</b> فياج`+(short.length?`<div style="color:var(--unpaid);font-weight:800;margin-top:4px">⛔ ${short.join(" · ")} — اشترِ المواد أولًا من «🛒 المواد»</div>`:""); av.style.borderColor=short.length?"var(--unpaid)":"transparent"; }
+    if(sv) sv.style.opacity=short.length?.55:1;
     box.innerHTML=br>0?`💲 تكلفة الطوبة الآن: <span style="color:var(--wash);font-size:1.15em">${brickCostTxt(tot/br)} ${CUR}</span><div class="hint" style="font-weight:600;margin-top:4px">إسمنت ${fmt(bags)} × ${money(Math.round(cc))} + تراب ${fmt(lds)} × ${money(Math.round(sc))} + أجرة ${money(w)} = ${money(Math.round(tot))} ÷ ${fmt(br)} طوبة</div>`
       :`💲 تكلفة الخلطة: ${money(Math.round(tot))} ${CUR}<div class="hint" style="font-weight:600;margin-top:4px">اكتب عدد الطوب لتظهر تكلفة الطوبة الواحدة${!(cc>0)||!(sc>0)?" · سجّل أسعار شراء الإسمنت والتراب في «المواد»":""}</div>`; };
   ["bkBags","bkLoads","bkBricks","bkWage"].forEach(id=>{ const el=document.getElementById(id); if(el) el.addEventListener("input",updBatchCost); }); if(bt) bt.addEventListener("change",()=>setTimeout(updBatchCost,0)); updBatchCost();
@@ -2833,13 +2842,14 @@ function recEditSave(kind,id){
     x.partyType=pt?pt.type:null; x.partyId=pt?pt.id:null; x.customerId=pt&&pt.type==="cust"?pt.id:null; x.customerName=pt?pt.name:"زبون نقدي"; x.phone=pt?pt.phone:""; x.country=pt?pt.country:"222";
     if(x.paid) reSetPm(x,"brickCash"); reApplyDate(x,reV("date"),["brickCash"]); }
   else if(kind==="bpur"){ const q=reN("qty"), c=reN("cost"); if(!(q>0)) return "أدخل الكمية";
+    if((x.material==="cement"||x.material==="sand")&&brickMatStock(x.material)-(+x.qty||0)+q<0) return "لا يمكن: استُعمل من "+(x.material==="cement"?"الإسمنت":"التراب")+" في الخلطات أكثر من الكمية الجديدة (المتاح سيصبح "+fmt(brickMatStock(x.material)-(+x.qty||0)+q)+")";
     const newTotal=q*c, oldTotal=+x.total||0; if(x.opening){ x.paidAmount=newTotal; } else { err=rePaid(x,oldTotal,newTotal,"paidAmount","brickCash","out"); if(err) return err; }
     x.qty=q; x.unitCost=c; x.total=newTotal; x.paid=(+x.paidAmount||0)>=newTotal; x.note=(reV("note")||"").trim();
     if(!x.opening){ const sup=(reV("sup")||"").trim(); if(sup!==(x.supplier||"")){ const so=sup?ensureSupplier(sup):null; x.supplier=sup; x.supplierId=so?so.id:null; } if(x.paid) reSetPm(x,"brickCash"); }
     reApplyDate(x,reV("date"),["brickCash"]); brickLowCementCheck(); }
   else if(kind==="bbatch"){ const t=reV("type")||bType(x), br=reN("bricks"); if(!(br>0)) return "أدخل عدد الطوب";
     const left=bType(x)===t?brickStock(t)-((+x.bricks||0)-br):brickStock(bType(x))-(+x.bricks||0); if(left<0) return "لا يمكن: بِيع من هذا الطوب أكثر من الكمية الجديدة";
-    if(!x.opening){ const w=reN("wage"); err=rePaid(x,+x.workerPay||0,w,"workerPaidAmt","brickCash","out"); if(err) return err; x.workerPay=w; x.workerPaid=(+x.workerPaidAmt||0)>=w; x.cementBags=reN("bags"); x.sandLoads=reN("loads"); x.workers=(reV("workers")||"").trim(); }
+    if(!x.opening){ const sh=brickMatShort(reN("bags"),reN("loads"),x); if(sh.length) return brickMatShortMsg(sh); const w=reN("wage"); err=rePaid(x,+x.workerPay||0,w,"workerPaidAmt","brickCash","out"); if(err) return err; x.workerPay=w; x.workerPaid=(+x.workerPaidAmt||0)>=w; x.cementBags=reN("bags"); x.sandLoads=reN("loads"); x.workers=(reV("workers")||"").trim(); }
     x.btype=t; x.bricks=br; x.note=(reV("note")||"").trim(); reApplyDate(x,reV("date"),["brickCash"]); brickLowCementCheck(); }
   else if(kind==="bload"){ const a=reN("amount"); if(!(a>0)) return "أدخل المبلغ"; err=rePaid(x,+x.amount||0,a,"paidAmount","brickCash","out"); if(err) return err;
     x.amount=a; x.paid=(+x.paidAmount||0)>=a; x.qty=reN("qty"); x.kind=reV("lk")||x.kind; x.porterId=reV("porter")||x.porterId; x.note=(reV("note")||"").trim(); if(x.paid) reSetPm(x,"brickCash"); reApplyDate(x,reV("date"),["brickCash"]); }
@@ -5453,6 +5463,18 @@ const LS_KEY="sadaqa_laundry_v1";
 const CLOUD_OMIT=["tab","expSub","carpetFilter","cpSearch","custSearch","expSearch","carSearch","lndSearch","lndFilter","storeSub","storeProdSearch","storeSaleSearch","storeCustSearch","storeSaleFilter","contactsSub","contactSearch","supplierSearch","debtSort","debtView","debtKind","secDebtOpen","brickSub","brickSearch","brickRepDay","brickRepMonth","dateFrom","dateTo","dark","palette"];
 let _applyingRemote=false, _pushT=null;
 let L_pending_push=false;
+/* (2.36.0) جهاز لا يصل للسحابة يجب أن يقول ذلك بوضوح — كانت تسجيلات المشرف تبقى على هاتفه فقط دون أي تنبيه */
+let _unsyncedSince=0; const SYNC_WARN_MS=90*1000;
+function syncWarnUpdate(){ const el=document.getElementById("syncWarn"); if(!el) return;
+  if(navigator.webdriver && !window._forceSyncWarn){ el.style.display="none"; return; }
+  const late=_unsyncedSince && Date.now()-_unsyncedSince>SYNC_WARN_MS && unlocked;
+  if(!late){ el.style.display="none"; return; }
+  const mins=Math.max(1,Math.round((Date.now()-_unsyncedSince)/60000));
+  el.querySelector("#syncWarnTxt").textContent=(!window.cloudReady?"⚠️ هذا الجهاز غير متصل بالسحابة":"⚠️ لم تُحفظ تسجيلات هذا الجهاز في السحابة منذ "+mins+" دقيقة")
+    +" — ما تسجّله هنا لا يظهر على الأجهزة الأخرى."+(_lastPushErr&&_lastPushErr.msg?" ("+_lastPushErr.msg.slice(0,80)+")":(!navigator.onLine?" (لا يوجد إنترنت)":""));
+  el.style.display="flex"; }
+function syncWarnRetry(){ toast("🔁 جارٍ إعادة المحاولة…"); if(window.cloudReady){ try{ cloudResync(false); }catch(e){} } else { try{ saveLocal(); }catch(e){} setTimeout(()=>location.reload(),400); } }
+setInterval(syncWarnUpdate, 15000);
 // ===== الصور (2.13.0): تُحفظ في IndexedDB لا في localStorage ولا في السحابة =====
 // كل حقل صورة في السجلات: المصفوفة، اسم الحقل، بادئة المفتاح في مخزن الصور.
 const PHOTO_FIELDS=[
@@ -5511,6 +5533,12 @@ function saveLocal(){
   try{ toast("⚠️ ذاكرة الجهاز ممتلئة — لم يُحفظ التسجيل على هذا الجهاز!"); }catch(_){}
   return false;
 }
+/* بصمة ثابتة للمحتوى المُزامَن (ترتيب المفاتيح والسجلات لا يهم، وتُهمل _savedAt) — لمعرفة هل تغيّر شيء فعلًا (2.36.0) */
+const SIG_SKIP={_savedAt:1,ts:1};
+function syncSig(o){ const norm=(v)=>{ if(Array.isArray(v)){ const a=v.map(norm); if(v.length&&v.every(x=>x&&typeof x==="object"&&!Array.isArray(x)&&x.id!=null)) a.sort((x,y)=>String(x.id)<String(y.id)?-1:String(x.id)>String(y.id)?1:0); return a; }
+    if(v&&typeof v==="object"){ const r={}; Object.keys(v).sort().forEach(k=>{ if(SIG_SKIP[k]||v[k]==null) return; const n=norm(v[k]); if(n&&typeof n==="object"&&!Object.keys(n).length) return; r[k]=n; }); return r; } return v; };
+  try{ return strHash(JSON.stringify(norm(o||{}))); }catch(e){ return "x"+Date.now(); } }
+let _sigSkips=0; // عدد المرات التي تجنّبنا فيها رفعًا/رسمًا بلا داعٍ (يظهر في صحة البيانات)
 function cloudCopy(){
   const c={}; for(const k in state){ if(CLOUD_OMIT.includes(k)) continue; c[k]=state[k]; }
   const j=JSON.parse(JSON.stringify(c));
@@ -5522,7 +5550,7 @@ function cloudCopy(){
 }
 function verCmp(a,b){ const A=String(a||"0").split(".").map(x=>+x||0), B=String(b||"0").split(".").map(x=>+x||0); for(let i=0;i<3;i++){ if((A[i]||0)!==(B[i]||0)) return (A[i]||0)>(B[i]||0)?1:-1; } return 0; }
 let _cdEdit=null, _cdConfirmOpen=false;
-function save(){ saveLocal(); if(_cdEdit && !_cdConfirmOpen){ setTimeout(cdAfterSave,0); } updateCloudBtn("pending"); L_pending_push=true; if(window.cloudReady && !_applyingRemote){ clearTimeout(_pushT); _pushT=setTimeout(()=>{ try{ window.cloudPush(cloudCopy()); L_pending_push=false; }catch(e){ updateCloudBtn("offline"); } }, 600); } }
+function save(){ saveLocal(); if(!_unsyncedSince) _unsyncedSince=Date.now(); if(_cdEdit && !_cdConfirmOpen){ setTimeout(cdAfterSave,0); } updateCloudBtn("pending"); L_pending_push=true; if(window.cloudReady && !_applyingRemote){ clearTimeout(_pushT); _pushT=setTimeout(()=>{ try{ window.cloudPush(cloudCopy()); L_pending_push=false; }catch(e){ updateCloudBtn("offline"); } }, 600); } }
 function load(){ try{ const d=localStorage.getItem(LS_KEY); if(d) Object.assign(state, JSON.parse(d)); }catch(e){} }
 const SYNC_ARRAYS=["carOps","carpetOrders","laundryOrders","expenses","meters","workers","users","managers","storeProducts","storeSales","storePurchases","storeCustomers","storeCash","storeDebts","brickBatches","brickPurchases","brickSales","brickExpenses","brickCash","brickLedger","brickPorters","brickLoads","suppliers","closings","recurring","activity","logins","closedDayEdits"];
 function _editedAtOf(id){ for(const k of SYNC_ARRAYS){ const r=(state[k]||[]).find(x=>x&&x.id===id); if(r) return +new Date(r.editedAt||0)||0; } return 0; }
@@ -5607,6 +5635,9 @@ function _custTs(c){ return Math.max(+new Date((c&&c.editedAt)||0)||0, +new Date
 function mergeCustomer(l,r){ if(!l) return r; if(!r) return l; const tl=_custTs(l), tr=_custTs(r);
   if(tl!==tr) return tl>tr?l:r; return ((+l.totalWashes||0)+(+l.stamps||0)) >= ((+r.totalWashes||0)+(+r.stamps||0)) ? l : r; }
 function applyRemote(remote){
+  // ⚠️ (2.36.0) كان كل استلام يُعيد الرفع ويُعيد الرسم حتى بلا تغيير: الرفع يولّد استلامًا جديدًا ← حلقة لا تنتهي
+  // (الشاشة «ترمش» عند فتح جهازين). الآن: نرفع فقط إن كان الدمج أضاف شيئًا ليس في السحابة، ونرسم فقط إن تغيّر شيء هنا.
+  const remoteSig=syncSig(stripPhotos(JSON.parse(JSON.stringify(Object.fromEntries(Object.entries(remote||{}).filter(([k])=>!CLOUD_OMIT.includes(k))))))), localSig=syncSig(cloudCopy());
   _applyingRemote=true;
   const unmigrated = (remote.codesV!==3);
   const L={ carOps:state.carOps||[], carpetOrders:state.carpetOrders||[], expenses:state.expenses||[],
@@ -5675,17 +5706,18 @@ function applyRemote(remote){
   state.lock={enabled:true, pin:(state.lock&&state.lock.pin)||"0707"};
   if(state.adMsg==="🎁 اجمع 5 غسلات واحصل على غسلة مجانية!\nنغسل السجاد والموكيت والأفرشة أيضًا 🧼\nشاركنا مع أصدقائك 🙌"){ state.adMsg=""; migChanged=true; }
   if(typeof ensureCarNos==="function") ensureCarNos();
-  saveLocal(); applyTheme(); applyLock(); render();
-  maybeAlertNewActivity();
+  const mergedSig=syncSig(cloudCopy()); window._lastMergeSame=(mergedSig===remoteSig);
+  if(mergedSig!==localSig || !window._remoteApplied){ saveLocal(); applyTheme(); applyLock(); render(); maybeAlertNewActivity(); } else { _sigSkips++; }
   _applyingRemote=false;
   if(!window._remoteApplied){ window._remoteApplied=true; setTimeout(()=>{ try{ takeBackup(false); }catch(e){} }, 8000); }
   try{ if(applyRecurring()) render(); }catch(e){}
   // Always push merged result back so cloud stays current (إلا إن كان الدمج نفسه جزءًا من عملية حفظ)
-  if(!_mergingForPush){ try{ if(window.cloudReady) window.cloudPush(cloudCopy()); }catch(e){} }
+  if(!_mergingForPush && mergedSig!==remoteSig){ try{ if(window.cloudReady) window.cloudPush(cloudCopy()); }catch(e){} }
 }
 let _mergingForPush=false;
 /* يُستدعى من معاملة الحفظ: يدمج نسخة الخادم في بيانات هذا الجهاز (نفس قواعد الدمج) ويُرجع الاتحاد للكتابة */
-window.mergeForPush=function(remote){ _mergingForPush=true; try{ applyRemote(remote); } finally{ _mergingForPush=false; } _lastPullOk=Date.now(); return cloudCopy(); };
+/* يُرجع null إن كانت السحابة مطابقة لهذا الجهاز بعد الدمج (لا داعي للكتابة) */
+window.mergeForPush=function(remote){ _mergingForPush=true; try{ applyRemote(remote); } finally{ _mergingForPush=false; } _lastPullOk=Date.now(); if(window._lastMergeSame){ _sigSkips++; return null; } return cloudCopy(); };
 function openWorkerStatement(id){
   const w=state.workers.find(x=>x.id===id); if(!w) return;
   const tx=[]
@@ -5753,7 +5785,7 @@ window.onCloudReady=()=>{ const el=document.getElementById("cloudStat"); if(el){
 window.onCloudEmpty=()=>{ try{ if(window.cloudReady) window.cloudPush(cloudCopy()); }catch(e){} };
 window.onCloudError=()=>{ const el=document.getElementById("cloudStat"); if(el){ el.textContent="غير متصل (يعمل محليًا)"; el.style.color="var(--muted)"; } updateCloudBtn("offline"); };
 let _lastPushOk=0, _lastPushErr=null;
-window.onCloudPushOk=()=>{ _lastPushOk=Date.now(); _lastPushErr=null; const el=document.getElementById("cloudStat"); if(el){ el.textContent="متصل ☁ — آخر مزامنة "+timeStr(new Date()); el.style.color="var(--ready)"; } updateCloudBtn("synced"); };
+window.onCloudPushOk=()=>{ _lastPushOk=Date.now(); _lastPushErr=null; _unsyncedSince=0; syncWarnUpdate(); const el=document.getElementById("cloudStat"); if(el){ el.textContent="متصل ☁ — آخر مزامنة "+timeStr(new Date()); el.style.color="var(--ready)"; } updateCloudBtn("synced"); };
 let _lastPushErrToast=0;
 let _pushRetryT=null;
 window.onCloudPushErr=(e)=>{ _lastPushErr={ts:Date.now(),msg:(e&&e.message)||String(e||"")}; clearTimeout(_pushRetryT); _pushRetryT=setTimeout(()=>{ try{ if(window.cloudReady) window.cloudPush(cloudCopy()); }catch(_){} }, 20000); const el=document.getElementById("cloudStat"); if(el){ el.textContent="⚠️ فشل حفظ البيانات في السحابة — لم تُحفظ! "+((e&&e.message)||""); el.style.color="var(--unpaid)"; } updateCloudBtn("offline"); const now=Date.now(); if(now-_lastPushErrToast>8000){ _lastPushErrToast=now; try{ toast("⚠️ تعذّر حفظ البيانات في السحابة — تحقّق من الاتصال"); }catch(_){} } };
@@ -7125,6 +7157,7 @@ setTimeout(()=>{ if(!window.cloudReady){ const el=document.getElementById("cloud
       const run = (FS.runTransaction && window.mergeForPush)
         ? FS.runTransaction(db, async (tx) => { const snap = await tx.get(ref); let out = data;
             if (snap.exists()) { try { out = window.mergeForPush(JSON.parse(snap.data().data)); } catch(e){ console.warn("merge-before-push", e); out = data; } }
+            if (out === null) return; // السحابة مطابقة: لا كتابة (وإلا وُلّد استلام جديد ← حلقة)
             tx.set(ref, { data: JSON.stringify(out), ts: Date.now() }); })
         : FS.setDoc(ref, { data: JSON.stringify(data), ts: Date.now() });
       return run.then(()=>{ if(window.onCloudPushOk) window.onCloudPushOk(); }).catch((e)=>{ if(window.onCloudPushErr) window.onCloudPushErr(e); });
@@ -7161,6 +7194,10 @@ setTimeout(()=>{ if(!window.cloudReady){ const el=document.getElementById("cloud
 </script>
 
 <!-- Update banner (shown when a new version is ready) -->
+<div id="syncWarn" style="display:none;position:fixed;left:12px;right:12px;top:8px;z-index:9998;background:#b45309;color:#fff;border-radius:12px;padding:10px 12px;box-shadow:0 8px 28px rgba(0,0,0,.28);align-items:center;gap:10px;font-weight:700;font-size:.82rem">
+  <span id="syncWarnTxt" style="flex:1"></span>
+  <button type="button" id="syncWarnBtn" onclick="syncWarnRetry()" style="background:#fff;color:#b45309;border:0;border-radius:10px;padding:8px 10px;font-weight:800;font-family:inherit;white-space:nowrap">🔁 أعد المحاولة</button>
+</div>
 <div id="storageWarn" style="display:none;position:fixed;left:12px;right:12px;top:8px;z-index:9999;background:#c0392b;color:#fff;border-radius:12px;padding:10px 12px;box-shadow:0 8px 28px rgba(0,0,0,.28);align-items:center;gap:10px;font-weight:700;font-size:.85rem">
   <span style="flex:1">⚠️ ذاكرة هذا الجهاز ممتلئة: التسجيلات لا تُحفظ عليه. افتح الإعدادات ▸ «🩺 صحة البيانات».</span>
   <button onclick="this.parentNode.style.display='none'" style="background:transparent;color:#fff;border:1px solid rgba(255,255,255,.6);border-radius:10px;padding:6px 10px;cursor:pointer">إخفاء</button>
@@ -7174,7 +7211,7 @@ setTimeout(()=>{ if(!window.cloudReady){ const el=document.getElementById("cloud
 <!-- PWA: service-worker registration + update/install wiring -->
 <script>
 (function(){
-  var APP_VERSION = "2.35.0";
+  var APP_VERSION = "2.36.0";
   window.APP_VERSION = APP_VERSION;
   function $(id){ return document.getElementById(id); }
   // سجّل إصدار هذا الجهاز في الحالة المتزامنة (ليُنبَّه الجهاز القديم)
