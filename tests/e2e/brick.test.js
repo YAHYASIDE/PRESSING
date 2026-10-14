@@ -29,7 +29,7 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
 
   // 2) خلطة: 2 خنشة + 1 فياج → 300 طوبة، أجرة 3,000 مدفوعة
   await page.click('[data-bksub="batches"]'); await page.waitForTimeout(250);
-  await page.fill('#bkBags','2'); await page.fill('#bkLoads','1'); await page.fill('#bkBricks','300'); await page.fill('#bkWage','3000'); await page.fill('#bkWorkers','سيدي وعمر'); await page.click('#bkBatchSave'); await page.waitForTimeout(300);
+  await page.fill('#bkBags','2'); await page.fill('#bkLoads','1'); await page.fill('#bkBricks','300'); await page.fill('#bkWage','3000'); await page.check('#bkWagePaid'); await page.click('#bkBatchSave'); await page.waitForTimeout(300);
   r=await page.evaluate(()=>({ b:state.brickBatches[0], stock:brickStock(), cement:brickMatStock('cement'), sand:brickMatStock('sand'), box:brickCashBalance() }));
   log('batch: 300 bricks in stock, cement 8, sand 3, wage 3,000 paid (box −23,000): '+(r.b.bricks===300 && r.b.workerPaid && r.stock===300 && r.cement===8 && r.sand===3 && r.box===-23000)+' (expect true)');
   // خلطة ثانية بأجرة غير مدفوعة
