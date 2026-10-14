@@ -418,6 +418,13 @@
   (خلطات/مشتريات/مبيعات/مصاريف/صندوق/قيود/حمل) مع tombstones؛ **يبقى** `brickCfg` (الأنواع وأسعار البيع والأجرة والحمل)،
   `brickCfg.lastCost` (آخر سعر شراء للإسمنت/التراب — يُحفظ قبل المسح، ويُستعمل بديلًا في `brickAvgCost` ويملأ `#bkPurCost`)،
   الزبائن والموردون، والعمّال/الحمّالون. `applyRemote` صار يدمج `brickCfg` مفتاحًا مفتاحًا (و`lastCost`/`loadRate`) بدل الاستبدال.
+- **رئيس العمّال وحسابه مع السلف (2.35.0):** الشخص في `brickPorters` له صفة `role:"worker"|"porter"` (`BRICK_PROLE`: 👷 رئيس العمّال
+  / 🚚 حمّال؛ `brickPersonRole` يستنتجها للقديم: له خلطات = worker). نتعامل مع **رئيس عمّال واحد** يُضاف له أجر كل خلطة (`workerId`).
+  الدفع `brickPorterSettle` بلا حدّ أعلى: ما زاد عن المستحق يُسجَّل **سلفة عليه** = سجل `brickLoads` بـ`kind:"advance"` (`amount`,
+  `usedAmount`) + حركة صادر «سلفة لـ …». السلفة **ليست تكلفة** (`brickLoadOut`/`portersCost`/`porterDues` تستثنيها)؛ `brickPersonAdvance`
+  = المتبقي منها، و`brickPersonBalance(id)` = `brickPorterDues − brickPersonAdvance` (موجب = له علينا، سالب = عليه لنا). بعد حفظ خلطة
+  أو حمل يُخصم المتبقي من السلفة تلقائيًا (`brickApplyAdvance`، بلا حركة صندوق). البطاقة تعرض الصفة والرصيد، الكشف يعرض السلف
+  و«خُصم …»، و«الديون والحسابات» تعرض «عليه سلفة …». الاختبار `tests/e2e/brick_foreman.test.js`.
   الاختبار `tests/e2e/brick_worker_reset.test.js`.
 - **ما يُكتب لا يختفي + الفاتورة والربح عند البيع (2.32.0):** كانت الأزرار التي تُعيد الرسم (نقدي/آجل، النقل، نوع المادة، عليه/له…)
   والمزامنة تمسح الحقول. الآن **في كل الشاشات** `_formKeep`: كل حقل له `id` داخل `#main` يُحفظ عند `input/change` (`keepField`)
