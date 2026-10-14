@@ -400,6 +400,15 @@
   المبلغ تلقائي = الكمية × السعر (`brickCfg.loadRate[kind]` يُتذكَّر)؛ دفع فوري من الصندوق أو مستحق؛ «💵 دفع له» `brickPorterSettle`
   (`_storePayCtx.kind="brickPorter"`) وكشف `openPorterStatement`؛ أجور الحمل تدخل `brickFin.wages` (تكلفة) و`porterDues`،
   وتظهر في «الديون والحسابات»؛ التعديل `bload` والحذف `load:`. الاختبار `tests/e2e/brick_porters.test.js`.
+- **سعر البيع + حمل الطوبة التلقائي + أرقام لاتينية في كل الحقول (2.31.0):** لوحة الأنواع صارت بطاقات (لا جدول يُقصّ) لكل نوع:
+  💰 سعر البيع (`price`)، 👷 أجرة الخنشة (`wage`)، 🚚 **حمل الطوبة الواحدة** (`load`)، 💲 التكلفة الحالية. عند **البيع** إن كان للنوع
+  `load>0` يظهر `#bkSalePorter` (الحمّال، يُتذكّر `_bkDraft.salePorter`، أو «بلا حمل»): يُنشأ عمل حمل في `brickLoads` بـ`ref`=البيع،
+  `amount`=العدد × حمل الطوبة، **غير مدفوع** (مستحق للحمّال يُدفع لاحقًا). `brickSaleLoad(s)` يُطرح من `brickSaleProfit`، والبطاقة
+  والتلميح الحيّ يعرضانه. تعديل البيع يحدّث الحمل غير المدفوع، وحذفه يحذف الحمل وحركاته. **الأرقام:** بعض الهواتف تعرض
+  `input[type=number]` بأرقام عربية مهما كان `lang`، فصار `latinInputs` يحوّل كل حقل رقمي إلى `type=text` + `inputmode=decimal`
+  + `data-num`، ومستمع `input` عام (capture) يحوّل الأرقام العربية/الفارسية إلى لاتينية فورًا (`toLatinDigits`، يشمل `type=tel`).
+  **لا تكتب `input[type=number]` في محدِّدات الكود/الاختبارات؛ استخدم `[data-num]`.** `fmt` لا يُظهر «-0». الاختبار
+  `tests/e2e/brick_load_auto.test.js` (بلغة ar-EG).
 - **تعديل أي عملية سابقة (2.29.0):** محرّر موحّد في `#editModal` (`_editCtx.type="gen"`) — `REC_EDIT` (exp, ssale, spur,
   sdebt, scash, bsale, bpur, bbatch, bexp, bledger, bcash) + `openRecEdit(kind,id)`/`recEditSave` وحقول `reF` (`re_*`)، والزر
   `recEditBtn(kind,id)` = `[data-rec-edit="kind:id"]` (مالك/مدير فقط؛ يُربط في `bindScreen`؛ المصروف يمرّ بـ`gateRec`). القواعد:

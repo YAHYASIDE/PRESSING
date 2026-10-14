@@ -1226,7 +1226,7 @@ function orderNo(seq,dateISO){
 }
 
 /* ================= Helpers ================= */
-const fmt=(n)=>(Math.round(n*100)/100).toLocaleString("en-US");
+const fmt=(n)=>((Math.round(n*100)/100)||0).toLocaleString("en-US");
 const money=(n)=>fmt(n);
 const isToday=(d)=>{const x=new Date(d);return x.toDateString()===now.toDateString();};
 const isMonth=(d)=>{const x=new Date(d);return x.getMonth()===now.getMonth()&&x.getFullYear()===now.getFullYear();};
@@ -2003,7 +2003,8 @@ function brickLowCementCheck(){ const c=brickCfg(), lim=+c.lowCement>0?+c.lowCem
 function brickBatchCost(b){ if(!b||b.opening||!(+b.bricks>0)) return 0; return ((+b.cementBags||0)*brickAvgCost("cement")+(+b.sandLoads||0)*brickAvgCost("sand")+(+b.workerPay||0))/(+b.bricks); }
 function brickTypeCost(k){ const L=brickLive(state.brickBatches).filter(b=>!b.opening&&bType(b)===k&&+b.bricks>0); const n=sum(L,b=>+b.bricks||0); return n>0?sum(L,b=>brickBatchCost(b)*(+b.bricks||0))/n:0; }
 function brickCostTxt(v){ return v>0?money(Math.round(v*100)/100):"—"; }
-function brickSaleProfit(x){ const c=brickTypeCost(bType(x)); if(!(c>0)) return null; return ((+x.unitPrice||0)-c)*(+x.qty||0); }
+function brickSaleLoad(x){ return sum(brickLive(state.brickLoads).filter(l=>l.ref===x.id),l=>+l.amount||0); }
+function brickSaleProfit(x){ const c=brickTypeCost(bType(x)); if(!(c>0)) return null; return ((+x.unitPrice||0)-c)*(+x.qty||0)-brickSaleLoad(x); }
 function brickRequirePhone(pt,inputId){ if(!pt||pt.phone) return null; const el=document.getElementById(inputId); const ph=el?(el.value||"").trim():"";
   if(!ph) return "أدخل رقم هاتف «"+pt.name+"» (إلزامي في الدين)"; if(!validPhone(ph)) return "رقم الهاتف يجب أن يكون 8 أرقام";
   const rec=pt.type==="sup"?supplierById(pt.id):storeCust(pt.id); if(rec){ rec.phone=ph; rec.editedAt=iso(new Date()); } pt.phone=ph; return null; }
@@ -2033,7 +2034,7 @@ function brickFin(F){
   const salesPaid=sum(S,s=>Math.min(+s.total||0,+s.paidAmount||0)), newDebts=sum(S,s=>brickOut(s));
   const pm={}; PAY_METHODS.forEach(m=>pm[m.k]={inc:0,out:0,net:0}); (state.brickCash||[]).forEach(m=>{ if(!F(m.date)) return; const k=normPM(m.payMethod); if(m.type==="in") pm[k].inc+=+m.amount||0; else pm[k].out+=+m.amount||0; }); PAY_METHODS.forEach(m=>pm[m.k].net=pm[m.k].inc-pm[m.k].out);
   return {nBatches:B.length,nSales:S.length,produced,sold,bags,loads,purchases,wages,expenses,sales,salesPaid,newDebts,cost,profit,matUsed,prodCost,costPerBrick,pm,
-    custDebt:sum(brickParties().filter(x=>x.balance>0),x=>x.balance), supDebt:-sum(brickParties().filter(x=>x.balance<0),x=>x.balance), wageDues:sum(brickLive(state.brickBatches),b=>brickWageOut(b))+sum(brickLive(state.brickLoads),x=>brickLoadOut(x)), porterDues:sum(brickLive(state.brickLoads),x=>brickLoadOut(x)),
+    custDebt:sum(brickParties().filter(x=>x.balance>0),x=>x.balance), supDebt:Math.abs(sum(brickParties().filter(x=>x.balance<0),x=>x.balance)), wageDues:sum(brickLive(state.brickBatches),b=>brickWageOut(b))+sum(brickLive(state.brickLoads),x=>brickLoadOut(x)), porterDues:sum(brickLive(state.brickLoads),x=>brickLoadOut(x)),
     stock:brickStock(), cement:brickMatStock("cement"), sand:brickMatStock("sand"), box:brickCashBalance()};
 }
 function brickPeriodTxt(){ const t=ymd(new Date()); return (state.dateFrom===state.dateTo)?(state.dateFrom===t?"اليوم":state.dateFrom):`${state.dateFrom} ← ${state.dateTo}`; }
@@ -2087,11 +2088,20 @@ function screenBrick(){
 }
 function brickScreenHome(){ return brickStockByTypeHTML()+brickScreenHomeBase()+(currentRole!=="worker"?brickTypesAdminHTML():""); }
 function brickStockByTypeHTML(){ return `<div class="panel" style="margin-bottom:12px"><h3>🧱 مخزون الطوب حسب النوع</h3><div class="store-stat">${brickTypes().map(t=>`<div class="s"><div class="v" style="color:var(--brand)">${fmt(brickStock(t.k))}</div><div class="l">${_esc(t.name)}${+t.price?" · بيع "+money(t.price):""}${brickTypeCost(t.k)>0?" · تكلفة "+brickCostTxt(brickTypeCost(t.k)):""}</div></div>`).join("")}</div></div>`; }
-function brickTypesAdminHTML(){ const c=brickCfg(); return `<details class="panel" style="margin-top:12px"${_bkDraft.typesOpen?" open":""} id="bkTypesBox"><summary style="font-weight:800;cursor:pointer">⚙️ أنواع الطوب والأسعار والأجرة</summary>
-  <div class="tbl-wrap" style="margin-top:8px"><table class="tbl"><thead><tr><th>النوع</th><th>سعر الطوبة</th><th>أجرة الخنشة</th></tr></thead><tbody>${brickTypes().map(t=>`<tr><td><input data-bkt-name="${t.k}" type="text" value="${_esc(t.name)}" style="min-width:110px"></td><td><input data-bkt-price="${t.k}" type="number" min="0" value="${+t.price||""}" placeholder="0" style="max-width:110px"></td><td><input data-bkt-wage="${t.k}" type="number" min="0" value="${+t.wage||0}" style="max-width:110px"></td></tr>`).join("")}</tbody></table></div>
-  <div class="row2" style="margin-top:8px"><div class="field"><label>➕ نوع جديد</label><input id="bkTypeNew" type="text" placeholder="مثال: 10 بريك"></div><div class="field"><label>⚠️ نبّهني إن قلّ الإسمنت عن (خنشة)</label><input id="bkLowCement" type="number" min="0" value="${+c.lowCement>0?+c.lowCement:20}"></div></div>
+function brickTypesAdminHTML(){ const c=brickCfg(); return `<details class="panel" style="margin-top:12px"${_bkDraft.typesOpen?" open":""} id="bkTypesBox"><summary style="font-weight:800;cursor:pointer">⚙️ أنواع الطوب: سعر البيع والأجرة والحمل</summary>
+  ${brickTypes().map(t=>`<div class="bkt-card" style="border:1px solid var(--line);border-radius:12px;padding:10px;margin-top:10px">
+    <div class="field" style="margin-bottom:6px"><label>النوع</label><input data-bkt-name="${t.k}" type="text" value="${_esc(t.name)}"></div>
+    <div class="row2">
+      <div class="field"><label>💰 سعر البيع (للطوبة)</label><input data-bkt-price="${t.k}" type="number" min="0" value="${+t.price||""}" placeholder="0"></div>
+      <div class="field"><label>👷 أجرة العامل (للخنشة)</label><input data-bkt-wage="${t.k}" type="number" min="0" value="${+t.wage||0}"></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label>🚚 حمل الطوبة الواحدة</label><input data-bkt-load="${t.k}" type="number" min="0" value="${+t.load||""}" placeholder="0"></div>
+      <div class="field"><label>💲 التكلفة الحالية</label><div class="hint" style="padding:10px 0;font-weight:800">${brickTypeCost(t.k)>0?brickCostTxt(brickTypeCost(t.k)):"— بعد أول خلطة"}</div></div>
+    </div></div>`).join("")}
+  <div class="row2" style="margin-top:10px"><div class="field"><label>➕ نوع جديد</label><input id="bkTypeNew" type="text" placeholder="مثال: 10 بريك"></div><div class="field"><label>⚠️ نبّهني إن قلّ الإسمنت عن (خنشة)</label><input id="bkLowCement" type="number" min="0" value="${+c.lowCement>0?+c.lowCement:20}"></div></div>
   <button class="btn-primary" id="bkTypesSave" style="width:100%">💾 حفظ الأنواع</button>
-  <div class="hint" style="margin-top:6px">الأجرة في الخلطة = عدد خنشات الإسمنت × أجرة الخنشة لنوعها. سعر الطوبة يُملأ تلقائيًا في البيع. التنبيه يصل إلى Telegram.</div></details>`; }
+  <div class="hint" style="margin-top:6px">سعر البيع يُملأ تلقائيًا في البيع. أجرة الخلطة = الخنشات × أجرة الخنشة. حمل الطوبة يُحسب تلقائيًا عند البيع (العدد × حمل الطوبة) ويُسجَّل مستحقًّا للحمّال الذي تختاره. التكلفة الحالية = (مواد + أجرة) ÷ الطوب من الخلطات.</div></details>`; }
 function brickScreenHomeBase(){
   const F=(d)=>inRange(d), f=brickFin(F), pt=brickPeriodTxt();
   const stock=brickStock(), cement=brickMatStock("cement"), sand=brickMatStock("sand");
@@ -2174,7 +2184,7 @@ function brickScreenSales(){
       ${s.phone?`<div class="meta">📞 ${E(s.phone)}</div>`:""}
       <div class="meta">${E(s.no)} · ${ymd(s.date)} ${timeStr(s.date)} · ${E(s.by||"")}</div>
       <div class="price" style="color:${out>0?'var(--unpaid)':'var(--ready)'}">${money(s.total)} ${CUR}</div>
-      ${(()=>{ const c=brickTypeCost(bType(s)), pf=brickSaleProfit(s); return c>0?`<div class="meta" style="font-weight:800">💲 تكلفة الطوبة ${brickCostTxt(c)} · البيع ${money(s.unitPrice)} · <span style="color:${pf<0?'var(--unpaid)':'var(--ready)'}">الربح ${money(Math.round(pf))}</span></div>`:""; })()}
+      ${(()=>{ const c=brickTypeCost(bType(s)), pf=brickSaleProfit(s); const ld=brickSaleLoad(s); return c>0?`<div class="meta" style="font-weight:800">💲 تكلفة الطوبة ${brickCostTxt(c)} · البيع ${money(s.unitPrice)}${ld?` · 🚚 حمل ${money(ld)}`:""} · <span style="color:${pf<0?'var(--unpaid)':'var(--ready)'}">الربح ${money(Math.round(pf))}</span></div>`:""; })()}
       <div class="meta">${E(brickTypeName(s))}: ${fmt(s.qty)} طوبة × ${money(s.unitPrice)}${s.transport?` · 🚚 نقل ${money(s.transport)} ${s.transportBy==="cust"?"على الزبون":"علينا"}`:""}${out>0&&out<(+s.total||0)?` · متبقٍ <b>${money(out)}</b>`:""}</div>
       ${s.note?`<div class="meta">${E(s.note)}</div>`:""}
       <div class="order-acts-sub">
@@ -2199,6 +2209,10 @@ function brickScreenSales(){
         <div style="${(_bkDraft.tr||"none")==="none"?"display:none":""}"><div class="field"><label>أجرة النقل</label><input id="bkTrAmt" type="number" min="0" inputmode="decimal" placeholder="0"><div class="hint">${_bkDraft.tr==="cust"?"تُضاف إلى الفاتورة":"تُسجَّل مصروف نقل من صندوق دبو"}</div></div>${_bkDraft.tr==="us"?pmPickerHTML("bkTrPm","النقل من أي حساب"):""}</div>
         <div class="seg" style="margin-bottom:8px"><button type="button" data-bkpaid="1" class="${_bkDraft.paid?'on':''}">💵 بيع نقدي</button><button type="button" data-bkpaid="0" class="${_bkDraft.paid?'':'on'}">📝 بيع آجل (دين)</button></div>
         <div style="${_bkDraft.paid?"":"display:none"}">${pmPickerHTML("bkSalePm","طريقة الدفع (كاش / بنكيلي / مصرفي / سداد)")}</div>${_bkDraft.paid?"":`<div class="field"><label>📞 هاتف الطرف (إلزامي في الآجل إن لم يكن محفوظًا)</label><input id="bkPartyPhone" class="phone-inp" type="tel" inputmode="numeric" maxlength="9" placeholder="رقم الهاتف" style="width:100%"></div><div class="hint" style="margin-bottom:8px">يُسجَّل دينًا على الطرف المختار ويظهر في «الديون والحسابات» وكشف حسابه.</div>`}
+        ${(()=>{ const st=_bkDraft.stype||brickTypes()[0].k, L=+brickType(st).load||0, P=(state.brickPorters||[]).slice().sort((a,b)=>(a.name||"").localeCompare(b.name||"","ar")); const sel=_bkDraft.salePorter!=null?_bkDraft.salePorter:(P[0]?P[0].id:"");
+          return `<div class="field" id="bkSaleLoadWrap" style="${L>0?"":"display:none"}"><label>🚚 حمل الطوب (تلقائي: العدد × <span id="bkSaleLoadRate">${money(L)}</span>)</label>
+            <select id="bkSalePorter"><option value="">— بلا حمل —</option>${P.map(p=>`<option value="${p.id}" ${sel===p.id?"selected":""}>${_esc(p.name)}${p.phone?" · "+_esc(p.phone):""}</option>`).join("")}</select>
+            <div class="hint" id="bkSaleLoadHint">${P.length?"يُسجَّل مستحقًّا للحمّال المختار":"أضف حمّالًا من تبويب «الحمّالون» ليُحسب الحمل"}</div></div>`; })()}
         <div class="field"><label>ملاحظة</label><input id="bkSaleNote" type="text" placeholder="اختياري"></div>
         <button class="btn-primary" id="bkSaleSave" style="width:100%">💾 ${_bkDraft.paid?"تسجيل البيع النقدي":"تسجيل البيع الآجل"}</button>
       </div>
@@ -2529,7 +2543,9 @@ function doBrickSaleSave(){
   const total=qty*price+(tr==="cust"?trAmt:0), d=iso(new Date());
   const s={id:uid(),no:brickSeqNo(state.brickSales,"BS",d),btype,transport:trAmt||undefined,transportBy:trAmt?tr:undefined,partyType:pt?pt.type:null,partyId:pt?pt.id:null,customerId:pt&&pt.type==="cust"?pt.id:null,customerName:pt?pt.name:"زبون نقدي",phone:pt?pt.phone:"",country:pt?pt.country:"222",qty,unitPrice:price,total,paidAmount:paid?total:0,paid,note,date:d,by:currentUser,editedAt:d};
   if(paid){ s.payMethod=pmVal("bkSalePm"); s.paidDate=d; addBrickCash("in",total,"بيع طوب "+s.no+(pt?" — "+pt.name:""),s.id,s.payMethod); }
-  state.brickSales.push(s); brickCfg().price=price; brickType(btype).price=price; _bkDraft.cust=""; _bkDraft.stype=btype; pmReset("bkSalePm");
+  state.brickSales.push(s); brickCfg().price=price; brickType(btype).price=price;
+  { const lr=+brickType(btype).load||0, por=(document.getElementById("bkSalePorter")||{}).value||""; _bkDraft.salePorter=por;
+    if(lr>0&&por&&brickPorter(por)){ state.brickLoads.push({id:uid(),no:brickSeqNo(state.brickLoads,"H",d),porterId:por,kind:"bricks",qty,rate:lr,amount:Math.round(qty*lr),paidAmount:0,paid:false,ref:s.id,btype,note:"حمل بيع "+s.no+(pt?" — "+pt.name:""),date:d,by:currentUser,editedAt:d}); } } _bkDraft.cust=""; _bkDraft.stype=btype; pmReset("bkSalePm");
   if(tr==="us"&&trAmt>0){ const e={id:uid(),category:"transport",amount:trAmt,note:"نقل "+s.no+(pt?" — "+pt.name:""),payMethod:pmVal("bkTrPm"),ref:s.id,date:d,by:currentUser,editedAt:d}; state.brickExpenses.push(e); addBrickCash("out",trAmt,"نقل "+s.no,e.id,e.payMethod); pmReset("bkTrPm"); }
   _bkDraft.tr="none";
   logActivity("دبو: بيع طوب "+(paid?"نقدي":"آجل"),s.no+" · "+brickTypeName(s)+" · "+fmt(qty)+" × "+money(price)+" = "+money(total)+(paid?" ("+pmLabel(s.payMethod)+")":" (دين · "+s.customerName+")"));
@@ -2580,7 +2596,8 @@ function brickDelete(kind,id){
   const arrs={batch:"brickBatches",sale:"brickSales",pur:"brickPurchases",exp:"brickExpenses",cash:"brickCash",ledger:"brickLedger",load:"brickLoads"}; const key=arrs[kind]; if(!key) return;
   const x=(state[key]||[]).find(r=>r.id===id); if(!x) return;
   requireCode(()=>{ tomb(x.id); state[key]=state[key].filter(r=>r.id!==id);
-    if(kind!=="cash"){ const linked=(state.brickExpenses||[]).filter(e=>e.ref===id); linked.forEach(e=>tomb(e.id)); state.brickExpenses=(state.brickExpenses||[]).filter(e=>e.ref!==id); const refs=new Set([id,...linked.map(e=>e.id)]); (state.brickCash||[]).filter(m=>refs.has(m.ref)).forEach(m=>tomb(m.id)); state.brickCash=state.brickCash.filter(m=>!refs.has(m.ref)); }
+    if(kind!=="cash"){ const lds=(state.brickLoads||[]).filter(l=>l.ref===id); lds.forEach(l=>tomb(l.id)); state.brickLoads=(state.brickLoads||[]).filter(l=>l.ref!==id); (state.brickCash||[]).filter(m=>lds.some(l=>l.id===m.ref)).forEach(m=>tomb(m.id)); state.brickCash=state.brickCash.filter(m=>!lds.some(l=>l.id===m.ref));
+      const linked=(state.brickExpenses||[]).filter(e=>e.ref===id); linked.forEach(e=>tomb(e.id)); state.brickExpenses=(state.brickExpenses||[]).filter(e=>e.ref!==id); const refs=new Set([id,...linked.map(e=>e.id)]); (state.brickCash||[]).filter(m=>refs.has(m.ref)).forEach(m=>tomb(m.id)); state.brickCash=state.brickCash.filter(m=>!refs.has(m.ref)); }
     logActivity("دبو: حذف",kind+" · "+(x.no||x.reason||x.note||"")+" · "+money(x.total||x.amount||x.workerPay||0)); toast("تم الحذف"); render(); }, SECRET_CODE, "حذف من دبو", (x.no||"")+" "+money(x.total||x.amount||0)+" "+CUR);
 }
 function openBrickReceipt(s){
@@ -2638,15 +2655,18 @@ function bindBrick(){
   document.querySelectorAll("[data-bktr]").forEach(b=>b.onclick=()=>{ _bkDraft.tr=b.dataset.bktr; render(); });
   on("bkOpSave",()=>requireCode(doBrickOpeningSave,SECRET_CODE,"رصيد افتتاحي لدبو","يُضاف المخزون الموجود الآن"));
   const tb=document.getElementById("bkTypesBox"); if(tb) tb.ontoggle=()=>{ _bkDraft.typesOpen=tb.open; };
-  on("bkTypesSave",()=>{ const T=brickTypes(); T.forEach(t=>{ const n=document.querySelector(`[data-bkt-name="${t.k}"]`), pr=document.querySelector(`[data-bkt-price="${t.k}"]`), w=document.querySelector(`[data-bkt-wage="${t.k}"]`); if(n&&n.value.trim()) t.name=n.value.trim(); if(pr) t.price=+pr.value||0; if(w) t.wage=+w.value||0; });
-    const nw=(document.getElementById("bkTypeNew").value||"").trim(); if(nw){ if(T.some(t=>t.name===nw)) return toast("النوع موجود"); T.push({k:"t"+uid().slice(-6),name:nw,price:0,wage:+(T[0]&&T[0].wage)||1300}); }
+  on("bkTypesSave",()=>{ const T=brickTypes(); T.forEach(t=>{ const n=document.querySelector(`[data-bkt-name="${t.k}"]`), pr=document.querySelector(`[data-bkt-price="${t.k}"]`), w=document.querySelector(`[data-bkt-wage="${t.k}"]`), ld=document.querySelector(`[data-bkt-load="${t.k}"]`); if(n&&n.value.trim()) t.name=n.value.trim(); if(pr) t.price=+pr.value||0; if(w) t.wage=+w.value||0; if(ld) t.load=+ld.value||0; });
+    const nw=(document.getElementById("bkTypeNew").value||"").trim(); if(nw){ if(T.some(t=>t.name===nw)) return toast("النوع موجود"); T.push({k:"t"+uid().slice(-6),name:nw,price:0,wage:+(T[0]&&T[0].wage)||1300,load:+(T[0]&&T[0].load)||0}); }
     const lc=+document.getElementById("bkLowCement").value||0; brickCfg().lowCement=lc>0?lc:20; brickCfg().lowAlerted=false; brickLowCementCheck();
-    logActivity("دبو: أنواع الطوب",T.map(t=>t.name+" "+money(t.price)+"/أجرة "+money(t.wage)).join(" · ")); toast("حُفظت الأنواع ✓"); render(); });
+    logActivity("دبو: أنواع الطوب",T.map(t=>t.name+" بيع "+money(t.price)+" · أجرة "+money(t.wage)+" · حمل "+money(+t.load||0)).join(" | ")); toast("حُفظت الأنواع ✓"); render(); });
   // البحث في قوائم الأطراف (البيع والشراء)
   [["bkCustFind","bkCust"],["bkPurFind","bkPurParty"]].forEach(([fi,si])=>{ const f=document.getElementById(fi), sel=document.getElementById(si); if(!f||!sel) return; f.oninput=()=>{ const q=f.value.trim(); let first=null; sel.querySelectorAll("option").forEach(o=>{ const hit=!q||!o.value||o.value==="__new"||o.textContent.includes(q); o.hidden=!hit; if(q&&hit&&o.value&&o.value!=="__new"&&!first) first=o; }); if(first){ sel.value=first.value; sel.dispatchEvent(new Event("change")); } }; });
   const pp=document.getElementById("bkPurParty"); if(pp) pp.onchange=()=>{ _bkDraft.purParty=pp.value; const w=document.getElementById("bkPurNewWrap"); if(w) w.style.display=pp.value==="__new"?"":"none"; };
   const bpr=document.getElementById("bkPrice"), bq=document.getElementById("bkQty"), bst=document.getElementById("bkSaleType");
-  const updProfit=()=>{ const h=document.getElementById("bkProfitHint"); if(!h||!bst) return; const c=brickTypeCost(bst.value), pr=+(bpr&&bpr.value)||0, q=+(bq&&bq.value)||0; if(!(c>0)){ h.textContent="لا توجد خلطات لهذا النوع بعد"; return; } const per=pr-c; h.innerHTML="تكلفة الطوبة "+brickCostTxt(c)+" · ربح الطوبة <b style=\"color:"+(per<0?"var(--unpaid)":"var(--ready)")+"\">"+money(Math.round(per*100)/100)+"</b>"+(q>0?" · ربح البيع <b>"+money(Math.round(per*q))+"</b>":""); };
+  const updLoad2=()=>{ if(!bst) return; const L=+brickType(bst.value).load||0, w=document.getElementById("bkSaleLoadWrap"), r=document.getElementById("bkSaleLoadRate"), h=document.getElementById("bkSaleLoadHint"), ps=document.getElementById("bkSalePorter"); if(w) w.style.display=L>0?"":"none"; if(r) r.textContent=money(L); const q=+(bq&&bq.value)||0; if(h&&ps&&ps.options.length>1) h.textContent=ps.value?("الحمل: "+money(Math.round(q*L))+" — يُسجَّل مستحقًّا للحمّال"):"بلا حمل"; };
+  if(bq) bq.addEventListener("input",updLoad2); if(bst) bst.addEventListener("change",updLoad2); { const ps=document.getElementById("bkSalePorter"); if(ps) ps.onchange=()=>{ _bkDraft.salePorter=ps.value; updLoad2(); }; } updLoad2();
+  const updProfit=()=>{ const h=document.getElementById("bkProfitHint"); if(!h||!bst) return; const c=brickTypeCost(bst.value), pr=+(bpr&&bpr.value)||0, q=+(bq&&bq.value)||0; if(!(c>0)){ h.textContent="لا توجد خلطات لهذا النوع بعد"; return; } const ps=document.getElementById("bkSalePorter"), L=(ps&&ps.value)?(+brickType(bst.value).load||0):0, per=pr-c-L; h.innerHTML="تكلفة الطوبة "+brickCostTxt(c)+(L?" + حمل "+money(L):"")+" · ربح الطوبة <b style=\"color:"+(per<0?"var(--unpaid)":"var(--ready)")+"\">"+money(Math.round(per*100)/100)+"</b>"+(q>0?" · ربح البيع <b>"+money(Math.round(per*q))+"</b>":""); };
+  { const ps=document.getElementById("bkSalePorter"); if(ps) ps.addEventListener("change",updProfit); }
   if(bpr) bpr.addEventListener("input",updProfit); if(bq) bq.addEventListener("input",updProfit); if(bst) bst.addEventListener("change",updProfit); updProfit();
   // الحمّالون
   document.querySelectorAll("[data-bklk]").forEach(b=>b.onclick=()=>{ _bkDraft.lk=b.dataset.bklk; render(); });
@@ -2751,7 +2771,8 @@ function recEditSave(kind,id){
     const avail=brickStock(t)+(bType(x)===t?(+x.qty||0):0); if(q>avail) return "المخزون لا يكفي (المتاح من "+brickType(t).name+": "+fmt(avail)+")";
     const newTotal=q*pr+(x.transportBy==="cust"?tr:0), oldTotal=+x.total||0; err=rePaid(x,oldTotal,newTotal,"paidAmount","brickCash","in"); if(err) return err;
     if(!pt && (+x.paidAmount||0)<newTotal) return "البيع الآجل يحتاج زبونًا أو مورّدًا";
-    x.btype=t; x.qty=q; x.unitPrice=pr; if(x.transportBy==="cust") x.transport=tr; x.total=newTotal; x.paid=(+x.paidAmount||0)>=newTotal; x.note=(reV("note")||"").trim();
+    x.btype=t; x.qty=q; x.unitPrice=pr; if(x.transportBy==="cust") x.transport=tr;
+    brickLive(state.brickLoads).filter(l=>l.ref===x.id&&!(+l.paidAmount>0)).forEach(l=>{ l.qty=q; l.btype=t; l.rate=+brickType(t).load||l.rate; l.amount=Math.round(q*(+l.rate||0)); l.editedAt=now; }); x.total=newTotal; x.paid=(+x.paidAmount||0)>=newTotal; x.note=(reV("note")||"").trim();
     x.partyType=pt?pt.type:null; x.partyId=pt?pt.id:null; x.customerId=pt&&pt.type==="cust"?pt.id:null; x.customerName=pt?pt.name:"زبون نقدي"; x.phone=pt?pt.phone:""; x.country=pt?pt.country:"222";
     if(x.paid) reSetPm(x,"brickCash"); reApplyDate(x,reV("date"),["brickCash"]); }
   else if(kind==="bpur"){ const q=reN("qty"), c=reN("cost"); if(!(q>0)) return "أدخل الكمية";
@@ -5693,7 +5714,13 @@ function applyTheme(){
 }
 const _render=render;
 let _refocus=null;
-function latinInputs(root){ (root||document).querySelectorAll('input[type=number],input[type=date],input[type=time]').forEach(i=>{ if(!i.lang) i.lang="en"; }); }
+/* بعض الهواتف (WebView/Android بالعربية) تعرض حقول type=number بأرقام عربية مهما كان lang؛ فنحوّلها حقولًا نصية
+   بلوحة أرقام (inputmode) ونحوّل أي رقم عربي/فارسي يُكتب إلى لاتيني فورًا. */
+function toLatinDigits(v){ return String(v==null?"":v).replace(/[\u0660-\u0669]/g,d=>d.charCodeAt(0)-0x0660).replace(/[\u06F0-\u06F9]/g,d=>d.charCodeAt(0)-0x06F0).replace(/\u066B/g,".").replace(/\u066C/g,""); }
+function latinInputs(root){ (root||document).querySelectorAll('input[type=number],input[type=date],input[type=time],input[type=tel],input[data-num]').forEach(i=>{ if(!i.lang) i.lang="en";
+  if(i.type==="number"){ const v=i.value; i.type="text"; if(!i.getAttribute("inputmode")) i.setAttribute("inputmode","decimal"); i.dataset.num="1"; i.setAttribute("autocomplete","off"); i.value=toLatinDigits(v); }
+  else if((i.dataset.num||i.type==="tel") && /[\u0660-\u0669\u06F0-\u06F9]/.test(i.value)) i.value=toLatinDigits(i.value); }); }
+document.addEventListener("input",e=>{ const t=e.target; if(!t||t.tagName!=="INPUT"||!(t.dataset.num||t.type==="tel")) return; const v=t.value, n=toLatinDigits(v); if(n!==v){ let pos=null; try{ pos=t.selectionStart; }catch(_){} t.value=n; try{ if(pos!=null) t.setSelectionRange(pos,pos); }catch(_){} } },true);
 latinInputs(document);
 try{ new MutationObserver(()=>latinInputs(document)).observe(document.body,{childList:true,subtree:true}); }catch(e){}
 render=function(){ _render(); latinInputs(document.getElementById("main")); save(); if(_refocus){ const el=document.getElementById(_refocus); if(el){ el.focus(); const v=el.value; el.value=""; el.value=v; } _refocus=null; } };
@@ -7059,7 +7086,7 @@ setTimeout(()=>{ if(!window.cloudReady){ const el=document.getElementById("cloud
 <!-- PWA: service-worker registration + update/install wiring -->
 <script>
 (function(){
-  var APP_VERSION = "2.30.0";
+  var APP_VERSION = "2.31.0";
   window.APP_VERSION = APP_VERSION;
   function $(id){ return document.getElementById(id); }
   // سجّل إصدار هذا الجهاز في الحالة المتزامنة (ليُنبَّه الجهاز القديم)
