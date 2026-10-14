@@ -400,6 +400,14 @@
   المبلغ تلقائي = الكمية × السعر (`brickCfg.loadRate[kind]` يُتذكَّر)؛ دفع فوري من الصندوق أو مستحق؛ «💵 دفع له» `brickPorterSettle`
   (`_storePayCtx.kind="brickPorter"`) وكشف `openPorterStatement`؛ أجور الحمل تدخل `brickFin.wages` (تكلفة) و`porterDues`،
   وتظهر في «الديون والحسابات»؛ التعديل `bload` والحذف `load:`. الاختبار `tests/e2e/brick_porters.test.js`.
+- **ما يُكتب لا يختفي + الفاتورة والربح عند البيع (2.32.0):** كانت الأزرار التي تُعيد الرسم (نقدي/آجل، النقل، نوع المادة، عليه/له…)
+  والمزامنة تمسح الحقول. الآن **في كل الشاشات** `_formKeep`: كل حقل له `id` داخل `#main` يُحفظ عند `input/change` (`keepField`)
+  ويُعاد بعد كل `render` (`restoreFields`، يُطلق `input/change` ليتحدّث المحسوب، بحارس `_restoring`). يُمسح المحفوظ عند تغيير الشاشة
+  (`formSig` = tab + storeSub/brickSub/expSub/contactsSub) وعند أي حفظ ناجح: `logActivity` أو توست نجاح (✓/تم/سُجّل/حُفظ) →
+  `formKeepClear`. مستثنى: البحث (`.search-inp`، `*Search`)، `#dateFrom/#dateTo`، الملفات/كلمات المرور، و`data-nokeep`.
+  **بيع الطوب:** لوحة حيّة `#bkSaleSum` «🧾 مبلغ الفاتورة» (العدد × السعر + نقل على الزبون) و«📈 الربح» = (السعر − التكلفة − الحمل)
+  × العدد − النقل علينا، وتوست الحفظ يذكر الفاتورة والربح. `brickSaleProfit` يطرح الحمل والنقل علينا (`brickSaleTransportCost`).
+  الاختبار `tests/e2e/form_keep.test.js`.
 - **سعر البيع + حمل الطوبة التلقائي + أرقام لاتينية في كل الحقول (2.31.0):** لوحة الأنواع صارت بطاقات (لا جدول يُقصّ) لكل نوع:
   💰 سعر البيع (`price`)، 👷 أجرة الخنشة (`wage`)، 🚚 **حمل الطوبة الواحدة** (`load`)، 💲 التكلفة الحالية. عند **البيع** إن كان للنوع
   `load>0` يظهر `#bkSalePorter` (الحمّال، يُتذكّر `_bkDraft.salePorter`، أو «بلا حمل»): يُنشأ عمل حمل في `brickLoads` بـ`ref`=البيع،

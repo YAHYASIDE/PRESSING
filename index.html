@@ -1405,7 +1405,7 @@ function laundryNextNo(dateISO){
   return prefix+String(seq).padStart(3,"0");
 }
 
-function toast(msg){const t=document.getElementById("toast");t.textContent=msg;t.classList.add("show");
+function toast(msg){ if(/✓|✅|تم |تمت|سُجّل|حُفظ/.test(String(msg||""))) formKeepClear();const t=document.getElementById("toast");t.textContent=msg;t.classList.add("show");
   clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove("show"),1800);}
 
 /* ================= Icons ================= */
@@ -2004,7 +2004,8 @@ function brickBatchCost(b){ if(!b||b.opening||!(+b.bricks>0)) return 0; return (
 function brickTypeCost(k){ const L=brickLive(state.brickBatches).filter(b=>!b.opening&&bType(b)===k&&+b.bricks>0); const n=sum(L,b=>+b.bricks||0); return n>0?sum(L,b=>brickBatchCost(b)*(+b.bricks||0))/n:0; }
 function brickCostTxt(v){ return v>0?money(Math.round(v*100)/100):"—"; }
 function brickSaleLoad(x){ return sum(brickLive(state.brickLoads).filter(l=>l.ref===x.id),l=>+l.amount||0); }
-function brickSaleProfit(x){ const c=brickTypeCost(bType(x)); if(!(c>0)) return null; return ((+x.unitPrice||0)-c)*(+x.qty||0)-brickSaleLoad(x); }
+function brickSaleTransportCost(x){ return sum(brickLive(state.brickExpenses).filter(e=>e.ref===x.id),e=>+e.amount||0); }
+function brickSaleProfit(x){ const c=brickTypeCost(bType(x)); if(!(c>0)) return null; return ((+x.unitPrice||0)-c)*(+x.qty||0)-brickSaleLoad(x)-brickSaleTransportCost(x); }
 function brickRequirePhone(pt,inputId){ if(!pt||pt.phone) return null; const el=document.getElementById(inputId); const ph=el?(el.value||"").trim():"";
   if(!ph) return "أدخل رقم هاتف «"+pt.name+"» (إلزامي في الدين)"; if(!validPhone(ph)) return "رقم الهاتف يجب أن يكون 8 أرقام";
   const rec=pt.type==="sup"?supplierById(pt.id):storeCust(pt.id); if(rec){ rec.phone=ph; rec.editedAt=iso(new Date()); } pt.phone=ph; return null; }
@@ -2203,7 +2204,7 @@ function brickScreenSales(){
         ${(()=>{ const st=_bkDraft.stype||brickTypes()[0].k, T=brickType(st); return `<div class="field"><label>نوع الطوب</label><select id="bkSaleType">${brickTypeOpts(st)}</select></div>
         <div class="row2">
           <div class="field"><label>عدد الطوب <span style="color:var(--unpaid)">*</span></label><input id="bkQty" type="number" min="0" inputmode="numeric" placeholder="0"><div class="hint" id="bkStockHint">المخزون: ${fmt(brickStock(st))}</div></div>
-          <div class="field"><label>سعر الطوبة</label><input id="bkPrice" type="number" min="0" inputmode="decimal" value="${+T.price||+cfg.price||""}"><div class="hint" id="bkProfitHint">${(()=>{ const c=brickTypeCost(st); return c>0?"تكلفة الطوبة "+brickCostTxt(c):"لا توجد خلطات لهذا النوع بعد"; })()}</div></div>
+          <div class="field"><label>سعر الطوبة</label><input id="bkPrice" type="number" min="0" inputmode="decimal" value="${+T.price||+cfg.price||""}"><div class="hint" id="bkProfitHint" style="display:none">${(()=>{ const c=brickTypeCost(st); return c>0?"تكلفة الطوبة "+brickCostTxt(c):"لا توجد خلطات لهذا النوع بعد"; })()}</div></div>
         </div>`; })()}
         <div class="field"><label>🚚 النقل</label><div class="seg">${[["none","بلا نقل"],["cust","على الزبون"],["us","علينا"]].map(([k,t])=>`<button type="button" data-bktr="${k}" class="${(_bkDraft.tr||"none")===k?"on":""}">${t}</button>`).join("")}</div></div>
         <div style="${(_bkDraft.tr||"none")==="none"?"display:none":""}"><div class="field"><label>أجرة النقل</label><input id="bkTrAmt" type="number" min="0" inputmode="decimal" placeholder="0"><div class="hint">${_bkDraft.tr==="cust"?"تُضاف إلى الفاتورة":"تُسجَّل مصروف نقل من صندوق دبو"}</div></div>${_bkDraft.tr==="us"?pmPickerHTML("bkTrPm","النقل من أي حساب"):""}</div>
@@ -2213,6 +2214,7 @@ function brickScreenSales(){
           return `<div class="field" id="bkSaleLoadWrap" style="${L>0?"":"display:none"}"><label>🚚 حمل الطوب (تلقائي: العدد × <span id="bkSaleLoadRate">${money(L)}</span>)</label>
             <select id="bkSalePorter"><option value="">— بلا حمل —</option>${P.map(p=>`<option value="${p.id}" ${sel===p.id?"selected":""}>${_esc(p.name)}${p.phone?" · "+_esc(p.phone):""}</option>`).join("")}</select>
             <div class="hint" id="bkSaleLoadHint">${P.length?"يُسجَّل مستحقًّا للحمّال المختار":"أضف حمّالًا من تبويب «الحمّالون» ليُحسب الحمل"}</div></div>`; })()}
+        <div id="bkSaleSum" style="margin:8px 0;padding:10px 12px;border-radius:12px;background:var(--chip);display:flex;flex-wrap:wrap;gap:6px 14px;font-weight:800"></div>
         <div class="field"><label>ملاحظة</label><input id="bkSaleNote" type="text" placeholder="اختياري"></div>
         <button class="btn-primary" id="bkSaleSave" style="width:100%">💾 ${_bkDraft.paid?"تسجيل البيع النقدي":"تسجيل البيع الآجل"}</button>
       </div>
@@ -2549,7 +2551,7 @@ function doBrickSaleSave(){
   if(tr==="us"&&trAmt>0){ const e={id:uid(),category:"transport",amount:trAmt,note:"نقل "+s.no+(pt?" — "+pt.name:""),payMethod:pmVal("bkTrPm"),ref:s.id,date:d,by:currentUser,editedAt:d}; state.brickExpenses.push(e); addBrickCash("out",trAmt,"نقل "+s.no,e.id,e.payMethod); pmReset("bkTrPm"); }
   _bkDraft.tr="none";
   logActivity("دبو: بيع طوب "+(paid?"نقدي":"آجل"),s.no+" · "+brickTypeName(s)+" · "+fmt(qty)+" × "+money(price)+" = "+money(total)+(paid?" ("+pmLabel(s.payMethod)+")":" (دين · "+s.customerName+")"));
-  toast(paid?"💰 تم البيع النقدي ✓":"📝 سُجّل البيع الآجل ✓"); render();
+  { const pf=brickSaleProfit(s); toast((paid?"💰 تم البيع النقدي ✓":"📝 سُجّل البيع الآجل ✓")+" — الفاتورة "+money(s.total)+(pf!=null?" · الربح "+money(Math.round(pf)):"")); } render();
 }
 function doBrickOpeningSave(){
   const d=iso(new Date()); let n=0;
@@ -2665,6 +2667,11 @@ function bindBrick(){
   const bpr=document.getElementById("bkPrice"), bq=document.getElementById("bkQty"), bst=document.getElementById("bkSaleType");
   const updLoad2=()=>{ if(!bst) return; const L=+brickType(bst.value).load||0, w=document.getElementById("bkSaleLoadWrap"), r=document.getElementById("bkSaleLoadRate"), h=document.getElementById("bkSaleLoadHint"), ps=document.getElementById("bkSalePorter"); if(w) w.style.display=L>0?"":"none"; if(r) r.textContent=money(L); const q=+(bq&&bq.value)||0; if(h&&ps&&ps.options.length>1) h.textContent=ps.value?("الحمل: "+money(Math.round(q*L))+" — يُسجَّل مستحقًّا للحمّال"):"بلا حمل"; };
   if(bq) bq.addEventListener("input",updLoad2); if(bst) bst.addEventListener("change",updLoad2); { const ps=document.getElementById("bkSalePorter"); if(ps) ps.onchange=()=>{ _bkDraft.salePorter=ps.value; updLoad2(); }; } updLoad2();
+  const updSum=()=>{ const box=document.getElementById("bkSaleSum"); if(!box||!bst) return; const q=+(bq&&bq.value)||0, pr=+(bpr&&bpr.value)||0, tr=_bkDraft.tr||"none", ta=+((document.getElementById("bkTrAmt")||{}).value)||0;
+    const c=brickTypeCost(bst.value), ps=document.getElementById("bkSalePorter"), L=(ps&&ps.value)?(+brickType(bst.value).load||0):0;
+    const total=q*pr+(tr==="cust"?ta:0), profit=c>0?(pr-c-L)*q-(tr==="us"?ta:0):null;
+    box.innerHTML=`<span>🧾 مبلغ الفاتورة: <span style="color:var(--brand)">${money(total)} ${CUR}</span></span>`+(profit==null?`<span class="hint">الربح: بعد أول خلطة لهذا النوع</span>`:`<span>📈 الربح: <span style="color:${profit<0?'var(--unpaid)':'var(--ready)'}">${money(Math.round(profit))}</span></span><span class="hint" style="font-weight:600">تكلفة ${brickCostTxt(c)}${L?" + حمل "+money(L):""} للطوبة${tr==="us"&&ta?" · نقل علينا "+money(ta):""}</span>`); };
+  [bq,bpr].forEach(el=>el&&el.addEventListener("input",updSum)); if(bst) bst.addEventListener("change",updSum); { const ta=document.getElementById("bkTrAmt"); if(ta) ta.addEventListener("input",updSum); const ps=document.getElementById("bkSalePorter"); if(ps) ps.addEventListener("change",updSum); } updSum();
   const updProfit=()=>{ const h=document.getElementById("bkProfitHint"); if(!h||!bst) return; const c=brickTypeCost(bst.value), pr=+(bpr&&bpr.value)||0, q=+(bq&&bq.value)||0; if(!(c>0)){ h.textContent="لا توجد خلطات لهذا النوع بعد"; return; } const ps=document.getElementById("bkSalePorter"), L=(ps&&ps.value)?(+brickType(bst.value).load||0):0, per=pr-c-L; h.innerHTML="تكلفة الطوبة "+brickCostTxt(c)+(L?" + حمل "+money(L):"")+" · ربح الطوبة <b style=\"color:"+(per<0?"var(--unpaid)":"var(--ready)")+"\">"+money(Math.round(per*100)/100)+"</b>"+(q>0?" · ربح البيع <b>"+money(Math.round(per*q))+"</b>":""); };
   { const ps=document.getElementById("bkSalePorter"); if(ps) ps.addEventListener("change",updProfit); }
   if(bpr) bpr.addEventListener("input",updProfit); if(bq) bq.addEventListener("input",updProfit); if(bst) bst.addEventListener("change",updProfit); updProfit();
@@ -5477,6 +5484,7 @@ function ownerPin(){ return (state.lock&&state.lock.pin)||"0707"; }
 function findWorker(name,pin){ return (state.users||[]).find(u=>u.active!==false && u.name===(name||"").trim() && u.pin===(pin||"").trim()); }
 function findManager(name,pass){ return (state.managers||[]).find(u=>u.active!==false && u.name===(name||"").trim() && u.pass===(pass||"").trim()); }
 function logActivity(action, detail){
+  formKeepClear();
   try{
     if(!state.activity) state.activity=[];
     const a={ id:uid(), ts:Date.now(), byName:currentUser||"—", byRole:currentRole||"owner", action:action||"", detail:detail||"" };
@@ -5723,7 +5731,21 @@ function latinInputs(root){ (root||document).querySelectorAll('input[type=number
 document.addEventListener("input",e=>{ const t=e.target; if(!t||t.tagName!=="INPUT"||!(t.dataset.num||t.type==="tel")) return; const v=t.value, n=toLatinDigits(v); if(n!==v){ let pos=null; try{ pos=t.selectionStart; }catch(_){} t.value=n; try{ if(pos!=null) t.setSelectionRange(pos,pos); }catch(_){} } },true);
 latinInputs(document);
 try{ new MutationObserver(()=>latinInputs(document)).observe(document.body,{childList:true,subtree:true}); }catch(e){}
-render=function(){ _render(); latinInputs(document.getElementById("main")); save(); if(_refocus){ const el=document.getElementById(_refocus); if(el){ el.focus(); const v=el.value; el.value=""; el.value=v; } _refocus=null; } };
+/* حفظ ما يكتبه المستخدم عند إعادة الرسم: الضغط على زر (نقدي/آجل، النقل، نوع المادة…) أو وصول مزامنة كان يمسح الحقول.
+   كل حقل له id داخل #main يُحفظ عند الكتابة ويُعاد بعد الرسم. يُمسح المحفوظ عند تغيير الشاشة، وعند أي حفظ ناجح
+   (logActivity أو توست نجاح) حتى يفرغ النموذج بعد التسجيل. */
+let _formKeep={}, _formSig="";
+function formSig(){ return [state.tab,state.storeSub,state.brickSub,state.expSub,state.contactsSub].join("|"); }
+function formKeepClear(){ _formKeep={}; }
+function keepField(t){ if(!t||!t.id||!/^(INPUT|SELECT|TEXTAREA)$/.test(t.tagName)) return; if(t.type==="file"||t.type==="password"||t.dataset.nokeep||t.classList.contains("search-inp")||t.id==="dateFrom"||t.id==="dateTo"||/Search$/.test(t.id)) return;
+  const m=document.getElementById("main"); if(!m||!m.contains(t)) return; delete _formKeep[t.id]; _formKeep[t.id]=t.type==="checkbox"||t.type==="radio"?{c:t.checked}:{v:t.value}; }
+document.addEventListener("input",e=>keepField(e.target),true); document.addEventListener("change",e=>keepField(e.target),true);
+let _restoring=false;
+function restoreFields(){ if(_restoring) return; const sig=formSig(); if(sig!==_formSig){ _formKeep={}; _formSig=sig; return; } _restoring=true; try{
+  Object.keys(_formKeep).forEach(id=>{ const el=document.getElementById(id), k=_formKeep[id]; if(!el) return;
+    if("c" in k){ if(el.checked!==k.c){ el.checked=k.c; el.dispatchEvent(new Event("change",{bubbles:true})); } }
+    else if(el.value!==k.v){ if(el.tagName==="SELECT"&&![...el.options].some(o=>o.value===k.v)) return; el.value=k.v; el.dispatchEvent(new Event(el.tagName==="SELECT"?"change":"input",{bubbles:true})); } }); } finally{ _restoring=false; } }
+render=function(){ _render(); latinInputs(document.getElementById("main")); try{ restoreFields(); }catch(e){} save(); if(_refocus){ const el=document.getElementById(_refocus); if(el){ el.focus(); const v=el.value; el.value=""; el.value=v; } _refocus=null; } };
 document.getElementById("brandLogo").src=LOGO;
 document.getElementById("themeBtn").onclick=()=>{ state.dark=!state.dark; applyTheme(); save(); };
 
@@ -7086,7 +7108,7 @@ setTimeout(()=>{ if(!window.cloudReady){ const el=document.getElementById("cloud
 <!-- PWA: service-worker registration + update/install wiring -->
 <script>
 (function(){
-  var APP_VERSION = "2.31.0";
+  var APP_VERSION = "2.32.0";
   window.APP_VERSION = APP_VERSION;
   function $(id){ return document.getElementById(id); }
   // سجّل إصدار هذا الجهاز في الحالة المتزامنة (ليُنبَّه الجهاز القديم)
