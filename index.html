@@ -738,6 +738,11 @@
   .cat-nm{flex:1;font-size:.9rem}
   .cat-price{width:84px;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink)}
   .cat-new-nm{flex:1;min-width:80px;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink)}
+.party-sides{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:6px;margin:6px 0}
+.party-sides>div{border-radius:10px;padding:6px 8px;background:var(--chip);display:flex;flex-direction:column;gap:2px;min-width:0}
+.party-sides small{font-size:.72rem;color:var(--muted);font-weight:700}
+.party-sides b{font-variant-numeric:tabular-nums;font-size:1rem}
+.party-sides .ps-on b{color:var(--unpaid)} .party-sides .ps-for b{color:var(--wash)}
 </style>
 </head>
 <body>
@@ -3689,49 +3694,78 @@ function manualDebtFormHTML(){
       <div class="hint" style="margin-top:6px">${d.dir==="on"?"يُضاف إلى مستحقّاته ويُحصَّل مع ديون المتجر، ويظهر في كشف حسابه. لا يُحسب بيعًا ولا ربحًا.":"يظهر في «الدائنون — علينا» ويُسدَّد من الصندوق بزر «تسديد له»، ويظهر في كشف حسابه."}</div>
     </div>`;
 }
+/* (2.37.0) كل شخص مرة واحدة: ما عليه لنا (فواتير بالدين + ديون يدوية «عليه») وما له عندنا (ديون «له» + مشتريات غير مسدّدة إن كان مورّدًا)
+   — الزبون والمورّد بنفس الهاتف (أو نفس الاسم بلا هاتف) شخص واحد. */
+function storeParties(){
+  const by={}, nm=x=>(x||"").trim(), keyOf=(name,phone)=>{ const p=normPhone(phone||""); return p?"p:"+p:"n:"+nm(name); };
+  const get=(name,phone,country)=>{ const k=keyOf(name,phone); return by[k]||(by[k]={key:k,name:nm(name),phone:phone||"",country:country||"222",cust:null,sup:null,on:0,crCust:0,crSup:0,items:[]}); };
+  (state.storeCustomers||[]).filter(c=>!c.isLaundry).forEach(c=>{ const on=custBalance(c.id), cr=custCredit(c.id); if(on<=0&&cr<=0) return; const P=get(c.name,c.phone,c.country); P.cust=c; P.on+=on; P.crCust+=cr;
+    (state.storeSales||[]).filter(x=>!x.cancelled&&x.customerId===c.id&&saleOutstanding(x)>0).forEach(x=>P.items.push({dir:"on",ic:"🧾",t:"فاتورة "+(x.no||""),date:x.date,amt:saleOutstanding(x)}));
+    custManualDebts(c.id,"on").filter(x=>debtOutstanding(x)>0).forEach(x=>P.items.push({dir:"on",ic:"📝",t:"دين يدوي "+(x.note||""),date:x.date,amt:debtOutstanding(x),md:x.id}));
+    custManualDebts(c.id,"for").filter(x=>debtOutstanding(x)>0).forEach(x=>P.items.push({dir:"for",ic:"📝",t:"له: "+(x.note||"دين له"),date:x.date,amt:debtOutstanding(x),md:x.id})); });
+  (state.suppliers||[]).forEach(sp=>{ const b=supplierBalance(sp); if(b<=0) return; const P=get(sp.name,sp.phone,sp.country); P.sup=sp; P.crSup+=b; if(!P.phone&&sp.phone) P.phone=sp.phone;
+    supplierPurchases(sp).filter(x=>purOutstanding(x)>0).forEach(x=>P.items.push({dir:"for",ic:"🛒",t:"شراء "+(x.no||"")+(sp.category?" · "+sp.category:""),date:x.date,amt:purOutstanding(x)})); });
+  return Object.values(by).map(P=>{ P.for=P.crCust+P.crSup; P.net=P.on-P.for; P.items.sort((a,b)=>new Date(a.date)-new Date(b.date)); const o=P.items[0]; P.days=o?Math.max(0,Math.floor((Date.now()-new Date(o.date))/864e5)):0; return P; })
+    .sort((a,b)=>Math.abs(b.net)-Math.abs(a.net)||b.on+b.for-(a.on+a.for));
+}
+/* مقاصة: ما عليه يُسدَّد بما له (بلا حركة صندوق) — الأقدم أولًا في الجهتين */
+function storeOffset(key){
+  const P=storeParties().find(x=>x.key===key); if(!P) return; const m=Math.min(P.on,P.for); if(!(m>0)) return toast("لا يوجد ما يُقاصّ");
+  requireCode(()=>{ const Q=storeParties().find(x=>x.key===key); if(!Q) return; const amt=Math.min(Q.on,Q.for); if(!(amt>0)) return;
+    const got=Q.cust?allocatePayment(Q.cust.id,amt):0; let left=got;
+    if(left>0&&Q.cust&&Q.crCust>0) left-=allocateCredit(Q.cust.id,Math.min(left,Q.crCust));
+    if(left>0&&Q.sup) left-=paySupplier(Q.sup,left);
+    logActivity("مقاصة ديون",Q.name+" · "+money(got)+" "+CUR+" (عليه ← له، بلا صندوق)"); toast("⚖️ تمت المقاصة "+money(got)+" ✓"); render(); },
+    SECRET_CODE,"⚖️ مقاصة — "+P.name,"يُسدَّد "+money(m)+" "+CUR+" مما عليه بما له عندنا، بلا حركة في الصندوق");
+}
 function storeScreenDebts(){
-  const E=_esc, dv=debtors().filter(d=>d.by.store>0), cr=creditors(), cc=custCreditors();
-  const owed=sum(dv,d=>d.by.store), owe=sum(cr,c=>c.bal)+sum(cc,c=>c.bal);
-  const view=state.debtView==="cred"?"cred":"debt";
-  const ccCards=cc.map(({c,bal,n,days,items})=>{ const tl=telLink(c.phone,c.country); return `
-    <div class="order">
-      <div class="cust">${E(c.name)} <span class="badge b-done">زبون</span></div>
-      ${c.phone?`<div class="meta">📞 ${E(c.phone)}</div>`:""}
-      <div class="price" style="color:var(--wash)">${money(bal)} ${CUR}</div>
-      <div class="meta">${n} دين له · أقدمها منذ <b>${days}</b> يوم${custBalance(c.id)>0?` · <span style="color:var(--unpaid);font-weight:800">وعليه لنا ${money(custBalance(c.id))}</span>`:""}</div>
-      ${items.slice(0,6).map(x=>`<div class="meta" style="display:flex;justify-content:space-between;gap:8px;align-items:center"><span>📝 ${E(x.note||"دين له")} · ${ymd(x.date)}</span><b>${money(debtOutstanding(x))}${currentRole!=="worker"?` ${recEditBtn("sdebt",x.id)}<button class="icon-btn" data-md-del="${x.id}" title="حذف" style="margin-inline-start:4px">${svg(I.trash)}</button>`:""}</b></div>`).join("")}
+  const E=_esc, all=storeParties(), q=(state.contactSearch||"").trim();
+  const DV=debtors(), lndDebt=p=>{ const ph=normPhone(p.phone||""); const d=DV.find(x=>(p.cust&&x.custId===p.cust.id)||(ph&&normPhone(x.phone||"")===ph)); return d?(d.by.car||0)+(d.by.rug||0)+(d.by.lnd||0):0; };
+  const owed=sum(all,p=>p.on), owe=sum(all,p=>p.for), nOn=all.filter(p=>p.on>0).length, nFor=all.filter(p=>p.for>0).length, nSup=all.filter(p=>p.crSup>0).length;
+  const view=state.debtView==="cred"?"cred":state.debtView==="debt"?"debt":"all";
+  let L=view==="debt"?all.filter(p=>p.on>0):view==="cred"?all.filter(p=>p.for>0):all;
+  if(q) L=L.filter(p=>(p.name||"").includes(q)||normPhone(p.phone||"").includes(normPhone(q)));
+  const netTxt=p=>p.net>0?`<span style="color:var(--unpaid)">عليه لنا ${money(p.net)} ${CUR}</span>`:p.net<0?`<span style="color:var(--wash)">له علينا ${money(-p.net)} ${CUR}</span>`:`<span style="color:var(--ready)">متعادل ✓</span>`;
+  const cards=L.map(p=>{ const tl=telLink(p.phone,p.country), both=p.on>0&&p.for>0; return `
+    <div class="order party-card">
+      <div class="cust">${E(p.name||"بدون اسم")} ${p.cust?`<span class="badge b-done">زبون</span>`:""}${p.sup?` <span class="badge b-wash">مورّد</span>`:""}</div>
+      ${p.phone?`<div class="meta">📞 ${E(p.phone)}</div>`:""}
+      <div class="party-sides">
+        <div class="ps-on"><small>📥 عليه لنا</small><b>${money(p.on)}</b></div>
+        <div class="ps-for"><small>📤 له عندنا</small><b>${money(p.for)}</b></div>
+      </div>
+      <div class="price" style="font-size:1.02rem">⚖️ ${netTxt(p)}</div>
+      ${lndDebt(p)>0?`<div class="meta" style="color:var(--brand);font-weight:800">🧺 وعليه للمغسلة أيضًا: ${money(lndDebt(p))}</div>`:""}
+      <div class="meta">${p.items.length} عملية مفتوحة · أقدمها منذ <b>${p.days}</b> يوم</div>
+      ${p.items.slice(0,8).map(x=>`<div class="meta party-item" style="display:flex;justify-content:space-between;gap:8px;align-items:center"><span>${x.ic} ${E(x.t)} · <bdi dir="ltr">${ymd(x.date)}</bdi></span><b style="color:${x.dir==="on"?"var(--unpaid)":"var(--wash)"};white-space:nowrap">${x.dir==="on"?"+":"−"}${money(x.amt)}${x.md&&currentRole!=="worker"?` ${recEditBtn("sdebt",x.md)}<button class="icon-btn" data-md-del="${x.md}" title="حذف" style="margin-inline-start:4px">${svg(I.trash)}</button>`:""}</b></div>`).join("")}
+      ${p.items.length>8?`<div class="hint">+ ${p.items.length-8} أخرى في كشف الحساب</div>`:""}
       <div class="order-acts-sub">
-        <button class="mini act-pay" data-cc-pay="${c.id}">💸 تسديد له</button>
+        ${p.on>0&&p.cust?`<button class="mini act-pay" data-dc-pay="${p.cust.id}">📥 تحصيل</button>`:""}
+        ${p.crCust>0?`<button class="mini" data-cc-pay="${p.cust.id}">💸 تسديد له</button>`:""}
+        ${p.crSup>0?`<button class="mini" data-sp-pay="${p.sup.id}">💸 تسديد للمورّد</button>`:""}
+        ${both&&currentRole!=="worker"?`<button class="mini" data-offset="${E(p.key)}" title="يُسدَّد ما عليه بما له، بلا صندوق">⚖️ مقاصة ${money(Math.min(p.on,p.for))}</button>`:""}
+        ${p.on>0&&p.cust&&p.phone?`<button class="mini" data-debt-wa="c:${p.cust.id}">💬 تذكير</button>`:""}
         ${tl?`<a class="mini" href="${tl}" style="text-decoration:none">📞 اتصال</a>`:""}
-        <button class="icon-btn" data-dc-stmt="${c.id}" title="كشف حساب">📄</button>
+        ${p.cust?`<button class="icon-btn" data-dc-stmt="${p.cust.id}" title="كشف حساب الزبون">📄</button>`:""}
+        ${p.sup?`<button class="icon-btn" data-sp-stmt="${p.sup.id}" title="كشف حساب المورّد">🛒</button>`:""}
       </div>
     </div>`; }).join("");
-  const crCards=cr.length?cr.map(({s,bal,n,days})=>{ const tl=telLink(s.phone,s.country); return `
-    <div class="order">
-      <div class="cust">${E(s.name)}${s.category?` <span class="badge b-done">${E(s.category)}</span>`:""}</div>
-      ${s.phone?`<div class="meta">📞 ${E(s.phone)}</div>`:""}
-      <div class="price" style="color:var(--wash)">${money(bal)} ${CUR}</div>
-      <div class="meta">${n} فاتورة شراء غير مسدّدة · أقدمها منذ <b>${days}</b> يوم</div>
-      <div class="order-acts-sub">
-        <button class="mini act-pay" data-sp-pay="${s.id}">💸 تسديد</button>
-        ${tl?`<a class="mini" href="${tl}" style="text-decoration:none">📞 اتصال</a>`:""}
-        <button class="icon-btn" data-sp-stmt="${s.id}" title="كشف حساب">📄</button>
-      </div>
-    </div>`; }).join(""):"";
-  const credCards=(ccCards+crCards)||`<div class="panel empty" style="grid-column:1/-1">${svg(I.empty)}لا توجد ديون علينا 🎉</div>`;
+  const empty=view==="cred"?"لا توجد ديون علينا 🎉":view==="debt"?"لا توجد ديون لنا 🎉":"لا ديون لنا ولا علينا 🎉";
   return `
     <div class="store-stat">
-      <div class="s"><div class="v" style="color:var(--unpaid)">${money(owed)}</div><div class="l">🏪 ديون المتجر لنا (${dv.length} مدين)</div></div>
-      <div class="s"><div class="v" style="color:var(--wash)">${money(owe)}</div><div class="l">علينا للموردين (${cr.length})${cc.length?" + زبائن ("+cc.length+")":""}</div></div>
+      <div class="s"><div class="v" style="color:var(--unpaid)">${money(owed)}</div><div class="l">🏪 ديون المتجر لنا (${nOn} مدين)</div></div>
+      <div class="s"><div class="v" style="color:var(--wash)">${money(owe)}</div><div class="l">علينا للموردين والزبائن (${nFor}${nSup?" · منهم "+nSup+" مورّد":""})</div></div>
       <div class="s"><div class="v" style="color:${owed-owe<0?'var(--unpaid)':'var(--ready)'}">${money(owed-owe)}</div><div class="l">الصافي (لنا − علينا)</div></div>
     </div>
     ${manualDebtFormHTML()}
-    <div class="seg" style="margin-bottom:10px">
-      <button data-debtview="debt" class="${view==="debt"?"on":""}">📥 المدينون — لنا (${dv.length})</button>
-      <button data-debtview="cred" class="${view==="cred"?"on":""}">📤 الدائنون — علينا (${cr.length+cc.length})</button>
+    <div class="seg" style="margin-bottom:8px">
+      <button data-debtview="all" class="${view==="all"?"on":""}">👥 الكل (${all.length})</button>
+      <button data-debtview="debt" class="${view==="debt"?"on":""}">📥 عليهم لنا (${nOn})</button>
+      <button data-debtview="cred" class="${view==="cred"?"on":""}">📤 لهم علينا (${nFor})</button>
     </div>
-    ${view==="cred"?`<div class="hint" style="margin-bottom:8px">الموردون الذين اشترينا منهم بالدين، والزبائن الذين لهم رصيد عندنا (دين «له»). «تسديد» يخصم من الصندوق بطريقة الدفع التي تختارها.</div><div class="grid orders">${credCards}</div>`
-      :contactsDebts(true,"store")}`;
+    <input id="contactSearch" class="search-inp" type="search" placeholder="🔎 بحث بالاسم أو الهاتف" value="${E(q)}" style="width:100%;margin-bottom:8px">
+    <div class="hint" style="margin-bottom:8px">كل شخص مرة واحدة: ما عليه لنا وما له عندنا والصافي. الزبون والمورّد بنفس الرقم يظهران معًا. «⚖️ مقاصة» تُسدّد ما عليه بما له دون صندوق.</div>
+    <div class="grid orders">${cards||`<div class="panel empty" style="grid-column:1/-1">${svg(I.empty)}${q?"لا نتائج للبحث":empty}</div>`}</div>`;
 }
 function doManualDebtSave(){
   const dir=_mdDraft.dir==="for"?"for":"on";
@@ -3768,6 +3802,7 @@ function bindDebtsUI(){
   document.querySelectorAll("[data-debt-wa]").forEach(b=>b.onclick=()=>sendDebtReminder(b.dataset.debtWa, "store"));
   document.querySelectorAll("[data-cc-pay]").forEach(b=>b.onclick=()=>{ const c=storeCust(b.dataset.ccPay); if(c){ _storePayCtx={kind:"custCredit",id:c.id}; openStorePay(custCredit(c.id),"تسديد لـ "+c.name); } });
   document.querySelectorAll("[data-md-del]").forEach(b=>b.onclick=()=>deleteManualDebt(b.dataset.mdDel));
+  document.querySelectorAll("[data-offset]").forEach(b=>b.onclick=()=>storeOffset(b.dataset.offset));
   // نموذج الدين اليدوي
   const mdo=document.getElementById("mdOpen"); if(mdo) mdo.onclick=()=>{ _mdDraft.open=true; render(); };
   const mdc=document.getElementById("mdClose"); if(mdc) mdc.onclick=()=>{ _mdDraft={dir:_mdDraft.dir,cust:"",open:false}; render(); };
@@ -7211,7 +7246,7 @@ setTimeout(()=>{ if(!window.cloudReady){ const el=document.getElementById("cloud
 <!-- PWA: service-worker registration + update/install wiring -->
 <script>
 (function(){
-  var APP_VERSION = "2.36.0";
+  var APP_VERSION = "2.37.0";
   window.APP_VERSION = APP_VERSION;
   function $(id){ return document.getElementById(id); }
   // سجّل إصدار هذا الجهاز في الحالة المتزامنة (ليُنبَّه الجهاز القديم)

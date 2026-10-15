@@ -1,0 +1,47 @@
+// 2.37.0 — «المتجر ▸ الديون»: المدينون والدائنون معًا — كل شخص مرة واحدة بما عليه وما له والصافي؛ الزبون والمورّد بنفس الرقم شخص واحد؛ مقاصة بلا صندوق.
+const { chromium } = require('/opt/node22/lib/node_modules/playwright');
+const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favicon|CONNECT|installations|BloomFilter|Fetch API|Access-Control|CORS|the server responded|400 \(|403 \(|wa\.me|telegram/i;
+(async () => {
+  const browser = await chromium.launch();
+  const page = await (await browser.newContext({ viewport:{width:400,height:860} })).newPage();
+  const errors=[]; page.on('console',m=>{ if(m.type()==='error'&&!IGNORE.test(m.text())) errors.push('C:'+m.text()); });
+  page.on('pageerror',e=>{ if(!IGNORE.test(e.message)) errors.push('P:'+e.message); });
+  page.on('dialog', d=>d.accept());
+  const log=(...a)=>console.log(...a);
+  await page.goto('http://localhost:8123/index.html',{waitUntil:'load'}); await page.waitForTimeout(1200);
+  if(await page.isVisible('#lockSwitch')) await page.click('#lockSwitch');
+  await page.fill('#lockName','مالك'); await page.fill('#lockInput','0707'); await page.click('#lockEnter'); await page.waitForTimeout(400);
+  await page.evaluate(()=>{ const d=iso(new Date(Date.now()-3*864e5));
+    state.storeCustomers=[{id:'cu1',name:'أحمد',phone:'22110000',country:'222',editedAt:d},{id:'cu2',name:'سالم',phone:'33110000',country:'222',editedAt:d}];
+    state.suppliers=[{id:'su1',name:'أحمد الموزّع',phone:'22110000',country:'222',category:'منظفات',editedAt:d},{id:'su2',name:'مورّد الصابون',phone:'44110000',country:'222',editedAt:d}];
+    state.storeSales=[{id:'s1',no:'S-1',customerId:'cu1',customerName:'أحمد',items:[],total:8000,paidAmount:0,paid:false,date:d,editedAt:d},{id:'s2',no:'S-2',customerId:'cu2',customerName:'سالم',items:[],total:2000,paidAmount:0,paid:false,date:d,editedAt:d}];
+    state.storePurchases=[{id:'pu1',no:'P-1',supplierId:'su1',supplier:'أحمد الموزّع',items:[],total:5000,paidAmount:0,paid:false,date:d,editedAt:d},{id:'pu2',no:'P-2',supplierId:'su2',supplier:'مورّد الصابون',items:[],total:1200,paidAmount:0,paid:false,date:d,editedAt:d}];
+    state.storeDebts=[{id:'md1',customerId:'cu1',dir:'for',amount:1000,paidAmount:0,paid:false,note:'دفع مقدّمًا',date:d,editedAt:d}]; state.storeCash=[];
+    state.tab='store'; state.storeSub='debts'; state.debtView=null; state.contactSearch=''; save(); render(); });
+  await page.waitForTimeout(300);
+  let r=await page.evaluate(()=>{ const cards=[...document.querySelectorAll('.party-card')].map(c=>c.textContent.replace(/\s+/g,' ')); return { n:cards.length, ahmad:cards.filter(t=>/أحمد/.test(t)), all:document.querySelector('[data-debtview="all"]').classList.contains('on') }; });
+  log('default view «الكل» lists 3 people (customer+supplier with the same phone merged): '+(r.all && r.n===3 && r.ahmad.length===1)+' (expect true)');
+  const a=r.ahmad[0]||'';
+  log('أحمد: owes 8,000, we owe him 6,000 (1,000 credit + 5,000 purchase), net «عليه لنا 2,000»: '+(/عليه لنا\s*8,000/.test(a) && /له عندنا\s*6,000/.test(a) && /عليه لنا 2,000/.test(a) && /زبون/.test(a) && /مورّد/.test(a))+' (expect true)');
+  log('his card lists the invoice, the credit and the purchase: '+(/فاتورة S-1/.test(a) && /له: دفع مقدّمًا/.test(a) && /شراء P-1/.test(a))+' (expect true)');
+  log('his card has collect, pay-credit, pay-supplier and offset buttons: '+(await page.evaluate(()=>!!document.querySelector('[data-dc-pay="cu1"]') && !!document.querySelector('[data-cc-pay="cu1"]') && !!document.querySelector('[data-sp-pay="su1"]') && /6,000/.test((document.querySelector('[data-offset]')||{}).textContent||'')))+' (expect true)');
+  r=await page.evaluate(()=>{ const t=document.querySelector('.store-stat').textContent; return /10,000/.test(t) && /7,200/.test(t) && /2,800/.test(t); });
+  log('totals: for us 10,000 · on us 7,200 · net 2,800: '+r+' (expect true)');
+  await page.click('[data-debtview="cred"]'); await page.waitForTimeout(200);
+  log('«لهم علينا» shows أحمد and the soap supplier (2): '+(await page.evaluate(()=>document.querySelectorAll('.party-card').length===2))+' (expect true)');
+  await page.click('[data-debtview="debt"]'); await page.waitForTimeout(200);
+  log('«عليهم لنا» shows أحمد and سالم (2): '+(await page.evaluate(()=>document.querySelectorAll('.party-card').length===2))+' (expect true)');
+  await page.fill('#contactSearch','3311'); await page.waitForTimeout(250);
+  log('search by phone finds سالم only: '+(await page.evaluate(()=>{ const c=document.querySelectorAll('.party-card'); return c.length===1 && /سالم/.test(c[0].textContent); }))+' (expect true)');
+  await page.fill('#contactSearch',''); await page.waitForTimeout(150); await page.click('[data-debtview="all"]'); await page.waitForTimeout(200);
+  // مقاصة: 6,000 من عليه تُسدَّد بما له، بلا صندوق
+  await page.click('[data-offset]'); await page.waitForTimeout(200); await page.fill('#codeInput','070752'); await page.click('#codeOk'); await page.waitForTimeout(300);
+  r=await page.evaluate(()=>({ on:custBalance('cu1'), cr:custCredit('cu1'), sup:supplierBalance(state.suppliers[0]), cash:state.storeCash.length, s1:state.storeSales[0].paidAmount, act:state.activity.some(a=>/مقاصة/.test(a.action)) }));
+  log('offset 6,000: invoice left 2,000, credit 0, supplier 0, no cash movement, logged: '+(r.on===2000 && r.cr===0 && r.sup===0 && r.s1===6000 && r.cash===0 && r.act)+' (expect true)');
+  log('after offset his card shows only «عليه لنا 2,000» and no offset button: '+(await page.evaluate(()=>{ const c=[...document.querySelectorAll('.party-card')].find(x=>/أحمد/.test(x.textContent)); return !!c && /عليه لنا 2,000/.test(c.textContent) && !document.querySelector('[data-offset]'); }))+' (expect true)');
+  await page.click('[data-dc-pay="cu1"]'); await page.waitForTimeout(200); await page.fill('#storePayAmt','2000'); await page.click('#storePayOk'); await page.waitForTimeout(300);
+  log('collecting 2,000 clears him; he leaves the list: '+(await page.evaluate(()=>custBalance('cu1')===0 && ![...document.querySelectorAll('.party-card')].some(x=>/أحمد/.test(x.textContent))))+' (expect true)');
+  log('no horizontal overflow at 400px: '+(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1))+' (expect true)');
+  log('\nERRORS:', errors.length?errors.join('\n'):'NONE ✅');
+  await browser.close();
+})().catch(e=>{console.error('CRASH',e);process.exit(1);});

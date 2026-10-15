@@ -436,6 +436,15 @@
   (bags,loads,ex)` — حفظ الخلطة يُرفض إن كان الإسمنت أو التراب المتاح أقل من المطلوب (`brickMatShortMsg`)، ولوحة `#bkMatAvail` في النموذج
   تعرض المتاح وتتحوّل للأحمر؛ تعديل الخلطة لا يتجاوز المتاح؛ تقليل كمية شراء أو حذفه تحت ما استُعمل ممنوع. الاختبارات
   `tests/e2e/sync_no_loop.test.js` و`tests/e2e/brick_mat_guard.test.js`.
+- **المتجر ▸ الديون: المدينون والدائنون في مكان واحد (2.37.0):** `storeScreenDebts` صار يعرض **كل شخص مرة واحدة** من `storeParties()`:
+  الزبون (`storeCustomers`، بلا المغسلة) والمورّد (`suppliers`) بنفس الهاتف (`normPhone`، أو نفس الاسم بلا هاتف) = شخص واحد
+  `{key,name,phone,cust,sup,on,crCust,crSup,for,net,items,days}` — `on` = `custBalance` (فواتير بالدين + ديون «عليه»)، `for` = `custCredit`
+  (ديون «له») + `supplierBalance` (مشتريات غير مسدّدة)، `net = on − for`. البطاقة `.party-card`: «📥 عليه لنا / 📤 له عندنا» (`.party-sides`)،
+  «⚖️ الصافي»، قائمة العمليات المفتوحة (فاتورة/دين يدوي/له/شراء، مع تعديل/حذف الديون اليدوية)، وأزرار: تحصيل `data-dc-pay`، تسديد له
+  `data-cc-pay`، تسديد للمورّد `data-sp-pay`، **⚖️ مقاصة** `data-offset` → `storeOffset(key)` (بالكود: `allocatePayment` بمقدار
+  min(عليه،له) ثم `allocateCredit` ثم `paySupplier`، **بلا حركة صندوق**، تُسجَّل «مقاصة ديون»)، تذكير واتساب `data-debt-wa="c:id"`،
+  اتصال، كشف الزبون/المورّد. الفلتر `state.debtView` = all (افتراضي) / debt «عليهم لنا» / cred «لهم علينا»، وبحث `#contactSearch`.
+  «الزبائن ▸ الديون» الشامل لكل الأقسام كما هو. الاختبار `tests/e2e/store_parties.test.js`.
   الاختبار `tests/e2e/brick_worker_reset.test.js`.
 - **ما يُكتب لا يختفي + الفاتورة والربح عند البيع (2.32.0):** كانت الأزرار التي تُعيد الرسم (نقدي/آجل، النقل، نوع المادة، عليه/له…)
   والمزامنة تمسح الحقول. الآن **في كل الشاشات** `_formKeep`: كل حقل له `id` داخل `#main` يُحفظ عند `input/change` (`keepField`)

@@ -41,7 +41,7 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
   r=await page.evaluate(()=>({ x:state.storeDebts[1], credit:custCredit('cu1'), bal:custBalance('cu1'), m:state.storeCash[0], cc:custCreditors() }));
   log('manual debt «for» saved with cash-in movement (bankily 1,500, ref=debt): '+(r.x.dir==='for' && r.m && r.m.type==='in' && r.m.amount===1500 && r.m.payMethod==='bankily' && r.m.ref===r.x.id)+' (expect true)');
   log('credit 1,500 is separate from his debt (balance still 5,000): '+(r.credit===1500 && r.bal===5000)+' (expect true) | listed among customer creditors: '+(r.cc.length===1 && r.cc[0].bal===1500)+' (expect true)');
-  log('debtor card mentions his credit: '+/وله عندنا/.test(await page.evaluate(()=>document.querySelector('.grid.orders').textContent))+' (expect true)');
+  log('same card shows what he owes (5,000), his credit (1,500) and the net «عليه لنا 3,500»: '+(await page.evaluate(()=>{ const t=document.querySelector('.grid.orders').textContent; return document.querySelectorAll('.party-card').length===1 && /عليه لنا\s*5,000/.test(t) && /له عندنا\s*1,500/.test(t) && /عليه لنا 3,500/.test(t); }))+' (expect true)');
 
   // الدائنون — علينا: بطاقة الزبون + زر تسديد له
   await page.click('[data-debtview="cred"]'); await page.waitForTimeout(250);
