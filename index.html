@@ -738,6 +738,12 @@
   .cat-nm{flex:1;font-size:.9rem}
   .cat-price{width:84px;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink)}
   .cat-new-nm{flex:1;min-width:80px;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink)}
+.hist-list{display:flex;flex-direction:column;gap:0;padding:4px 12px}
+.hist-row{padding:10px 0;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:3px;min-width:0}
+.hist-row:last-child{border-bottom:0}
+.hist-top{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.hist-row.is-del{opacity:.72}
+.hist-row.is-del .hist-top .amt{text-decoration:line-through}
 .party-sides{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:6px;margin:6px 0}
 .party-sides>div{border-radius:10px;padding:6px 8px;background:var(--chip);display:flex;flex-direction:column;gap:2px;min-width:0}
 .party-sides small{font-size:.72rem;color:var(--muted);font-weight:700}
@@ -2415,7 +2421,7 @@ function brickScreenDebts(){
       <div class="price" style="color:var(--wash)">${money(brickWageOut(b))} ${CUR}</div>
       <div class="order-acts-sub"><button class="mini act-pay" data-bk-wage="${b.id}">💵 دفع الأجرة</button></div>
     </div>`).join(""):`<div class="hint">كل أجور الخلطات مدفوعة 🎉</div>`;
-  const ledgerRecent=brickLive(state.brickLedger).slice().sort((a,b)=>(b.date||"").localeCompare(a.date||"")).slice(0,12).map(x=>{ const pt=brickParty(x.partyType,x.partyId); const K=BRICK_LKIND[x.kind]||BRICK_LKIND.other; return `<tr><td>${ymd(x.date)}</td><td><b>${E(pt?pt.name:"?")}</b></td><td class="amt" style="font-weight:800;color:${x.dir==="on"?'var(--unpaid)':'var(--ready)'}">${money(x.amount)}</td><td><span class="badge ${x.dir==="on"?"b-unpaid":"b-paid"}">${x.dir==="on"?"عليه":"له"}</span> ${K.ic} ${K.t}${x.qty?" "+fmt(x.qty):""}${x.note?`<div style="font-size:.72rem;color:var(--muted)">${E(x.note)}</div>`:""}</td><td style="text-align:left">${currentRole!=="worker"?`${recEditBtn("bledger",x.id)}<button class="icon-btn" data-bk-del="ledger:${x.id}" title="حذف">${svg(I.trash)}</button>`:""}</td></tr>`; }).join("");
+  const ledgerRecent=(state.brickLedger||[]).slice().sort((a,b)=>(b.date||"").localeCompare(a.date||"")).slice(0,_bkDraft.ledgerAll?100000:12).map(x=>{ const pt=brickParty(x.partyType,x.partyId); const K=BRICK_LKIND[x.kind]||BRICK_LKIND.other; if(x.cancelled) return `<tr style="opacity:.6"><td>${ymd(x.date)}</td><td><b>${E(pt?pt.name:"?")}</b></td><td class="amt" style="text-decoration:line-through">${money(x.amount)}</td><td>🗑️ محذوف — ${E(x.note||"")}<div style="font-size:.72rem;color:var(--muted)">حذفه ${E(x.cancelledBy||"?")} ${ymd(x.cancelledAt||x.editedAt)}${x.cancelReason?" — "+E(x.cancelReason):""}</div></td><td style="text-align:left">${currentRole!=="worker"?`<button class="mini" data-bk-lrestore="${x.id}">↩️ استعادة</button>`:""}</td></tr>`; return `<tr><td>${ymd(x.date)}</td><td><b>${E(pt?pt.name:"?")}</b></td><td class="amt" style="font-weight:800;color:${x.dir==="on"?'var(--unpaid)':'var(--ready)'}">${money(x.amount)}</td><td><span class="badge ${x.dir==="on"?"b-unpaid":"b-paid"}">${x.dir==="on"?"عليه":"له"}</span> ${K.ic} ${K.t}${x.qty?" "+fmt(x.qty):""}${x.note?`<div style="font-size:.72rem;color:var(--muted)">${E(x.note)}</div>`:""}</td><td style="text-align:left">${currentRole!=="worker"?`${recEditBtn("bledger",x.id)}<button class="icon-btn" data-bk-del="ledger:${x.id}" title="حذف">${svg(I.trash)}</button>`:""}</td></tr>`; }).join("");
   return `
     <div class="store-stat">
       <div class="s"><div class="v" style="color:var(--unpaid)">${money(lna)}</div><div class="l">📥 لنا عند الأطراف (${P.filter(x=>x.balance>0).length})</div></div>
@@ -2441,7 +2447,7 @@ function brickScreenDebts(){
     </div>`:`<button class="mini" id="bkLOpen" style="width:100%;margin-bottom:10px;font-weight:800">➕ قيد يدوي على طرف (دفع مال / أخذ طوب / أي شيء — له أو عليه)</button>`}
     <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px"><input class="search-inp" id="brickSearch" type="text" placeholder="بحث بالاسم أو الهاتف" value="${E(q)}" style="flex:1;margin:0">${remindAllList("brick").length?`<button class="mini" data-remind-all="brick">📣 تذكير الجميع (${remindAllList("brick").length})</button>`:""}</div>
     <div class="grid orders">${cards}</div>
-    ${ledgerRecent?`<div class="panel" style="margin-top:12px"><h3>📝 آخر القيود اليدوية</h3><div class="tbl-wrap"><table class="tbl"><thead><tr><th>التاريخ</th><th>الطرف</th><th>المبلغ</th><th>القيد</th><th></th></tr></thead><tbody>${ledgerRecent}</tbody></table></div></div>`:""}
+    ${ledgerRecent?`<div class="panel" style="margin-top:12px"><h3>📝 ${_bkDraft.ledgerAll?"كل القيود اليدوية":"آخر القيود اليدوية"} <button type="button" class="mini" id="bkLedgerAll" style="margin-inline-start:8px">${_bkDraft.ledgerAll?"آخر 12 فقط":"عرض الكل ("+(state.brickLedger||[]).length+")"}</button></h3><div class="tbl-wrap"><table class="tbl"><thead><tr><th>التاريخ</th><th>الطرف</th><th>المبلغ</th><th>القيد</th><th></th></tr></thead><tbody>${ledgerRecent}</tbody></table></div></div>`:""}
     <div class="panel" style="margin-top:12px"><h3>👷 أجور الخلطات غير المدفوعة</h3><div class="grid orders">${wCards}</div></div>
     ${(()=>{ const P2=(state.brickPorters||[]).filter(pr=>brickPersonBalance(pr.id)!==0); return P2.length?`<div class="panel" style="margin-top:12px"><h3>👷 مستحقّ للعمّال والحمّالين</h3><div class="grid orders">${P2.map(pr=>`<div class="order"><div class="cust">🚚 ${_esc(pr.name)}</div>${pr.phone?`<div class="meta">📞 ${_esc(pr.phone)}</div>`:""}<div class="price" style="color:${brickPersonBalance(pr.id)>0?'var(--wash)':'var(--unpaid)'}">${brickPersonBalance(pr.id)>0?"له "+money(brickPersonBalance(pr.id)):"عليه سلفة "+money(-brickPersonBalance(pr.id))} ${CUR}</div><div class="order-acts-sub"><button class="mini act-pay" data-bk-porterpay="${pr.id}">💵 دفع له</button><button class="mini" data-bk-porterstmt="${pr.id}">📄 كشف</button></div></div>`).join("")}</div></div>`:""; })()}`;
 }
@@ -2647,9 +2653,26 @@ function doBrickCashMove(type){
   addBrickCash(type,amount,reason||(type==="in"?"إيداع":"سحب"),null,pmVal("bkCashPm")); pmReset("bkCashPm");
   logActivity(type==="in"?"دبو: إيداع صندوق":"دبو: سحب من الصندوق",money(amount)+(reason?" · "+reason:"")); toast("تم ✓"); render();
 }
+/* (2.38.0) قيود حسابات دبو لا تُمحى: تُعلَّم محذوفة (تُحفظ حركات الصندوق المرتبطة معها لتعود عند الاستعادة) */
+function brickLedgerCancel(x){
+  if(x.cancelled) return; const pt=brickParty(x.partyType,x.partyId);
+  requireCode(()=>{ const reason=askReason("سبب حذف القيد (اختياري) — التفاصيل تبقى محفوظة:"); if(reason===null) return;
+    const now=iso(new Date()), mv=(state.brickCash||[]).filter(m=>m.ref===x.id);
+    x.cancelledCash=mv.map(m=>Object.assign({},m)); mv.forEach(m=>tomb(m.id)); state.brickCash=(state.brickCash||[]).filter(m=>m.ref!==x.id);
+    x.cancelled=true; x.cancelledAt=now; x.cancelledBy=currentUser; x.cancelReason=reason; x.editedAt=now;
+    logActivity("دبو: حذف قيد",(pt?pt.name:"")+" · "+money(x.amount)+" · "+(x.note||"")+(reason?" · السبب: "+reason:"")+" (محفوظ)"); toast("حُذف القيد — تفاصيله محفوظة ويمكن استعادته"); render(); }, SECRET_CODE, "حذف قيد دبو", (pt?pt.name:"")+" "+money(x.amount)+" "+CUR);
+}
+function brickLedgerRestore(id){
+  const x=(state.brickLedger||[]).find(r=>r.id===id); if(!x||!x.cancelled) return; const pt=brickParty(x.partyType,x.partyId);
+  requireCode(()=>{ const now=iso(new Date()); (x.cancelledCash||[]).forEach(m=>state.brickCash.push(Object.assign({},m,{id:uid(),editedAt:now})));
+    x.cancelHist=(x.cancelHist||[]).concat([{at:x.cancelledAt,by:x.cancelledBy,reason:x.cancelReason||"",restoredAt:now,restoredBy:currentUser}]);
+    x.cancelled=false; delete x.cancelledAt; delete x.cancelledBy; delete x.cancelReason; delete x.cancelledCash; x.editedAt=now;
+    logActivity("دبو: استعادة قيد",(pt?pt.name:"")+" · "+money(x.amount)+" · "+(x.note||"")); toast("↩️ استُعيد القيد ✓"); render(); }, SECRET_CODE, "استعادة قيد دبو", (pt?pt.name:"")+" "+money(x.amount)+" "+CUR);
+}
 function brickDelete(kind,id){
   const arrs={batch:"brickBatches",sale:"brickSales",pur:"brickPurchases",exp:"brickExpenses",cash:"brickCash",ledger:"brickLedger",load:"brickLoads"}; const key=arrs[kind]; if(!key) return;
   const x=(state[key]||[]).find(r=>r.id===id); if(!x) return;
+  if(kind==="ledger") return brickLedgerCancel(x);
   if(kind==="pur"&&(x.material==="cement"||x.material==="sand")&&brickMatStock(x.material)-(+x.qty||0)<0) return toast("⛔ لا يمكن حذف هذا الشراء: "+(x.material==="cement"?"الإسمنت":"التراب")+" مستعمل في الخلطات (احذف أو عدّل الخلطة أولًا)");
   requireCode(()=>{ tomb(x.id); state[key]=state[key].filter(r=>r.id!==id);
     if(kind!=="cash"){ const lds=(state.brickLoads||[]).filter(l=>l.ref===id); lds.forEach(l=>tomb(l.id)); state.brickLoads=(state.brickLoads||[]).filter(l=>l.ref!==id); (state.brickCash||[]).filter(m=>lds.some(l=>l.id===m.ref)).forEach(m=>tomb(m.id)); state.brickCash=state.brickCash.filter(m=>!lds.some(l=>l.id===m.ref));
@@ -2687,6 +2710,8 @@ function bindBrick(){
   document.querySelectorAll("[data-bk-wage]").forEach(b=>b.onclick=()=>{ const x=(state.brickBatches||[]).find(y=>y.id===b.dataset.bkWage); if(x){ _storePayCtx={kind:"brickWage",id:x.id}; openStorePay(brickWageOut(x),"أجرة خلطة "+x.no+(x.workers?" — "+x.workers:"")); } });
   document.querySelectorAll("[data-bk-rcpt]").forEach(b=>b.onclick=()=>{ const s=(state.brickSales||[]).find(x=>x.id===b.dataset.bkRcpt); if(s) openBrickReceipt(s); });
   document.querySelectorAll("[data-bk-del]").forEach(b=>b.onclick=()=>{ const [k,id]=b.dataset.bkDel.split(":"); brickDelete(k,id); });
+  document.querySelectorAll("[data-bk-lrestore]").forEach(b=>b.onclick=()=>brickLedgerRestore(b.dataset.bkLrestore));
+  const lAll=document.getElementById("bkLedgerAll"); if(lAll) lAll.onclick=()=>{ _bkDraft.ledgerAll=!_bkDraft.ledgerAll; render(); };
   // الحسابات: تحصيل/تسديد على مستوى الطرف، كشف حساب، قيد يدوي
   document.querySelectorAll("[data-bk-pcollect]").forEach(b=>b.onclick=()=>{ const pt=brickPartyFromKey(b.dataset.bkPcollect); const P=brickParties().find(x=>x.key===b.dataset.bkPcollect); if(pt&&P){ _storePayCtx={kind:"brickParty",key:pt.key,toUs:true}; openStorePay(Math.max(0,P.balance),"تحصيل من "+pt.name); } });
   document.querySelectorAll("[data-bk-ppay]").forEach(b=>b.onclick=()=>{ const pt=brickPartyFromKey(b.dataset.bkPpay); const P=brickParties().find(x=>x.key===b.dataset.bkPpay); if(pt&&P){ _storePayCtx={kind:"brickParty",key:pt.key,toUs:false}; openStorePay(Math.max(0,-P.balance),"تسديد لـ "+pt.name); } });
@@ -3722,7 +3747,8 @@ function storeScreenDebts(){
   const E=_esc, all=storeParties(), q=(state.contactSearch||"").trim();
   const DV=debtors(), lndDebt=p=>{ const ph=normPhone(p.phone||""); const d=DV.find(x=>(p.cust&&x.custId===p.cust.id)||(ph&&normPhone(x.phone||"")===ph)); return d?(d.by.car||0)+(d.by.rug||0)+(d.by.lnd||0):0; };
   const owed=sum(all,p=>p.on), owe=sum(all,p=>p.for), nOn=all.filter(p=>p.on>0).length, nFor=all.filter(p=>p.for>0).length, nSup=all.filter(p=>p.crSup>0).length;
-  const view=state.debtView==="cred"?"cred":state.debtView==="debt"?"debt":"all";
+  const view=["cred","debt","hist"].includes(state.debtView)?state.debtView:"all";
+  const nHist=(state.storeDebts||[]).length, nDel=(state.storeDebts||[]).filter(x=>x.cancelled).length;
   let L=view==="debt"?all.filter(p=>p.on>0):view==="cred"?all.filter(p=>p.for>0):all;
   if(q) L=L.filter(p=>(p.name||"").includes(q)||normPhone(p.phone||"").includes(normPhone(q)));
   const netTxt=p=>p.net>0?`<span style="color:var(--unpaid)">عليه لنا ${money(p.net)} ${CUR}</span>`:p.net<0?`<span style="color:var(--wash)">له علينا ${money(-p.net)} ${CUR}</span>`:`<span style="color:var(--ready)">متعادل ✓</span>`;
@@ -3762,10 +3788,11 @@ function storeScreenDebts(){
       <button data-debtview="all" class="${view==="all"?"on":""}">👥 الكل (${all.length})</button>
       <button data-debtview="debt" class="${view==="debt"?"on":""}">📥 عليهم لنا (${nOn})</button>
       <button data-debtview="cred" class="${view==="cred"?"on":""}">📤 لهم علينا (${nFor})</button>
+      <button data-debtview="hist" class="${view==="hist"?"on":""}" title="كل الديون: المفتوحة والمسدَّدة والمحذوفة${nDel?" ("+nDel+" محذوف)":""}">🗂️ السجل (${nHist})</button>
     </div>
     <input id="contactSearch" class="search-inp" type="search" placeholder="🔎 بحث بالاسم أو الهاتف" value="${E(q)}" style="width:100%;margin-bottom:8px">
     <div class="hint" style="margin-bottom:8px">كل شخص مرة واحدة: ما عليه لنا وما له عندنا والصافي. الزبون والمورّد بنفس الرقم يظهران معًا. «⚖️ مقاصة» تُسدّد ما عليه بما له دون صندوق.</div>
-    <div class="grid orders">${cards||`<div class="panel empty" style="grid-column:1/-1">${svg(I.empty)}${q?"لا نتائج للبحث":empty}</div>`}</div>`;
+    ${view==="hist"?storeDebtHistoryHTML(q):`<div class="grid orders">${cards||`<div class="panel empty" style="grid-column:1/-1">${svg(I.empty)}${q?"لا نتائج للبحث":empty}</div>`}</div>`}`;
 }
 function doManualDebtSave(){
   const dir=_mdDraft.dir==="for"?"for":"on";
@@ -3790,9 +3817,39 @@ function doManualDebtSave(){
   logActivity(dir==="on"?"دين يدوي عليه":"دين يدوي له",c.name+" · "+money(amt)+" "+CUR+" · "+note);
   _mdDraft={dir,cust:"",open:false}; pmReset("mdPm"); toast(dir==="on"?"سُجّل الدين على "+c.name+" ✓":"سُجّل الدين لـ "+c.name+" ✓"); render();
 }
+/* (2.38.0) الحذف لا يمحو تفاصيل الدين أبدًا: يُعلَّم «محذوف» (من/متى/السبب) ويبقى في «🗂️ السجل» وكشف الحساب ويمكن استعادته.
+   كان الحذف يزيل السجل نهائيًا (tombstone) فتختفي تفاصيله على كل الأجهزة. */
+function askReason(title){ try{ const r=prompt(title||"سبب الحذف (اختياري):",""); return r==null?null:String(r).trim(); }catch(e){ return ""; } }
 function deleteManualDebt(id){
-  const x=(state.storeDebts||[]).find(y=>y.id===id); if(!x) return; const c=storeCust(x.customerId);
-  requireCode(()=>{ tomb(x.id); state.storeDebts=state.storeDebts.filter(y=>y.id!==id); logActivity("حذف دين يدوي",(c?c.name:"")+" · "+money(x.amount)+" "+CUR+" · "+(x.note||"")); toast("تم الحذف"); render(); }, SECRET_CODE, "حذف دين يدوي", (c?c.name:"")+" · "+money(x.amount)+" "+CUR);
+  const x=(state.storeDebts||[]).find(y=>y.id===id); if(!x||x.cancelled) return; const c=storeCust(x.customerId);
+  requireCode(()=>{ const reason=askReason("سبب حذف الدين (اختياري) — التفاصيل تبقى محفوظة في السجل:"); if(reason===null) return;
+    const now=iso(new Date()); x.cancelled=true; x.cancelledAt=now; x.cancelledBy=currentUser; x.cancelReason=reason; x.editedAt=now;
+    logActivity("حذف دين يدوي",(c?c.name:"")+" · "+money(x.amount)+" "+CUR+" · "+(x.note||"")+(reason?" · السبب: "+reason:"")+" (محفوظ في السجل)");
+    toast("حُذف من الديون — تفاصيله محفوظة في «🗂️ السجل» ويمكن استعادته"); render(); }, SECRET_CODE, "حذف دين يدوي", (c?c.name:"")+" · "+money(x.amount)+" "+CUR);
+}
+function restoreManualDebt(id){
+  const x=(state.storeDebts||[]).find(y=>y.id===id); if(!x||!x.cancelled) return; const c=storeCust(x.customerId);
+  requireCode(()=>{ const now=iso(new Date()); x.cancelHist=(x.cancelHist||[]).concat([{at:x.cancelledAt,by:x.cancelledBy,reason:x.cancelReason||"",restoredAt:now,restoredBy:currentUser}]);
+    x.cancelled=false; delete x.cancelledAt; delete x.cancelledBy; delete x.cancelReason; x.editedAt=now; if(state.deleted) delete state.deleted["rec:"+x.id];
+    logActivity("استعادة دين يدوي",(c?c.name:"")+" · "+money(x.amount)+" "+CUR+" · "+(x.note||"")); toast("↩️ استُعيد الدين ✓"); render(); }, SECRET_CODE, "استعادة دين محذوف", (c?c.name:"")+" · "+money(x.amount)+" "+CUR);
+}
+function mdStatus(x){ if(x.cancelled) return {t:"🗑️ محذوف",c:"var(--muted)"}; if(debtOutstanding(x)<=0) return {t:"✅ مسدَّد",c:"var(--ready)"}; if(+x.paidAmount>0) return {t:"⏳ مسدَّد جزئيًا",c:"var(--wash)"}; return {t:"🔴 مفتوح",c:"var(--unpaid)"}; }
+function storeDebtHistoryHTML(q){
+  const E=_esc; let L=(state.storeDebts||[]).slice().sort((a,b)=>new Date(b.date)-new Date(a.date));
+  if(q){ const qp=normPhone(q); L=L.filter(x=>{ const c=storeCust(x.customerId)||{}; return (c.name||"").includes(q)||(x.note||"").includes(q)||(qp&&normPhone(c.phone||"").includes(qp)); }); }
+  if(!L.length) return `<div class="panel empty">${svg(I.empty)}${q?"لا نتائج للبحث":"لا ديون مسجّلة بعد"}</div>`;
+  const can=currentRole!=="worker";
+  return `<div class="hint" style="margin-bottom:8px">كل الديون اليدوية منذ البداية — المفتوحة والمسدَّدة والمحذوفة — بتفاصيلها كاملة. لا يُمحى منها شيء تلقائيًا أبدًا.</div>
+    <div class="panel hist-list">${L.map(x=>{ const c=storeCust(x.customerId), st=mdStatus(x); return `
+      <div class="hist-row${x.cancelled?" is-del":""}">
+        <div class="hist-top"><b>${E(c?c.name:"زبون محذوف")}</b><span class="badge ${x.dir==="for"?"b-paid":"b-unpaid"}">${x.dir==="for"?"له":"عليه"}</span><b class="amt" style="margin-inline-start:auto">${money(x.amount)} ${CUR}</b></div>
+        <div class="meta">📝 ${E(x.note||"—")}</div>
+        <div class="meta">📅 <bdi dir="ltr">${ymd(x.date)} ${timeStr(x.date)}</bdi> · ✍️ ${E(x.by||"")}${c&&c.phone?` · 📞 ${E(c.phone)}`:""}${x.cash?` · 💵 عبر الصندوق (${pmLabel(x.payMethod)})`:""}</div>
+        <div class="meta"><span style="color:${st.c};font-weight:800">${st.t}</span>${+x.paidAmount>0?` · المسدَّد ${money(x.paidAmount)}`:""}${!x.cancelled&&debtOutstanding(x)>0?` · المتبقي <b>${money(debtOutstanding(x))}</b>`:""}</div>
+        ${x.cancelled?`<div class="meta" style="color:var(--unpaid)">🗑️ حذفه <b>${E(x.cancelledBy||"?")}</b> في <bdi dir="ltr">${ymd(x.cancelledAt||x.editedAt)} ${timeStr(x.cancelledAt||x.editedAt)}</bdi>${x.cancelReason?` — السبب: ${E(x.cancelReason)}`:""}</div>`:""}
+        ${(x.cancelHist||[]).map(h=>`<div class="hint">↩️ حُذف (${E(h.by||"?")} ${ymd(h.at)}) ثم استعاده ${E(h.restoredBy||"?")} في ${ymd(h.restoredAt)}</div>`).join("")}
+        ${can?`<div class="order-acts-sub">${x.cancelled?`<button class="mini act-pay" data-md-restore="${x.id}">↩️ استعادة</button>`:`${recEditBtn("sdebt",x.id)}<button class="icon-btn" data-md-del="${x.id}" title="حذف (يبقى في السجل)">${svg(I.trash)}</button>`}${c?`<button class="icon-btn" data-dc-stmt="${c.id}" title="كشف حساب">📄</button>`:""}</div>`:""}
+      </div>`; }).join("")}</div>`;
 }
 /* تسديد دين «له» لزبون: يُخصم من الصندوق ويُسدَّد الأقدم أولًا */
 function allocateCredit(customerId,amount){ let left=+amount||0; const L=custManualDebts(customerId,"for").filter(x=>debtOutstanding(x)>0).sort((a,b)=>new Date(a.date)-new Date(b.date)); for(const x of L){ if(left<=0)break; const pay=Math.min(debtOutstanding(x),left); x.paidAmount=(+x.paidAmount||0)+pay; if(debtOutstanding(x)<=0)x.paid=true; x.editedAt=iso(new Date()); left-=pay; } return (+amount||0)-left; }
@@ -3802,6 +3859,7 @@ function bindDebtsUI(){
   document.querySelectorAll("[data-debt-wa]").forEach(b=>b.onclick=()=>sendDebtReminder(b.dataset.debtWa, "store"));
   document.querySelectorAll("[data-cc-pay]").forEach(b=>b.onclick=()=>{ const c=storeCust(b.dataset.ccPay); if(c){ _storePayCtx={kind:"custCredit",id:c.id}; openStorePay(custCredit(c.id),"تسديد لـ "+c.name); } });
   document.querySelectorAll("[data-md-del]").forEach(b=>b.onclick=()=>deleteManualDebt(b.dataset.mdDel));
+  document.querySelectorAll("[data-md-restore]").forEach(b=>b.onclick=()=>restoreManualDebt(b.dataset.mdRestore));
   document.querySelectorAll("[data-offset]").forEach(b=>b.onclick=()=>storeOffset(b.dataset.offset));
   // نموذج الدين اليدوي
   const mdo=document.getElementById("mdOpen"); if(mdo) mdo.onclick=()=>{ _mdDraft.open=true; render(); };
@@ -4285,6 +4343,7 @@ function openCustStatement(c){
       <div style="font-weight:800;margin:6px 0">الفواتير</div>${salesRows}
       ${mdOn.length?`<div style="font-weight:800;margin:8px 0 6px">ديون يدوية عليه</div>${mdOn.map(mdRow).join("")}`:""}
       ${mdFor.length?`<div style="font-weight:800;margin:8px 0 6px">ديون له عندنا</div>${mdFor.map(mdRow).join("")}`:""}
+      ${(()=>{ const D=(state.storeDebts||[]).filter(x=>x.cancelled&&x.customerId===c.id); return D.length?`<div style="font-weight:800;margin:8px 0 6px;color:#888">🗑️ ديون محذوفة (محفوظة للسجل — لا تُحسب)</div>${D.map(x=>`<div class="rcpt-row" style="color:#888"><span>${ymd(x.date)} — ${x.dir==="for"?"له":"عليه"}: ${_esc(x.note||"")} · حذفه ${_esc(x.cancelledBy||"?")} ${ymd(x.cancelledAt||x.editedAt)}</span><b style="text-decoration:line-through">${money(x.amount)}</b></div>`).join("")}`:""; })()}
       <div style="font-weight:800;margin:8px 0 6px">الدفعات المحصّلة</div>${payRows}
       ${outRows?`<div style="font-weight:800;margin:8px 0 6px">ما دفعناه له</div>${outRows}`:""}
       <div class="rcpt-total"><span>الرصيد المستحقّ عليه</span><b style="color:#d64545">${money(custBalance(c.id))} ${CUR}</b></div>
@@ -4506,7 +4565,8 @@ function openDirStatement(c){
     ...a.lnd.map(o=>({d:o.date,h:row(o.date,"ملابس "+orderLabel(o),o.price,o.paid)})),
     ...a.sales.map(s=>({d:s.date,h:`<div class="rcpt-row"><span>${ymd(s.date)} — فاتورة متجر ${s.no}</span><b>${money(s.total)}${saleOutstanding(s)>0?` <span style="color:#d64545">(متبقٍ ${money(saleOutstanding(s))})</span>`:''}</b></div>`})),
     ...custManualDebts(c.id,"on").map(x=>({d:x.date,h:`<div class="rcpt-row"><span>${ymd(x.date)} — 📝 دين عليه: ${_esc(x.note||"")}</span><b>${money(x.amount)}${debtOutstanding(x)>0?` <span style="color:#d64545">(متبقٍ ${money(debtOutstanding(x))})</span>`:''}</b></div>`})),
-    ...custManualDebts(c.id,"for").map(x=>({d:x.date,h:`<div class="rcpt-row"><span>${ymd(x.date)} — 📤 دين له: ${_esc(x.note||"")}</span><b style="color:#2e9e6b">${money(x.amount)}${debtOutstanding(x)>0?` (متبقٍ ${money(debtOutstanding(x))})`:' (مسدَّد)'}</b></div>`}))
+    ...custManualDebts(c.id,"for").map(x=>({d:x.date,h:`<div class="rcpt-row"><span>${ymd(x.date)} — 📤 دين له: ${_esc(x.note||"")}</span><b style="color:#2e9e6b">${money(x.amount)}${debtOutstanding(x)>0?` (متبقٍ ${money(debtOutstanding(x))})`:' (مسدَّد)'}</b></div>`})),
+    ...(state.storeDebts||[]).filter(x=>x.cancelled&&x.customerId===c.id).map(x=>({d:x.date,h:`<div class="rcpt-row" style="color:#888"><span>${ymd(x.date)} — 🗑️ محذوف (${x.dir==="for"?"له":"عليه"}): ${_esc(x.note||"")} · حذفه ${_esc(x.cancelledBy||"?")}</span><b style="text-decoration:line-through">${money(x.amount)}</b></div>`}))
   ].sort((x,y)=>(y.d||"").localeCompare(x.d||"")).map(x=>x.h).join("")||'<div class="hint">لا تعاملات بعد.</div>';
   const credit=custCredit(c.id);
   document.getElementById("receiptContent").innerHTML=`
@@ -7246,7 +7306,7 @@ setTimeout(()=>{ if(!window.cloudReady){ const el=document.getElementById("cloud
 <!-- PWA: service-worker registration + update/install wiring -->
 <script>
 (function(){
-  var APP_VERSION = "2.37.0";
+  var APP_VERSION = "2.38.0";
   window.APP_VERSION = APP_VERSION;
   function $(id){ return document.getElementById(id); }
   // سجّل إصدار هذا الجهاز في الحالة المتزامنة (ليُنبَّه الجهاز القديم)

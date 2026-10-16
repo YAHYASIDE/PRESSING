@@ -96,7 +96,7 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
   await page.evaluate(()=>{ state.tab='store'; state.storeSub='debts'; state.debtView='debt'; render(); }); await page.waitForTimeout(200);
   await page.click('[data-md-del="rd1"]'); await page.waitForTimeout(200);
   await page.fill('#codeInput','070752'); await page.click('#codeOk'); await page.waitForTimeout(300);
-  log('delete needs the code and leaves a tombstone: '+(await page.evaluate(()=>!state.storeDebts.some(x=>x.id==='rd1') && !!state.deleted['rec:rd1']))+' (expect true)');
+  log('delete needs the code and keeps the record (marked deleted, no tombstone): '+(await page.evaluate(()=>{ const x=state.storeDebts.find(x=>x.id==='rd1'); return !!x && x.cancelled===true && !!x.cancelledBy && !state.deleted['rec:rd1']; }))+' (expect true)');
   log('no horizontal overflow at 400px: '+(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1))+' (expect true)');
 
   log('\nERRORS:', errors.length?errors.join('\n'):'NONE ✅');
