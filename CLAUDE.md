@@ -473,6 +473,28 @@
   `@capgo/capacitor-native-biometric@6.0.4` في `mobile/package.json` + صلاحية `USE_BIOMETRIC` في `android.yml`؛ `nativeBio()`/`nativeBioVerify`
   تُستعمل عند وجود Capacitor أصلي (`bioSave({native:true,…})`)، وإلا WebAuthn كما كان. **يتطلب تنزيل APK جديد مرة واحدة.** الاختبارات
   `tests/e2e/dash_stmt.test.js` و`tests/e2e/native_bio.test.js`.
+- **المتجر بمجموعات + كشف الزبون دفترًا + الصافي فقط + «ما الجديد» (2.40.0):** (1) **المتجر:** `STORE_GROUPS` أربع مجموعات أعلى الشاشة
+  (🛒 البيع والشراء = pos/purchases/sales · المواد · 👥 الزبائن والديون = debts/customers · الصندوق) وتبويبات داخلية `.inner-seg` تحمل
+  **نفس `data-ssub`** (زر المجموعة = أول تبويب فيها). (2) **ألوان الأقسام:** `KIND_COLOR`/`kindColor(k)` (all أحمر، car أزرق، rug برتقالي،
+  lnd بنفسجي، store ذهبي، brick بني، customers أخضر مائي) في المربعات `.k-tile` (`--kc/--kt`)، حرف الزبون، نقاط الأقسام `.dc-kinds`، وشارات
+  `.kchip`. (3) **بطاقة زبون موحّدة** `personCardHTML(o)` (دليل الزبائن وزبائن المتجر) بنفس شكل بطاقات الديون + `.dc-mini`: «➕ عليه» «➕ له»
+  (`[data-qd="on|key"]`/`"for|id:…"` → نافذة `#qdModal`: مبلغ + وصف إلزامي + «عبر الصندوق»، `saveQuickDebt` → `state.storeDebts`؛ لغير المحفوظ
+  يُنشأ الزبون `ensureCustFromPerson`) و✏️ تعديل (ينقل إلى «كل الزبائن») و🗑️ حذف (**ممنوع** إن كان عليه/له رصيد). المدين غير المحفوظ: «💾 حفظ
+  الزبون» `data-dc-savek` وكشف `data-dc-stmtk` (`debtorPerson(key)`). (4) **الصافي فقط:** بطاقة المدين `net = total − custCredit` (في «الكل/المتجر»)
+  ورقم واحد «عليه» أحمر أو «له» أخضر أو «متعادل»؛ بطاقات `storeParties` بلا مربعي «عليه/له» (`.party-net`)؛ `personCardHTML` يطرح `credit`.
+  (5) **كشف الزبون = دفتر** `openDirStatement(c)` (و`openCustStatement` يحوّل إليه): `custLedger(c)` حركات زمنية مدين/دائن (طلبات غير مدفوعة
+  ودفعها، فواتير المتجر، دفعات الصندوق بـ`customerId` عدا المرتبطة بدين يدوي، الديون اليدوية، رصيد دبو) مع `before/after` لكل حركة «كان ← صار»،
+  وملخص «الرصيد الآن» + عليه/دائن/العدد، والمحذوفة مشطوبة؛ إن اختلف المجموع عن `custNet(c).net` يُضاف سطر «⚖️ تسوية سجلات قديمة». (6) **«🎉 ما الجديد»**:
+  `CHANGELOG` (الأحدث أولًا: `{v,date,items:[{ic,t,d,go:{tab,storeSub,…},sel}]}`) — بعد الدخول (`maybeShowWhatsNew`، `localStorage sadaqa_seen_ver`)
+  تظهر `#whatsNewModal` بقائمة التعديلات و«📍 أرني» (`data-wn-go`) و«▶ جولة» (`wnShowStep`: ينقل للشاشة ويُبرز العنصر `.wn-spot` وشريط `#wnTip`
+  «التالي/تخطي الجولة») و«تخطي». الإعدادات ▸ 📱 التطبيق ▸ «🎉 ما الجديد» (`#btnWhatsNew`). لا تظهر تحت Playwright إلا بـ`window._forceWhatsNew`.
+  **قاعدة: كل إصدار يضيف مدخلًا في `CHANGELOG` بنفس رقم الإصدار، بعبارات عربية بسيطة ومكان كل تعديل.** الاختبار `tests/e2e/whats_new.test.js`.
+  (7) **بطاقة الولاء يدويًا:** في نموذج السيارات الدوائر `[data-lstamp]` تُضبط بالضغط (الضغط على آخر دائرة مملوءة ينقص واحدًا، «↺ تصفير»)،
+  وفي جدول الزبائن ✏️ `[data-lset]` (رقم 0–4) → `setLoyaltyStamps(plate,n)` (مالك/مدير فقط، يختم `editedAt/stampsSetBy`، «تعديل بطاقة ولاء» في النشاط).
+  (8) **العمّال:** بطاقة `.wcard` مختصرة بلون تلقائي لكل عامل (`workerColor(w)` من `W_COLORS` بتجزئة المعرّف)، الرصيد الصافي فقط (له/عليه)، أزرار
+  دائرية: «➕ له»/«➖ عليه» (`[data-wq="credit|pay|id"]` → `#wqModal` مبلغ + وصف → `w.credits`/`w.payments`)، غياب اليوم، كشف؛ و«✏️ تعديل العامل
+  والراتب» `#weModal` (`openWorkerEdit`/`saveWorkerEdit`: الاسم/الوظيفة/الهاتف/الراتب/المباشرة). **تغيير الراتب يسري من اليوم فقط:**
+  `w.salaryHist=[{from,monthly,prev,by}]` و`monthlyOn(w,ds)` في `accruedDue` و`wagesBetween`. لا خانات إدخال طويلة في البطاقة بعد الآن.
   الاختبار `tests/e2e/brick_worker_reset.test.js`.
 - **ما يُكتب لا يختفي + الفاتورة والربح عند البيع (2.32.0):** كانت الأزرار التي تُعيد الرسم (نقدي/آجل، النقل، نوع المادة، عليه/له…)
   والمزامنة تمسح الحقول. الآن **في كل الشاشات** `_formKeep`: كل حقل له `id` داخل `#main` يُحفظ عند `input/change` (`keepField`)

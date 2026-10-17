@@ -40,7 +40,7 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
   log('low-stock warning present:', /منخفض/.test(lowMention));
 
   // --- Customer (laundry) ---
-  await page.click('[data-ssub="customers"]'); await page.waitForTimeout(250);
+  await page.click('[data-ssub="debts"]'); await page.waitForTimeout(150); await page.click('.inner-seg [data-ssub="customers"]'); // 2.40.0: داخل «الزبائن والديون» await page.waitForTimeout(250);
   await page.fill('#scustName','مغسلة النور');
   await page.fill('#scustPhone','22112233');
   await page.check('#scustIsLaundry');

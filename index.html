@@ -831,6 +831,66 @@
 .r-btn.call .rb-ic{background:rgba(28,110,164,.15);border-color:rgba(28,110,164,.4)}
 .r-btn.pay .rb-ic{background:rgba(46,158,107,.16);border-color:rgba(46,158,107,.45)}
 .r-btn small{font-size:.68rem;font-weight:700;color:var(--muted)}
+.inner-seg{margin-top:-2px;margin-bottom:10px;background:transparent;border:0;padding:0;gap:6px}
+.inner-seg button{border:1px solid var(--line);border-radius:999px;background:var(--surface);font-size:.8rem;padding:7px 10px}
+.inner-seg button.on{background:var(--gc,var(--brand));border-color:var(--gc,var(--brand));color:#fff}
+.k-tile{border-top:3px solid var(--kc,var(--line))}
+.k-tile .kt-ic{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--kt,var(--chip));font-size:1.1rem}
+.k-tile .kt-v{color:var(--kc,var(--unpaid))}
+.k-tile.on{border-color:var(--kc);box-shadow:0 0 0 2px var(--kc) inset;background:var(--kt)}
+.kchip{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:999px;background:var(--kt);color:var(--kc);font-size:.74rem;font-weight:700;margin:2px}
+.kchip b{color:inherit}
+.dc-kinds{display:inline-flex;gap:3px;margin-inline-start:2px}
+.dc-kinds i{width:8px;height:8px;border-radius:50%;display:inline-block}
+.dc-who .dc-name{display:flex;align-items:center;gap:6px}
+.pc-info{font-size:.74rem;color:var(--muted);line-height:1.5}
+.r-btn.del .rb-ic{background:rgba(214,69,69,.12);border-color:rgba(214,69,69,.4)}
+.wn-box{max-height:86vh;overflow:auto}
+.wn-ver{display:flex;justify-content:space-between;align-items:center;margin:10px 0 4px;padding:6px 10px;border-radius:10px;background:var(--brand-soft,var(--chip));color:var(--brand)}
+.wn-item{display:flex;gap:10px;align-items:flex-start;padding:8px 2px;border-bottom:1px dashed var(--line)}
+.wn-ic{font-size:1.4rem;line-height:1;width:34px;text-align:center;flex:0 0 34px}
+.wn-tx{flex:1;min-width:0;font-size:.82rem;line-height:1.55}
+.wn-tx b{font-size:.92rem}
+.wn-item .mini{flex:0 0 auto;font-size:.74rem;padding:6px 8px}
+.wn-spot{position:relative;z-index:5;outline:3px solid #f5b301!important;outline-offset:3px;border-radius:12px;animation:wnPulse 1.2s ease-in-out infinite}
+@keyframes wnPulse{0%,100%{box-shadow:0 0 0 0 rgba(245,179,1,.55)}50%{box-shadow:0 0 0 10px rgba(245,179,1,0)}}
+.wn-tip{position:fixed;left:10px;right:10px;bottom:82px;z-index:170;background:var(--surface);color:var(--ink);border:2px solid #f5b301;border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,.3);padding:10px 12px;display:flex;gap:10px;align-items:center;font-size:.84rem;line-height:1.5}
+.wn-tip-btns{display:flex;flex-direction:column;gap:6px;flex:0 0 auto}
+.wn-tip-btns .btn-primary{padding:8px 10px;font-size:.8rem}
+@media (prefers-reduced-motion:reduce){.wn-spot{animation:none}}
+.dc-mini{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;border-top:1px dashed var(--line);padding-top:7px;margin-top:2px}
+.dcm{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:5px 11px;font-family:inherit;font-size:.74rem;font-weight:800;cursor:pointer}
+.dcm.on{color:#d64545;border-color:rgba(214,69,69,.45);background:rgba(214,69,69,.08)}
+.dcm.for{color:#2e9e6b;border-color:rgba(46,158,107,.45);background:rgba(46,158,107,.08)}
+.dcm.del{color:var(--unpaid)}
+.party-net .net-on,.net-on{color:var(--unpaid);font-weight:800}
+.net-for{color:var(--ready);font-weight:800}
+.net-zero{color:var(--ready);font-weight:800}
+.rcpt.ledger .lg-final{margin:8px 0;padding:10px;border-radius:12px;text-align:center;display:flex;flex-direction:column;gap:2px}
+.rcpt.ledger .lg-final small{font-size:.74rem;opacity:.75}
+.rcpt.ledger .lg-final b{font-size:1.15rem}
+.rcpt.ledger .lg-final.on{background:rgba(214,69,69,.1);color:#d64545}
+.rcpt.ledger .lg-final.for{background:rgba(46,158,107,.12);color:#2e9e6b}
+.rcpt.ledger .lg-final.zero{background:rgba(46,158,107,.08)}
+.rcpt.ledger .lg-sum{display:flex;gap:6px;margin-bottom:6px}
+.rcpt.ledger .lg-sum>div{flex:1;border:1px solid var(--line);border-radius:10px;padding:5px;text-align:center;display:flex;flex-direction:column}
+.rcpt.ledger .lg-sum small{font-size:.68rem;opacity:.7}
+.rcpt.ledger .lg-sum b{font-size:.9rem;font-variant-numeric:tabular-nums}
+.rcpt.ledger .lg-row{padding:7px 0;border-bottom:1px dashed var(--line)}
+.rcpt.ledger .lg-top{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.rcpt.ledger .lg-t{font-weight:700;font-size:.86rem;min-width:0;overflow-wrap:anywhere}
+.rcpt.ledger .lg-a{font-size:.92rem;white-space:nowrap;font-variant-numeric:tabular-nums}
+.rcpt.ledger .lg-a.dr{color:#d64545}.rcpt.ledger .lg-a.cr{color:#2e9e6b}.rcpt.ledger .lg-a.nz{opacity:.6;font-weight:600}
+.rcpt.ledger .lg-sub{font-size:.72rem;opacity:.78;margin-top:2px;display:flex;flex-wrap:wrap;gap:4px 8px;align-items:center}
+.rcpt.ledger .lg-bal{margin-inline-start:auto;white-space:nowrap}
+.rcpt.ledger .lg-del-h{font-weight:800;margin:10px 0 2px;opacity:.7;font-size:.82rem}
+.rcpt.ledger .lg-row.del{opacity:.6}
+.stamp[data-lstamp]{cursor:pointer}
+.lc-edit{font-size:.72rem;color:var(--muted);margin-top:6px;text-align:center}
+.lc-edit .dcm{padding:2px 8px;font-size:.7rem}
+.worker.wcard{padding:12px;border-top:4px solid var(--wc);display:flex;flex-direction:column;gap:8px}
+.w-line{font-size:.74rem;color:var(--muted);line-height:1.6}
+.w-line b{color:var(--ink);font-variant-numeric:tabular-nums}
 </style>
 </head>
 <body>
@@ -980,6 +1040,7 @@
       <div class="set-row" style="flex-wrap:wrap;gap:8px">
         <button class="mini" id="btnInstall" style="display:none">⬇️ تثبيت التطبيق على الهاتف</button>
         <button class="mini" id="btnUpdate">🔄 تحديث التطبيق الآن</button>
+        <button class="mini" id="btnWhatsNew" type="button">🎉 ما الجديد</button>
       </div>
       <div class="hint" style="margin-top:8px;line-height:1.8">
         الإصدار الحالي: <b id="appVer">—</b> · الحالة: <b id="appMode">—</b><br>
@@ -1140,6 +1201,41 @@
     <div class="hint" style="text-align:center;margin-top:10px;opacity:.8">مغاسيل صداقة · إصدار <span id="appVerFoot">—</span></div>
   </div>
 </div>
+<div id="wqModal" class="modal" style="z-index:150"><div class="modal-box">
+  <h3 id="wqTitle" style="margin:0 0 6px"></h3><div class="hint" id="wqHint" style="margin-bottom:8px"></div>
+  <div class="field"><label>المبلغ (أوقية)</label><input id="wqAmt" type="number" min="0" inputmode="decimal" placeholder="0" data-nokeep></div>
+  <div class="field"><label>الوصف</label><input id="wqNote" type="text" data-nokeep></div>
+  <div class="modal-actions"><button class="btn-primary" id="wqSave" style="flex:1">💾 حفظ</button><button class="mini" id="wqCancel">إلغاء</button></div></div></div>
+<div id="weModal" class="modal" style="z-index:150"><div class="modal-box">
+  <h3 style="margin:0 0 8px">✏️ تعديل العامل والراتب</h3>
+  <div class="field"><label>الاسم</label><input id="weName" type="text" data-nokeep></div>
+  <div class="row2"><div class="field"><label>الوظيفة</label><input id="weRole" type="text" data-nokeep></div><div class="field"><label>الهاتف</label><input id="wePhone" class="phone-inp" type="tel" inputmode="numeric" maxlength="8" data-nokeep></div></div>
+  <div class="row2"><div class="field"><label>الراتب الشهري</label><input id="weMonthly" type="number" min="0" data-nokeep></div><div class="field"><label>تاريخ المباشرة</label><input id="weStart" type="date" data-nokeep></div></div>
+  <div class="hint" style="margin-bottom:8px">الراتب الجديد يُحسب من اليوم فقط — الأيام السابقة تبقى بالراتب القديم.</div>
+  <div class="modal-actions"><button class="btn-primary" id="weSave" style="flex:1">💾 حفظ التعديل</button><button class="mini" id="weCancel">إلغاء</button></div></div></div>
+<div id="qdModal" class="modal" style="z-index:150">
+  <div class="modal-box">
+    <h3 id="qdTitle" style="margin:0 0 6px">➕ دين</h3>
+    <div class="hint" id="qdHint" style="margin-bottom:8px"></div>
+    <div class="field"><label>المبلغ (أوقية)</label><input id="qdAmt" type="number" min="0" inputmode="decimal" placeholder="0" data-nokeep></div>
+    <div class="field"><label>الوصف <span style="color:var(--unpaid)">*</span></label><input id="qdNote" type="text" placeholder="مثال: سلفة / رصيد سابق / دفع مقدّمًا" data-nokeep></div>
+    <label class="sw" style="margin:4px 0 10px"><input type="checkbox" id="qdCash"> <span id="qdCashLbl"></span></label>
+    <div class="modal-actions"><button class="btn-primary" id="qdSave" style="flex:1">💾 حفظ</button><button class="mini" id="qdCancel">إلغاء</button></div>
+  </div>
+</div>
+<div id="whatsNewModal" class="modal" style="z-index:160">
+  <div class="modal-box wn-box">
+    <h3 id="wnTitle" style="margin:0 0 4px">🎉 ما الجديد</h3>
+    <div class="hint" style="margin-bottom:8px">هذه التعديلات في التحديث الجديد. اضغط «📍 أرني» لترى المكان، أو «جولة» لنمرّ عليها كلها.</div>
+    <div id="wnBody"></div>
+    <div class="modal-actions" style="margin-top:12px;gap:6px">
+      <button class="btn-primary" id="wnTourBtn" style="flex:1.3">▶ جولة على التعديلات</button>
+      <button class="mini" id="wnOk" style="flex:1">✓ فهمت</button>
+      <button class="mini" id="wnSkip">تخطي</button>
+    </div>
+  </div>
+</div>
+<div id="wnTip" class="wn-tip" style="display:none"><div style="flex:1;min-width:0"><b id="wnTipT"></b><div id="wnTipD"></div></div><div class="wn-tip-btns"><button type="button" class="btn-primary" id="wnNext">التالي ▶</button><button type="button" class="mini" id="wnEnd">تخطي الجولة</button></div></div>
 <div id="receiptModal" class="modal">
   <div class="modal-box" id="receiptBox">
     <div id="receiptContent"></div>
@@ -1397,6 +1493,8 @@ function dayRate(w){return w.monthly/daysInMonth;}
 function monthAbsences(w){return w.absent.filter(isMonth).length;}
 function absentToday(w){return w.absent.some(isToday);}
 function netSalary(w){return w.monthly - monthAbsences(w)*dayRate(w);}
+/* (2.40.0) تغيير الراتب يسري من يوم التغيير فقط: w.salaryHist=[{from:"YYYY-MM-DD",monthly,prev}] */
+function monthlyOn(w,ds){ const H=(w.salaryHist||[]).slice().sort((a,b)=>(a.from||"").localeCompare(b.from||"")); if(!H.length) return +w.monthly||0; let m=H[0].prev!=null?+H[0].prev:(+w.monthly||0); H.forEach(h=>{ if((h.from||"")<=ds) m=+h.monthly||0; }); return m; }
 function accruedDue(w){
   const today=new Date(); today.setHours(0,0,0,0);
   const mStart=new Date(today.getFullYear(),today.getMonth(),1);
@@ -1404,8 +1502,9 @@ function accruedDue(w){
   if(start<mStart) start=mStart;
   if(start>today) return 0;
   let cnt=0;
-  for(let d=new Date(start); d<=today; d.setDate(d.getDate()+1)){ const ds=ymd(d); if(!w.absent.some(a=>ymd(a)===ds)) cnt++; }
-  return cnt*dayRate(w);
+  let amt=0;
+  for(let d=new Date(start); d<=today; d.setDate(d.getDate()+1)){ const ds=ymd(d); if(!w.absent.some(a=>ymd(a)===ds)){ cnt++; amt+=monthlyOn(w,ds)/daysInMonth; } }
+  return (w.salaryHist&&w.salaryHist.length)?amt:cnt*dayRate(w);
 }
 function wPaid(w){return sum(w.payments,p=>p.amount);}
 function wCredit(w){return sum(w.credits||[],c=>c.amount);}   /* له إضافي (مكافآت/مستحقات) */
@@ -1561,7 +1660,7 @@ const svg=(p,color="currentColor")=>`<svg viewBox="0 0 24 24" fill="none" stroke
 
 function loyaltyStamps(s){
   let h='';
-  for(let i=1;i<=4;i++) h+=`<span class="stamp ${i<=s?'filled':''}">${i<=s?'✓':i}</span>`;
+  for(let i=1;i<=4;i++) h+=`<span class="stamp ${i<=s?'filled':''}" data-lstamp="${i}" title="اضغط لضبط عدد الغسلات">${i<=s?'✓':i}</span>`;
   h+=`<span class="stamp free ${s>=4?'ready':''}">${svg(I.gift)}</span>`;
   return h;
 }
@@ -1573,8 +1672,18 @@ function loyaltyCardHTML(plate){
     : `متبقٍ ${4-s} ${4-s===1?'غسلة':'غسلات'} ثم غسلة مجانية`;
   return `<div class="lc-title">بطاقة الولاء${c?` — ${c.totalWashes} غسلة، ${c.freeWashes} مجانية`:' (جديدة)'}</div>
     <div class="stamps">${loyaltyStamps(s)}</div>
-    <div class="lc-note ${due?'free':''}">${note}</div>`;
+    <div class="lc-note ${due?'free':''}">${note}</div>
+    ${currentRole!=="worker"?`<div class="lc-edit">✏️ لزبون عنده بطاقة سابقة: اضغط على الدوائر لضبط عدد الغسلات التي غسلها${c?` · <button type="button" class="dcm" data-lstamp="0">↺ تصفير</button>`:""}</div>`:""}`;
 }
+/* (2.40.0) ضبط بطاقة الولاء يدويًا (بطاقة ورقية قديمة: غسل 3 مرات وبقيت واحدة) — مالك/مدير، يُسجَّل في النشاط ويُزامَن */
+function setLoyaltyStamps(plate,n){ plate=String(plate||"").trim(); if(!plate) return toast("اكتب رقم اللوحة أولًا"); if(currentRole==="worker") return toast("⛔ تعديل بطاقة الولاء للمالك أو المدير");
+  n=Math.max(0,Math.min(4,Math.round(+n||0))); const c=state.customers[plate]||{plate,stamps:0,totalWashes:0,freeWashes:0}; const old=+c.stamps||0; if(old===n&&state.customers[plate]) return;
+  c.stamps=n; c.stampsSetBy=currentUser; c.stampsSetAt=iso(new Date()); c.editedAt=iso(new Date()); state.customers[plate]=c;
+  logActivity("تعديل بطاقة ولاء",plate+": "+old+" ← "+n+" غسلات"); save();
+  const lb=document.getElementById("loyaltyBox"); if(lb&&lb.style.display!=="none") lb.innerHTML=loyaltyCardHTML(plate);
+  toast(n===4?"✓ "+plate+": 4 غسلات — الغسلة القادمة مجانية 🎁":"✓ "+plate+": "+n+" "+(n===1?"غسلة":"غسلات")+" — متبقٍ "+(4-n)+" ثم غسلة مجانية"); }
+document.addEventListener("click",e=>{ const st=e.target&&e.target.closest&&e.target.closest("[data-lstamp]"); if(st){ const pi=document.getElementById("carPlate"); const plate=pi?pi.value.trim():""; const c=state.customers[plate]; const cur=c?(+c.stamps||0):0; let n=+st.dataset.lstamp; if(n>0&&n===cur) n=n-1; setLoyaltyStamps(plate,n); return; }
+  const ls=e.target&&e.target.closest&&e.target.closest("[data-lset]"); if(ls){ const plate=ls.dataset.lset, c=state.customers[plate]; const v=prompt("كم غسلة غسلها «"+plate+"» في البطاقة الحالية؟ (من 0 إلى 4)",String(c?c.stamps||0:0)); if(v==null) return; const n=+toLatinDigits(v); if(!(n>=0&&n<=4)) return toast("أدخل رقمًا من 0 إلى 4"); setLoyaltyStamps(plate,n); render(); } });
 
 /* ================= Photos ================= */
 let pendingCarBefore=[], pendingCarAfter=[], pendingCpPhotos=[], pendingLndPhotos=[];
@@ -1881,7 +1990,7 @@ function screenCars(){
     <tr><td style="white-space:nowrap">${c.phone?`<button class="wa-btn" data-wacust="${c.plate}" title="واتساب" style="width:28px;height:28px;display:inline-grid;vertical-align:middle">${svg(I.whatsapp)}</button> `:""}<button class="icon-btn del-btn" data-del-cust="${c.plate}" title="حذف الزبون">${svg(I.trash)}</button></td>
       <td><b>${c.plate}</b></td>
       <td>${c.phone||"—"}</td>
-      <td class="amt" style="text-align:center;font-weight:800;white-space:nowrap">${c.stamps}/5${c.stamps===4?" 🎁":""}</td>
+      <td class="amt" style="text-align:center;font-weight:800;white-space:nowrap">${c.stamps}/5${c.stamps===4?" 🎁":""}${currentRole!=="worker"?` <button class="icon-btn" data-lset="${_esc(c.plate)}" title="تعديل عدد الغسلات" style="width:26px;height:26px">✏️</button>`:""}</td>
       <td class="amt" style="text-align:center">${c.totalWashes}</td>
       <td class="amt" style="text-align:center;color:var(--wash)">${c.freeWashes}</td></tr>`).join("")
     :`<tr><td colspan="6"><div class="empty">${svg(I.empty)}لا يوجد زبائن محفوظون بعد — أضف لوحة عند حفظ عملية.</div></td></tr>`;
@@ -3121,17 +3230,20 @@ function openRemindAll(kind){
 }
 const _debtOpen=new Set(); /* بطاقات الديون المفتوحة (محلي) */
 document.addEventListener("click",e=>{ const b=e.target&&e.target.closest&&e.target.closest("[data-debt-toggle]"); if(!b) return; const k=b.dataset.debtToggle, det=[...document.querySelectorAll("[data-debt-det]")].find(x=>x.dataset.debtDet===k); const op=!_debtOpen.has(k); if(op) _debtOpen.add(k); else _debtOpen.delete(k); if(det) det.style.display=op?"":"none"; b.textContent=(op?"▴ إخفاء التفاصيل":"▾ التفاصيل")+" ("+(b.dataset.n||0)+")"; });
+/* (2.40.0) لون لكل قسم — يُستعمل في المربعات وصورة الزبون وشارات الأقسام */
+const KIND_COLOR={all:["#d64545","rgba(214,69,69,.13)"],car:["#1b6ea4","rgba(27,110,164,.14)"],rug:["#e67e22","rgba(230,126,34,.15)"],lnd:["#8e5bd6","rgba(142,91,214,.15)"],store:["#c99a12","rgba(201,154,18,.16)"],brick:["#b5651d","rgba(181,101,29,.15)"],customers:["#0ea993","rgba(14,169,147,.15)"]};
+function kindColor(k){ return KIND_COLOR[k]||KIND_COLOR.all; }
 function contactsTopHTML(active){
   const all=debtors(), tot={all:sum(all,d=>d.total)}, cnt={all:all.length}; DEBT_KEYS.forEach(k=>{ tot[k]=sum(all,d=>d.by[k]); cnt[k]=all.filter(d=>d.by[k]>0).length; });
   const nC=(state.storeCustomers||[]).length, pay=totalPayables();
-  const tile=(attr,on,ic,t,v,n)=>`<button type="button" class="k-tile${on?' on':''}" ${attr}><span class="kt-ic">${ic}</span> <span class="kt-t">${t}</span><b class="kt-v">${v}</b><small class="kt-n">${n}</small></button>`;
+  const tile=(attr,on,ic,t,v,n,k)=>`<button type="button" class="k-tile${on?' on':''}" ${attr} style="--kc:${kindColor(k)[0]};--kt:${kindColor(k)[1]}"><span class="kt-ic">${ic}</span> <span class="kt-t">${t}</span><b class="kt-v">${v}</b><small class="kt-n">${n}</small></button>`;
   return `<div class="store-stat">
       <div class="s"><div class="v" style="color:var(--unpaid)">${money(tot.all)}</div><div class="l">إجمالي الديون على الزبائن (${cnt.all} مدين)</div></div>
       <div class="s"><div class="v" style="color:var(--wash)">${money(pay)}</div><div class="l">علينا للموردين</div></div>
     </div>
     <div class="k-tiles debt-kinds debt-stat">
-      ${DEBT_KINDS.map(x=>tile(`data-debtkind="${x.k}"`,active===x.k,x.k==="all"?"💳":x.ic,x.k==="all"?"كل الديون":x.t,money(tot[x.k]),cnt[x.k]+" مدين")).join("")}
-      ${tile(`data-csub="customers"`,active==="customers","👥","كل الزبائن",nC,"زبون محفوظ")}
+      ${DEBT_KINDS.map(x=>tile(`data-debtkind="${x.k}"`,active===x.k,x.k==="all"?"💳":x.ic,x.k==="all"?"كل الديون":x.t,money(tot[x.k]),cnt[x.k]+" مدين",x.k)).join("")}
+      ${tile(`data-csub="customers"`,active==="customers","👥","كل الزبائن",nC,"زبون محفوظ","customers")}
     </div>
     ${active!=="customers"?`<div class="k-sum">${active==="all"?"كل الأقسام":"ديون "+debtKindLabel(active)}: <b>${money(tot[active])} ${CUR}</b> (${cnt[active]} مدين)</div>`:""}`;
 }
@@ -3148,32 +3260,33 @@ function contactsDebts(noStats,fixedKind){
   const kindSeg=fixedKind?"":contactsTopHTML(kind);
   const cards=list.length?list.map(d=>{ const r=rem[d.key]; const ph=waPhoneFull(d.phone,d.country), tl=telLink(d.phone,d.country);
     const items=d.items.slice().sort((a,b)=>(a.date||"").localeCompare(b.date||"")).slice(0,6).map(it=>`<div class="meta" style="display:flex;justify-content:space-between;gap:8px;align-items:center"><span>${it.kind}${it.no?(" "+E(it.no)):""} · <bdi dir="ltr">${it.date?ymd(it.date):""}</bdi></span><b>${money(it.amt)}${it.mdId&&currentRole!=="worker"?` ${recEditBtn("sdebt",it.mdId)}<button class="icon-btn" data-md-del="${it.mdId}" title="حذف الدين اليدوي" style="margin-inline-start:4px">${svg(I.trash)}</button>`:""}</b></div>`).join("")+(d.items.length>6?`<div class="hint">+ ${d.items.length-6} أخرى</div>`:"");
-    const credit=d.custId?custCredit(d.custId):0, nItems=d.items.length, open=_debtOpen.has(d.key);
+    const credit=d.custId?custCredit(d.custId):0, nItems=d.items.length, open=_debtOpen.has(d.key), net=d.total-(kind==="all"||kind==="store"?credit:0);
     const canPay=d.custId&&d.by.store>0&&(kind==="all"||kind==="store");
     const rb=(attr,ic,t,cls)=>`<button type="button" class="r-btn${cls?" "+cls:""}" ${attr} title="${t}"><span class="rb-ic">${ic}</span><small>${t}</small></button>`;
     return `
     <div class="order debtor-card">
       <div class="dc-head">
-        <div class="dc-av">${E((d.name||"؟").trim().charAt(0)||"؟")}</div>
-        <div class="dc-who"><b class="dc-name">${E(d.name||"بدون اسم")}</b><span class="dc-ph">${d.phone?"📞 "+E(d.phone):"بلا رقم هاتف"}${d.days?` · منذ ${d.days} يوم`:""}</span></div>
-        <div class="dc-amt"><b>${money(d.total)}</b><small>${CUR}</small></div>
+        <div class="dc-av" style="${(()=>{ const k=kind!=="all"?kind:(DEBT_KEYS.slice().sort((a,b)=>(d.by[b]||0)-(d.by[a]||0))[0]||"all"); const c=kindColor(k); return `background:${c[1]};color:${c[0]}`; })()}">${E((d.name||"؟").trim().charAt(0)||"؟")}</div>
+        <div class="dc-who"><b class="dc-name">${E(d.name||"بدون اسم")}</b><span class="dc-kinds">${DEBT_KEYS.filter(k=>d.by[k]>0).map(k=>`<i style="background:${kindColor(k)[0]}" title="${debtKindLabel(k)}"></i>`).join("")}</span><span class="dc-ph">${d.phone?"📞 "+E(d.phone):"بلا رقم هاتف"}${d.days?` · منذ ${d.days} يوم`:""}</span></div>
+        <div class="dc-amt">${net>0?`<b>${money(net)}</b><small>عليه · ${CUR}</small>`:net<0?`<b style="color:var(--ready)">${money(-net)}</b><small>له · ${CUR}</small>`:`<b style="color:var(--ready);font-size:.9rem">متعادل ✓</b>`}</div>
       </div>
-      ${credit>0?`<div class="dc-credit">📤 وله عندنا: <b>${money(credit)}</b></div>`:""}
       <button type="button" class="dc-toggle" data-debt-toggle="${E(d.key)}" data-n="${nItems}">${open?"▴ إخفاء التفاصيل":"▾ التفاصيل"} (${nItems})</button>
       <div class="dc-details" data-debt-det="${E(d.key)}" style="${open?"":"display:none"}">
-        ${kind==="all"?`<div class="debt-by">${DEBT_KEYS.filter(k=>d.by[k]>0).map(k=>{ const x=DEBT_KINDS.find(y=>y.k===k); return `<span>${x.ic} ${x.t}: <b>${money(d.by[k])}</b></span>`; }).join("")}</div>`:`<div class="meta"><span class="badge b-unpaid">${debtKindLabel(kind)}</span></div>`}
+        ${kind==="all"?`<div class="debt-by">${DEBT_KEYS.filter(k=>d.by[k]>0).map(k=>{ const x=DEBT_KINDS.find(y=>y.k===k), c=kindColor(k); return `<span class="kchip" style="--kc:${c[0]};--kt:${c[1]}">${x.ic} ${x.t}: <b>${money(d.by[k])}</b></span>`; }).join("")}</div>`:`<div class="meta"><span class="kchip" style="--kc:${kindColor(kind)[0]};--kt:${kindColor(kind)[1]}">${debtKindLabel(kind)}</span></div>`}
         ${kind!=="all"&&kind!=="store"&&d.by.store>0?`<div class="meta" style="color:var(--wash);font-weight:800">🏪 ويدين للمتجر أيضًا: ${money(d.by.store)}</div>`:""}
         ${kind==="store"&&(d.by.car+d.by.rug+d.by.lnd)>0?`<div class="meta" style="color:var(--brand);font-weight:800">🧺 وعليه للمغسلة أيضًا: ${money(d.by.car+d.by.rug+d.by.lnd)}</div>`:""}
         ${items}
         ${nItems>6?`<div class="hint">+ ${nItems-6} أخرى في كشف الحساب</div>`:""}
+        ${credit>0&&(kind==="all"||kind==="store")?`<div class="meta" style="color:var(--ready)">📤 خُصم ما له عندنا (${money(credit)}) من دينه — الظاهر هو الصافي</div>`:""}
         ${r?`<div class="meta" style="color:var(--ready)">✔ آخر تذكير: ${ymd(r)} ${timeStr(r)}</div>`:""}
       </div>
       <div class="r-btns">
         ${ph?rb(`data-debt-wa="${E(d.key)}"`,"💬","واتساب","wa"):""}
         ${tl?`<a class="r-btn call" href="${tl}" title="اتصال"><span class="rb-ic">📞</span><small>اتصال</small></a>`:""}
         ${canPay?rb(`data-dc-pay="${d.custId}"`,"💵","تحصيل","pay"):""}
-        ${d.custId?rb(`data-dc-stmt="${d.custId}"`,"📄","كشف",""):""}
+        ${d.custId?rb(`data-dc-stmt="${d.custId}"`,"📄","كشف",""):rb(`data-dc-stmtk="${E(d.key)}"`,"📄","كشف","")}
       </div>
+      <div class="dc-mini"><button type="button" class="dcm on" data-qd="on|${E(d.key)}">➕ عليه</button><button type="button" class="dcm for" data-qd="for|${E(d.key)}">➕ له</button>${d.custId?`<button type="button" class="dcm" data-dc-edit="${d.custId}" title="تعديل الزبون">✏️ تعديل</button><button type="button" class="dcm del" data-dc-del="${d.custId}" title="حذف الزبون">🗑️ حذف</button>`:`<button type="button" class="dcm" data-dc-savek="${E(d.key)}" title="حفظ في دليل الزبائن">💾 حفظ الزبون</button>`}</div>
     </div>`; }).join(""):`<div class="panel empty" style="grid-column:1/-1">${svg(I.empty)}${q?"لا يوجد مدين مطابق للبحث.":(kind==="all"?"لا توجد ديون على الزبائن 🎉":"لا توجد ديون في قسم "+debtKindLabel(kind)+" 🎉")}</div>`;
   const pay=totalPayables();
   return `
@@ -3217,7 +3330,7 @@ function wagesBetween(from,to){
     const ws=w.start?ymd(w.start):"0000-00-00", abs=new Set((w.absent||[]).map(a=>ymd(a)));
     for(let d=new Date(from+"T12:00:00"); ymd(d)<=to; d.setDate(d.getDate()+1)){
       const ds=ymd(d); if(ds<ws||abs.has(ds)) continue;
-      tot+=(+w.monthly||0)/_dim(d);
+      tot+=monthlyOn(w,ds)/_dim(d);
     }
   }
   return Math.round(tot);
@@ -3839,16 +3952,16 @@ function restoreSaleStock(s){ (s.items||[]).forEach(it=>{ const p=storeProd(it.p
 function cancelSale(s){ if(s.cancelled) return; s.cancelled=true; s.editedAt=iso(new Date()); restoreSaleStock(s); if((+s.paidAmount||0)>0){ const mv=(state.storeCash||[]).find(m=>m.type==="in"&&m.ref===s.id); addCashMove("out",s.paidAmount,"إلغاء فاتورة "+s.no,s.customerId,s.id,mv&&mv.payMethod); } logActivity("إلغاء فاتورة متجر",(s.no||"")+" · "+money(s.total)+" "+CUR); toast("أُلغيت الفاتورة"); render(); }
 
 /* ================= المتجر: الشاشات ================= */
+const STORE_GROUPS=[
+  {k:"trade",t:"البيع والشراء",icon:"cart",c:"#0ea993",subs:[["pos","🛒 بيع (نقطة البيع)"],["purchases","📥 شراء / توريد"],["sales","🧾 المبيعات"]]},
+  {k:"products",t:"المواد",icon:"box",c:"#1b6ea4",subs:[["products","المواد"]]},
+  {k:"people",t:"الزبائن والديون",icon:"usertag",c:"#d64545",subs:[["debts","💳 الديون"],["customers","👥 كل الزبائن"]]},
+  {k:"cashbox",t:"الصندوق",icon:"cash",c:"#e67e22",subs:[["cashbox","الصندوق"]]}];
 function screenStore(){
-  const subs=[
-    {k:"pos",t:"نقطة البيع",icon:I.cart},
-    {k:"products",t:"المواد",icon:I.box},
-    {k:"sales",t:"المبيعات",icon:I.income},
-    {k:"purchases",t:"المشتريات",icon:I.expense},
-    {k:"customers",t:"الزبائن",icon:I.usertag},
-    {k:"debts",t:"الديون",icon:I.wallet},
-    {k:"cashbox",t:"الصندوق",icon:I.cash}
-  ].map(s=>`<button data-ssub="${s.k}" class="${state.storeSub===s.k?'on':''}">${svg(s.icon)}${s.t}</button>`).join("");
+  // (2.40.0) أربع مجموعات: البيع والشراء (نقطة البيع + الشراء + المبيعات) · المواد · الزبائن والديون · الصندوق — والتبويبات الداخلية تحمل data-ssub نفسها
+  const cur=state.storeSub||"pos", G=STORE_GROUPS.find(g=>g.subs.some(x=>x[0]===cur))||STORE_GROUPS[0];
+  const subs=STORE_GROUPS.map(g=>`<button data-ssub="${g.subs[0][0]}" class="${g===G?'on':''}">${svg(I[g.icon])}${g.t}</button>`).join("");
+  const inner=G.subs.length>1?`<div class="seg inner-seg" style="--gc:${G.c}">${G.subs.map(([k,t])=>`<button data-ssub="${k}" class="${cur===k?'on':''}">${t}</button>`).join("")}</div>`:"";
   const body = state.storeSub==="products"?storeScreenProducts()
     : state.storeSub==="sales"?storeScreenSales()
     : state.storeSub==="purchases"?storeScreenPurchases()
@@ -3859,6 +3972,7 @@ function screenStore(){
   return `
     <div class="screen-head"><h2>المتجر</h2><span>بيع ومخزون وصندوق — ويتعامل مع المغاسل</span></div>
     <div class="seg">${subs}</div>
+    ${inner}
     ${(state.storeSub==="sales"||state.storeSub==="cashbox")?dateBarHTML():""}
     ${body}`;
 }
@@ -3938,11 +4052,7 @@ function storeScreenDebts(){
     <div class="order party-card">
       <div class="cust">${E(p.name||"بدون اسم")} ${p.cust?`<span class="badge b-done">زبون</span>`:""}${p.sup?` <span class="badge b-wash">مورّد</span>`:""}</div>
       ${p.phone?`<div class="meta">📞 ${E(p.phone)}</div>`:""}
-      <div class="party-sides">
-        <div class="ps-on"><small>📥 عليه لنا</small><b>${money(p.on)}</b></div>
-        <div class="ps-for"><small>📤 له عندنا</small><b>${money(p.for)}</b></div>
-      </div>
-      <div class="price" style="font-size:1.02rem">⚖️ ${netTxt(p)}</div>
+      <div class="price party-net" style="font-size:1.1rem">${netTxt(p)}</div>
       ${lndDebt(p)>0?`<div class="meta" style="color:var(--brand);font-weight:800">🧺 وعليه للمغسلة أيضًا: ${money(lndDebt(p))}</div>`:""}
       <div class="meta">${p.items.length} عملية مفتوحة · أقدمها منذ <b>${p.days}</b> يوم</div>
       ${p.items.slice(0,8).map(x=>`<div class="meta party-item" style="display:flex;justify-content:space-between;gap:8px;align-items:center"><span>${x.ic} ${E(x.t)} · <bdi dir="ltr">${ymd(x.date)}</bdi></span><b style="color:${x.dir==="on"?"var(--unpaid)":"var(--wash)"};white-space:nowrap">${x.dir==="on"?"+":"−"}${money(x.amt)}${x.md&&currentRole!=="worker"?` ${recEditBtn("sdebt",x.md)}<button class="icon-btn" data-md-del="${x.md}" title="حذف" style="margin-inline-start:4px">${svg(I.trash)}</button>`:""}</b></div>`).join("")}
@@ -4333,19 +4443,8 @@ function storeScreenCustomers(){
   const editing=_editCustId?storeCust(_editCustId):null;
   const cards=list.length?list.slice().reverse().map(c=>{
     const bal=custBalance(c.id);
-    return `<div class="order">
-      <div class="cust">${c.name}${c.isLaundry?' <span class="badge b-done">مغسلة 🧺</span>':''}</div>
-      ${c.phone?`<div class="meta">📞 ${c.phone}</div>`:''}
-      ${c.note?`<div class="meta">${c.note}</div>`:''}
-      <div class="price" style="color:${bal>0?'var(--unpaid)':'var(--ready)'}">${bal>0?('مستحقّ عليه: '+money(bal)+' '+CUR):'لا يوجد دين'}</div>
-      ${custCredit(c.id)>0?`<div class="meta" style="color:var(--ready);font-weight:800">📤 له عندنا: ${money(custCredit(c.id))} ${CUR}</div>`:''}
-      <div class="order-acts-sub">
-        ${bal>0?`<button class="mini act-pay" data-scust-pay="${c.id}">تحصيل دفعة</button>`:''}
-        <button class="icon-btn" data-scust-stmt="${c.id}" title="كشف حساب">📄</button>
-        <button class="icon-btn" data-scust-edit="${c.id}" title="تعديل">${svg(I.edit)}</button>
-        <button class="icon-btn" data-scust-del="${c.id}" title="حذف">${svg(I.trash)}</button>
-      </div>
-    </div>`;
+    return personCardHTML({name:c.name,phone:c.phone,country:c.country,badge:c.isLaundry?"مغسلة 🧺":"",amt:bal,credit:custCredit(c.id),info:c.note?_esc(c.note):"",
+      id:c.id, btns:[...(bal>0?[[`data-scust-pay="${c.id}"`,"💵","تحصيل","pay"]]:[]),[`data-scust-stmt="${c.id}"`,"📄","كشف"]], mini:[[`data-scust-edit="${c.id}"`,"✏️ تعديل"],[`data-scust-del="${c.id}"`,"🗑️ حذف","del"]]});
   }).join(""):`<div class="panel empty" style="grid-column:1/-1">${svg(I.empty)}لا يوجد زبائن بعد.</div>`;
   return `
     <div class="cols">
@@ -4510,7 +4609,8 @@ function openSaleReceipt(s){
     </div>`;
   document.getElementById("receiptModal").style.display="flex";
 }
-function openCustStatement(c){
+function openCustStatement(c){ return openDirStatement(c); }
+function openCustStatementOld(c){
   const sales=(state.storeSales||[]).filter(s=>s.customerId===c.id).slice().reverse();
   const pays=(state.storeCash||[]).filter(m=>m.type==="in"&&m.customerId===c.id).slice().reverse();
   const outs=(state.storeCash||[]).filter(m=>m.type==="out"&&m.customerId===c.id).slice().reverse();
@@ -4650,6 +4750,17 @@ function screenContacts(){
     <div class="seg">${seg}</div>
     ${sub==="suppliers"?contactsSuppliers():sub==="debts"?contactsDebts():contactsTopHTML("customers")+contactsCustomers()}`;
 }
+/* (2.40.0) بطاقة زبون موحّدة (نفس شكل بطاقات الديون): الحرف الملوّن + الاسم + الهاتف + المبلغ، والتفاصيل سطر صغير، وأزرار دائرية */
+function personCardHTML(o){ if(o.credit>0){ o.amt=(+o.amt||0)-o.credit; o.credit=0; } const E=_esc, ph=waPhoneFull(o.phone,o.country), tl=telLink(o.phone,o.country), c=o.amt>0?kindColor("all"):kindColor("customers");
+  const rb=(attr,ic,t,cls,href)=>href?`<a class="r-btn${cls?" "+cls:""}" href="${href}" ${attr||""} title="${t}"><span class="rb-ic">${ic}</span><small>${t}</small></a>`:`<button type="button" class="r-btn${cls?" "+cls:""}" ${attr} title="${t}"><span class="rb-ic">${ic}</span><small>${t}</small></button>`;
+  return `<div class="order debtor-card person-card">
+    <div class="dc-head"><div class="dc-av" style="background:${c[1]};color:${c[0]}">${E((o.name||"؟").trim().charAt(0)||"؟")}</div>
+      <div class="dc-who"><b class="dc-name">${E(o.name||"بدون اسم")}${o.badge?` <span class="badge b-done">${o.badge}</span>`:""}</b><span class="dc-ph">${o.phone?"📞 "+E(o.phone):"بلا رقم هاتف"}</span></div>
+      <div class="dc-amt">${o.amt>0?`<b>${money(o.amt)}</b><small>عليه · ${CUR}</small>`:o.amt<0?`<b style="color:var(--ready)">${money(-o.amt)}</b><small>له · ${CUR}</small>`:`<b style="color:var(--ready);font-size:.9rem">✓ لا دين</b>`}</div></div>
+    ${o.credit>0?`<div class="dc-credit">📤 له عندنا: <b>${money(o.credit)}</b></div>`:""}
+    ${o.info?`<div class="pc-info">${o.info}</div>`:""}
+    <div class="r-btns">${ph?rb(`target="_blank" rel="noopener"`,"💬","واتساب","wa","https://wa.me/"+ph):""}${tl?rb("","📞","اتصال","call",tl):""}${(o.btns||[]).map(b=>rb(b[0],b[1],b[2],b[3]||"")).join("")}</div>
+    ${o.id?`<div class="dc-mini"><button type="button" class="dcm on" data-qd="on|id:${o.id}">➕ عليه</button><button type="button" class="dcm for" data-qd="for|id:${o.id}">➕ له</button>${(o.mini||[]).map(b=>`<button type="button" class="dcm${b[2]?" "+b[2]:""}" ${b[0]}>${b[1]}</button>`).join("")}</div>`:""}</div>`; }
 function contactsCustomers(){
   const E=_esc, q=(state.contactSearch||"").trim();
   let list=(state.storeCustomers||[]).slice();
@@ -4657,21 +4768,9 @@ function contactsCustomers(){
   const editing=_editDirCustId?storeCust(_editDirCustId):null;
   const acts=list.map(c=>({c,a:customerActivity(c)})).sort((x,y)=>(y.a.last||"").localeCompare(x.a.last||""));
   const totalDue=sum(acts,x=>x.a.due);
-  const cards=acts.length?acts.map(({c,a})=>`
-    <div class="order">
-      <div class="cust">${E(c.name)}${c.isLaundry?' <span class="badge b-done">مغسلة 🧺</span>':''}</div>
-      ${c.phone?`<div class="meta" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">📞 ${E(c.phone)} ${contactBtns(c.phone,c.country)}</div>`:''}
-      ${c.note?`<div class="meta">${E(c.note)}</div>`:''}
-      <div class="meta">الطلبات: <b>${a.orders}</b>${a.cars.length?` · سيارات ${a.cars.length}`:''}${a.rugs.length?` · سجاد ${a.rugs.length}`:''}${a.lnd.length?` · ملابس ${a.lnd.length}`:''}${a.sales.length?` · متجر ${a.sales.length}`:''}</div>
-      <div class="meta">المدفوع: <b>${money(a.spent)}</b>${a.last?` · آخر تعامل: ${ymd(a.last)}`:''}</div>
-      <div class="price" style="color:${a.due>0?'var(--unpaid)':'var(--ready)'}">${a.due>0?('مستحقّ عليه: '+money(a.due)+' '+CUR):'لا يوجد دين'}</div>
-      <div class="order-acts-sub">
-        ${a.storeDebt>0?`<button class="mini act-pay" data-dc-pay="${c.id}">تحصيل دين المتجر</button>`:''}
-        <button class="icon-btn" data-dc-stmt="${c.id}" title="كشف حساب">📄</button>
-        <button class="icon-btn" data-dc-edit="${c.id}" title="تعديل">${svg(I.edit)}</button>
-        <button class="icon-btn del-btn" data-dc-del="${c.id}" title="حذف">${svg(I.trash)}</button>
-      </div>
-    </div>`).join(""):`<div class="panel empty" style="grid-column:1/-1">${svg(I.empty)}لا يوجد زبائن محفوظون${q?" مطابقون للبحث":" بعد"}.</div>`;
+  const cards=acts.length?acts.map(({c,a})=>personCardHTML({name:c.name,phone:c.phone,country:c.country,badge:c.isLaundry?"مغسلة 🧺":"",amt:a.due,credit:c.id?custCredit(c.id):0,
+      info:`${c.note?E(c.note)+" · ":""}الطلبات <b>${a.orders}</b>${a.cars.length?` · 🚗 ${a.cars.length}`:''}${a.rugs.length?` · 🧺 ${a.rugs.length}`:''}${a.lnd.length?` · 👕 ${a.lnd.length}`:''}${a.sales.length?` · 🏪 ${a.sales.length}`:''} · المدفوع <b>${money(a.spent)}</b>${a.last?` · آخر تعامل <bdi dir="ltr">${ymd(a.last)}</bdi>`:''}`,
+      id:c.id, btns:[...(a.storeDebt>0?[[`data-dc-pay="${c.id}"`,"💵","تحصيل","pay"]]:[]),[`data-dc-stmt="${c.id}"`,"📄","كشف"]], mini:[[`data-dc-edit="${c.id}"`,"✏️ تعديل"],[`data-dc-del="${c.id}"`,"🗑️ حذف","del"]]})).join(""):`<div class="panel empty" style="grid-column:1/-1">${svg(I.empty)}لا يوجد زبائن محفوظون${q?" مطابقون للبحث":" بعد"}.</div>`;
   const det=q?[]:detectedCustomers().slice(0,30);
   const detHtml=det.length?`
     <div class="panel" style="margin-top:16px">
@@ -4739,28 +4838,62 @@ function contactsSuppliers(){
       </div>
     </div>`;
 }
+/* (2.40.0) كشف حساب الزبون = دفتر بترتيب زمني: كل حركة تُظهر «كان ← صار» والرصيد في النهاية **صافٍ واحد** (عليه أو له).
+   مدين (+): طلب/فاتورة غير مدفوعة، دين «عليه»، ما سدّدناه له. دائن (−): دفعة منه، دين «له». الطلب المدفوع يظهر بلا أثر على الرصيد. */
+/* (2.40.0) زبون من مفتاح المدين (c:id أو p:هاتف أو n:اسم) — للكشف/الحفظ/الدين السريع لمن ليس محفوظًا */
+function debtorPerson(key){ const d=debtors().find(x=>x.key===key); if(!d) return null; if(d.custId) return storeCust(d.custId); return {id:null,name:d.name,phone:d.phone,country:d.country||"222"}; }
+function ensureCustFromPerson(pp){ if(!pp) return null; if(pp.id) return storeCust(pp.id); const ph=normPhone(pp.phone||""); let c=(state.storeCustomers||[]).find(x=>(ph&&normPhone(x.phone)===ph)||(!ph&&(x.name||"").trim()===(pp.name||"").trim()));
+  if(!c){ c={id:uid(),name:pp.name||"زبون",phone:pp.phone||"",country:pp.country||"222",isLaundry:false,note:"",by:currentUser,editedAt:iso(new Date())}; state.storeCustomers.push(c); logActivity("زبون جديد",c.name); } return c; }
+let _qd=null;
+function openQuickDebt(dir,cust){ if(!cust) return; _qd={dir,cust}; const m=document.getElementById("qdModal"); m.querySelector("#qdTitle").textContent=(dir==="for"?"➕ له — ندين لـ ":"➕ عليه — يدين لنا ")+(cust.name||"");
+  m.querySelector("#qdHint").textContent=dir==="for"?"مبلغ له عندنا (دفع مقدّمًا، أمانة، رصيد سابق…). يُخصم من دينه في الصافي.":"مبلغ عليه (سلفة، رصيد سابق، بضاعة بلا فاتورة…). يُضاف إلى دينه.";
+  ["qdAmt","qdNote"].forEach(id=>{ m.querySelector("#"+id).value=""; }); m.querySelector("#qdCash").checked=false; m.querySelector("#qdCashLbl").textContent=dir==="for"?"💵 استلمنا المبلغ في الصندوق الآن":"💵 خرج المبلغ من الصندوق الآن (سلفة نقدية)"; m.style.display="flex"; setTimeout(()=>m.querySelector("#qdAmt").focus(),60); }
+function saveQuickDebt(){ if(!_qd) return; const m=document.getElementById("qdModal"); const amt=+toLatinDigits(m.querySelector("#qdAmt").value)||0, note=(m.querySelector("#qdNote").value||"").trim(), cash=!!m.querySelector("#qdCash").checked;
+  if(!(amt>0)) return toast("أدخل المبلغ"); if(!note) return toast("اكتب وصف الدين");
+  const c=ensureCustFromPerson(_qd.cust); if(!c) return; const d=iso(new Date()), dir=_qd.dir==="for"?"for":"on";
+  const x={id:uid(),customerId:c.id,dir,amount:amt,paidAmount:0,paid:false,note,cash,payMethod:cash?"cash":undefined,date:d,by:currentUser,editedAt:d}; state.storeDebts.push(x);
+  if(cash){ if(dir==="on") addCashMove("out",amt,"سلفة لـ "+c.name+" — "+note,c.id,x.id,"cash"); else addCashMove("in",amt,"استلام من "+c.name+" (دين له) — "+note,c.id,x.id,"cash"); }
+  logActivity(dir==="on"?"دين يدوي عليه":"دين يدوي له",c.name+" · "+money(amt)+" "+CUR+" · "+note); m.style.display="none"; _qd=null; toast((dir==="on"?"سُجّل على ":"سُجّل لـ ")+c.name+" ✓"); render(); }
+document.addEventListener("click",e=>{ const t=e.target&&e.target.closest&&e.target.closest("[data-qd],[data-dc-stmtk],[data-dc-savek],#qdSave,#qdCancel"); if(!t) return;
+  if(t.id==="qdSave") return saveQuickDebt(); if(t.id==="qdCancel"){ document.getElementById("qdModal").style.display="none"; _qd=null; return; }
+  if(t.dataset.qd){ const [dir,key]=t.dataset.qd.split("|"); const c=key.startsWith("id:")?storeCust(key.slice(3)):debtorPerson(key); openQuickDebt(dir,c); return; }
+  if(t.dataset.dcStmtk){ const pp=debtorPerson(t.dataset.dcStmtk); if(pp) openDirStatement(pp); return; }
+  if(t.dataset.dcSavek){ const pp=debtorPerson(t.dataset.dcSavek); if(!pp) return; const c=ensureCustFromPerson(pp); toast("✓ حُفظ «"+c.name+"» في دليل الزبائن"); render(); return; } });
+function custNet(c){ const a=customerActivity(c); const credit=c&&c.id?custCredit(c.id):0; const bp=c&&c.id?(brickParties().find(x=>x.type==="cust"&&x.id===c.id)||null):null; return {a,credit,brick:bp?bp.balance:0,net:a.due-credit+(bp?bp.balance:0)}; }
+function netTxt(n,big){ const v=money(Math.abs(n)); return n>0?`<span class="net-on">عليه ${v}</span>`:n<0?`<span class="net-for">له ${v}</span>`:`<span class="net-zero">متعادل ✓</span>`; }
+function custLedger(c){
+  const a=customerActivity(c), R=[], debtIds=new Set((state.storeDebts||[]).map(x=>x.id));
+  const svc=(arr,ic,lbl,isPaid)=>arr.forEach(o=>{ const pr=+o.price||0; if(pr<=0) return; const paid=isPaid(o), what=lbl(o);
+    if(paid&&ymd(o.paidDate||o.date)===ymd(o.date)) R.push({d:o.date,t:`${ic} ${what}`,s:`مدفوع فورًا · ${pmLabel(o.payMethod)}`,show:pr,dr:0,cr:0,no:o.no});
+    else { R.push({d:o.date,t:`${ic} ${what}`,s:o.no||"",dr:pr,cr:0,no:o.no}); if(paid) R.push({d:o.paidDate||o.date,t:`💵 دفع ${what}`,s:pmLabel(o.payMethod),dr:0,cr:pr}); } });
+  svc(a.cars,"🚗",o=>`غسيل ${o.vehicle||"سيارة"}${o.plate?" "+o.plate:""}`,o=>o.paid!==false);
+  svc(a.rugs,"🧺",o=>"سجاد "+orderLabel(o),o=>!!o.paid);
+  svc(a.lnd,"👕",o=>"ملابس "+orderLabel(o),o=>!!o.paid);
+  if(c.id){
+    (state.storeSales||[]).filter(x=>!x.cancelled&&x.customerId===c.id).forEach(x=>R.push({d:x.date,t:`🏪 فاتورة متجر ${x.no||""}`,s:(x.items||[]).map(it=>it.name).filter(Boolean).slice(0,3).join("، "),dr:+x.total||0,cr:0}));
+    (state.storeDebts||[]).filter(x=>!x.cancelled&&x.customerId===c.id).forEach(x=>R.push(x.dir==="for"?{d:x.date,t:`📤 دين له: ${x.note||""}`,s:x.by||"",dr:0,cr:+x.amount||0}:{d:x.date,t:`📝 دين عليه: ${x.note||""}`,s:x.by||"",dr:+x.amount||0,cr:0}));
+    (state.storeCash||[]).filter(m=>m.customerId===c.id&&!(m.ref&&debtIds.has(m.ref))).forEach(m=>R.push(m.type==="in"?{d:m.date,t:`💵 ${m.reason||"دفعة"}`,s:pmLabel(m.payMethod),dr:0,cr:+m.amount||0}:{d:m.date,t:`💸 ${m.reason||"دفعنا له"}`,s:pmLabel(m.payMethod),dr:+m.amount||0,cr:0}));
+    const bp=brickParties().find(x=>x.type==="cust"&&x.id===c.id); if(bp&&bp.balance) R.push({d:bp.last||new Date().toISOString(),t:"🧱 رصيد حساب دبو",s:"تفصيله في كشف دبو",dr:bp.balance>0?bp.balance:0,cr:bp.balance<0?-bp.balance:0});
+  }
+  R.sort((x,y)=>new Date(x.d)-new Date(y.d)); let bal=0; R.forEach(r=>{ r.before=bal; bal+=r.dr-r.cr; r.after=bal; });
+  const N=custNet(c); if(Math.round(bal)!==Math.round(N.net)){ const diff=N.net-bal; R.push({d:new Date().toISOString(),t:"⚖️ تسوية سجلات قديمة",s:"فرق بين الحركات والرصيد المحفوظ",dr:diff>0?diff:0,cr:diff<0?-diff:0,before:bal,after:N.net}); bal=N.net; }
+  return {rows:R,final:bal,N};
+}
 function openDirStatement(c){
-  const a=customerActivity(c);
-  const row=(d,lbl,price,paid)=>`<div class="rcpt-row"><span>${ymd(d)} — ${lbl}</span><b>${money(price)}${paid?'':' <span style="color:#d64545">(غير مدفوع)</span>'}</b></div>`;
-  const rows=[
-    ...a.cars.map(o=>({d:o.date,h:row(o.date,"غسيل "+(o.vehicle||"")+(o.plate?(" "+o.plate):""),o.price,o.paid!==false)})),
-    ...a.rugs.map(o=>({d:o.date,h:row(o.date,"سجاد "+orderLabel(o),o.price,o.paid)})),
-    ...a.lnd.map(o=>({d:o.date,h:row(o.date,"ملابس "+orderLabel(o),o.price,o.paid)})),
-    ...a.sales.map(s=>({d:s.date,h:`<div class="rcpt-row"><span>${ymd(s.date)} — فاتورة متجر ${s.no}</span><b>${money(s.total)}${saleOutstanding(s)>0?` <span style="color:#d64545">(متبقٍ ${money(saleOutstanding(s))})</span>`:''}</b></div>`})),
-    ...custManualDebts(c.id,"on").map(x=>({d:x.date,h:`<div class="rcpt-row"><span>${ymd(x.date)} — 📝 دين عليه: ${_esc(x.note||"")}</span><b>${money(x.amount)}${debtOutstanding(x)>0?` <span style="color:#d64545">(متبقٍ ${money(debtOutstanding(x))})</span>`:''}</b></div>`})),
-    ...custManualDebts(c.id,"for").map(x=>({d:x.date,h:`<div class="rcpt-row"><span>${ymd(x.date)} — 📤 دين له: ${_esc(x.note||"")}</span><b style="color:#2e9e6b">${money(x.amount)}${debtOutstanding(x)>0?` (متبقٍ ${money(debtOutstanding(x))})`:' (مسدَّد)'}</b></div>`})),
-    ...(state.storeDebts||[]).filter(x=>x.cancelled&&x.customerId===c.id).map(x=>({d:x.date,h:`<div class="rcpt-row" style="color:#888"><span>${ymd(x.date)} — 🗑️ محذوف (${x.dir==="for"?"له":"عليه"}): ${_esc(x.note||"")} · حذفه ${_esc(x.cancelledBy||"?")}</span><b style="text-decoration:line-through">${money(x.amount)}</b></div>`}))
-  ].sort((x,y)=>(y.d||"").localeCompare(x.d||"")).map(x=>x.h).join("")||'<div class="hint">لا تعاملات بعد.</div>';
-  const credit=custCredit(c.id);
-  document.getElementById("receiptContent").innerHTML=`
-    <div class="rcpt">
-      ${rcptHeader(`كشف حساب — ${_esc(c.name)}${c.phone?`<br><small>📞 ${_esc(c.phone)}</small>`:""}`)}
-      ${rows}
-      <div class="rcpt-row"><span>إجمالي المدفوع</span><b>${money(a.spent)}</b></div>
-      <div class="rcpt-total"><span>المستحقّ عليه</span><b style="color:#d64545">${money(a.due)} ${CUR}</b></div>
-      ${credit>0?`<div class="rcpt-total"><span>له عندنا</span><b style="color:#2e9e6b">${money(credit)} ${CUR}</b></div>`:""}
-      ${rcptFooter()}
-    </div>`;
+  const E=_esc, L=custLedger(c), del=c.id?(state.storeDebts||[]).filter(x=>x.cancelled&&x.customerId===c.id):[];
+  const sumDr=sum(L.rows,r=>r.dr), sumCr=sum(L.rows,r=>r.cr);
+  const bal=n=>n>0?`عليه ${money(n)}`:n<0?`له ${money(-n)}`:"0";
+  const rows=L.rows.length?L.rows.map(r=>`<div class="lg-row">
+      <div class="lg-top"><span class="lg-t">${E(r.t)}</span>${r.dr?`<b class="lg-a dr">+${money(r.dr)}</b>`:r.cr?`<b class="lg-a cr">−${money(r.cr)}</b>`:`<b class="lg-a nz">${money(r.show||0)} ✓</b>`}</div>
+      <div class="lg-sub"><bdi dir="ltr">${ymd(r.d)}</bdi>${r.s?` · ${E(r.s)}`:""}${(r.dr||r.cr)?`<span class="lg-bal">كان ${bal(r.before)} ← صار <b>${bal(r.after)}</b></span>`:""}</div></div>`).join(""):`<div class="hint">لا تعاملات بعد.</div>`;
+  document.getElementById("receiptContent").innerHTML=`<div class="rcpt ledger">
+    ${rcptHeader(`📒 كشف حساب — ${E(c.name||"زبون")}${c.phone?`<br><small>📞 <bdi dir="ltr">${E(c.phone)}</bdi></small>`:""}`)}
+    <div class="lg-final ${L.final>0?"on":L.final<0?"for":"zero"}"><small>الرصيد الآن</small><b>${L.final>0?"عليه لنا":L.final<0?"له عندنا":"متعادل"} ${L.final?money(Math.abs(L.final))+" "+CUR:"✓"}</b></div>
+    <div class="lg-sum"><div><small>عليه (مدين)</small><b>${money(sumDr)}</b></div><div><small>دفع / له (دائن)</small><b>${money(sumCr)}</b></div><div><small>عدد الحركات</small><b>${L.rows.length}</b></div></div>
+    ${rows}
+    ${del.length?`<div class="lg-del-h">🗑️ ديون محذوفة (محفوظة للسجل — لا تُحسب)</div>${del.map(x=>`<div class="lg-row del"><div class="lg-top"><span class="lg-t">${x.dir==="for"?"له":"عليه"}: ${E(x.note||"")}</span><b class="lg-a" style="text-decoration:line-through">${money(x.amount)}</b></div><div class="lg-sub"><bdi dir="ltr">${ymd(x.date)}</bdi> · حذفه ${E(x.cancelledBy||"?")} ${ymd(x.cancelledAt||x.editedAt)}</div></div>`).join("")}`:""}
+    <div class="rcpt-total"><span>${L.final>0?"المستحقّ عليه":L.final<0?"له عندنا":"الرصيد"}</span><b style="color:${L.final>0?"#d64545":L.final<0?"#2e9e6b":"inherit"}">${L.final?money(Math.abs(L.final))+" "+CUR:"متعادل ✓"}</b></div>
+    ${rcptFooter()}</div>`;
   document.getElementById("receiptModal").style.display="flex";
 }
 function openSupplierStatement(s){
@@ -4818,8 +4951,8 @@ function bindContacts(){
   const ss=document.getElementById("supplierSearch"); if(ss) ss.oninput=()=>{ state.supplierSearch=ss.value; _refocus="supplierSearch"; render(); };
   const dcs=document.getElementById("dcSave"); if(dcs) dcs.onclick=doDirCustSave;
   const dcc=document.getElementById("dcCancelEdit"); if(dcc) dcc.onclick=()=>{ _editDirCustId=null; render(); };
-  document.querySelectorAll("[data-dc-edit]").forEach(b=>b.onclick=()=>{ _editDirCustId=b.dataset.dcEdit; render(); try{ window.scrollTo({top:0,behavior:"smooth"}); }catch(e){} });
-  document.querySelectorAll("[data-dc-del]").forEach(b=>b.onclick=()=>{ const id=b.dataset.dcDel, c=storeCust(id); requireCode(()=>{ logActivity("حذف زبون",(c&&c.name)||""); tomb(id); state.storeCustomers=state.storeCustomers.filter(x=>x.id!==id); if(_editDirCustId===id) _editDirCustId=null; toast("تم الحذف"); render(); }, SECRET_CODE, "كود الحذف", "حذف الزبون يتطلب الكود."); });
+  document.querySelectorAll("[data-dc-edit]").forEach(b=>b.onclick=()=>{ _editDirCustId=b.dataset.dcEdit; state.contactsSub="customers"; render(); try{ window.scrollTo({top:0,behavior:"smooth"}); }catch(e){} });
+  document.querySelectorAll("[data-dc-del]").forEach(b=>b.onclick=()=>{ const id=b.dataset.dcDel, c=storeCust(id); if(c&&(custBalance(id)>0||custCredit(id)>0)) return toast("⛔ لا يمكن حذف «"+c.name+"»: عليه أو له رصيد — سدّد أو احذف ديونه أولًا"); requireCode(()=>{ logActivity("حذف زبون",(c&&c.name)||""); tomb(id); state.storeCustomers=state.storeCustomers.filter(x=>x.id!==id); if(_editDirCustId===id) _editDirCustId=null; toast("تم الحذف"); render(); }, SECRET_CODE, "كود الحذف", "حذف الزبون يتطلب الكود."); });
   document.querySelectorAll("[data-dc-pay]").forEach(b=>b.onclick=()=>{ const c=storeCust(b.dataset.dcPay); if(c){ _storePayCtx={kind:"cust",id:c.id}; openStorePay(custBalance(c.id),"تحصيل من "+c.name); } });
   document.querySelectorAll("[data-dc-stmt]").forEach(b=>b.onclick=()=>{ const c=storeCust(b.dataset.dcStmt); if(c) openDirStatement(c); });
   document.querySelectorAll("[data-dc-import]").forEach(b=>b.onclick=()=>{ const phone=b.dataset.dcImport, name=b.dataset.dcName||("زبون "+phone), cc=b.dataset.dcCc||"222"; if((state.storeCustomers||[]).some(c=>normPhone(c.phone)===normPhone(phone))) return toast("محفوظ مسبقًا"); state.storeCustomers.push({id:uid(),name,phone,country:cc,isLaundry:false,note:"",by:currentUser,editedAt:iso(new Date())}); toast("تم حفظ الزبون"); render(); });
@@ -5015,6 +5148,30 @@ function expMeters(){
     })()}`;
 }
 
+const W_COLORS=[["#0ea993","rgba(14,169,147,.16)"],["#1b6ea4","rgba(27,110,164,.16)"],["#e67e22","rgba(230,126,34,.17)"],["#8e5bd6","rgba(142,91,214,.17)"],["#d64545","rgba(214,69,69,.14)"],["#c99a12","rgba(201,154,18,.18)"],["#2e9e6b","rgba(46,158,107,.17)"],["#c2185b","rgba(194,24,91,.14)"]];
+function workerColor(w){ const k=String(w.id||w.name||""); let h=0; for(let i=0;i<k.length;i++) h=(h*31+k.charCodeAt(i))>>>0; return W_COLORS[h%W_COLORS.length]; }
+let _wq=null;
+function openWorkerQuick(kind,id){ const w=state.workers.find(x=>x.id===id); if(!w) return; _wq={kind,id}; const m=document.getElementById("wqModal");
+  m.querySelector("#wqTitle").textContent=(kind==="credit"?"➕ له — ":"➖ عليه — ")+w.name; m.querySelector("#wqHint").textContent=kind==="credit"?"مستحق إضافي له: مكافأة، ساعات إضافية، عمل زائد…":"ما أخذه: سلفة، دفعة من الراتب…";
+  m.querySelector("#wqAmt").value=""; m.querySelector("#wqNote").value=""; m.querySelector("#wqNote").placeholder=kind==="credit"?"مثال: مكافأة / ساعات إضافية":"مثال: سلفة / دفعة راتب"; m.style.display="flex"; setTimeout(()=>m.querySelector("#wqAmt").focus(),60); }
+function saveWorkerQuick(){ if(!_wq) return; const m=document.getElementById("wqModal"), w=state.workers.find(x=>x.id===_wq.id); if(!w) return; const amt=+toLatinDigits(m.querySelector("#wqAmt").value)||0, note=(m.querySelector("#wqNote").value||"").trim();
+  if(!(amt>0)) return toast("أدخل المبلغ"); const rec={id:uid(),amount:amt,note,date:iso(new Date())};
+  if(_wq.kind==="credit"){ if(!w.credits) w.credits=[]; w.credits.push(rec); } else w.payments.push(rec); w.editedAt=iso(new Date());
+  logActivity(_wq.kind==="credit"?"عامل: له":"عامل: عليه",w.name+" · "+money(amt)+(note?" · "+note:"")); const kd=_wq.kind; m.style.display="none"; _wq=null; toast(kd==="credit"?"✓ سُجّل له":"✓ سُجّل عليه"); render(); }
+function openWorkerEdit(id){ const w=state.workers.find(x=>x.id===id); if(!w) return; if(currentRole==="worker") return toast("⛔ للمالك أو المدير"); const m=document.getElementById("weModal"); m.dataset.id=id;
+  m.querySelector("#weName").value=w.name||""; m.querySelector("#weRole").value=w.role||""; m.querySelector("#wePhone").value=w.phone||""; m.querySelector("#weMonthly").value=+w.monthly||0; m.querySelector("#weStart").value=w.start?ymd(w.start):""; m.style.display="flex"; }
+function saveWorkerEdit(){ const m=document.getElementById("weModal"), w=state.workers.find(x=>x.id===m.dataset.id); if(!w) return;
+  const name=(m.querySelector("#weName").value||"").trim(), role=(m.querySelector("#weRole").value||"").trim(), phone=(m.querySelector("#wePhone").value||"").trim(), monthly=+toLatinDigits(m.querySelector("#weMonthly").value)||0, st=m.querySelector("#weStart").value;
+  if(!name) return toast("أدخل الاسم"); if(phone&&!validPhone(phone)) return toast("رقم الهاتف يجب أن يكون 8 أرقام"); if(!(monthly>=0)) return toast("أدخل الراتب");
+  const ch=[]; if(name!==w.name) ch.push("الاسم: "+w.name+" ← "+name); if(role!==(w.role||"")) ch.push("الوظيفة ← "+role);
+  if(monthly!==(+w.monthly||0)){ ch.push("الراتب: "+fmt(w.monthly)+" ← "+fmt(monthly)+" (من اليوم)"); w.salaryHist=(w.salaryHist||[]).concat([{from:ymd(new Date()),monthly,prev:+w.monthly||0,by:currentUser}]); w.monthly=monthly; }
+  if(st&&st!==(w.start?ymd(w.start):"")){ ch.push("المباشرة ← "+st); w.start=chosenDateIso(st); }
+  w.name=name; w.role=role; w.phone=phone; w.editedAt=iso(new Date()); m.style.display="none";
+  if(ch.length) logActivity("تعديل عامل",name+" · "+ch.join(" · ")); toast("✓ حُفظ تعديل "+name); render(); }
+document.addEventListener("click",e=>{ const t=e.target&&e.target.closest&&e.target.closest("[data-wq],[data-wedit],#wqSave,#wqCancel,#weSave,#weCancel"); if(!t) return;
+  if(t.dataset.wq){ const [k,id]=t.dataset.wq.split("|"); return openWorkerQuick(k,id); } if(t.dataset.wedit) return openWorkerEdit(t.dataset.wedit);
+  if(t.id==="wqSave") return saveWorkerQuick(); if(t.id==="weSave") return saveWorkerEdit();
+  if(t.id==="wqCancel"){ document.getElementById("wqModal").style.display="none"; _wq=null; } if(t.id==="weCancel") document.getElementById("weModal").style.display="none"; });
 function expWorkers(){
   const totNet=sum(state.workers,netSalary), totPaid=sum(state.workers,wPaid), totBal=sum(state.workers,wBalance);
   const cards=state.workers.length?state.workers.map(w=>{
@@ -5022,32 +5179,23 @@ function expWorkers(){
     const balLabel=bal>0?"له":bal<0?"عليه":"مسدّد";
     const balCls=bal>0?"bal-pos":bal<0?"bal-neg":"bal-zero";
     const due=accruedDue(w);
+    const col=workerColor(w), ab=absentToday(w), rb=(attr,ic,t,cls)=>`<button type="button" class="r-btn${cls?" "+cls:""}" ${attr} title="${t}"><span class="rb-ic">${ic}</span><small>${t}</small></button>`;
+    // (2.40.0) بطاقة مختصرة ملوّنة لكل عامل: الاسم والرصيد الصافي فقط، والعمليات بأزرار دائرية (له / عليه / غياب / كشف / تعديل)
     return `
-    <div class="worker">
-      <div class="wtop">
-        <span class="wav">${svg(I.worker)}</span>
-        <div style="min-width:0"><div class="wname">${w.name}</div><div class="wwage">${w.role||"موظف"}${w.phone?" • "+w.phone:""}${absentToday(w)?" • غائب اليوم":""}</div></div>
-        <button class="icon-btn" data-del-worker="${w.id}" title="حذف" style="margin-inline-start:auto">${svg(I.trash)}</button>
+    <div class="worker wcard" style="--wc:${col[0]};--wt:${col[1]}">
+      <div class="dc-head">
+        <div class="dc-av" style="background:var(--wt);color:var(--wc)">${_esc((w.name||"؟").trim().charAt(0)||"؟")}</div>
+        <div class="dc-who"><b class="dc-name">${_esc(w.name)}</b><span class="dc-ph">${_esc(w.role||"موظف")}${w.phone?" · 📞 "+_esc(w.phone):""}${ab?' · <span style="color:var(--unpaid);font-weight:800">غائب اليوم</span>':""}</span></div>
+        <div class="dc-amt">${bal>0?`<b style="color:var(--ready)">${fmt(bal)}</b><small>له · ${CUR}</small>`:bal<0?`<b>${fmt(-bal)}</b><small>عليه · ${CUR}</small>`:`<b style="color:var(--ready);font-size:.9rem">مسدّد ✓</b>`}</div>
       </div>
-      <div class="winfo">
-        <span>الراتب الشهري: <b>${fmt(w.monthly)}</b></span>
-        <span>اليومية: <b>${fmt(dayRate(w))}</b></span>
-        <span>المباشرة: <b>${w.start?ymd(w.start):"—"}</b></span>
+      <div class="w-line">💼 راتب <b>${fmt(w.monthly)}</b> · يومية <b>${fmt(dayRate(w))}</b> · غياب الشهر <b>${monthAbsences(w)}</b>${w.start?` · منذ <bdi dir="ltr">${ymd(w.start)}</bdi>`:""}</div>
+      <div class="r-btns">
+        ${rb(`data-wq="credit|${w.id}"`,"➕","له","pay")}
+        ${rb(`data-wq="pay|${w.id}"`,"➖","عليه","del")}
+        ${rb(`data-abstoday="${w.id}"`,ab?"↩️":"🚫",ab?"إلغاء الغياب":"غياب اليوم",ab?"call":"")}
+        ${rb(`data-wstate="${w.id}"`,"🧾","كشف","")}
       </div>
-      <div class="wstats">
-        <div class="wstat wdue"><b>${fmt(due+wCredit(w))}</b><span>المستحق (له)</span></div>
-        <div class="wstat"><b>${fmt(wPaid(w))}</b><span>المأخوذ (عليه)</span></div>
-        <div class="wstat ${balCls}"><b>${fmt(Math.abs(bal))}</b><span>الرصيد (${balLabel})</span></div>
-      </div>
-      <div class="wabsent">
-        <span>غياب الشهر: <b>${monthAbsences(w)}</b> (−${fmt(monthAbsences(w)*dayRate(w))})</span>
-        <button class="mini ${absentToday(w)?'abs-on':''}" data-abstoday="${w.id}">${absentToday(w)?"إلغاء غياب اليوم":"تسجيل غياب اليوم"}</button>
-      </div>
-      <div class="wpay2">
-        <div class="wpay-col"><input type="number" min="0" placeholder="مبلغ" data-creditin="${w.id}"><input type="text" class="wnote" placeholder="الوصف (مكافأة، ساعات إضافية…)" data-creditnote="${w.id}"><button class="mini credit-btn" data-creditbtn="${w.id}">➕ له (مستحق/مكافأة)</button></div>
-        <div class="wpay-col"><input type="number" min="0" placeholder="مبلغ" data-payin="${w.id}"><input type="text" class="wnote" placeholder="الوصف (سلفة، دفعة راتب…)" data-paynote="${w.id}"><button class="mini debit-btn" data-paybtn="${w.id}">➖ عليه (دفعة/سلفة)</button></div>
-      </div>
-      <button class="mini" data-wstate="${w.id}" style="margin-top:9px;width:100%;font-weight:800">🧾 كشف حساب ${w.name}</button>
+      <div class="dc-mini"><button type="button" class="dcm" data-wedit="${w.id}">✏️ تعديل العامل والراتب</button><button type="button" class="dcm del" data-del-worker="${w.id}">🗑️ حذف</button></div>
     </div>`;}).join("") : `<div class="panel empty" style="grid-column:1/-1">${svg(I.empty)}لا يوجد عمّال — أضف أول عامل.</div>`;
   const totLabel=totBal>0?"لهم":totBal<0?"علينا":"مسدّد";
   return `
@@ -6632,6 +6780,53 @@ function _b64u(buf){ const b=new Uint8Array(buf); let s=""; for(let i=0;i<b.leng
 function _b64uDec(str){ str=String(str).replace(/-/g,"+").replace(/_/g,"/"); while(str.length%4) str+="="; const bin=atob(str), u=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) u[i]=bin.charCodeAt(i); return u; }
 function _rand(n){ const a=new Uint8Array(n); crypto.getRandomValues(a); return a; }
 /* (2.39.0) داخل تطبيق الـ APK: بصمة الهاتف الأصلية عبر إضافة Capacitor «NativeBiometric» (WebAuthn لا يعمل داخل WebView) */
+
+/* ================= (2.40.0) «🎉 ما الجديد» بعد كل تحديث =================
+   CHANGELOG: الأحدث أولًا. لكل تعديل: ic, t (العنوان), d (الشرح), go (أين: tab + storeSub/contactsSub/…), sel (العنصر الذي يُشار إليه).
+   **قاعدة: كل إصدار جديد يضيف مدخلًا هنا** — يظهر للمستخدم مرة واحدة بعد التحديث مع «تخطي» و«أرني» و«جولة». */
+const CHANGELOG=[
+  {v:"2.40.0",date:"2026-10-17",items:[
+    {ic:"🛒",t:"البيع والشراء في مكان واحد",d:"في المتجر: نقطة البيع والشراء (التوريد) والمبيعات صارت تحت زر واحد «البيع والشراء»، والتبديل بالأزرار الصغيرة تحته.",go:{tab:"store",storeSub:"pos"},sel:".inner-seg"},
+    {ic:"👥",t:"الزبائن والديون في المتجر معًا",d:"زر «الزبائن والديون» في المتجر يجمع الديون (لنا وعلينا) وكل الزبائن.",go:{tab:"store",storeSub:"debts"},sel:".inner-seg"},
+    {ic:"🎨",t:"ألوان لكل قسم",d:"في «الزبائن والديون» لكل قسم لونه: السيارات أزرق، السجاد برتقالي، الملابس بنفسجي، المتجر ذهبي، دبو بني — في المربعات وبطاقات الزبائن.",go:{tab:"contacts",contactsSub:"debts"},sel:".k-tiles"},
+    {ic:"🪪",t:"بطاقات الزبائن بشكل واحد",d:"كل زبون: الحرف الملوّن والاسم والمبلغ الذي عليه، وأزرار دائرية متساوية (واتساب، اتصال، تحصيل، كشف، تعديل).",go:{tab:"contacts",contactsSub:"customers"},sel:".person-card"},
+    {ic:"📒",t:"كشف حساب الزبون الجديد",d:"كل حركة بتاريخها وكم كان عليه ← كم صار، وفي الأعلى الرصيد الآن. اضغط 📄 «كشف» في بطاقة أي زبون.",go:{tab:"contacts",contactsSub:"debts"},sel:".debtor-card [data-dc-stmt],.debtor-card [data-dc-stmtk]"},
+    {ic:"⚖️",t:"الصافي فقط",d:"إن كان عليه وله معًا يُطرح أحدهما من الآخر ويظهر رقم واحد: «عليه» بالأحمر أو «له» بالأخضر.",go:{tab:"contacts",contactsSub:"debts"},sel:".debtor-card .dc-amt"},
+    {ic:"➕",t:"زرّا «عليه» و«له» في بطاقة الزبون",d:"سجّل دينًا عليه أو له مباشرة من بطاقته (مبلغ + وصف)، ومعهما ✏️ تعديل و🗑️ حذف الزبون (لا يُحذف من عليه أو له رصيد).",go:{tab:"contacts",contactsSub:"debts"},sel:".debtor-card .dc-mini"},
+    {ic:"🎁",t:"تعديل بطاقة الولاء",d:"لزبون عنده بطاقة سابقة: اكتب لوحته في السيارات ثم اضغط على الدوائر لتحديد كم غسلة غسل (مثلًا 3 فتبقى له واحدة ثم المجانية). أو ✏️ بجانب عدد الأختام في جدول الزبائن.",go:{tab:"cars"},sel:"#carPlate"},
+    {ic:"👷",t:"بطاقات العمّال الجديدة",d:"كل عامل بلونه الخاص، والرصيد الصافي فقط (له أو عليه). الأزرار: ➕ له، ➖ عليه، غياب اليوم، كشف — و✏️ تعديل العامل وراتبه (الراتب الجديد من اليوم).",go:{tab:"expenses",expSub:"workers"},sel:".wcard"},
+    {ic:"🎉",t:"«ما الجديد» بعد كل تحديث",d:"هذه النافذة تظهر بعد كل تحديث لتعرض ما تغيّر. تجدها لاحقًا في الإعدادات ▸ 📱 التطبيق ▸ «ما الجديد».",go:null,sel:null}]},
+  {v:"2.39.0",date:"2026-10-17",items:[
+    {ic:"📄",t:"كشف لكل بطاقة في الرئيسية",d:"اضغط أي رقم (الكاش، الديون الجديدة، دخل الملابس، الربح، المصروفات…) ليظهر كشف مرتب بالعمليات.",go:{tab:"dashboard"},sel:".fin-hero"},
+    {ic:"🚗",t:"صورة لكل نوع سيارة",d:"السيارات حسب النوع (هايلوكس، كورولا…) كلٌّ وحده بصورته، وتغيير الصورة من الإعدادات ▸ الأسعار.",go:{tab:"cars"},sel:"#vehPicker,.picker"},
+    {ic:"📦",t:"مواد المتجر صفوف صغيرة",d:"كل مادة: سعر البيع وسعر الشراء والربح.",go:{tab:"store",storeSub:"pos"},sel:".pos-grid"},
+    {ic:"👆",t:"البصمة داخل تطبيق الـ APK",d:"نزّل الـ APK الجديد مرة واحدة ثم فعّلها من الإعدادات ▸ الحسابات.",go:null,sel:null}]}
+];
+function wnSeen(){ try{ return localStorage.getItem("sadaqa_seen_ver")||""; }catch(e){ return ""; } }
+function wnMark(){ try{ localStorage.setItem("sadaqa_seen_ver", String(window.APP_VERSION||CHANGELOG[0].v)); }catch(e){} }
+function wnPending(){ const v=String(window.APP_VERSION||""), seen=wnSeen(); if(!v||seen===v) return []; if(!seen) return CHANGELOG.filter(c=>c.v===v).slice(0,1); return CHANGELOG.filter(c=>verCmp(c.v,seen)>0&&verCmp(c.v,v)<=0); }
+let _wnShown=false;
+function maybeShowWhatsNew(){ if(!unlocked||_wnShown) return; if(navigator.webdriver&&!window._forceWhatsNew) return; const L=wnPending(); if(!L.length){ if(window.APP_VERSION) wnMark(); return; } _wnShown=true; openWhatsNew(L); }
+let _wnList=[];
+function openWhatsNew(list){ _wnList=(list&&list.length)?list:CHANGELOG.slice(0,2); const E=_esc, m=document.getElementById("whatsNewModal"); if(!m) return;
+  m.querySelector("#wnBody").innerHTML=_wnList.map((c,ci)=>`<div class="wn-ver"><b>الإصدار ${E(c.v)}</b><small>${E(c.date||"")}</small></div>`+c.items.map((it,ii)=>`<div class="wn-item"><span class="wn-ic">${it.ic}</span><div class="wn-tx"><b>${E(it.t)}</b><div>${E(it.d)}</div></div>${it.go?`<button type="button" class="mini" data-wn-go="${ci}:${ii}">📍 أرني</button>`:""}</div>`).join("")).join("");
+  m.querySelector("#wnTitle").textContent="🎉 ما الجديد"+(_wnList.length===1?" — الإصدار "+_wnList[0].v:"");
+  m.style.display="flex"; }
+function wnSteps(){ const out=[]; _wnList.forEach(c=>c.items.forEach(it=>{ if(it.go) out.push(it); })); return out; }
+let _wnTour=null;
+function wnClear(){ document.querySelectorAll(".wn-spot").forEach(x=>x.classList.remove("wn-spot")); const t=document.getElementById("wnTip"); if(t) t.style.display="none"; }
+function wnShowStep(steps,i,single){ wnClear(); const it=steps[i]; if(!it){ _wnTour=null; wnMark(); toast("✓ انتهت الجولة"); return; }
+  _wnTour={steps,i,single}; document.getElementById("whatsNewModal").style.display="none"; ["receiptModal","settingsModal"].forEach(id=>{ const x=document.getElementById(id); if(x) x.style.display="none"; });
+  if(it.go){ Object.keys(it.go).forEach(k=>{ state[k]=it.go[k]; }); render(); }
+  setTimeout(()=>{ const el=it.sel?document.querySelector(it.sel):null; if(el){ el.classList.add("wn-spot"); try{ el.scrollIntoView({block:"center",behavior:"smooth"}); }catch(e){ el.scrollIntoView(); } }
+    const t=document.getElementById("wnTip"); t.querySelector("#wnTipT").textContent=it.ic+" "+it.t; t.querySelector("#wnTipD").textContent=it.d+(el?"":" (افتح الشاشة لتراه)");
+    const nx=t.querySelector("#wnNext"); nx.textContent=single?"✓ فهمت":(i<steps.length-1?`التالي ▶ (${i+1}/${steps.length})`:"✓ إنهاء الجولة"); t.querySelector("#wnEnd").style.display=single?"none":""; t.style.display="flex"; },260); }
+document.addEventListener("click",e=>{ const g=e.target&&e.target.closest&&e.target.closest("[data-wn-go]"); if(g){ const [ci,ii]=g.dataset.wnGo.split(":").map(Number); const it=_wnList[ci]&&_wnList[ci].items[ii]; if(it){ wnMark(); wnShowStep([it],0,true); } return; }
+  const id=e.target&&e.target.id; if(id==="wnSkip"||id==="wnOk"){ wnMark(); document.getElementById("whatsNewModal").style.display="none"; }
+  else if(id==="wnTourBtn"){ const st=wnSteps(); wnMark(); if(st.length) wnShowStep(st,0,false); else document.getElementById("whatsNewModal").style.display="none"; }
+  else if(id==="wnNext"){ if(!_wnTour) return wnClear(); if(_wnTour.single){ _wnTour=null; wnClear(); return; } wnShowStep(_wnTour.steps,_wnTour.i+1,false); }
+  else if(id==="wnEnd"){ _wnTour=null; wnClear(); wnMark(); }
+  else if(id==="btnWhatsNew"){ document.getElementById("settingsModal").style.display="none"; openWhatsNew(CHANGELOG.slice(0,3)); } });
 function nativeBio(){ try{ const C=window.Capacitor; if(!C) return null; const nat=C.isNativePlatform?C.isNativePlatform():(C.getPlatform&&C.getPlatform()!=="web"); if(!nat) return null;
   return (C.Plugins&&C.Plugins.NativeBiometric)||(C.registerPlugin?C.registerPlugin("NativeBiometric"):null); }catch(e){ return null; } }
 async function nativeBioVerify(reason){ const N=nativeBio(); if(!N) throw new Error("no-native"); await N.verifyIdentity({reason, title:"مغاسيل صداقة", subtitle:reason, description:"ضع إصبعك على مستشعر البصمة", negativeButtonText:"إلغاء", maxAttempts:5, useFallback:true}); return true; }
@@ -7293,6 +7488,7 @@ document.getElementById("rcptTestBtn").onclick=()=>{ setRcptWidth(document.getEl
     save(); applyLock(); render();
     setTimeout(()=>{ try{ if(window.cloudReady) window.cloudPush(cloudCopy()); }catch(e){} }, 800);
     if(!viaBio) setTimeout(maybeOfferBio, 1200);
+    setTimeout(maybeShowWhatsNew, 1600);
   };
   window._enterSession=enterSession;
   { const lb=document.getElementById("lockBio"); if(lb) lb.onclick=()=>bioLogin();
@@ -7420,6 +7616,7 @@ applyHeaderIcons();
 restoreSession();
 applyLock();
 render();
+setTimeout(()=>{ try{ maybeShowWhatsNew(); }catch(e){} },1800);
 setTimeout(()=>{ if(!window.cloudReady){ const el=document.getElementById("cloudStat"); if(el){ el.textContent="غير متصل (يعمل محليًا)"; el.style.color="var(--muted)"; } updateCloudBtn("offline"); } },6000);
 </script>
 <script type="module">
@@ -7507,7 +7704,7 @@ setTimeout(()=>{ if(!window.cloudReady){ const el=document.getElementById("cloud
 <!-- PWA: service-worker registration + update/install wiring -->
 <script>
 (function(){
-  var APP_VERSION = "2.39.0";
+  var APP_VERSION = "2.40.0";
   window.APP_VERSION = APP_VERSION;
   function $(id){ return document.getElementById(id); }
   // سجّل إصدار هذا الجهاز في الحالة المتزامنة (ليُنبَّه الجهاز القديم)

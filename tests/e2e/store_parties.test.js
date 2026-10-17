@@ -22,7 +22,7 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
   let r=await page.evaluate(()=>{ const cards=[...document.querySelectorAll('.party-card')].map(c=>c.textContent.replace(/\s+/g,' ')); return { n:cards.length, ahmad:cards.filter(t=>/أحمد/.test(t)), all:document.querySelector('[data-debtview="all"]').classList.contains('on') }; });
   log('default view «الكل» lists 3 people (customer+supplier with the same phone merged): '+(r.all && r.n===3 && r.ahmad.length===1)+' (expect true)');
   const a=r.ahmad[0]||'';
-  log('أحمد: owes 8,000, we owe him 6,000 (1,000 credit + 5,000 purchase), net «عليه لنا 2,000»: '+(/عليه لنا\s*8,000/.test(a) && /له عندنا\s*6,000/.test(a) && /عليه لنا 2,000/.test(a) && /زبون/.test(a) && /مورّد/.test(a))+' (expect true)');
+  log('أحمد (8,000 on him, 6,000 for him) shows only the net «عليه لنا 2,000»: '+(/عليه لنا 2,000/.test(a) && !/له عندنا\s*6,000/.test(a) && /زبون/.test(a) && /مورّد/.test(a))+' (expect true)');
   log('his card lists the invoice, the credit and the purchase: '+(/فاتورة S-1/.test(a) && /له: دفع مقدّمًا/.test(a) && /شراء P-1/.test(a))+' (expect true)');
   log('his card has collect, pay-credit, pay-supplier and offset buttons: '+(await page.evaluate(()=>!!document.querySelector('[data-dc-pay="cu1"]') && !!document.querySelector('[data-cc-pay="cu1"]') && !!document.querySelector('[data-sp-pay="su1"]') && /6,000/.test((document.querySelector('[data-offset]')||{}).textContent||'')))+' (expect true)');
   r=await page.evaluate(()=>{ const t=document.querySelector('.store-stat').textContent; return /10,000/.test(t) && /7,200/.test(t) && /2,800/.test(t); });

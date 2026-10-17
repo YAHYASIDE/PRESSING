@@ -47,7 +47,7 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
   await page.evaluate(()=>{ state.tab='expenses'; state.expSub='workers'; render(); }); await page.waitForTimeout(300);
   const before=await page.evaluate(()=>state.workers.find(x=>x.id==='w1').editedAt);
   await page.waitForTimeout(1100);
-  await page.fill('[data-payin="w1"]','700'); await page.click('[data-paybtn="w1"]'); await page.waitForTimeout(300);
+  await page.click('[data-wq="pay|w1"]'); await page.waitForTimeout(150); await page.fill('#wqAmt','700'); await page.click('#wqSave'); // 2.40.0: نافذة «عليه» await page.waitForTimeout(300);
   const after=await page.evaluate(()=>{ const w=state.workers.find(x=>x.id==='w1'); return { ed:w.editedAt, n:w.payments.length }; });
   log('UI payment stamps editedAt and adds payment: '+(after.ed>before && after.n===3)+' (expect true)');
 

@@ -41,7 +41,7 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
   r=await page.evaluate(()=>({ x:state.storeDebts[1], credit:custCredit('cu1'), bal:custBalance('cu1'), m:state.storeCash[0], cc:custCreditors() }));
   log('manual debt «for» saved with cash-in movement (bankily 1,500, ref=debt): '+(r.x.dir==='for' && r.m && r.m.type==='in' && r.m.amount===1500 && r.m.payMethod==='bankily' && r.m.ref===r.x.id)+' (expect true)');
   log('credit 1,500 is separate from his debt (balance still 5,000): '+(r.credit===1500 && r.bal===5000)+' (expect true) | listed among customer creditors: '+(r.cc.length===1 && r.cc[0].bal===1500)+' (expect true)');
-  log('same card shows what he owes (5,000), his credit (1,500) and the net «عليه لنا 3,500»: '+(await page.evaluate(()=>{ const t=document.querySelector('.grid.orders').textContent; return document.querySelectorAll('.party-card').length===1 && /عليه لنا\s*5,000/.test(t) && /له عندنا\s*1,500/.test(t) && /عليه لنا 3,500/.test(t); }))+' (expect true)');
+  log('same card shows only the net «عليه لنا 3,500» (5,000 − his credit 1,500), not both sides: '+(await page.evaluate(()=>{ const t=document.querySelector('.grid.orders').textContent; return document.querySelectorAll('.party-card').length===1 && /عليه لنا 3,500/.test(t) && !/له عندنا\s*1,500/.test(t) && /له: دفع مقدّمًا/.test(t); }))+' (expect true)');
 
   // الدائنون — علينا: بطاقة الزبون + زر تسديد له
   await page.click('[data-debtview="cred"]'); await page.waitForTimeout(250);
@@ -64,7 +64,7 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
   // كشف الحساب يذكر الديون اليدوية
   await page.evaluate(()=>openCustStatement(storeCust('cu1'))); await page.waitForTimeout(200);
   const st=await page.textContent('#receiptContent');
-  log('store statement lists manual debts (on + for) and credit left 500: '+(/ديون يدوية عليه/.test(st) && /سلفة/.test(st) && /ديون له عندنا/.test(st) && /دفع مقدّمًا/.test(st) && /له عندنا/.test(st))+' (expect true)');
+  log('store statement is a ledger with both manual debts and a single net «له عندنا 500»: '+(/دين عليه: سلفة/.test(st) && /دين له: دفع مقدّمًا/.test(st) && /له عندنا/.test(st) && /500/.test(st) && /كان .* ← صار/.test(st))+' (expect true)');
   await page.evaluate(()=>{ document.getElementById('receiptModal').style.display='none'; openDirStatement(storeCust('cu1')); }); await page.waitForTimeout(200);
   const st2=await page.textContent('#receiptContent');
   log('directory statement lists them too: '+(/دين عليه: سلفة/.test(st2) && /دين له: دفع مقدّمًا/.test(st2))+' (expect true)');

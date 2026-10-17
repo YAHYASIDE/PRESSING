@@ -119,7 +119,9 @@ bash tests/run.sh store contacts_bio   # only some suites
 1. Bump the version in **both** `sw.js` (`const VERSION`) and `index.html`
    (`var APP_VERSION`) — patch for fixes, minor for features. The runner checks
    they match.
-2. Update `CLAUDE.md` (what changed, key function names, any new rule).
+2. Update `CLAUDE.md` (what changed, key function names, any new rule) **and add an entry at the top of
+   `CHANGELOG` in `index.html`** for the new version (`{v, date, items:[{ic,t,d,go,sel}]}` — simple Arabic, one
+   item per visible change, `go`/`sel` pointing at where it lives). The owner sees it as «🎉 ما الجديد» after updating.
 3. Commit with a clear message + the attribution lines from the system reminder;
    push the working branch; fast-forward `main` and push it (that deploys).
 4. Confirm the "Deploy to GitHub Pages" (and "Build Android APK") runs succeed
