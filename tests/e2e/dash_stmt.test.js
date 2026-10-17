@@ -53,8 +53,8 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
   r=await page.evaluate(()=>{ const remote=JSON.parse(JSON.stringify(cloudCopy())); remote.typeImgs={'veh:كورولا':{img:'data:image/jpeg;base64,AAA',at:Date.now()}}; applyRemote(remote); return !!state.typeImgs['veh:هايلوكس'] && !!state.typeImgs['veh:كورولا']; });
   log('pictures from two devices merge (none lost): '+r+' (expect true)');
   // المتجر: صفوف صغيرة بسعر البيع والشراء والربح
-  r=await page.evaluate(()=>{ state.storeProducts=[{id:'p1',name:'سكر 25 كيل',buyPrice:7500,sellPrice:8200,stock:2,minStock:0},{id:'p2',name:'مكروني',buyPrice:3500,sellPrice:4000,stock:1,minStock:2}]; state.tab='store'; state.storeSub='pos'; render();
-    const b=document.querySelector('.pos-prod[data-add="p1"]'), rc=b.getBoundingClientRect(), t=b.textContent.replace(/\s+/g,' '); return { h:rc.height, w:rc.width, t, row:getComputedStyle(b).flexDirection }; });
+  r=await page.evaluate(()=>{ state.storeProducts=[{id:'p1',name:'سكر 25 كيل',buyPrice:7500,sellPrice:8200,stock:2,minStock:0},{id:'p2',name:'مكروني',buyPrice:3500,sellPrice:4000,stock:1,minStock:2}]; state.tab='store'; state.storeSub='products'; render();
+    const b=document.querySelector('.pos-prod[data-pid="p1"]'), rc=b.getBoundingClientRect(), t=b.textContent.replace(/\s+/g,' '); return { h:rc.height, w:rc.width, t, row:getComputedStyle(b).flexDirection }; });
   log('POS products are small rectangles (row layout, < 70px tall): '+(r.row==='row' && r.h<70 && r.w>r.h*2)+' (expect true)');
   log('each shows sale 8,200, purchase 7,500 and profit 700: '+(/8,200/.test(r.t) && /شراء 7,500/.test(r.t) && /ربح 700/.test(r.t))+' (expect true)');
   // الزبائن والديون في مكان واحد: مربعات الأقسام كلها ظاهرة، بطاقة مختصرة وتفاصيل مطوية، أزرار دائرية متساوية

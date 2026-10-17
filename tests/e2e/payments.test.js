@@ -39,12 +39,13 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
 
   // 4) POS sale via سداد (picker survives adding to cart)
   await page.click('[data-tab="store"]'); await page.click('[data-ssub="pos"]'); await page.waitForTimeout(200);
-  await page.click('#posPm [data-pm="sedad"]'); await page.click('[data-add="p1"]'); await page.waitForTimeout(150); await page.click('[data-add="p1"]'); await page.waitForTimeout(150);
-  log('method kept after cart re-render: '+(await page.evaluate(()=>pmVal('posPm')==='sedad'))+' (expect true)');
-  await page.click('#posSellCash'); await page.waitForTimeout(200);
+  await page.click('[data-tmode="sellCash"]'); await page.waitForTimeout(150);
+  await page.click('#tradePm [data-pm="sedad"]'); await page.selectOption('#tradeProd','p1'); await page.waitForTimeout(150); await page.click('[data-tq="0|1"]'); await page.waitForTimeout(150);
+  log('method kept after cart re-render: '+(await page.evaluate(()=>pmVal('tradePm')==='sedad'))+' (expect true)');
+  await page.click('#tradeSave'); await page.waitForTimeout(200);
   log('sale 600 via سداد in cashbox: '+(await page.evaluate(()=>state.storeCash.some(m=>m.type==='in'&&m.amount===600&&m.payMethod==='sedad')))+' (expect true)');
   // 5) credit sale then collect via بنكيلي
-  await page.click('[data-add="p1"]'); await page.waitForTimeout(150); await page.selectOption('#posCust','c1'); await page.click('#posSellCredit'); await page.waitForTimeout(200);
+  await page.click('[data-tmode="sellCredit"]'); await page.waitForTimeout(150); await page.selectOption('#tradeProd','p1'); await page.waitForTimeout(150); await page.selectOption('#posCust','c1'); await page.click('#tradeSave'); await page.waitForTimeout(200);
   await page.evaluate(()=>{ _storePayCtx={kind:'cust',id:'c1'}; openStorePay(custBalance('c1'),'تحصيل'); });
   await page.click('#storePayPm [data-pm="bankily"]'); await page.click('#storePayOk'); await page.waitForTimeout(200);
   log('debt collected via بنكيلي: '+(await page.evaluate(()=>state.storeCash.some(m=>m.type==='in'&&m.amount===300&&m.payMethod==='bankily')))+' (expect true)');

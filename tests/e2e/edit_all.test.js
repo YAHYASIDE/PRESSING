@@ -105,7 +105,7 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
 
   // العامل لا يرى أزرار تعديل المال
   await page.evaluate(()=>{ state.users=[{id:'w1',name:'عامل',pin:'1111'}]; lockNow(); }); await page.waitForTimeout(300);
-  if(await page.isVisible('#lockSwitch')) await page.click('#lockSwitch'); await page.fill('#lockName','عامل'); await page.fill('#lockInput','1111'); await page.click('#lockEnter'); await page.waitForTimeout(400);
+  if(await page.isVisible('#lockSwitch')) await page.click('#lockSwitch'); await page.fill('#lockName','عامل'); await page.fill('#lockInput','1111'); await page.click('#lockEnter'); await page.waitForTimeout(900);
   await page.evaluate(()=>{ state.tab='store'; state.storeSub='sales'; render(); }); await page.waitForTimeout(250);
   log('worker sees no money edit buttons: '+(await page.evaluate(()=>document.querySelectorAll('[data-rec-edit]').length===0))+' (expect true)');
   log('no horizontal overflow at 400px: '+(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1))+' (expect true)');

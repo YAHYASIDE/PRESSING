@@ -51,10 +51,11 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
   await page.click('#spSave'); await page.waitForTimeout(200);
   log('supplier added:', await page.evaluate(()=>state.suppliers.length));
   // unpaid purchase via store
-  await page.click('[data-tab="store"]'); await page.click('[data-ssub="purchases"]'); await page.waitForTimeout(200);
-  await page.fill('#purSupplier','مورّد الصابون'); await page.selectOption('#purProd','p1');
-  await page.fill('#purQty','10'); await page.fill('#purCost','100'); await page.click('#purAdd'); await page.waitForTimeout(150);
-  await page.uncheck('#purPaid'); await page.click('#purSave'); await page.waitForTimeout(250);
+  await page.click('[data-tab="store"]'); await page.click('[data-ssub="pos"]'); await page.waitForTimeout(200);
+  await page.click('[data-tmode="buyCredit"]'); await page.waitForTimeout(150);
+  await page.selectOption('#tradeProd','p1'); await page.waitForTimeout(200);
+  await page.evaluate(()=>{ purCart[0].qty=10; purCart[0].cost=100; render(); }); await page.waitForTimeout(150);
+  await page.selectOption('#tradeParty','s:'+(await page.evaluate(()=>state.suppliers[0].id))); await page.click('#tradeSave'); await page.waitForTimeout(250);
   const link = await page.evaluate(()=>{ const s=state.suppliers[0]; return { linked: state.storePurchases[0].supplierId===s.id, bal: supplierBalance(s), suppliers: state.suppliers.length }; });
   log('purchase linked to supplier:', link.linked, '| balance owed:', link.bal, '(expect 1000) | no duplicate supplier:', link.suppliers===1);
   await page.click('[data-tab="contacts"]'); await page.waitForTimeout(150);

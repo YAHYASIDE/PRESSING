@@ -522,6 +522,16 @@
   التي كانت في يومه (`reApplyDate`)، ولا يُنقل مصروف إلى يوم مغلق. الحركات المرتبطة بعملية لا تُعدَّل مباشرة (تُعدَّل العملية).
   كل تعديل يختم `editedAt` ويُسجَّل «تعديل …» مع المبلغ قبل ← بعد. تعديل السيارات/السجاد/الملابس صار يشمل **الهاتف** وطريقة
   الدفع للمدفوع. الاختبار `tests/e2e/edit_all.test.js`.
+- **«البيع والشراء» شاشة واحدة بأربعة أنواع (2.41.0):** المتجر ▸ «البيع والشراء» = `storeScreenTrade` (تبويبات pos/sales/purchases كلها
+  تعرضها؛ `STORE_GROUPS` trade بلا تبويبات داخلية). أعلاها `TRADE_MODES` (`[data-tmode]`، `state.tradeMode` في `CLOUD_OMIT`): 🧾 بيع نقدي
+  (بلا زبون، طريقة الدفع `#tradePm` فقط) · 📒 بيع آجل (`#posCust` **إلزامي** أو «➕ زبون جديد» `#tNewName/#tNewPhone`، و`#tradePaidNow`
+  يبدأ بـ 0، المتبقي `#tradeRem`، وطريقة الدفع `#tradePmWrap` تظهر فقط إن دُفع شيء) · 💵 شراء نقدي (بلا مورّد، يُخصم من الطريقة المختارة)
+  · 📥 شراء آجل (`#tradeParty` = `s:id` مورّد / `c:id` زبون → `ensureSupplier` / جديد). **قائمة المواد خرجت من نقطة البيع** إلى «المواد»
+  (صفوف `.pos-prod.prod-row[data-pid]` بالبيع/الشراء/الربح/المخزون + تعديل/حذف)؛ في البيع والشراء: بحث `#tradeSearch` (نتائج `[data-tadd]`
+  عند الكتابة، Enter/الباركود يضيف) أو القائمة `#tradeProd`. السلة `tradeCart()` (= `storeCart` للبيع، `purCart` للشراء)، الأسطر `.t-line`
+  (`[data-tq="i|±1"]`، السعر `[data-tprice]` يُحدَّث في مكانه بلا إعادة رسم)، الحفظ `doTradeSave` → `commitStoreSale` / `commitStorePurchase`.
+  السجل تحتها `tradeLogHTML` (`[data-tlog]` الكل/المبيعات/المشتريات/غير المدفوع، `.t-log`). **إصلاح عام:** `keepField` كان يقرأ
+  `dataset.nokeep` (فارغ = false) فلم يكن `data-nokeep` يعمل أبدًا؛ صار `hasAttribute("data-nokeep")`. الاختبار `tests/e2e/trade.test.js`.
 - **قاعدة الحذف والاستعادة (2.0.0):** السجلّ يُعتبر محذوفًا فقط إذا كان وقت الـ tombstone
   ≥ `editedAt` للسجلّ (`isDead` في `mergeById`). لذلك السجلّ المُستعاد (editedAt جديد) يعود
   على كل الأجهزة. `tomb(id)` يضع وقتًا = max(الآن، editedAt+1) لتفادي فرق ساعات الأجهزة.

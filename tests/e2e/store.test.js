@@ -49,28 +49,31 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
 
   // --- POS: cash sale ---
   await page.click('[data-ssub="pos"]'); await page.waitForTimeout(250);
-  log('POS product buttons:', (await page.$$('[data-add]')).length);
-  await page.locator('[data-add]').first().click(); await page.waitForTimeout(200); // شامبو x1
-  await page.locator('[data-add]').first().click(); await page.waitForTimeout(200); // x2
-  const cartTotalTxt = await page.textContent('.total-line b');
+  // 2.41.0: «البيع والشراء» — لا قائمة مواد؛ بحث/اختيار ثم بيع نقدي
+  await page.click('[data-tmode="sellCash"]'); await page.waitForTimeout(150);
+  const shampoo = await page.$$eval('#tradeProd option', o=>(o.find(x=>/شامبو/.test(x.textContent))||{}).value);
+  await page.selectOption('#tradeProd', shampoo); await page.waitForTimeout(200); // شامبو x1
+  await page.click('[data-tq="0|1"]'); await page.waitForTimeout(200); // x2
+  const cartTotalTxt = await page.textContent('#tradeTotal');
   log('cart total after 2x شامبو (expect 300):', cartTotalTxt.trim());
-  await page.click('#posSellCash'); await page.waitForTimeout(350);
-  log('after cash sale, cart cleared:', (await page.$$('[data-crm]')).length===0);
+  await page.click('#tradeSave'); await page.waitForTimeout(350);
+  log('after cash sale, cart cleared:', (await page.$$('[data-trm]')).length===0);
 
   // --- POS: credit sale to laundry ---
-  await page.locator('[data-add]').first().click(); await page.waitForTimeout(200); // شامبو x1 (150)
+  await page.click('[data-tmode="sellCredit"]'); await page.waitForTimeout(150);
+  await page.selectOption('#tradeProd', shampoo); await page.waitForTimeout(200); // شامبو x1 (150)
   await page.selectOption('#posCust', { label: 'مغسلة النور (مغسلة)' }).catch(async()=>{
     // fallback: pick by index 1
     const opts = await page.$$eval('#posCust option', o=>o.map(x=>({v:x.value,t:x.textContent})));
     log('cust options:', JSON.stringify(opts));
     await page.selectOption('#posCust', opts[1].v);
   });
-  await page.click('#posSellCredit'); await page.waitForTimeout(350);
+  await page.click('#tradeSave'); await page.waitForTimeout(350);
   log('credit sale done');
 
   // --- Sales list ---
-  await page.click('[data-ssub="sales"]'); await page.waitForTimeout(250);
-  const saleCards = await page.$$('.grid.orders .order');
+  await page.click('[data-tlog="sales"]'); await page.waitForTimeout(250);
+  const saleCards = await page.$$('.t-log');
   log('sales invoices (expect 2):', saleCards.length);
   const recvTxt = await page.textContent('.store-stat .v');
   log('receivables (expect 150):', recvTxt.trim());
@@ -85,15 +88,14 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
   log('receivables after collect (expect 0):', recvAfter.trim());
 
   // --- Purchases: restock مسحوق ---
-  await page.click('[data-ssub="purchases"]'); await page.waitForTimeout(250);
-  await page.fill('#purSupplier','مورّد عام');
-  const purOpts = await page.$$eval('#purProd option', o=>o.map(x=>({v:x.value,t:x.textContent})));
+  await page.click('[data-tmode="buyCash"]'); await page.waitForTimeout(250);
+  const purOpts = await page.$$eval('#tradeProd option', o=>o.map(x=>({v:x.value,t:x.textContent})));
   const mashoq = purOpts.find(o=>/مسحوق/.test(o.t));
-  await page.selectOption('#purProd', mashoq.v);
-  await page.fill('#purQty','20'); await page.fill('#purCost','55');
-  await page.click('#purAdd'); await page.waitForTimeout(200);
-  await page.click('#purSave'); await page.waitForTimeout(300);
-  log('purchase saved, list has item:', (await page.$$('.grid.orders .order')).length>0);
+  await page.selectOption('#tradeProd', mashoq.v); await page.waitForTimeout(200);
+  await page.evaluate(()=>{ purCart[0].qty=20; purCart[0].cost=55; render(); }); await page.waitForTimeout(150);
+  await page.click('#tradeSave'); await page.waitForTimeout(300);
+  await page.click('[data-tlog="purchases"]'); await page.waitForTimeout(200);
+  log('purchase saved, list has item:', (await page.$$('.t-log')).length>0);
 
   // --- Cashbox ---
   await page.click('[data-ssub="cashbox"]'); await page.waitForTimeout(250);

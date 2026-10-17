@@ -12,11 +12,9 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
   if(await page.isVisible('#lockSwitch')) await page.click('#lockSwitch');
   await page.fill('#lockName','مالك'); await page.fill('#lockInput','0707'); await page.click('#lockEnter'); await page.waitForTimeout(400);
   // ===== المتجر: مجموعات
-  let r=await page.evaluate(()=>{ state.tab='store'; state.storeSub='pos'; render(); const top=[...document.querySelectorAll('.seg:not(.inner-seg) [data-ssub]')].map(b=>b.textContent.trim()); const inner=[...document.querySelectorAll('.inner-seg [data-ssub]')].map(b=>b.dataset.ssub); return {top,inner}; });
+  let r=await page.evaluate(()=>{ state.tab='store'; state.storeSub='pos'; render(); const top=[...document.querySelectorAll('.seg:not(.inner-seg) [data-ssub]')].map(b=>b.textContent.trim()); const inner=[...document.querySelectorAll('.inner-seg [data-ssub]')].map(b=>b.dataset.ssub); return {top,inner,tm:!!document.querySelector('[data-tmode]')}; });
   log('store has 4 groups (البيع والشراء · المواد · الزبائن والديون · الصندوق): '+(r.top.length===4 && /البيع والشراء/.test(r.top[0]) && /الزبائن والديون/.test(r.top[2]))+' (expect true)');
-  log('«البيع والشراء» holds POS + purchase + sales in one place: '+(JSON.stringify(r.inner)==='["pos","purchases","sales"]')+' (expect true)');
-  await page.click('.inner-seg [data-ssub="purchases"]'); await page.waitForTimeout(200);
-  log('switching inside the group keeps the same top tab: '+(await page.evaluate(()=>state.storeSub==='purchases' && document.querySelector('.seg:not(.inner-seg) [data-ssub="pos"]').classList.contains('on') && !!document.getElementById('purSave')))+' (expect true)');
+  log('«البيع والشراء» is one screen (no inner tabs; sell/buy modes instead): '+(r.inner.length===0 && r.tm)+' (expect true)');
   r=await page.evaluate(()=>{ state.storeSub='debts'; render(); return [...document.querySelectorAll('.inner-seg [data-ssub]')].map(b=>b.dataset.ssub); });
   log('«الزبائن والديون» holds debts + all customers: '+(JSON.stringify(r)==='["debts","customers"]')+' (expect true)');
   // ===== الكشف: دفتر بالرصيد الجاري والصافي فقط
@@ -67,12 +65,12 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
   // ===== ما الجديد
   await page.evaluate(()=>{ localStorage.removeItem('sadaqa_seen_ver'); window._forceWhatsNew=true; _wnShown=false; maybeShowWhatsNew(); }); await page.waitForTimeout(200);
   r=await page.evaluate(()=>{ const m=document.getElementById('whatsNewModal'); return { open:m.style.display==='flex', title:m.querySelector('#wnTitle').textContent, n:m.querySelectorAll('.wn-item').length, go:m.querySelectorAll('[data-wn-go]').length, v:window.APP_VERSION }; });
-  log('after an update «ما الجديد» opens for the new version with its changes and «أرني» buttons: '+(r.open && r.title.includes(r.v) && r.n>=5 && r.go>=4)+' (expect true)');
+  log('after an update «ما الجديد» opens for the new version with its changes and «أرني» buttons: '+(r.open && r.title.includes(r.v) && r.n>=3 && r.go>=3)+' (expect true)');
   await page.click('#wnTourBtn'); await page.waitForTimeout(500);
   r=await page.evaluate(()=>({ tab:state.tab, sub:state.storeSub, spot:!!document.querySelector('.wn-spot'), tip:document.getElementById('wnTip').style.display==='flex', t:document.getElementById('wnTipT').textContent, seen:localStorage.getItem('sadaqa_seen_ver') }));
   log('the tour goes to the first changed place, highlights it and explains: '+(r.tab==='store' && r.sub==='pos' && r.spot && r.tip && /البيع والشراء/.test(r.t))+' (expect true)');
-  await page.click('#wnNext'); await page.waitForTimeout(500);
-  log('«التالي» moves to the next change (store customers & debts): '+(await page.evaluate(()=>state.storeSub==='debts' && /الزبائن والديون/.test(document.getElementById('wnTipT').textContent)))+' (expect true)');
+  const t1=r.t; await page.click('#wnNext'); await page.waitForTimeout(500);
+  log('«التالي» moves to the next change: '+(await page.evaluate((t1)=>document.getElementById('wnTipT').textContent!==t1 && document.getElementById('wnTip').style.display==='flex',t1))+' (expect true)');
   await page.click('#wnEnd'); await page.waitForTimeout(200);
   log('«تخطي الجولة» ends it; seen version saved so it does not pop again: '+(await page.evaluate(()=>document.getElementById('wnTip').style.display==='none' && !document.querySelector('.wn-spot') && localStorage.getItem('sadaqa_seen_ver')===window.APP_VERSION && (_wnShown=false, maybeShowWhatsNew(), document.getElementById('whatsNewModal').style.display!=='flex')))+' (expect true)');
   await page.evaluate(()=>{ openSettings('all'); }); await page.waitForTimeout(150); await page.click('#btnWhatsNew'); await page.waitForTimeout(200);

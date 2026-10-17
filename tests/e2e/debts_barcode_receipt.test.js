@@ -53,9 +53,9 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
   await page.evaluate(()=>{ state.storeProducts=[{id:'p1',name:'صابون',buyPrice:100,sellPrice:150,stock:3,minStock:0,barcode:'6281000000011',editedAt:iso(new Date())},{id:'p2',name:'معطر',buyPrice:50,sellPrice:90,stock:5,minStock:0,editedAt:iso(new Date())}]; storeCart.length=0; state.tab='store'; state.storeSub='pos'; save(); render(); });
   await page.waitForTimeout(150);
   // keyboard-wedge scanner typing into the search box
-  await page.fill('#posSearch','6281000000011'); await page.press('#posSearch','Enter'); await page.waitForTimeout(200);
+  await page.fill('#tradeSearch','6281000000011'); await page.press('#tradeSearch','Enter'); await page.waitForTimeout(200);
   log('scan via search+Enter adds to cart: '+(await page.evaluate(()=>storeCart.length===1&&storeCart[0].productId==='p1'))+' (expect true)');
-  log('search cleared after scan: '+(await page.evaluate(()=>document.getElementById('posSearch').value===''))+' (expect true)');
+  log('search cleared after scan: '+(await page.evaluate(()=>document.getElementById('tradeSearch').value===''))+' (expect true)');
   // fast wedge with no focused input
   await page.evaluate(()=>document.activeElement&&document.activeElement.blur());
   await page.keyboard.type('6281000000011',{delay:5}); await page.keyboard.press('Enter'); await page.waitForTimeout(200);

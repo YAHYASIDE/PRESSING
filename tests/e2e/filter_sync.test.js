@@ -37,10 +37,8 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
   await page.click('[data-tab="expenses"]'); await page.waitForTimeout(200);
   log('expenses has datebar:', !!(await page.$('.datebar')));
   await page.click('[data-tab="store"]'); await page.waitForTimeout(200);
-  await page.click('[data-ssub="sales"]'); await page.waitForTimeout(200);
-  log('store sales has datebar:', !!(await page.$('.datebar')));
   await page.click('[data-ssub="pos"]'); await page.waitForTimeout(200);
-  log('store POS has NO datebar (correct):', !(await page.$('.datebar')));
+  log('store sales/purchases log has datebar:', !!(await page.$('.datebar')));
 
   // cloudCopy strips product images (size guard)
   const strip = await page.evaluate(()=>{
