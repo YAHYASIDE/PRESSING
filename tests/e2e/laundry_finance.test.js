@@ -61,6 +61,7 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
   await page.click('#openClosing'); await page.waitForTimeout(300);
   const rep1=await page.textContent('#receiptContent');
   log('day report modal shows cards with 100,000 / 70,000 / 30,000: '+(/تقرير اليوم/.test(rep1)&&/100,000/.test(rep1)&&/70,000/.test(rep1)&&/30,000/.test(rep1))+' (expect true)');
+  await page.evaluate(()=>{ document.getElementById('ccActual').value=document.getElementById('ccExp').dataset.exp; }); await page.click('#ccSave'); await page.waitForTimeout(300); // 2.43.0: الجرد قبل الإغلاق
   await page.click('#closeDayBtn'); await page.waitForTimeout(200);
   const body=await page.textContent('#cdyBody');
   log('confirm window: services 100,000, cash 30,000, bankily 20,000, bank 20,000, debts 30,000, transfer 70,000: '+(/100,000/.test(body)&&/30,000/.test(body)&&/40,000/.test(body)&&/20,000/.test(body)&&/70,000/.test(body)&&/التطبيقات البنكية/.test(body)&&/لا تُحوَّل/.test(body))+' (expect true)');

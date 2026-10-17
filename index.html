@@ -452,6 +452,16 @@
   .ov-row.ready .ov-main b{color:var(--ready)} .ov-row.late .ov-main b{color:var(--unpaid)}
   .cash-count{background:var(--soft);border:1px dashed var(--brand-2);border-radius:12px;padding:10px;margin:10px 0}
   .cash-count .cc-title{font-weight:800;margin-bottom:4px}
+  .ccx{border:1px solid var(--line);border-radius:10px;padding:6px 8px;margin:4px 0;background:var(--surface)}
+  .ccx summary{cursor:pointer;font-size:.84rem;font-weight:700}
+  .ccx-row{display:flex;justify-content:space-between;gap:8px;font-size:.8rem;padding:3px 0;border-bottom:1px dashed var(--line)}
+  .ccx-row small{color:var(--muted)} .ccx-row b{font-variant-numeric:tabular-nums;white-space:nowrap} .ccx-row b.neg{color:var(--unpaid)} .ccx-row b.pos{color:var(--ready)}
+  .ccx-row.ccx-tot{border-bottom:none;font-weight:800}
+  .cc-sub{font-weight:800;font-size:.84rem;margin:10px 0 4px} .cc-sub small{font-weight:500;color:var(--muted)}
+  .cca-row{border:1px solid var(--line);border-radius:10px;padding:6px 8px;margin-bottom:6px;background:var(--surface)}
+  .cca-h{display:flex;justify-content:space-between;gap:6px;flex-wrap:wrap;font-size:.82rem} .cca-h span{color:var(--muted)}
+  .cca-row .ccx{border:none;padding:0;margin:2px 0;background:none} .cca-row input{margin-top:4px}
+  .cca-d{font-size:.78rem;font-weight:800;margin-top:3px} .cca-d:empty{display:none} .cca-d.ok{color:var(--ready)} .cca-d.no{color:var(--unpaid)}
   .cat-row.off{opacity:.55}
   .pm-pick{display:flex;gap:5px;flex-wrap:wrap}
   .pm-opt{flex:1 1 0;min-width:68px;padding:7px 6px;border:1.5px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);font-weight:800;font-size:.8rem;cursor:pointer;font-family:inherit;white-space:nowrap}
@@ -3764,11 +3774,17 @@ function laundryDaysLogHTML(){
     ${days.length?`<div style="overflow:auto"><table class="tbl"><thead><tr><th>التاريخ</th><th>إجمالي الخدمات</th><th>المستلم</th><th>ديون جديدة</th><th>المحوّل للمتجر</th><th>الحالة</th></tr></thead><tbody>${rows}</tbody></table></div><div class="hint">اضغط أي يوم لفتح تقريره الكامل.</div>`:`<div class="hint">لا توجد أيام بعد.</div>`}</div>`;
 }
 function openCloseDayConfirm(day){
+  // (2.43.0) الجرد إلزامي قبل الإغلاق، ويجب أن يكون على آخر حركات اليوم
+  const cc=cashCountOf(day), focusCount=()=>setTimeout(()=>{ const a=document.getElementById("ccActual"); if(a){ a.scrollIntoView({block:"center"}); a.focus(); } },150);
+  if(!cc){ toast("🧮 عدّ الدرج واحفظ جرد الصندوق أولًا — لا يُغلق اليوم بلا جرد"); openClosing(day); focusCount(); return; }
+  const nowExp=Math.round(periodSummary(day,day).pay.cash.net);
+  if(nowExp!==cc.expected){ toast("⚠️ تغيّرت حركات اليوم بعد الجرد (المتوقع صار "+money(nowExp)+") — أعد حفظ الجرد"); openClosing(day); focusCount(); return; }
   const f=daySnapshot(day); const m=document.getElementById("closeDayModal"); if(!m) return;
   const row=(l,v,c)=>`<div class="rcpt-row"><span>${l}</span><b style="${c?'color:'+c:''}">${money(v)} ${CUR}</b></div>`;
   document.getElementById("cdyBody").innerHTML=`<p>هل تريد إغلاق يوم <b>${day}</b> وتحويل دخل المغسلة إلى حساب المتجر؟</p>
     ${row("🧾 إجمالي الخدمات",f.services)}${row("💵 المدفوع نقدًا",f.by.cash,"#e67e22")}${row("📱 التطبيقات البنكية",f.apps,"#1b6ea4")}${BANK_APPS.filter(k=>f.by[k]).map(k=>{ const m=PAY_METHODS.find(x=>x.k===k); return `<div class="rcpt-row" style="padding-inline-start:18px;font-size:.85rem"><span>└ ${m.ic} ${m.t}</span><b>${money(f.by[k])}</b></div>`; }).join("")}${row("🔴 الديون (لا تُحوَّل)",f.newDebts,"#c0392b")}${f.collected?row("💠 ديون محصّلة اليوم",f.collected,"#1b6ea4"):""}
     <div class="rcpt-total"><span>💰 إجمالي ما سيُحوَّل للمتجر</span><b>${money(f.received)} ${CUR}</b></div>
+    <div class="rcpt-row"><span>🧮 الجرد</span><b style="color:${cashCountIssues(cc).length?'var(--unpaid)':'var(--ready)'}">${cashCountIssues(cc).length?"فرق محفوظ بسبب: "+_esc(cc.note||""):"✔ مطابق"}</b></div>
     <div class="hint">تُنشأ حركة واحدة بمعرّف <span dir="ltr">${transferIdOf(day)}</span> — لا تتكرر مهما أُعيدت المحاولة.</div>`;
   m.style.display="flex";
   document.getElementById("closeDayOk").onclick=()=>{ m.style.display="none"; requireCode(()=>{ const r=closeDay(day); toast(r.ok?"🔒 أُغلق اليوم وأُضيف الدخل إلى المتجر":r.msg); openClosing(day); }, SECRET_CODE, "كود إغلاق اليوم", "إغلاق اليوم يتطلّب كود التحقق."); };
@@ -3818,19 +3834,51 @@ function closingOf(day){ return (state.closings||[]).find(c=>c.day===day&&!c.can
 // سجل الجرد = سجل إغلاق فيه عدّ فعلي (سجل الإغلاق 🔒 وحده بلا جرد لا يُعرض كجرد)
 function cashCountOf(day){ const c=closingOf(day); return (c&&typeof c.actual==="number")?c:null; }
 function hasCashCount(c){ return !!c && typeof c.actual==="number"; }
-function saveCashCount(day, actual, note){
+/* (2.43.0) تفصيل الرقم المتوقع لطريقة دفع في يوم: كل ما دخل وخرج بها (نفس قواعد payBreakdown) — مجموع الأسطر = الصافي */
+function payLines(F,mk){ const L=[], isM=k=>normPM(k)===mk, svc={car:0,rug:0,lnd:0}, n={car:0,rug:0,lnd:0};
+  (state.carOps||[]).forEach(o=>{ if(!o.cancelled&&o.paid!==false&&(+o.price||0)>0&&F(o.paidDate||o.date)&&isM(o.payMethod)){ svc.car+=+o.price||0; n.car++; } });
+  (state.carpetOrders||[]).forEach(o=>{ if(!o.cancelled&&o.paid&&F(o.paidDate||o.deliveredDate||o.date)&&isM(o.payMethod)){ svc.rug+=+o.price||0; n.rug++; } });
+  (state.laundryOrders||[]).forEach(o=>{ if(!o.cancelled&&o.paid&&F(o.paidDate||o.deliveredDate||o.date)&&isM(o.payMethod)){ svc.lnd+=+o.price||0; n.lnd++; } });
+  if(svc.car) L.push({t:"🚗 السيارات ("+n.car+")",a:svc.car}); if(svc.rug) L.push({t:"🧺 السجاد ("+n.rug+")",a:svc.rug}); if(svc.lnd) L.push({t:"👕 الملابس ("+n.lnd+")",a:svc.lnd});
+  const internal=new Set((state.storeCustomers||[]).filter(c=>c.isLaundry).map(c=>c.id));
+  (state.storeCash||[]).slice().sort((a,b)=>String(a.date).localeCompare(String(b.date))).forEach(m=>{ if(!F(m.date)||m.kind==="lndTransfer"||m.kind==="lndAdj"||(m.customerId&&internal.has(m.customerId))||!isM(m.payMethod)) return;
+    L.push({t:(m.type==="in"?"📥 ":"📤 ")+(m.reason||(m.type==="in"?"وارد":"صادر")),a:(m.type==="in"?1:-1)*(+m.amount||0),d:m.date}); });
+  (state.expenses||[]).forEach(e=>{ if(!e.cancelled&&F(e.date)&&isM(e.payMethod)) L.push({t:"💸 مصروف: "+(e.reason||e.category||""),a:-(+e.amount||0),d:e.date}); });
+  return L; }
+function payLinesHTML(L){ if(!L.length) return `<div class="hint">لا توجد حركات بهذه الطريقة في هذا اليوم.</div>`;
+  return L.map(x=>`<div class="ccx-row"><span>${_esc(x.t)}${x.d?` <small>${timeStr(x.d)}</small>`:""}</span><b class="${x.a<0?"neg":"pos"}">${x.a<0?"−":"+"}${money(Math.abs(x.a))}</b></div>`).join("")
+    +`<div class="ccx-row ccx-tot"><span>= المتوقع</span><b>${money(sum(L,x=>x.a))}</b></div>`; }
+function ccDiffTxt(d){ return d===0?"✔ مطابق":(d>0?"زيادة ":"⚠️ عجز ")+money(Math.abs(d))+" "+CUR; }
+function cashCountIssues(c){ if(!c) return []; const r=[]; if(c.diff) r.push({k:"cash",d:c.diff}); Object.keys(c.apps||{}).forEach(k=>{ if(c.apps[k].diff) r.push({k,d:c.apps[k].diff}); }); return r; }
+function saveCashCount(day, actual, note, apps){
   const s=periodSummary(day,day), expected=s.pay.cash.net;
   let c=closingOf(day); const d=iso(new Date());
-  if(!c){ c={id:uid(),day,date:d}; state.closings.push(c); }
+  // (2.43.0) معرّف ثابت لليوم (مثل الإغلاق) فلا يتكرر سجل اليوم بين جهازين
+  if(!c){ c={id:closingIdOf(day),day,date:d}; state.closings.push(c); }
   Object.assign(c,{expected:Math.round(expected),actual:Math.round(actual),diff:Math.round(actual-expected),note:(note||"").trim(),by:currentUser,editedAt:d});
-  logActivity("جرد الصندوق", day+" · فعلي "+money(c.actual)+" / متوقع "+money(c.expected)+" · "+(c.diff===0?"مطابق ✓":(c.diff>0?"زيادة ":"عجز ")+money(Math.abs(c.diff))));
-  if(c.diff!==0) notifyTelegram("⚠️ جرد الصندوق "+day+"\n"+(c.diff>0?"زيادة":"عجز")+": "+money(Math.abs(c.diff))+" "+CUR+"\nالمتوقع: "+money(c.expected)+" — الفعلي: "+money(c.actual)+"\nبواسطة: "+currentUser+(c.note?("\nملاحظة: "+c.note):""));
+  // (2.43.0) جرد التطبيقات البنكية: صافي اليوم في كل تطبيق (كما في سجلّه) مقابل حساب التطبيق
+  if(apps){ const A={}; Object.keys(apps).forEach(k=>{ const v=apps[k]; if(v===""||v==null||!(+v>=0)) return; const e=Math.round(s.pay[k]?s.pay[k].net:0); A[k]={expected:e,actual:Math.round(+v),diff:Math.round(+v-e)}; }); c.apps=A; }
+  const iss=cashCountIssues(c), pmT=k=>{ const m=PAY_METHODS.find(x=>x.k===k); return m?m.t:k; };
+  logActivity("جرد الصندوق", day+" · فعلي "+money(c.actual)+" / متوقع "+money(c.expected)+" · "+(c.diff===0?"مطابق ✓":(c.diff>0?"زيادة ":"عجز ")+money(Math.abs(c.diff)))+Object.keys(c.apps||{}).map(k=>" · "+pmT(k)+" "+(c.apps[k].diff===0?"✓":(c.apps[k].diff>0?"+":"−")+money(Math.abs(c.apps[k].diff)))).join(""));
+  if(iss.length) notifyTelegram("⚠️ جرد الصندوق "+day+"\n"+iss.map(x=>pmT(x.k)+": "+(x.d>0?"زيادة ":"عجز ")+money(Math.abs(x.d))+" "+CUR).join("\n")+"\nالمتوقع كاش: "+money(c.expected)+" — الفعلي: "+money(c.actual)+"\nبواسطة: "+currentUser+(c.note?("\nالسبب: "+c.note):""));
   save(); return c;
 }
-function cashCountText(day){ const c=cashCountOf(day); if(!c) return ""; return `\n━━━━━━━━━━\n*🧮 جرد الصندوق*\nالمتوقع: ${money(c.expected)}\nالفعلي: ${money(c.actual)}\n*${c.diff===0?"مطابق ✓":(c.diff>0?"زيادة ":"عجز ")+money(Math.abs(c.diff))+" "+CUR}*${c.note?("\n"+c.note):""}\nبواسطة ${c.by||""}`; }
+/* (2.43.0) تسوية الفرق: العجز = مصروف «عجز صندوق»، الزيادة = وارد «زيادة جرد» في صندوق المتجر — فيصبح المتوقع = الفعلي */
+function cashCountAdjust(day){ const c=cashCountOf(day); if(!c) return; if(dayIsClosed(day)) return toast("🔒 اليوم مغلق — التسوية قبل الإغلاق فقط");
+  const iss=cashCountIssues(c); if(!iss.length) return toast("✔ لا يوجد فرق للتسوية");
+  const when=day===ymd(new Date())?iso(new Date()):chosenDateIso(day), pmT=k=>{ const m=PAY_METHODS.find(x=>x.k===k); return m?m.t:k; };
+  if(!confirm("تسوية الفرق؟\n"+iss.map(x=>pmT(x.k)+": "+(x.d<0?"عجز "+money(-x.d)+" ← يُسجَّل مصروف «عجز صندوق»":"زيادة "+money(x.d)+" ← يُسجَّل وارد «زيادة جرد»")).join("\n"))) return;
+  iss.forEach(x=>{ const why=" "+frDay(day)+(c.note?" — "+c.note:"");
+    if(x.d<0) state.expenses.push({id:uid(),amount:-x.d,category:"عجز صندوق",reason:"عجز جرد "+pmT(x.k)+why,payMethod:x.k,countAdj:day,date:when,by:currentUser,editedAt:iso(new Date())});
+    else state.storeCash.push({id:uid(),type:"in",amount:x.d,reason:"زيادة جرد "+pmT(x.k)+why,kind:"countAdj",day,customerId:null,ref:c.id,payMethod:x.k,date:when,by:currentUser,editedAt:iso(new Date())}); });
+  const apps={}; Object.keys(c.apps||{}).forEach(k=>apps[k]=c.apps[k].actual);
+  const n=saveCashCount(day,c.actual,(c.note?c.note+" · ":"")+"سُوِّي الفرق",apps); n.adjusted=iso(new Date());
+  logActivity("تسوية جرد", day+" · "+iss.map(x=>pmT(x.k)+" "+(x.d>0?"+":"−")+money(Math.abs(x.d))).join(" · ")); save(); toast("⚖️ سُوِّي الفرق — الجرد مطابق الآن"); openClosing(day); }
+function cashCountText(day){ const c=cashCountOf(day); if(!c) return ""; const pmT=k=>{ const m=PAY_METHODS.find(x=>x.k===k); return m?m.t:k; };
+  return `\n━━━━━━━━━━\n*🧮 جرد الصندوق*\nالمتوقع: ${money(c.expected)}\nالفعلي: ${money(c.actual)}\n*${c.diff===0?"مطابق ✓":(c.diff>0?"زيادة ":"عجز ")+money(Math.abs(c.diff))+" "+CUR}*`+Object.keys(c.apps||{}).map(k=>`\n${pmT(k)}: متوقع ${money(c.apps[k].expected)} / فعلي ${money(c.apps[k].actual)} — ${c.apps[k].diff===0?"مطابق ✓":(c.apps[k].diff>0?"زيادة ":"عجز ")+money(Math.abs(c.apps[k].diff))}`).join("")+`${c.note?("\nالسبب: "+c.note):""}\nبواسطة ${c.by||""}`; }
 function closingsReportHTML(){
   const L=(state.closings||[]).filter(c=>!c.cancelled&&hasCashCount(c)).slice().sort((a,b)=>b.day.localeCompare(a.day)).slice(0,14);
-  const rows=L.length?L.map(c=>`<tr><td>${frDay(c.day)}</td><td class="amt" style="text-align:left">${money(c.expected)}</td><td class="amt" style="text-align:left">${money(c.actual)}</td><td class="amt" style="text-align:left;font-weight:800;color:${c.diff===0?'var(--ready)':c.diff>0?'var(--wash)':'var(--unpaid)'}">${c.diff===0?"✓ مطابق":(c.diff>0?"+":"−")+money(Math.abs(c.diff))}</td><td>${_esc(c.by||"")}${c.note?`<div class="hint">${_esc(c.note)}</div>`:""}</td></tr>`).join("")
+  const rows=L.length?L.map(c=>`<tr><td>${frDay(c.day)}</td><td class="amt" style="text-align:left">${money(c.expected)}</td><td class="amt" style="text-align:left">${money(c.actual)}</td><td class="amt" style="text-align:left;font-weight:800;color:${c.diff===0?'var(--ready)':c.diff>0?'var(--wash)':'var(--unpaid)'}">${c.diff===0?"✓ مطابق":(c.diff>0?"+":"−")+money(Math.abs(c.diff))}${Object.keys(c.apps||{}).filter(k=>c.apps[k].diff).map(k=>`<div class="hint" style="margin:0">📱 ${(PAY_METHODS.find(m=>m.k===k)||{}).t||k} ${c.apps[k].diff>0?"+":"−"}${money(Math.abs(c.apps[k].diff))}</div>`).join("")}${c.adjusted?`<div class="hint" style="margin:0">⚖️ سُوِّي</div>`:""}</td><td>${_esc(c.by||"")}${c.note?`<div class="hint">${_esc(c.note)}</div>`:""}</td></tr>`).join("")
     :`<tr><td colspan="5"><div class="hint">لا يوجد جرد بعد — يُسجَّل من «🧾 تقفيل اليوم» في الرئيسية.</div></td></tr>`;
   const shortTot=sum(L.filter(c=>c.diff<0),c=>-c.diff);
   return `<div class="panel" style="margin-bottom:12px" id="closingsPanel"><h3>🧮 جرد الصندوق (آخر 14 تقفيلًا)</h3>
@@ -3990,18 +4038,36 @@ function openClosing(day){
       <div class="rcpt-sec">🧾 تقفيل اليوم (التفاصيل)</div>
       ${(()=>{ const c=closingOf(day); if(!(c&&c.locked)) return ""; const t=dayTransferred(day); return `<div class="rcpt-sec">🔒 الإغلاق</div><div class="rcpt-row"><span>أُغلق</span><b>${frD(c.closedAt||c.date)} ${timeStr(c.closedAt||c.date)} · ${_esc(c.closedBy||"")}</b></div><div class="rcpt-row"><span>المعرّف</span><b dir="ltr" style="font-size:.75rem">${_esc(c.cid||c.id)}</b></div>${PAY_METHODS.filter(m=>t[m.k]).map(m=>`<div class="rcpt-row"><span>محوّل للمتجر ${m.ic} ${m.t}</span><b>${money(t[m.k])}</b></div>`).join("")}<div class="rcpt-row" style="font-weight:800"><span>إجمالي المحوّل للمتجر</span><b>${money(t.total)}</b></div>${(c.edits||0)?`<div class="rcpt-row"><span>تعديلات بعد الإغلاق</span><b>${c.edits}</b></div>`:""}${c.verify&&!c.verify.ok?`<div class="rcpt-paid no">⚠️ ${_esc(c.verify.issues.join(" | "))}</div>`:""}`; })()}
       ${body}
-      ${(()=>{ const c=cashCountOf(day); return c?`<div class="rcpt-sec">🧮 جرد الصندوق</div><div class="rcpt-row"><span>المتوقع</span><b>${money(c.expected)}</b></div><div class="rcpt-row"><span>الفعلي في الدرج</span><b>${money(c.actual)}</b></div><div class="rcpt-paid ${c.diff===0?'ok':'no'}">${c.diff===0?"✔ مطابق":(c.diff>0?"زيادة ":"⚠️ عجز ")+money(Math.abs(c.diff))+" "+CUR}</div>${c.note?`<div class="hint" style="text-align:center">${_esc(c.note)}</div>`:""}<div class="hint" style="text-align:center">بواسطة ${_esc(c.by||"")} · ${frD(c.editedAt||c.date)} ${timeStr(c.editedAt||c.date)}</div>`:""; })()}
-      ${currentRole!=="worker"?`<div class="no-print cash-count"><div class="cc-title">🧮 جرد الكاش ${cashCountOf(day)?"(تعديل)":""}</div><div class="hint">الكاش المتوقع من حركات اليوم: <b>${money(s.pay.cash.net)} ${CUR}</b></div>
-        <div class="row2" style="margin-top:6px"><div class="field"><label>الكاش الفعلي في الدرج</label><input id="ccActual" type="number" min="0" value="${cashCountOf(day)?cashCountOf(day).actual:""}" placeholder="عدّ الدرج"></div><div class="field"><label>ملاحظة</label><input id="ccNote" type="text" value="${_esc((cashCountOf(day)||{}).note||"")}" placeholder="اختياري"></div></div>
-        <button class="btn-primary" id="ccSave" style="width:100%">💾 حفظ الجرد</button></div>
-        <div class="no-print" style="margin-top:8px">${dayIsClosed(day)?`<button class="mini" id="cdRequestBtn" style="width:100%">✏️ طلب تعديل هذا اليوم</button>`:`<button class="btn-primary" id="closeDayBtn" style="width:100%;background:#c0392b;border-color:#c0392b">🔒 إغلاق يوم المغسلة</button><div class="hint" style="text-align:center">المستلم فعليًا: <b>${money(daySnapshot(day).received)} ${CUR}</b> يُحوَّل إلى حساب المتجر بحركة واحدة (الديون لا تُحوَّل). بعد الإغلاق لا تُعدَّل بيانات اليوم إلا بطلب موثق.</div>`}</div>`:""}
+      ${(()=>{ const c=cashCountOf(day); return c?`<div class="rcpt-sec">🧮 جرد الصندوق</div><div class="rcpt-row"><span>المتوقع</span><b>${money(c.expected)}</b></div><div class="rcpt-row"><span>الفعلي في الدرج</span><b>${money(c.actual)}</b></div><div class="rcpt-paid ${c.diff===0?'ok':'no'}">${c.diff===0?"✔ مطابق":(c.diff>0?"زيادة ":"⚠️ عجز ")+money(Math.abs(c.diff))+" "+CUR}</div>${Object.keys(c.apps||{}).map(k=>{ const a=c.apps[k], m=PAY_METHODS.find(x=>x.k===k)||{t:k,ic:""}; return `<div class="rcpt-row"><span>${m.ic} ${m.t}: متوقع ${money(a.expected)} / فعلي ${money(a.actual)}</span><b style="color:${a.diff===0?'var(--ready)':'var(--unpaid)'}">${a.diff===0?"✔":(a.diff>0?"+":"−")+money(Math.abs(a.diff))}</b></div>`; }).join("")}${c.note?`<div class="hint" style="text-align:center">${_esc(c.note)}</div>`:""}<div class="hint" style="text-align:center">بواسطة ${_esc(c.by||"")} · ${frD(c.editedAt||c.date)} ${timeStr(c.editedAt||c.date)}</div>`:""; })()}
+      ${currentRole!=="worker"?(()=>{ const cc=cashCountOf(day), F=x=>!!x&&ymd(x)===day, cl=payLines(F,"cash"), exp=Math.round(s.pay.cash.net);
+        const apps=BANK_APPS.map(k=>{ const m=PAY_METHODS.find(x=>x.k===k), L=payLines(F,k), e=Math.round(s.pay[k]?s.pay[k].net:0), v=cc&&cc.apps&&cc.apps[k]?cc.apps[k].actual:""; return `<div class="cca-row"><div class="cca-h"><b>${m.ic} ${m.t}</b><span>المتوقع اليوم: <b>${money(e)}</b></span></div><details class="ccx"><summary>تفصيل (${L.length})</summary>${payLinesHTML(L)}</details><input id="ccApp_${k}" data-ccapp="${k}" data-exp="${e}" type="number" value="${v}" placeholder="الفعلي اليوم"><div class="cca-d" data-ccd="${k}"></div></div>`; }).join("");
+        const iss=cashCountIssues(cc);
+        return `<div class="no-print cash-count" id="cashCountBox"><div class="cc-title">🧮 جرد الصندوق ${cc?"(تعديل)":""}</div>
+        <details class="ccx" open><summary>💵 الكاش المتوقع في الدرج: <b id="ccExp" data-exp="${exp}">${money(exp)} ${CUR}</b> — من أين؟</summary>${payLinesHTML(cl)}</details>
+        <div class="field" style="margin-top:6px"><label>💵 الكاش الفعلي في الدرج (عدّه)</label><input id="ccActual" type="number" min="0" value="${cc?cc.actual:""}" placeholder="عدّ الدرج"><div class="cca-d" id="ccCashDiff"></div></div>
+        <div class="cc-sub">📱 التطبيقات البنكية <small>(اختياري — اكتب ما دخل/خرج اليوم كما في سجل التطبيق)</small></div>${apps}
+        <div class="field"><label>📝 السبب / ملاحظة <span id="ccNoteReq" style="color:var(--unpaid)"></span></label><input id="ccNote" type="text" value="${_esc((cc||{}).note||"")}" placeholder="إلزامي إن كان هناك فرق"></div>
+        <button class="btn-primary" id="ccSave" style="width:100%">💾 حفظ الجرد</button>
+        ${cc&&iss.length&&!dayIsClosed(day)?`<button class="mini" id="ccAdjust" style="width:100%;margin-top:6px">⚖️ تسوية الفرق في الحسابات (العجز مصروف · الزيادة وارد)</button>`:""}</div>`; })()+`
+        <div class="no-print" style="margin-top:8px">${dayIsClosed(day)?`<button class="mini" id="cdRequestBtn" style="width:100%">✏️ طلب تعديل هذا اليوم</button>`:`${cashCountOf(day)?"":`<div class="hint" id="ccRequired" style="text-align:center;color:var(--unpaid);font-weight:800">🧮 احفظ جرد الصندوق أولًا — الإغلاق يحتاج الجرد</div>`}<button class="btn-primary" id="closeDayBtn" style="width:100%;background:#c0392b;border-color:#c0392b">🔒 إغلاق يوم المغسلة</button><div class="hint" style="text-align:center">المستلم فعليًا: <b>${money(daySnapshot(day).received)} ${CUR}</b> يُحوَّل إلى حساب المتجر بحركة واحدة (الديون لا تُحوَّل). بعد الإغلاق لا تُعدَّل بيانات اليوم إلا بطلب موثق.</div>`}</div>`:""}
       ${rcptFooter(currentUser?("أعدّه: "+_esc(currentUser)):"")}
     </div>`;
   document.getElementById("receiptModal").style.display="flex";
   const dIn=document.getElementById("closingDay"); if(dIn) dIn.onchange=()=>openClosing(dIn.value||day);
   const cdb=document.getElementById("closeDayBtn"); if(cdb) cdb.onclick=()=>openCloseDayConfirm(day);
   const cdr=document.getElementById("cdRequestBtn"); if(cdr) cdr.onclick=()=>{ document.getElementById("receiptModal").style.display="none"; closedDayGate(day, ()=>{ toast("افتح شاشة السيارات/السجاد/الملابس/المصروفات وعدّل ما تريد — سيظهر ملخص التأكيد عند الحفظ"); }); };
-  const ccs=document.getElementById("ccSave"); if(ccs) ccs.onclick=()=>{ const v=document.getElementById("ccActual").value; if(v===""||!(+v>=0)) return toast("أدخل الكاش الفعلي"); const c=saveCashCount(day,+v,document.getElementById("ccNote").value); toast(c.diff===0?"✔ الصندوق مطابق":(c.diff>0?"زيادة ":"⚠️ عجز ")+money(Math.abs(c.diff))+" "+CUR); openClosing(day); };
+  // (2.43.0) الفرق يظهر حيًّا، والسبب إلزامي إن وُجد فرق
+  const ccBox=document.getElementById("cashCountBox");
+  const ccUpd=()=>{ if(!ccBox) return false; let any=false; const a=document.getElementById("ccActual"), ce=+(document.getElementById("ccExp")||{dataset:{}}).dataset.exp||0, cd=document.getElementById("ccCashDiff");
+    if(a&&cd){ const v=toLatinDigits(a.value); if(v===""){ cd.textContent=""; } else { const d=Math.round(+v-ce); cd.textContent=ccDiffTxt(d); cd.className="cca-d "+(d===0?"ok":"no"); if(d) any=true; } }
+    ccBox.querySelectorAll("[data-ccapp]").forEach(i=>{ const o=ccBox.querySelector(`[data-ccd="${i.dataset.ccapp}"]`), v=toLatinDigits(i.value); if(!o) return; if(v===""){ o.textContent=""; return; } const d=Math.round(+v-(+i.dataset.exp||0)); o.textContent=ccDiffTxt(d); o.className="cca-d "+(d===0?"ok":"no"); if(d) any=true; });
+    const r=document.getElementById("ccNoteReq"); if(r) r.textContent=any?"* إلزامي — يوجد فرق":""; return any; };
+  if(ccBox){ ccBox.addEventListener("input",ccUpd); ccUpd(); }
+  const ccs=document.getElementById("ccSave"); if(ccs) ccs.onclick=()=>{ const v=toLatinDigits(document.getElementById("ccActual").value); if(v===""||!(+v>=0)) return toast("أدخل الكاش الفعلي");
+    const apps={}; document.querySelectorAll("#cashCountBox [data-ccapp]").forEach(i=>{ const x=toLatinDigits(i.value); if(x!=="") apps[i.dataset.ccapp]=+x; });
+    const note=document.getElementById("ccNote").value.trim(); if(ccUpd()&&!note){ document.getElementById("ccNote").focus(); return toast("📝 يوجد فرق — اكتب السبب قبل الحفظ"); }
+    const c=saveCashCount(day,+v,note,apps); const iss=cashCountIssues(c); toast(iss.length?"⚠️ حُفظ الجرد مع فرق — يمكنك تسويته":"✔ الصندوق مطابق"); openClosing(day); };
+  const cca=document.getElementById("ccAdjust"); if(cca) cca.onclick=()=>cashCountAdjust(day);
   const wa=document.getElementById("closingWa"); if(wa) wa.onclick=()=>{
     const text=closingText(day,rows)+cashCountText(day); logActivity("تقفيل اليوم",day+" · ربح "+money(s.group)+" "+CUR);
     try{ if(navigator.share){ navigator.share({text}).catch(()=>{}); return; } }catch(e){}
@@ -7028,6 +7094,11 @@ function _rand(n){ const a=new Uint8Array(n); crypto.getRandomValues(a); return 
    CHANGELOG: الأحدث أولًا. لكل تعديل: ic, t (العنوان), d (الشرح), go (أين: tab + storeSub/contactsSub/…), sel (العنصر الذي يُشار إليه).
    **قاعدة: كل إصدار جديد يضيف مدخلًا هنا** — يظهر للمستخدم مرة واحدة بعد التحديث مع «تخطي» و«أرني» و«جولة». */
 const CHANGELOG=[
+  {v:"2.43.0",date:"2026-10-18",items:[
+    {ic:"🧮",t:"من أين جاء الرقم المتوقع؟",d:"في «📊 تقرير اليوم» صار تحت «الكاش المتوقع في الدرج» تفصيل كل حركة: دخل السيارات والسجاد والملابس، كل وارد وصادر، وكل مصروف — فتفهم الفرق فورًا.",go:{tab:"dashboard"},sel:"#openClosing"},
+    {ic:"📱",t:"جرد التطبيقات البنكية",d:"بجانب الكاش: بنكيلي ومصرفي وسداد، تكتب صافي اليوم كما في سجل التطبيق فيقارنه التطبيق بحسابه ويظهر الفرق حيًّا.",go:{tab:"dashboard"},sel:"#openClosing"},
+    {ic:"📝",t:"الفرق يحتاج سببًا + تسوية",d:"إن كان هناك عجز أو زيادة لا يُحفظ الجرد بلا سبب، وزر «⚖️ تسوية الفرق» يسجّل العجز مصروفًا والزيادة واردًا فيصبح الصندوق مطابقًا.",go:{tab:"dashboard"},sel:"#openClosing"},
+    {ic:"🔒",t:"لا إغلاق بلا جرد",d:"زر «🔒 إغلاق يوم المغسلة» لا يعمل حتى تحفظ جرد الصندوق، وإن تغيّرت الحركات بعد الجرد يطلب إعادته.",go:{tab:"dashboard"},sel:"#openClosing"}]},
   {v:"2.42.0",date:"2026-10-17",items:[
     {ic:"👤",t:"اسم الزبون في بطاقة السيارة",d:"أعلى «عملية جديدة»: اسم الزبون + اللوحة + الهاتف في مساحة صغيرة، والاسم يظهر أعلى بطاقة كل سيارة.",go:{tab:"cars"},sel:"#carName"},
     {ic:"🚗",t:"اللوحات محفوظة وتُقترح",d:"اكتب أي جزء من اللوحة (الأحرف الكبيرة والصغيرة واحد) فتظهر اللوحات المحفوظة مع اسم صاحبها وهاتفه — اضغط لتعبئة كل شيء. والبحث في القائمة بأي جزء أيضًا.",go:{tab:"cars"},sel:"#carPlate"},
@@ -7959,7 +8030,7 @@ setTimeout(()=>{ if(!window.cloudReady){ const el=document.getElementById("cloud
 <!-- PWA: service-worker registration + update/install wiring -->
 <script>
 (function(){
-  var APP_VERSION = "2.42.0";
+  var APP_VERSION = "2.43.0";
   window.APP_VERSION = APP_VERSION;
   function $(id){ return document.getElementById(id); }
   // سجّل إصدار هذا الجهاز في الحالة المتزامنة (ليُنبَّه الجهاز القديم)

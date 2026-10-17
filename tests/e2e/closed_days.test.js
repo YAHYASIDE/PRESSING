@@ -29,6 +29,9 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
   log('snapshot: services 60,000: '+(snap.services===60000)+' (expect true) | received 55,000: '+(snap.received===55000)+' (expect true) | debts 5,000: '+(snap.debts===5000)+' (expect true) | bankily 45,000: '+(snap.by.bankily===45000)+' (expect true)');
   await page.evaluate(d=>openClosing(d),Y); await page.waitForTimeout(300);
   log('close button shown for owner: '+(await page.isVisible('#closeDayBtn'))+' (expect true)');
+  await page.click('#closeDayBtn'); await page.waitForTimeout(250);
+  log('closing without a cash count is refused (count first): '+(await page.evaluate(()=>document.getElementById('closeDayModal').style.display!=='flex' && /جرد/.test(document.getElementById('toast').textContent)))+' (expect true)');
+  await page.evaluate(()=>{ document.getElementById('ccActual').value=document.getElementById('ccExp').dataset.exp; }); await page.click('#ccSave'); await page.waitForTimeout(300); // 2.43.0: الجرد قبل الإغلاق
   await page.click('#closeDayBtn'); await page.waitForTimeout(200);
   log('close confirmation modal shows transfer 55,000 and debts 5,000: '+(await page.isVisible('#closeDayModal') && /55,000/.test(await page.textContent('#cdyBody')) && /5,000/.test(await page.textContent('#cdyBody')))+' (expect true)');
   await page.click('#closeDayOk'); await code(); await page.waitForTimeout(300);
