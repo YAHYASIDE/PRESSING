@@ -32,7 +32,7 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
   await page.click('[data-tab="cars"]'); await page.waitForTimeout(300);
   await page.fill('#carPrice','20000'); await page.click('#carPm [data-pm="masrvi"]'); await hold('#carSave');
   // 4) سيارة 30,000 دين (دفع مؤجّل)
-  await page.fill('#carPrice','30000'); await page.check('#carDeferred'); await hold('#carSave');
+  await page.fill('#carPrice','30000'); await page.fill('#carName','زبون السيارة'); await page.fill('#carPhone','22990011'); await page.check('#carDeferred'); await hold('#carSave');
   const st=await page.evaluate(()=>({ l:state.laundryOrders[0], r:state.carpetOrders[0], cars:state.carOps.map(o=>({price:o.price,paid:o.paid,pm:o.payMethod})) }));
   log('laundry paid cash: '+(st.l.paid&&st.l.payMethod==='cash')+' (expect true) | carpet paid bankily: '+(st.r.paid&&st.r.payMethod==='bankily')+' (expect true)');
   log('cars: 20,000 masrvi + 30,000 deferred: '+(st.cars.length===2 && st.cars.some(c=>c.price===20000&&c.pm==='masrvi'&&c.paid!==false) && st.cars.some(c=>c.price===30000&&c.paid===false))+' (expect true)');

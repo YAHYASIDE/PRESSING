@@ -40,9 +40,9 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
   // التاريخ الكامل على البطاقات
   await page.evaluate(()=>{ state.tab='cars'; state.dateFrom=state.dateTo=ymd(new Date()); render(); }); await page.waitForTimeout(250);
   const today=await page.evaluate(()=>ymd(new Date()));
-  log('car cards show a full date chip: '+(await page.evaluate(t=>{ const c=[...document.querySelectorAll('.car-card .date-chip')]; return c.length>=2 && c.every(x=>x.textContent.includes(t)); },today))+' (expect true)');
+  log('car cards show a full date chip: '+(await page.evaluate(t=>{ const c=[...document.querySelectorAll('.car-card .date-chip')]; return c.length>=2 && c.every(x=>x.textContent.includes(frDay(t))); },today))+' (expect true)');
   await page.evaluate(()=>{ state.tab='laundry'; render(); }); await page.waitForTimeout(250);
-  log('laundry cards show a full date chip: '+(await page.evaluate(t=>{ const c=[...document.querySelectorAll('.order .no .date-chip')]; return c.length>=1 && c[0].textContent.includes(t); },today))+' (expect true)');
+  log('laundry cards show a full date chip: '+(await page.evaluate(t=>{ const c=[...document.querySelectorAll('.order .no .date-chip')]; return c.length>=1 && c[0].textContent.includes(frDay(t)); },today))+' (expect true)');
   log('no horizontal overflow at 400px: '+(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1))+' (expect true)');
   log('\nERRORS:', errors.length?errors.join('\n'):'NONE ✅');
   await browser.close();
