@@ -454,6 +454,25 @@
   `data-md-restore`. كشفا الحساب يعرضان الديون المحذوفة مشطوبة. **دبو:** حذف القيد `brickLedgerCancel` ناعم أيضًا (يحفظ حركات الصندوق
   المرتبطة في `cancelledCash` ويعكسها) و`brickLedgerRestore` يعيدها؛ قائمة القيود تعرض المحذوف مع «استعادة» وزر «عرض الكل» (`_bkDraft.ledgerAll`).
   **قاعدة:** لا تمحُ سجلّ دين نهائيًا — علّمه `cancelled` (الحساب يستثنيه عبر `custManualDebts`/`brickLive`). الاختبار `tests/e2e/debt_keep.test.js`.
+- **كشوف البطاقات + صور الأنواع + الزبائن والديون + البصمة في الـ APK (2.39.0):** (1) **كشف لكل بطاقة:** أي عنصر يحمل `[data-stmt="key"]`
+  (+`data-range="from~to"` اختياري، وإلا فلتر الشاشة) يفتح `openDashStmt(key,range)` في نافذة الإيصال (طباعة/إرسال صورة) — مستمع `click` عام
+  (capture). `stmtBuild` يدعم: `svc:all|car|rug|lnd`، `recv:all|same|collected|cash|bankily|masrvi|sedad|apps|car|rug|lnd` (بتاريخ الدفع)،
+  `debt:new`، `dues:all`، `exp:all|gen|util|wages` (`stmtWagesRows`/`stmtUtilRows`/`stmtExpRows`)، `inc:all`، `profit:group|laundry|store|brick`،
+  `type:veh|pc|lnd:<الاسم>`؛ الصفوف من `stmtSvcRows` (نفس قواعد `laundryFin`) مرتّبة بالتاريخ مع ملخص العدد/المجموع/غير المدفوع (`.rcpt.stmt`).
+  البطاقات في `laundryFinHTML` (`card(...,key)`، `opts.range` في تقرير اليوم)، `bankAppsDetail(by,rg)`، بطاقات الربح `M[].key`، الدخل/المصروف
+  حسب النوع، وعدّادات الأنواع. (2) **صور الأنواع:** `typeImg(kind,name)` (`veh/pc/lnd`) = صورة المالك `state.typeImgs["kind:name"]={img,at}`
+  (مُزامنة، مضغوطة `compressIcon` ≤16KB، تُدمج بالأحدث في `applyRemote` — **استثناء مقصود لقاعدة عدم مزامنة الصور لأنها أيقونات صغيرة**) ←
+  المدمجة `VEH_IMG/PIECE_IMG` ← تقريبية بالاسم (هايلوكس/لاندكروزر/راف/V6 = سيارة كبيرة؛ كورولا/مرسيدس = صغيرة). الرفع من الإعدادات ▸ الأصناف
+  (`catImgHTML`، `[data-timg]`، `↺` `[data-timg-reset]`، والإعادة التسمية تنقل الصورة `typeImgMove`). `vehicleCounts` صار لكل نوع (لا «أخرى»
+  مجمّعة). (3) **المتجر ▸ نقطة البيع:** صفوف مستطيلة صغيرة `.pos-prod` (صورة 40px، الاسم، المخزون، البيع، و«شراء · ربح» للمالك/المدير).
+  (4) **الزبائن والديون مكان واحد:** تبويبان (`data-csub="debts"` «الزبائن والديون» + الموردون)؛ `contactsTopHTML(active)` مربعات `.k-tiles`
+  (كل الديون/الأقسام/«👥 كل الزبائن» `data-csub="customers"`) كلها ظاهرة؛ بطاقة المدين `.debtor-card` = حرف/الاسم/الهاتف + المبلغ، والتفاصيل
+  مطوية (`[data-debt-toggle]`، `_debtOpen` محلي)، وأزرار دائرية متساوية `.r-btn` (واتساب/اتصال/تحصيل/كشف). (5) **الرئيسية:** «⚠️ يحتاج إجراء»
+  `<details id="dashAct">` يُطوى (محلي `sadaqa_dash_act`، مفتوح افتراضيًا) مع ملخص في العنوان، الطلبات المتأخرة مضغوطة بأزرار دائرية وأول 5
+  + «عرض الكل» (`_ovAll`)، أزرار نهاية اليوم شبكة 3 متساوية (`.day-end`)، والتفاصيل أصغر. (6) **البصمة داخل الـ APK:** إضافة
+  `@capgo/capacitor-native-biometric@6.0.4` في `mobile/package.json` + صلاحية `USE_BIOMETRIC` في `android.yml`؛ `nativeBio()`/`nativeBioVerify`
+  تُستعمل عند وجود Capacitor أصلي (`bioSave({native:true,…})`)، وإلا WebAuthn كما كان. **يتطلب تنزيل APK جديد مرة واحدة.** الاختبارات
+  `tests/e2e/dash_stmt.test.js` و`tests/e2e/native_bio.test.js`.
   الاختبار `tests/e2e/brick_worker_reset.test.js`.
 - **ما يُكتب لا يختفي + الفاتورة والربح عند البيع (2.32.0):** كانت الأزرار التي تُعيد الرسم (نقدي/آجل، النقل، نوع المادة، عليه/له…)
   والمزامنة تمسح الحقول. الآن **في كل الشاشات** `_formKeep`: كل حقل له `id` داخل `#main` يُحفظ عند `input/change` (`keepField`)

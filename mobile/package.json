@@ -5,7 +5,8 @@
   "description": "Capacitor shell that packages مغاسيل صداقة as an installable Android app.",
   "dependencies": {
     "@capacitor/core": "6.2.0",
-    "@capacitor/android": "6.2.0"
+    "@capacitor/android": "6.2.0",
+    "@capgo/capacitor-native-biometric": "6.0.4"
   },
   "devDependencies": {
     "@capacitor/cli": "6.2.0"

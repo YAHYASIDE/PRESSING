@@ -636,7 +636,38 @@
   details.dash-details>summary::after{content:"▾";color:var(--muted)}
   details.dash-details[open]>summary::after{content:"▴"}
   details.dash-details .grid.metrics{margin:0 0 12px}
-  .day-end{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px}
+  .day-end{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-bottom:8px}
+  .day-end .mini{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:58px;padding:6px 4px;font-size:.74rem;line-height:1.2;text-align:center;border-radius:12px;font-weight:800}
+  .day-end .mini span{display:block}
+  .day-end .de-main{background:var(--brand);color:#fff;border-color:var(--brand)}
+  .dash-sec .day-chip,.dash-sec [data-daystat]{font-size:.7rem}
+  details.dash-act{margin:0}
+  details.dash-act>summary{cursor:pointer;list-style:none}
+  details.dash-act>summary::-webkit-details-marker{display:none}
+  details.dash-act>summary .da-sum{font-size:.7rem;font-weight:700;color:var(--muted);white-space:nowrap;order:3}
+  details.dash-act>summary::before{content:"▴";order:4;font-size:.8rem}
+  details.dash-act:not([open])>summary::before{content:"▾"}
+  .act-cards{align-items:stretch}
+  .act-card{display:flex;flex-direction:column;gap:1px}
+  .act-card .fl{font-size:.68rem;line-height:1.25;min-height:2.5em}
+  .ov-row{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px dashed var(--line)}
+  .ov-main{flex:1 1 auto;min-width:0}
+  .ov-l1{font-size:.84rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .ov-l2{font-size:.76rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .ov-acts{display:flex;gap:6px;flex:0 0 auto}
+  .ov-rb{width:36px;height:36px;border-radius:50%;border:1px solid var(--line);background:var(--chip);color:var(--ink);display:flex;align-items:center;justify-content:center;font-size:1rem;font-weight:900;cursor:pointer;padding:0}
+  .ov-rb svg{width:18px;height:18px}
+  .ov-rb.wa{background:#25d366;border-color:#25d366;color:#fff}
+  details.dash-details .metric{padding:10px 11px}
+  details.dash-details .bd-grid{gap:6px}
+  details.dash-details .bd-item{padding:6px 4px;gap:2px;border-radius:10px}
+  details.dash-details .bd-item .bic{width:26px;height:26px;border-radius:8px}
+  details.dash-details .bd-item .bic svg{width:15px;height:15px}
+  details.dash-details .bd-item .bv{font-size:.84rem}
+  details.dash-details .sum-row{margin-top:8px!important;padding-top:8px}
+  details.dash-details .sum-row .big{font-size:1rem}
+  details.dash-details .veh-head{margin-bottom:6px}
+  details.dash-details .pm-strip{gap:6px;margin-bottom:8px}
   .report-btns .mini{background:var(--info-bg);color:var(--brand);border-color:var(--brand-2);font-weight:700}
 
   .hold-btn{position:relative;overflow:hidden;touch-action:none}
@@ -793,8 +824,8 @@
 .dc-credit{font-size:.8rem;color:var(--ready)}
 .dc-toggle{align-self:flex-start;border:0;background:transparent;color:var(--brand);font-family:inherit;font-weight:800;font-size:.8rem;padding:2px 0;cursor:pointer}
 .dc-details{border-top:1px dashed var(--line);padding-top:6px;display:flex;flex-direction:column;gap:4px}
-.r-btns{display:flex;justify-content:space-around;gap:6px;margin-top:4px}
-.r-btn{display:flex;flex-direction:column;align-items:center;gap:3px;border:0;background:transparent;color:var(--ink);font-family:inherit;cursor:pointer;text-decoration:none;flex:1 1 0;min-width:0}
+.r-btns{display:flex;justify-content:center;gap:14px;margin-top:4px;flex-wrap:wrap}
+.r-btn{display:flex;flex-direction:column;align-items:center;gap:3px;border:0;background:transparent;color:var(--ink);font-family:inherit;cursor:pointer;text-decoration:none;flex:0 0 62px;min-width:0}
 .r-btn .rb-ic{width:46px;height:46px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.2rem;background:var(--chip);border:1px solid var(--line)}
 .r-btn.wa .rb-ic{background:rgba(37,211,102,.16);border-color:rgba(37,211,102,.45)}
 .r-btn.call .rb-ic{background:rgba(28,110,164,.15);border-color:rgba(28,110,164,.4)}
@@ -1762,18 +1793,19 @@ function screenDashboard(){
     <div class="dash-sec">📌 أرقام ${periodLabel}</div>
     ${laundryFinHTML(laundryFin(F),"")}
     ${currentRole!=="worker"?`<div class="fin-cards">${M.slice(0,4).map(m=>`<div class="fin-card st-click" style="--fc:${m.c}" data-stmt="${m.key}"><div class="fl">${m.label} <span class="st-ic">📄</span></div><div class="fv">${m.val}</div>${m.sub?`<div class="fs">${m.sub}</div>`:""}</div>`).join("")}</div>`:""}
-    <div class="dash-sec">⚠️ يحتاج إجراء</div>
+    <details class="dash-act" id="dashAct" ${_dashActOpen()?"open":""}><summary class="dash-sec">⚠️ يحتاج إجراء <span class="da-sum">💳 ${money(duesAmt)} · 🧺 ${washing} · 👕 ${lndActive}</span></summary>
     ${overdueHTML()}
     <div class="act-cards">
-      <button class="act-card ${duesCount?'':'zero'}" style="--fc:var(--unpaid)" data-go="contacts" data-go-sub="debts"><div class="fl">💳 مستحقّات غير مدفوعة</div><div class="fv">${money(duesAmt)}</div><div class="fs">${duesCount} طلب (سيارات+سجاد+ملابس)</div></button>
+      <button class="act-card ${duesCount?'':'zero'}" style="--fc:var(--unpaid)" data-go="contacts" data-go-sub="debts"><div class="fl">💳 مستحقّات غير مدفوعة</div><div class="fv">${money(duesAmt)}</div><div class="fs">${duesCount} طلب</div></button>
       <button class="act-card ${washing?'':'zero'}" style="--fc:var(--wash)" data-go="carpets"><div class="fl">🧺 سجاد قيد الغسيل</div><div class="fv">${washing}</div><div class="fs">بقيمة ${money(washingAmt)}</div></button>
       <button class="act-card ${lndActive?'':'zero'}" style="--fc:var(--ready)" data-go="laundry"><div class="fl">👕 ملابس قيد العمل</div><div class="fv">${lndActive}</div><div class="fs">بقيمة ${money(lndActiveAmt)}</div></button>
     </div>
-    <div class="dash-sec">🔒 نهاية اليوم</div>
+    </details>
+    <div class="dash-sec">🔒 نهاية اليوم ${(state.dateFrom===state.dateTo)?dayStatusChip(state.dateFrom):""}</div>
     <div class="day-end">
-      ${currentRole!=="worker"?`<button class="mini" id="openClosing" style="background:var(--brand);color:#fff;border-color:var(--brand)">📊 تقرير اليوم / الإغلاق</button>`:""}${(state.dateFrom===state.dateTo)?dayStatusChip(state.dateFrom):""}
-      <button class="mini" id="sendReport">📤 التقرير الكامل</button>
-      <button class="mini" id="sendReport2">📤 تقرير الدخل (− مصروفات عامة)</button>
+      ${currentRole!=="worker"?`<button class="mini de-main" id="openClosing">📊<span>تقرير اليوم / الإغلاق</span></button>`:""}
+      <button class="mini" id="sendReport">📤<span>التقرير الكامل</span></button>
+      <button class="mini" id="sendReport2">📤<span>الدخل − المصروفات العامة</span></button>
     </div>
     <details class="dash-details" id="dashDetails" ${_dashDetailsOpen()?"open":""}><summary>📂 التفاصيل حسب النوع وطريقة الدفع</summary>
     ${(()=>{ const r=payBreakdown(F); const apps=BANK_APPS.reduce((t,k)=>t+r[k].inc,0); return `<div class="pm-strip" style="grid-template-columns:repeat(2,1fr)"><div class="pm-chip cash"><span>💵 كاش</span><b>${money(r.cash.inc)}</b></div><div class="pm-chip bankily" style="cursor:pointer" onclick="toggleBankApps(this)" title="اضغط لعرض التطبيقات"><span>📱 التطبيقات البنكية <span data-bank-arrow>${_bankOpen?"▴":"▾"}</span></span><b>${money(apps)}</b></div></div><div class="pm-strip" data-bank-detail style="grid-template-columns:repeat(3,1fr);${_bankOpen?"":"display:none"}">${BANK_APPS.map(k=>{ const m=PAY_METHODS.find(x=>x.k===k); return `<div class="pm-chip ${m.k}"><span>${m.ic} ${m.t}</span><b>${money(r[k].inc)}</b></div>`; }).join("")}</div>`; })()}
@@ -1802,6 +1834,7 @@ function screenDashboard(){
     </div>
     </details>`;
 }
+function _dashActOpen(){ try{ return localStorage.getItem("sadaqa_dash_act")!=="0"; }catch(e){ return true; } }
 function _dashDetailsOpen(){ try{ return localStorage.getItem("sadaqa_dash_details")==="1"; }catch(e){ return false; } }
 
 function screenCars(){
@@ -3091,7 +3124,7 @@ document.addEventListener("click",e=>{ const b=e.target&&e.target.closest&&e.tar
 function contactsTopHTML(active){
   const all=debtors(), tot={all:sum(all,d=>d.total)}, cnt={all:all.length}; DEBT_KEYS.forEach(k=>{ tot[k]=sum(all,d=>d.by[k]); cnt[k]=all.filter(d=>d.by[k]>0).length; });
   const nC=(state.storeCustomers||[]).length, pay=totalPayables();
-  const tile=(attr,on,ic,t,v,n)=>`<button type="button" class="k-tile${on?' on':''}" ${attr}><span class="kt-ic">${ic}</span><span class="kt-t">${t}</span><b class="kt-v">${v}</b><small class="kt-n">${n}</small></button>`;
+  const tile=(attr,on,ic,t,v,n)=>`<button type="button" class="k-tile${on?' on':''}" ${attr}><span class="kt-ic">${ic}</span> <span class="kt-t">${t}</span><b class="kt-v">${v}</b><small class="kt-n">${n}</small></button>`;
   return `<div class="store-stat">
       <div class="s"><div class="v" style="color:var(--unpaid)">${money(tot.all)}</div><div class="l">إجمالي الديون على الزبائن (${cnt.all} مدين)</div></div>
       <div class="s"><div class="v" style="color:var(--wash)">${money(pay)}</div><div class="l">علينا للموردين</div></div>
@@ -3272,8 +3305,8 @@ const STMT_SVC={car:{ic:"🚗",t:"السيارات",arr:"carOps",paid:o=>o.paid!
 function stmtSvcRows(kinds,pick){ const out=[]; kinds.forEach(k=>{ const M=STMT_SVC[k]; (state[M.arr]||[]).forEach(o=>{ if(!o||o.cancelled) return; const price=+o.price||0; if(price<=0) return;
     const paid=M.paid(o), pd=paid?(o.paidDate||o.date):null, same=paid&&ymd(pd)===ymd(o.date); const r=pick(o,{k,paid,pd,same}); if(!r) return;
     const what=k==="car"?`${o.vehicle||"سيارة"}${o.plate?" "+o.plate:""}${o.wash?" · "+o.wash:""}`:orderLabel(o,k==="lnd");
-    const who=[o.customer,o.phone?"📞 "+o.phone:"",o.no?"#"+o.no:""].filter(Boolean).join(" · ");
-    out.push({d:r.d||o.date,t:`${M.ic} ${what}`,s:who,amt:r.amt!=null?r.amt:price,st:paid?`✅ ${pmLabel(o.payMethod)} · ${ymd(pd)}${same?"":" (تحصيل)"}`:"🔴 غير مدفوع",bad:!paid,by:o.by}); }); }); return out; }
+    const who=[o.customer?_esc(o.customer):"",o.phone?`📞 <bdi dir="ltr">${_esc(o.phone)}</bdi>`:"",o.no?`<bdi dir="ltr">${_esc(o.no)}</bdi>`:""].filter(Boolean).join(" · ");
+    out.push({d:r.d||o.date,t:`${M.ic} ${what}`,sH:who,amt:r.amt!=null?r.amt:price,st:paid?`✅ ${pmLabel(o.payMethod)} · ${ymd(pd)}${same?"":" (تحصيل)"}`:"🔴 غير مدفوع",bad:!paid,by:o.by}); }); }); return out; }
 function stmtWagesRows(from,to){ const today=new Date(); today.setHours(0,0,0,0); const mStart=new Date(today.getFullYear(),today.getMonth(),1);
   let start=new Date(from+"T00:00:00"); if(start<mStart) start=new Date(mStart); let end=new Date(to+"T00:00:00"); if(end>today) end=new Date(today);
   const days=[]; for(let d=new Date(start); d<=end; d.setDate(d.getDate()+1)) days.push(ymd(d));
@@ -3317,7 +3350,7 @@ function openDashStmt(key,range){
   const F=range?(x=>!!x&&ymd(x)>=from&&ymd(x)<=to):(x=>inRange(x));
   const R=stmtBuild(key,F,from,to), E=_esc;
   const per=from===to?(from===today?"اليوم "+from:from):(from==="1970-01-01"?"كل الفترات حتى "+to:from+" ← "+to);
-  const rowH=r=>`<div class="st-row${r.bad?" bad":""}"><div class="st-top"><span class="st-t">${E(r.t)}</span><b class="st-a${r.amt<0?" neg":""}">${r.amt<0?"−":""}${money(Math.abs(r.amt))}</b></div>${(r.d||r.s||r.st)?`<div class="st-sub">${r.d?`<bdi dir="ltr">${ymd(r.d)} ${timeStr(r.d)}</bdi>`:""}${r.s?`${r.d?" · ":""}${E(r.s)}`:""}${r.st?`<div class="st-st">${E(r.st)}</div>`:""}</div>`:""}</div>`;
+  const rowH=r=>`<div class="st-row${r.bad?" bad":""}"><div class="st-top"><span class="st-t">${E(r.t)}</span><b class="st-a${r.amt<0?" neg":""}">${r.amt<0?"−":""}${money(Math.abs(r.amt))}</b></div>${(r.d||r.s||r.sH||r.st)?`<div class="st-sub">${r.d?`<bdi dir="ltr">${ymd(r.d)} ${timeStr(r.d)}</bdi>`:""}${r.sH?`${r.d?" · ":""}${r.sH}`:r.s?`${r.d?" · ":""}${E(r.s)}`:""}${r.st?`<div class="st-st">${E(r.st)}</div>`:""}</div>`:""}</div>`;
   const listH=L=>{ const S=L.slice().sort((x,y)=>(y.d?new Date(y.d):0)-(x.d?new Date(x.d):0)); return S.length?S.map(rowH).join(""):`<div class="hint" style="padding:6px 0">لا يوجد شيء في هذه الفترة.</div>`; };
   let body="", total=R.total, count=0;
   if(R.sections){ body=R.sections.map(([h,L])=>{ count+=L.length; const t=sum(L,r=>r.amt); return `<div class="st-sec"><span>${E(h)}</span><b>${money(t)}</b></div>${listH(L)}`; }).join(""); if(total==null) total=sum(R.sections,([,L])=>sum(L,r=>r.amt)); }
@@ -3614,12 +3647,16 @@ function overdueOrders(){
   (state.carpetOrders||[]).forEach(o=>chk(o,"rug")); (state.laundryOrders||[]).forEach(o=>chk(o,"lnd"));
   return out.sort((a,b)=>b.days-a.days);
 }
+let _ovAll=false;
+document.addEventListener("click",e=>{ const b=e.target&&e.target.closest&&e.target.closest("[data-ov-all]"); if(!b) return; _ovAll=!_ovAll; render(); });
 function overdueHTML(){
   const L=overdueOrders(); if(!L.length) return "";
-  const rows=L.slice(0,12).map(({o,kind,why,days})=>`<div class="ov-row ${why}"><div class="ov-main"><b>${_esc(o.no||"")}</b> ${_esc(o.customer||"عميل")} — ${_esc(orderLabel(o))}<div class="hint">${why==="ready"?"جاهز ولم يُستلم":"لم يكتمل بعد"} منذ <b>${days}</b> يوم</div></div>
-    ${o.phone?`<button class="wa-btn" data-ov-wa="${kind}:${o.id}" title="واتساب">${svg(I.whatsapp)}</button>`:""}<button class="mini" data-ov-go="${kind}">فتح</button></div>`).join("");
-  return `<div class="panel ov-panel" style="margin-bottom:10px"><h3 style="color:var(--unpaid)">⚠️ طلبات متأخرة (${L.length})</h3>${rows}${L.length>12?`<div class="hint">و ${L.length-12} أخرى…</div>`:""}
-    <div class="hint" style="margin-top:6px">المهل تُضبط من الإعدادات ▸ «⚠️ تنبيه الطلبات المتأخرة».</div></div>`;
+  // (2.39.0) صفوف مضغوطة بأزرار دائرية صغيرة، وأول 5 فقط مع «عرض الكل»
+  const lim=_ovAll?60:5;
+  const rows=L.slice(0,lim).map(({o,kind,why,days})=>`<div class="ov-row ${why}"><div class="ov-main"><div class="ov-l1"><b>${_esc(o.no||"")}</b> ${_esc(o.customer||"عميل")}</div><div class="ov-l2">${_esc(orderLabel(o))}</div><div class="hint">${why==="ready"?"✅ جاهز ولم يُستلم":"⏳ لم يكتمل بعد"} منذ <b>${days}</b> يوم</div></div>
+    <div class="ov-acts">${o.phone?`<button class="ov-rb wa" data-ov-wa="${kind}:${o.id}" title="واتساب">${svg(I.whatsapp)}</button>`:""}<button class="ov-rb" data-ov-go="${kind}" title="فتح">↗</button></div></div>`).join("");
+  return `<div class="panel ov-panel" style="margin-bottom:10px"><h3 style="color:var(--unpaid)">⚠️ طلبات متأخرة (${L.length})</h3>${rows}${L.length>5?`<button type="button" class="dc-toggle" data-ov-all>${_ovAll?"▴ إظهار أقل":"▾ عرض الكل ("+L.length+")"}</button>`:""}
+    <div class="hint" style="margin-top:4px">المهل تُضبط من الإعدادات ▸ «⚠️ تنبيه الطلبات المتأخرة».</div></div>`;
 }
 
 /* ================= مصروفات ثابتة شهرية ================= */
@@ -4131,7 +4168,7 @@ function storeScreenPOS(){
     return `<button type="button" class="pos-prod ${out?'oos':''}" data-add="${p.id}" ${out?'disabled':''}>
       <div class="pos-img">${p.image?`<img src="${p.image}">`:svg(I.box)}</div>
       <div class="pos-info"><div class="pos-nm">${_esc(p.name||'—')}</div><div class="pos-st ${low||out?'low':''}">${out?'نفد':'📦 المخزون: '+fmt(+p.stock||0)}</div></div>
-      <div class="pos-prices"><div class="pos-pr">${money(sell)}</div>${showCost?`<div class="pos-cost">شراء ${money(buy)}</div><div class="pos-mg ${mg<0?'neg':''}">ربح ${money(mg)}</div>`:""}</div>
+      <div class="pos-prices"><div class="pos-pr">${money(sell)}</div>${showCost?`<div class="pos-cost">شراء ${money(buy)} · <span class="pos-mg ${mg<0?'neg':''}">ربح ${money(mg)}</span></div>`:""}</div>
     </button>`;
   }).join(""):`<div class="panel empty" style="grid-column:1/-1">${svg(I.empty)}لا توجد مواد. أضِفها من تبويب «المواد».</div>`;
   const cart=storeCart.map(i=>`
@@ -5252,6 +5289,7 @@ function render(){
 }
 
 function bindScreen(){
+  { const da=document.getElementById("dashAct"); if(da) da.ontoggle=()=>{ try{ localStorage.setItem("sadaqa_dash_act", da.open?"1":"0"); }catch(e){} }; }
   { const dd=document.getElementById("dashDetails"); if(dd) dd.ontoggle=()=>{ try{ localStorage.setItem("sadaqa_dash_details", dd.open?"1":"0"); }catch(e){} };
     document.querySelectorAll("[data-go]").forEach(b=>b.onclick=()=>{ state.tab=b.dataset.go; if(b.dataset.goSub&&b.dataset.go==="contacts") state.contactsSub=b.dataset.goSub; render(); }); }
   // dashboard date filter
@@ -6593,10 +6631,16 @@ function bioClear(){ try{ localStorage.removeItem(BIO_KEY); }catch(e){} }
 function _b64u(buf){ const b=new Uint8Array(buf); let s=""; for(let i=0;i<b.length;i++) s+=String.fromCharCode(b[i]); return btoa(s).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,""); }
 function _b64uDec(str){ str=String(str).replace(/-/g,"+").replace(/_/g,"/"); while(str.length%4) str+="="; const bin=atob(str), u=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) u[i]=bin.charCodeAt(i); return u; }
 function _rand(n){ const a=new Uint8Array(n); crypto.getRandomValues(a); return a; }
-async function bioAvailable(){ try{ return !!(window.PublicKeyCredential && window.isSecureContext && await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable()); }catch(e){ return false; } }
+/* (2.39.0) داخل تطبيق الـ APK: بصمة الهاتف الأصلية عبر إضافة Capacitor «NativeBiometric» (WebAuthn لا يعمل داخل WebView) */
+function nativeBio(){ try{ const C=window.Capacitor; if(!C) return null; const nat=C.isNativePlatform?C.isNativePlatform():(C.getPlatform&&C.getPlatform()!=="web"); if(!nat) return null;
+  return (C.Plugins&&C.Plugins.NativeBiometric)||(C.registerPlugin?C.registerPlugin("NativeBiometric"):null); }catch(e){ return null; } }
+async function nativeBioVerify(reason){ const N=nativeBio(); if(!N) throw new Error("no-native"); await N.verifyIdentity({reason, title:"مغاسيل صداقة", subtitle:reason, description:"ضع إصبعك على مستشعر البصمة", negativeButtonText:"إلغاء", maxAttempts:5, useFallback:true}); return true; }
+async function bioAvailable(){ const N=nativeBio(); if(N){ try{ const r=await N.isAvailable({useFallback:true}); return !!(r&&r.isAvailable); }catch(e){ return false; } }
+  try{ return !!(window.PublicKeyCredential && window.isSecureContext && await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable()); }catch(e){ return false; } }
 async function bioEnable(){
   if(!unlocked||!currentUser){ toast("سجّل الدخول أولًا"); return false; }
-  if(!(await bioAvailable())){ toast("هذا الجهاز أو المتصفح لا يدعم البصمة — افتح التطبيق من Chrome"); return false; }
+  if(!(await bioAvailable())){ toast(nativeBio()?"لا توجد بصمة مسجّلة في هذا الهاتف — أضفها من إعدادات الهاتف ▸ الأمان":"هذا الجهاز أو المتصفح لا يدعم البصمة — حدّث تطبيق الـ APK أو افتح التطبيق من Chrome"); return false; }
+  if(nativeBio()){ try{ await nativeBioVerify("تفعيل الدخول بالبصمة"); bioSave({ native:true, u:currentUser, r:currentRole, uid:currentUserId, ts:Date.now() }); toast("تم تفعيل الدخول بالبصمة ✓"); hideBioOffer(); renderBioSettings(); return true; }catch(e){ toast("أُلغي تفعيل البصمة"); return false; } }
   try{
     const cred=await navigator.credentials.create({ publicKey:{
       challenge:_rand(32),
@@ -6614,10 +6658,11 @@ async function bioEnable(){
 }
 function bioDisable(){ bioClear(); toast("أُلغي الدخول بالبصمة على هذا الجهاز"); renderBioSettings(); }
 async function bioLogin(){
-  const b=bioLoad(); if(!b||!b.credId) return false;
+  const b=bioLoad(); if(!b||(!b.credId&&!b.native)) return false;
   try{
-    const a=await navigator.credentials.get({ publicKey:{ challenge:_rand(32), rpId:location.hostname, allowCredentials:[{type:"public-key", id:_b64uDec(b.credId)}], userVerification:"required", timeout:60000 } });
-    if(!a) return false;
+    if(b.native){ if(!nativeBio()) return false; try{ await nativeBioVerify("الدخول إلى التطبيق"); }catch(e){ return false; } }
+    else { const a=await navigator.credentials.get({ publicKey:{ challenge:_rand(32), rpId:location.hostname, allowCredentials:[{type:"public-key", id:_b64uDec(b.credId)}], userVerification:"required", timeout:60000 } });
+    if(!a) return false; }
     if(b.r==="worker" && !(state.users||[]).some(u=>u.id===b.uid && u.active!==false)){ toast("حساب العامل محذوف أو معطّل — ادخل بالكود"); return false; }
     if(b.r==="manager" && !(state.managers||[]).some(u=>u.id===b.uid && u.active!==false)){ toast("حساب المدير محذوف أو معطّل — ادخل بالكود"); return false; }
     if(typeof window._enterSession==="function") window._enterSession(b.u, b.r||"owner", b.uid||"", true);
@@ -6630,7 +6675,7 @@ function renderBioSettings(){
   const host=document.getElementById("bioAdmin"); if(!host) return;
   const b=bioLoad();
   bioAvailable().then(ok=>{
-    host.innerHTML = !ok ? `<div class="hint">هذا الجهاز/المتصفح لا يدعم البصمة. على أندرويد افتح التطبيق من Chrome (أو ثبّته منه)، وعلى آيفون من Safari.</div>`
+    host.innerHTML = !ok ? `<div class="hint">${nativeBio()?"لا توجد بصمة مسجّلة في هذا الهاتف — أضفها من إعدادات الهاتف ▸ الأمان ▸ البصمة ثم عُد هنا.":"هذا الجهاز/المتصفح لا يدعم البصمة. إن كنت تستخدم تطبيق الـ APK فنزّل أحدث نسخة منه (فيها البصمة)، أو افتح التطبيق من Chrome على أندرويد/Safari على آيفون."}</div>`
       : b ? `<div class="hint" style="margin-bottom:8px">✅ مفعّلة على هذا الجهاز لحساب: <b>${_esc(b.u)}</b></div><button class="mini" id="bioOffBtn" style="color:var(--unpaid)">إلغاء البصمة على هذا الجهاز</button>`
           : `<div class="hint" style="margin-bottom:8px">غير مفعّلة على هذا الجهاز. فعّلها لتدخل بلمسة بدل الكود.</div><button class="mini" id="bioOnBtn">👆 تفعيل البصمة على هذا الجهاز</button>`;
     const on=document.getElementById("bioOnBtn"); if(on) on.onclick=()=>bioEnable();
@@ -7462,7 +7507,7 @@ setTimeout(()=>{ if(!window.cloudReady){ const el=document.getElementById("cloud
 <!-- PWA: service-worker registration + update/install wiring -->
 <script>
 (function(){
-  var APP_VERSION = "2.38.0";
+  var APP_VERSION = "2.39.0";
   window.APP_VERSION = APP_VERSION;
   function $(id){ return document.getElementById(id); }
   // سجّل إصدار هذا الجهاز في الحالة المتزامنة (ليُنبَّه الجهاز القديم)

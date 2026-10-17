@@ -73,7 +73,7 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
       {id:'l2',no:'L2',customer:'أحمد',phone:'44556677',country:'222',type:'بنطلون',service:'كي',count:1,unit:150,price:150,status:'wash',paid:false,date:d},
       {id:'l3',no:'L3',customer:'سارة',phone:'33445566',country:'222',type:'فستان',service:'غسيل',count:1,unit:300,price:300,status:'wash',paid:false,date:d}];
     save(); render(); });
-  await page.click('[data-csub="customers"]'); await page.waitForTimeout(200);
+  await page.click('[data-csub="debts"]'); await page.waitForTimeout(150); await page.click('[data-csub="customers"]'); // 2.39.0: «كل الزبائن» مربع داخل «الزبائن والديون» await page.waitForTimeout(200);
   log('detected customers from orders:', await page.evaluate(()=>detectedCustomers().map(d=>d.name).join(',')));
   await page.fill('#dcName','أحمد'); await page.fill('#dcPhone','44556677'); await page.click('#dcSave'); await page.waitForTimeout(200);
   const ca = await page.evaluate(()=>{ const c=state.storeCustomers.find(x=>x.name==='أحمد'); const a=customerActivity(c); return {orders:a.orders, spent:a.spent, due:a.due}; });

@@ -57,6 +57,24 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
     const b=document.querySelector('.pos-prod[data-add="p1"]'), rc=b.getBoundingClientRect(), t=b.textContent.replace(/\s+/g,' '); return { h:rc.height, w:rc.width, t, row:getComputedStyle(b).flexDirection }; });
   log('POS products are small rectangles (row layout, < 70px tall): '+(r.row==='row' && r.h<70 && r.w>r.h*2)+' (expect true)');
   log('each shows sale 8,200, purchase 7,500 and profit 700: '+(/8,200/.test(r.t) && /شراء 7,500/.test(r.t) && /ربح 700/.test(r.t))+' (expect true)');
+  // الزبائن والديون في مكان واحد: مربعات الأقسام كلها ظاهرة، بطاقة مختصرة وتفاصيل مطوية، أزرار دائرية متساوية
+  r=await page.evaluate(()=>{ state.storeCustomers=[{id:'cu1',name:'سالم',phone:'22334455',country:'222'}]; state.tab='contacts'; state.contactsSub='debts'; state.debtKind='all'; render();
+    const tiles=[...document.querySelectorAll('.k-tile')], vw=window.innerWidth; const card=document.querySelector('.debtor-card'); const det=card&&card.querySelector('.dc-details'); const btns=[...card.querySelectorAll('.r-btn .rb-ic')].map(x=>{ const r=x.getBoundingClientRect(); return [Math.round(r.width),Math.round(r.height)]; });
+    return { n:tiles.length, allIn:tiles.every(t=>{ const r=t.getBoundingClientRect(); return r.left>=0&&r.right<=vw+1; }), square:tiles.every(t=>{ const r=t.getBoundingClientRect(); return Math.abs(r.width-r.height)<4; }), hidden:det&&det.style.display==='none', head:/سالم/.test(card.querySelector('.dc-head').textContent)&&/3,000/.test(card.querySelector('.dc-amt').textContent), btns, segs:document.querySelectorAll('[data-csub]').length }; });
+  log('contacts: one merged tab + suppliers, 7 square tiles all visible (no sideways scroll): '+(r.n===7 && r.allIn && r.square)+' (expect true)');
+  log('debtor card shows just name + amount; details folded: '+(r.head && r.hidden)+' (expect true)');
+  log('action buttons are round and the same size: '+(r.btns.length>=2 && r.btns.every(b=>b[0]===r.btns[0][0]&&b[1]===r.btns[0][1]&&b[0]===b[1]))+' (expect true)');
+  await page.click('.debtor-card [data-debt-toggle]'); await page.waitForTimeout(150);
+  log('the fold button opens the details: '+(await page.evaluate(()=>document.querySelector('.debtor-card .dc-details').style.display===''))+' (expect true)');
+  await page.click('.k-tile[data-csub="customers"]'); await page.waitForTimeout(200);
+  log('«كل الزبائن» tile lists saved customers in the same place: '+(await page.evaluate(()=>state.contactsSub==='customers' && !!document.querySelector('.k-tiles') && /سالم/.test(document.querySelector('main').textContent)))+' (expect true)');
+  // الرئيسية: قسم «يحتاج إجراء» يطوى ويُتذكَّر، وأزرار نهاية اليوم متساوية
+  await page.evaluate(()=>{ state.tab='dashboard'; render(); }); await page.waitForTimeout(200);
+  await page.click('#dashAct > summary'); await page.waitForTimeout(150);
+  r=await page.evaluate(()=>({ closed:!document.getElementById('dashAct').open, saved:localStorage.getItem('sadaqa_dash_act')==='0', w:[...document.querySelectorAll('.day-end .mini')].map(b=>Math.round(b.getBoundingClientRect().width)), h:[...document.querySelectorAll('.day-end .mini')].map(b=>Math.round(b.getBoundingClientRect().height)) }));
+  log('«يحتاج إجراء» folds with its button and is remembered: '+(r.closed && r.saved)+' (expect true)');
+  log('end-of-day buttons are the same width and height: '+(r.w.length===3 && new Set(r.w).size===1 && new Set(r.h).size===1)+' (expect true)');
+  await page.evaluate(()=>{ localStorage.setItem('sadaqa_dash_act','1'); });
   log('no horizontal overflow at 400px: '+(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1))+' (expect true)');
   log('\nERRORS:', errors.length?errors.join('\n'):'NONE ✅');
   await browser.close();
