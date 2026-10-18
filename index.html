@@ -828,6 +828,19 @@
   #cloudBtn.offline{background:#888}
   .notif-badge{position:absolute;top:-4px;left:-4px;min-width:17px;height:17px;padding:0 4px;border-radius:9px;background:var(--unpaid);color:#fff;font-size:.66rem;font-weight:800;display:flex;align-items:center;justify-content:center;line-height:1}
   #notifBtn{position:relative}
+  /* (2.54.0) أزرار الإيصال/الكشف + إرسال الكشف كتابةً */
+  .rcpt-acts{display:flex;flex-wrap:wrap;gap:6px}
+  .rcpt-acts .btn-primary{flex:1 1 30%;min-width:0;white-space:nowrap;padding:10px 6px;font-size:.88rem}
+  .rcpt-acts #receiptClose{flex:1 1 100%}
+  .st-box{max-height:90vh;overflow:auto}
+  .st-quick{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+  .st-rows{max-height:34vh;overflow:auto;border:1px solid var(--line);border-radius:12px;padding:4px 8px;background:var(--surface)}
+  .st-row{display:flex;gap:8px;align-items:flex-start;padding:6px 0;border-bottom:1px dashed var(--line);font-size:.82rem;cursor:pointer}
+  .st-row:last-child{border-bottom:0}
+  .st-row input{margin-top:3px;flex:0 0 auto;width:18px!important;height:18px;padding:0}
+  .st-row span{flex:1 1 auto;min-width:0;width:auto}
+  .st-row b{white-space:nowrap;font-variant-numeric:tabular-nums}
+  .st-prev{width:100%;font-family:inherit;font-size:.8rem;line-height:1.55;border:1px solid var(--line);border-radius:12px;padding:8px;background:var(--chip);color:var(--ink);resize:vertical}
   /* (2.52.0) الطلبيات والتجفيف */
   .ord-bar{height:8px;border-radius:999px;background:var(--chip);overflow:hidden;margin:6px 0 2px}
   .ord-bar i{display:block;height:100%;background:linear-gradient(90deg,#3b5bdb,#2e9e6b);border-radius:999px}
@@ -1427,10 +1440,30 @@
 <div id="receiptModal" class="modal">
   <div class="modal-box" id="receiptBox">
     <div id="receiptContent"></div>
-    <div class="modal-actions no-print" style="margin-top:14px">
-      <button class="btn-primary" id="receiptPrint" style="flex:1;white-space:nowrap;padding-inline:8px">🖨️ طباعة</button>
-      <button class="btn-primary" id="receiptImg" style="flex:1.3;white-space:nowrap;padding-inline:8px;background:var(--teal)">📤 إرسال صورة</button>
+    <div class="modal-actions no-print rcpt-acts" style="margin-top:14px">
+      <button class="btn-primary" id="receiptPdf" style="background:#c0392b">📄 PDF</button>
+      <button class="btn-primary" id="receiptImg" style="background:var(--teal)">📤 صورة</button>
+      <button class="btn-primary" id="receiptText" style="display:none;background:#25a35a">💬 كتابةً</button>
+      <button class="btn-primary" id="receiptPrint">🖨️ طباعة</button>
       <button class="mini" id="receiptClose">إغلاق</button>
+    </div>
+  </div>
+</div>
+<div id="stTextModal" class="modal" style="z-index:160">
+  <div class="modal-box st-box">
+    <h3 style="margin:0 0 8px">💬 إرسال الكشف كتابةً</h3>
+    <div class="hint" id="stWho" style="margin-bottom:8px"></div>
+    <div class="seg" style="margin-bottom:8px"><button type="button" data-stmode="all" class="on">📄 كامل</button><button type="button" data-stmode="part">✂️ جزئي</button></div>
+    <div id="stPartWrap" style="display:none">
+      <div class="st-quick"><button type="button" class="chip" data-stq="month">هذا الشهر</button><button type="button" class="chip" data-stq="7">آخر 7 أيام</button><button type="button" class="chip" data-stq="30">آخر 30 يومًا</button><button type="button" class="chip" data-stq="dr">عليه فقط</button><button type="button" class="chip" data-stq="all">تحديد الكل</button><button type="button" class="chip" data-stq="none">إلغاء الكل</button></div>
+      <div id="stRows" class="st-rows"></div>
+    </div>
+    <div class="hint" id="stCount" style="margin:6px 0"></div>
+    <textarea id="stPreview" readonly rows="8" class="st-prev" data-nokeep></textarea>
+    <div class="modal-actions" style="margin-top:10px">
+      <button class="btn-primary" id="stWa" style="flex:1.4;background:#25a35a">💬 إرسال واتساب</button>
+      <button class="mini" id="stCopy">📋 نسخ</button>
+      <button class="mini" id="stClose">إغلاق</button>
     </div>
   </div>
 </div>
@@ -2543,6 +2576,7 @@ function openBrickStatement(type,id){
   document.getElementById("receiptContent").innerHTML=`<div class="rcpt">${rcptHeader("🧱 كشف حساب دبو — "+_esc(pt.name)+(pt.phone?"<br><small>📞 "+_esc(pt.phone)+"</small>":"")+(pt.type==="sup"?"<br><small>🏭 مورّد"+(pt.category?" · "+_esc(pt.category):"")+"</small>":""))}
     <div class="hint" style="margin:4px 0 6px">(+) عليه لنا · (−) له علينا — الأحدث أولًا</div>${body}
     <div class="rcpt-total"><span>${bal>=0?"المستحقّ عليه":"المستحقّ له"}</span><b style="color:${bal>=0?'#d64545':'#2e9e6b'}">${money(Math.abs(bal))} ${CUR}</b></div>${rcptFooter()}</div>`;
+  setRcptText({title:"كشف حساب دبو",name:pt.name,phone:pt.phone||"",country:pt.country||"222",final:bal,rows:rows.map(r=>({d:r.date,t:r.label,s:"",dr:+r.debit||0,cr:+r.credit||0}))});
   document.getElementById("receiptModal").style.display="flex";
 }
 
@@ -3089,6 +3123,9 @@ function openPorterStatement(id){ const pr=brickPorter(id); if(!pr) return; cons
     <div class="rcpt-row"><span>المجموع</span><b>${money(sum(L,x=>x.amount))}</b></div><div class="rcpt-row"><span>المدفوع</span><b>${money(sum(L,x=>x.paid))}</b></div>
     ${brickLive(state.brickLoads).filter(x=>x.porterId===id&&x.kind==="advance").map(a=>`<div class="rcpt-row"><span>${frD(a.date)} — 💵 سلفة ${a.note&&a.note!=="سلفة (دفع أكثر من المستحق)"?"· "+_esc(a.note):""}</span><b style="color:#d64545">${money(a.amount)}${+a.usedAmount?` (خُصم ${money(a.usedAmount)})`:""}</b></div>`).join("")}
     ${(()=>{ const b=brickPersonBalance(id); return `<div class="rcpt-total"><span>${b>=0?"المستحقّ له":"عليه لنا (سلفة)"}</span><b style="color:${b>=0?'#d64545':'#2e9e6b'}">${money(Math.abs(b))} ${CUR}</b></div>`; })()}${rcptFooter()}</div>`;
+  { const R=[]; L.forEach(x=>{ R.push({d:x.date,t:x.label,s:x.paid>=x.amount?"مدفوع":x.paid>0?"دُفع "+money(x.paid):"",dr:0,cr:x.amount}); if(x.paid>0) R.push({d:x.date,t:"💵 قبض على: "+x.label,s:"",dr:x.paid,cr:0}); });
+    brickLive(state.brickLoads).filter(x=>x.porterId===id&&x.kind==="advance").forEach(a=>{ const left=(+a.amount||0)-(+a.usedAmount||0); if(left>0) R.push({d:a.date,t:"💵 سلفة"+(+a.usedAmount?" (خُصم منها "+money(a.usedAmount)+")":""),s:"",dr:left,cr:0}); });
+    R.sort((a,b)=>new Date(a.d)-new Date(b.d)); setRcptText({title:"كشف حساب "+BRICK_PROLE[brickPersonRole(pr)].t,name:pr.name,phone:pr.phone||"",country:pr.country||"222",final:-brickPersonBalance(id),rows:R}); }
   document.getElementById("receiptModal").style.display="flex"; }
 function brickScreenDebts(){
   const E=_esc, P=brickParties(), q=(state.brickSearch||"").trim();
@@ -5568,6 +5605,7 @@ function openDirStatement(c){
     ${del.length?`<div class="lg-del-h">🗑️ ديون محذوفة (محفوظة للسجل — لا تُحسب)</div>${del.map(x=>`<div class="lg-row del"><div class="lg-top"><span class="lg-t">${x.dir==="for"?"له":"عليه"}: ${E(x.note||"")}</span><b class="lg-a" style="text-decoration:line-through">${money(x.amount)}</b></div><div class="lg-sub"><bdi dir="ltr">${frD(x.date)}</bdi> · حذفه ${E(x.cancelledBy||"?")} ${frD(x.cancelledAt||x.editedAt)}</div></div>`).join("")}`:""}
     <div class="rcpt-total"><span>${L.final>0?"المستحقّ عليه":L.final<0?"له عندنا":"الرصيد"}</span><b style="color:${L.final>0?"#d64545":L.final<0?"#2e9e6b":"inherit"}">${L.final?money(Math.abs(L.final))+" "+CUR:"متعادل ✓"}</b></div>
     ${rcptFooter()}</div>`;
+  setRcptText({title:"كشف حساب",name:c.name||"زبون",phone:c.phone||"",country:c.country||"222",final:L.final,rows:L.rows.map(r=>({d:r.d,t:r.t,s:r.s||"",dr:+r.dr||0,cr:+r.cr||0,show:r.show}))});
   document.getElementById("receiptModal").style.display="flex";
 }
 function openSupplierStatement(s){
@@ -5583,6 +5621,8 @@ function openSupplierStatement(s){
       <div class="rcpt-total"><span>المستحقّ له</span><b style="color:#d64545">${money(supplierBalance(s))} ${CUR}</b></div>
       ${rcptFooter()}
     </div>`;
+  { const R=[]; ps.forEach(p=>R.push({d:p.date,t:"🛒 شراء "+(p.no||""),s:purOutstanding(p)>0?"متبقٍ "+money(purOutstanding(p)):"",dr:0,cr:+p.total||0})); pays.forEach(m=>R.push({d:m.date,t:"💸 تسديد له",s:pmLabel(m.payMethod),dr:+m.amount||0,cr:0}));
+    R.sort((a,b)=>new Date(a.d)-new Date(b.d)); setRcptText({title:"كشف حساب مورّد",name:s.name,phone:s.phone||"",country:s.country||"222",final:-supplierBalance(s),rows:R}); }
   document.getElementById("receiptModal").style.display="flex";
 }
 function doDirCustSave(){
@@ -6934,39 +6974,28 @@ let _mergingForPush=false;
 /* يُستدعى من معاملة الحفظ: يدمج نسخة الخادم في بيانات هذا الجهاز (نفس قواعد الدمج) ويُرجع الاتحاد للكتابة */
 /* يُرجع null إن كانت السحابة مطابقة لهذا الجهاز بعد الدمج (لا داعي للكتابة) */
 window.mergeForPush=function(remote){ _mergingForPush=true; try{ applyRemote(remote); } finally{ _mergingForPush=false; } _lastPullOk=Date.now(); if(window._lastMergeSame){ _sigSkips++; return null; } return cloudCopy(); };
+/* (2.54.0) كشف حساب العامل في نافذة الإيصال نفسها: 📄 PDF · 📤 صورة · 💬 كتابةً · 🖨️ طباعة */
 function openWorkerStatement(id){
-  const w=state.workers.find(x=>x.id===id); if(!w) return;
-  const tx=[]
-    .concat((w.credits||[]).map(c=>({t:"credit",amount:c.amount,note:c.note||"",date:c.date})))
-    .concat((w.payments||[]).map(pp=>({t:"pay",amount:pp.amount,note:pp.note||"",date:pp.date})))
-    .sort((a,b)=>new Date(a.date)-new Date(b.date));
-  let run=0;
-  const rows=tx.length?tx.map(x=>{
-    run += (x.t==="credit"? x.amount : -x.amount);
-    return `<tr>
-      <td>${frD(x.date)}</td>
-      <td><span class="badge ${x.t==="credit"?"b-paid":"b-unpaid"}">${x.t==="credit"?"له":"عليه"}</span></td>
-      <td>${x.note||"—"}</td>
-      <td class="amt" style="color:${x.t==="credit"?"var(--ready)":"var(--unpaid)"}">${x.t==="credit"?"+":"−"}${fmt(x.amount)}</td>
-      <td class="amt" style="font-weight:800">${fmt(run)}</td></tr>`;
-  }).join("") : `<tr><td colspan="5"><div class="empty">${svg(I.empty)}لا توجد عمليات بعد.</div></td></tr>`;
+  const w=state.workers.find(x=>x.id===id); if(!w) return; const E=_esc;
   const due=accruedDue(w), bal=wBalance(w);
-  const balLabel=bal>0?"له":bal<0?"عليه":"مسدّد";
-  document.getElementById("wsTitle").textContent="كشف حساب — "+w.name;
-  document.getElementById("wsBody").innerHTML=`
-    <div class="winfo" style="margin-bottom:10px">
-      <span>الراتب الشهري: <b>${fmt(w.monthly)}</b></span>
-      <span>اليومية: <b>${fmt(dayRate(w))}</b></span>
-      <span>المباشرة: <b>${w.start?frD(w.start):"—"}</b></span>
-    </div>
-    <div class="wstats" style="margin-bottom:12px">
-      <div class="wstat wdue"><b>${fmt(due)}</b><span>مستحق الراتب</span></div>
-      <div class="wstat"><b>${fmt(wCredit(w))}</b><span>إضافات (له)</span></div>
-      <div class="wstat"><b>${fmt(wPaid(w))}</b><span>المأخوذ (عليه)</span></div>
-    </div>
-    <div class="tbl-wrap"><table class="tbl"><thead><tr><th>التاريخ</th><th>النوع</th><th>الوصف</th><th>المبلغ</th><th>الجاري</th></tr></thead><tbody>${rows}</tbody></table></div>
-    <div class="sum-row"><span>الرصيد النهائي (${balLabel})</span><span class="big">${money(Math.abs(bal))}</span></div>`;
-  document.getElementById("wsModal").style.display="flex";
+  const tx=[].concat((w.credits||[]).map(c=>({t:"credit",amount:+c.amount||0,note:c.note||"",date:c.date})))
+    .concat((w.payments||[]).map(pp=>({t:"pay",amount:+pp.amount||0,note:pp.note||"",date:pp.date}))).sort((a,b)=>new Date(a.date)-new Date(b.date));
+  const balTxt=n=>n>0?"له "+money(n):n<0?"عليه "+money(-n):"0";
+  let run=Math.round(due);
+  const rows=[`<div class="lg-row"><div class="lg-top"><span class="lg-t">💼 مستحق راتب هذا الشهر حتى اليوم</span><b class="lg-a cr">+${money(Math.round(due))}</b></div><div class="lg-sub">الراتب ${money(w.monthly)} · اليومية ${money(Math.round(dayRate(w)))}${w.start?` · المباشرة <bdi dir="ltr">${frD(w.start)}</bdi>`:""}</div></div>`]
+    .concat(tx.map(x=>{ const before=run; run+=x.t==="credit"?x.amount:-x.amount;
+      return `<div class="lg-row"><div class="lg-top"><span class="lg-t">${x.t==="credit"?"➕ له":"➖ أخذ"}${x.note?": "+E(x.note):""}</span>${x.t==="credit"?`<b class="lg-a cr">+${money(x.amount)}</b>`:`<b class="lg-a dr">−${money(x.amount)}</b>`}</div>
+        <div class="lg-sub"><bdi dir="ltr">${frD(x.date)}</bdi><span class="lg-bal">كان ${balTxt(before)} ← صار <b>${balTxt(run)}</b></span></div></div>`; })).join("");
+  document.getElementById("receiptContent").innerHTML=`<div class="rcpt ledger">
+    ${rcptHeader(`👷 كشف حساب عامل — ${E(w.name)}${w.role?`<br><small>${E(w.role)}</small>`:""}${w.phone?`<br><small>📞 <bdi dir="ltr">${E(w.phone)}</bdi></small>`:""}`)}
+    <div class="lg-final ${bal>0?"for":bal<0?"on":"zero"}"><small>الرصيد الآن</small><b>${bal>0?"له علينا":bal<0?"عليه لنا":"مسدَّد"} ${bal?money(Math.abs(Math.round(bal)))+" "+CUR:"✓"}</b></div>
+    <div class="lg-sum"><div><small>مستحق الراتب</small><b>${money(Math.round(due))}</b></div><div><small>إضافات (له)</small><b>${money(wCredit(w))}</b></div><div><small>المأخوذ</small><b>${money(wPaid(w))}</b></div></div>
+    ${rows}
+    <div class="rcpt-total"><span>${bal>0?"المستحقّ له":bal<0?"عليه لنا":"الرصيد"}</span><b style="color:${bal>0?"#2e9e6b":bal<0?"#d64545":"inherit"}">${bal?money(Math.abs(Math.round(bal)))+" "+CUR:"مسدَّد ✓"}</b></div>
+    ${rcptFooter()}</div>`;
+  setRcptText({title:"كشف حساب عامل",name:w.name,phone:w.phone||"",country:w.country||"222",final:-Math.round(bal),
+    rows:[{d:new Date().toISOString(),t:"💼 مستحق راتب هذا الشهر حتى اليوم",s:"الراتب "+money(w.monthly),dr:0,cr:Math.round(due)}].concat(tx.map(x=>({d:x.date,t:x.t==="credit"?"➕ له"+(x.note?": "+x.note:""):"➖ أخذ"+(x.note?": "+x.note:""),s:"",dr:x.t==="pay"?x.amount:0,cr:x.t==="credit"?x.amount:0})))});
+  document.getElementById("receiptModal").style.display="flex";
 }
 document.getElementById("wsClose").onclick=()=>{ document.getElementById("wsModal").style.display="none"; };
 let _lastPullOk=0, _lastPullErr=null, _pullBusy=false;
@@ -7574,6 +7603,11 @@ function _rand(n){ const a=new Uint8Array(n); crypto.getRandomValues(a); return 
    CHANGELOG: الأحدث أولًا. لكل تعديل: ic, t (العنوان), d (الشرح), go (أين: tab + storeSub/contactsSub/…), sel (العنصر الذي يُشار إليه).
    **قاعدة: كل إصدار جديد يضيف مدخلًا هنا** — يظهر للمستخدم مرة واحدة بعد التحديث مع «تخطي» و«أرني» و«جولة». */
 const CHANGELOG=[
+  {v:"2.54.0",date:"2026-10-18",items:[
+    {ic:"📄",t:"كشف الحساب ملف PDF",d:"في أي كشف حساب أو إيصال زر «📄 PDF» يجهّز ملف PDF حقيقيًا (صفحات A4) فتُرسله بالواتساب أو تحفظه. يعمل دون إنترنت.",go:{tab:"store",storeSub:"debts"},sel:".party-card"},
+    {ic:"💬",t:"إرسال الكشف كتابةً — كامل أو جزئي",d:"في كشف حساب الزبون (والمورّد ودبو) زر «💬 كتابةً»: «📄 كامل» يرسل كل الحركات، و«✂️ جزئي» تختار: هذا الشهر · آخر 7 أيام · آخر 30 يومًا · عليه فقط، أو تحدد الحركات بنفسك ✓. النص يُفتح في واتساب الزبون مباشرة مع «الرصيد الآن»، وزر «📋 نسخ».",go:{tab:"store",storeSub:"debts"},sel:".party-card"},
+    {ic:"👷",t:"كشف حساب العامل PDF وكتابةً",d:"«🧾 كشف» العامل (المصروفات ▸ العمّال) صار دفترًا مرتّبًا: مستحق الراتب، وكل «له» و«أخذ» مع «كان ← صار»، والرصيد الآن — ومعه 📄 PDF · 📤 صورة · 💬 كتابةً · 🖨️ طباعة. وكشف عامل/حمّال دبو صار له «كتابةً» أيضًا.",go:{tab:"expenses",expSub:"workers"},sel:"[data-wstate]"}
+  ]},
   {v:"2.53.0",date:"2026-10-18",items:[
     {ic:"👤",t:"بطاقة الزبون في المتجر مثل «الزبائن»",d:"في المتجر ▸ الزبائن والديون صارت البطاقة: حرف الاسم، رقم واحد «عليه» أو «له»، والعمليات مطوية تفتحها بـ«▾ التفاصيل». الأزرار دائرية: واتساب · اتصال · تحصيل · تسديد له · مقاصة · كشف الحساب، وتحتها «➕ عليه» و«➕ له».",go:{tab:"store",storeSub:"debts"},sel:".party-card"}
   ]},
@@ -7849,6 +7883,74 @@ async function shareReceiptImage(){
     toast("تعذّر تجهيز الصورة — حاول مرة أخرى");
   }finally{ if(btn){ btn.disabled=false; btn.textContent=old||"📤 إرسال صورة"; } }
 }
+/* ---------- (2.54.0) الكشف كـ PDF حقيقي + إرسال الكشف كتابةً (كامل أو جزئي) ---------- */
+function _pdfFromJpegs(pages){
+  const enc=new TextEncoder(), parts=[], offs=[]; let len=0;
+  const push=x=>{ const b=typeof x==="string"?enc.encode(x):x; parts.push(b); len+=b.length; };
+  const obj=(n,fn)=>{ offs[n]=len; push(n+" 0 obj\n"); fn(); push("\nendobj\n"); };
+  const N=pages.length, total=3+3*N;
+  push("%PDF-1.4\n");
+  obj(1,()=>push("<< /Type /Catalog /Pages 2 0 R >>"));
+  obj(2,()=>push("<< /Type /Pages /Count "+N+" /Kids ["+pages.map((p,i)=>(3+3*i)+" 0 R").join(" ")+"] >>"));
+  pages.forEach((p,i)=>{ const pg=3+3*i, ct=pg+1, im=pg+2, cs="q "+p.dw+" 0 0 "+p.dh+" "+p.dx+" "+p.dy+" cm /Im0 Do Q";
+    obj(pg,()=>push("<< /Type /Page /Parent 2 0 R /MediaBox [0 0 "+p.pw+" "+p.ph+"] /Resources << /XObject << /Im0 "+im+" 0 R >> >> /Contents "+ct+" 0 R >>"));
+    obj(ct,()=>push("<< /Length "+cs.length+" >>\nstream\n"+cs+"\nendstream"));
+    obj(im,()=>{ push("<< /Type /XObject /Subtype /Image /Width "+p.w+" /Height "+p.h+" /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length "+p.jpg.length+" >>\nstream\n"); push(p.jpg); push("\nendstream"); }); });
+  const xref=len; push("xref\n0 "+total+"\n0000000000 65535 f \n"); for(let n=1;n<total;n++) push(String(offs[n]).padStart(10,"0")+" 00000 n \n");
+  push("trailer\n<< /Size "+total+" /Root 1 0 R >>\nstartxref\n"+xref+"\n%%EOF\n");
+  return new Blob(parts,{type:"application/pdf"});
+}
+/* صورة الإيصال/الكشف (نفس «📤 صورة») تُقسَّم على صفحات A4 وتُضمَّن JPEG في ملف PDF — بلا مكتبات خارجية فيعمل دون إنترنت */
+async function receiptPdfBlob(){
+  const png=await receiptImageBlob(); if(!png) throw new Error("empty");
+  const img=await new Promise((res,rej)=>{ const im=new Image(); im.onload=()=>res(im); im.onerror=rej; im.src=URL.createObjectURL(png); });
+  const W=img.naturalWidth, H=img.naturalHeight, PW=595, PH=842, M=28, DW=PW-2*M, sliceH=Math.max(1,Math.floor(W*(PH-2*M)/DW)), pages=[];
+  for(let y=0;y<H;y+=sliceH){ const h=Math.min(sliceH,H-y), c=document.createElement("canvas"); c.width=W; c.height=h; const g=c.getContext("2d"); g.fillStyle="#fff"; g.fillRect(0,0,W,h); g.drawImage(img,0,y,W,h,0,0,W,h);
+    const b=atob(c.toDataURL("image/jpeg",0.9).split(",")[1]), u=new Uint8Array(b.length); for(let i=0;i<b.length;i++) u[i]=b.charCodeAt(i);
+    const dh=Math.round(DW*h/W*100)/100; pages.push({jpg:u,w:W,h,pw:PW,ph:PH,dw:DW,dh,dx:M,dy:Math.round((PH-M-dh)*100)/100}); }
+  return _pdfFromJpegs(pages);
+}
+function rcptDocName(){ const ctx=rcptTextCtx(), noEl=document.querySelector("#receiptContent .rcpt-no");
+  return ((ctx?"كشف-حساب-"+(ctx.name||""):noEl?"فاتورة-"+noEl.textContent.trim():"مستند")+"-"+frD(new Date())).replace(/[\\/:*?"<>|\s]+/g,"-"); }
+async function shareReceiptPdf(){
+  const btn=document.getElementById("receiptPdf"), old=btn?btn.textContent:""; if(!document.querySelector("#receiptContent .rcpt")) return;
+  if(btn){ btn.disabled=true; btn.textContent="⏳ PDF…"; }
+  try{ const blob=await receiptPdfBlob(); window._lastReceiptPdf=blob; const name=rcptDocName()+".pdf", file=new File([blob],name,{type:"application/pdf"}); let shared=false;
+    try{ if(navigator.canShare&&navigator.canShare({files:[file]})){ await navigator.share({files:[file],text:shopInfo().name}); shared=true; } }catch(e){ if(e&&e.name==="AbortError") shared=true; }
+    if(!shared){ const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=name; document.body.appendChild(a); a.click(); a.remove(); toast("📄 تم تجهيز ملف PDF — "+name); }
+    logActivity("إرسال PDF",name);
+  }catch(e){ toast("تعذّر تجهيز ملف PDF — حاول مرة أخرى"); }
+  finally{ if(btn){ btn.disabled=false; btn.textContent=old||"📄 PDF"; } }
+}
+/* سياق «💬 كتابةً»: يُضبط عند فتح كشف حساب، ويُربط بالمحتوى المعروض (tok) فلا يظهر الزر في الإيصالات الأخرى */
+let _rcptText=null;
+function setRcptText(ctx){ ctx.tok=String(Date.now())+Math.random(); _rcptText=ctx; const r=document.querySelector("#receiptContent .rcpt"); if(r) r.dataset.txtTok=ctx.tok; updRcptTextBtn(); }
+function rcptTextCtx(){ const r=document.querySelector("#receiptContent .rcpt"); return _rcptText&&r&&r.dataset.txtTok===_rcptText.tok?_rcptText:null; }
+function updRcptTextBtn(){ const b=document.getElementById("receiptText"); if(b) b.style.display=rcptTextCtx()?"":"none"; }
+let _stSel=null, _stMode="all";
+function stRowAmt(r){ return r.dr?"+"+money(r.dr):r.cr?"−"+money(r.cr):money(r.show||0)+" ✓"; }
+function stBuildText(){ const ctx=rcptTextCtx()||_rcptText; if(!ctx) return ""; const R=ctx.rows, part=_stMode==="part", idx=part?R.map((r,i)=>i).filter(i=>_stSel.has(i)):R.map((r,i)=>i), sel=idx.map(i=>R[i]);
+  const bal=n=>n>0?"عليه لنا "+money(n)+" "+CUR:n<0?"له عندنا "+money(-n)+" "+CUR:"متعادل ✓", si=shopInfo();
+  const L=["📒 "+(ctx.title||"كشف حساب")+" — "+(ctx.name||""), si.name?"🏪 "+si.name+(si.phone?" · 📞 "+si.phone:""):"", sel.length?"📅 "+frD(sel[0].d)+" ← "+frD(sel[sel.length-1].d)+(part?" (جزء: "+sel.length+" من "+R.length+" حركة)":" ("+R.length+" حركة)"):"", "━━━━━━━━━━"];
+  sel.forEach(r=>L.push("▫️ "+frD(r.d)+" · "+r.t+(r.s?" ("+r.s+")":"")+": "+stRowAmt(r)));
+  if(!sel.length) L.push("— لا حركات مختارة —");
+  L.push("━━━━━━━━━━"); const dr=sum(sel,r=>+r.dr||0), cr=sum(sel,r=>+r.cr||0); if(sel.length) L.push("➕ عليه: "+money(dr)+" · ➖ دفع/له: "+money(cr));
+  L.push("💰 الرصيد الآن: "+bal(ctx.final)); return L.filter(x=>x!=="").join("\n"); }
+function stRender(){ const ctx=rcptTextCtx()||_rcptText; if(!ctx) return; const E=_esc;
+  document.querySelectorAll("[data-stmode]").forEach(b=>b.classList.toggle("on",b.dataset.stmode===_stMode));
+  const pw=document.getElementById("stPartWrap"); if(pw) pw.style.display=_stMode==="part"?"":"none";
+  const box=document.getElementById("stRows"); if(box&&_stMode==="part") box.innerHTML=ctx.rows.map((r,i)=>`<label class="st-row"><input type="checkbox" data-st-i="${i}" ${_stSel.has(i)?"checked":""}><span><bdi dir="ltr">${frD(r.d)}</bdi> · ${E(r.t)}</span><b style="color:${r.dr?"var(--unpaid)":r.cr?"var(--ready)":"var(--muted)"}">${stRowAmt(r)}</b></label>`).join("")||`<div class="hint">لا حركات.</div>`;
+  stUpdate(); }
+function stUpdate(){ const ctx=rcptTextCtx()||_rcptText; if(!ctx) return; const t=stBuildText(), pv=document.getElementById("stPreview"); if(pv) pv.value=t;
+  const c=document.getElementById("stCount"); if(c) c.textContent=(_stMode==="part"?"✂️ "+_stSel.size+" من "+ctx.rows.length+" حركة مختارة":"📄 كل الحركات ("+ctx.rows.length+")")+" · "+t.length+" حرفًا"; }
+function openStText(){ const ctx=rcptTextCtx(); if(!ctx) return; _stMode="all"; _stSel=new Set(ctx.rows.map((r,i)=>i));
+  const w=document.getElementById("stWho"); if(w) w.textContent="👤 "+(ctx.name||"")+(ctx.phone?" · 📞 "+ctx.phone:" · بلا رقم (ستختار المحادثة في واتساب)");
+  document.getElementById("stTextModal").style.display="flex"; stRender(); }
+function stQuick(q){ const ctx=rcptTextCtx()||_rcptText; if(!ctx) return; const today=ymd(new Date()), ago=n=>{ const d=new Date(); d.setDate(d.getDate()-n); return ymd(d); };
+  _stSel=new Set(ctx.rows.map((r,i)=>i).filter(i=>{ const r=ctx.rows[i], d=ymd(r.d); return q==="all"?true:q==="none"?false:q==="month"?d.slice(0,7)===today.slice(0,7):q==="7"?d>=ago(6):q==="30"?d>=ago(29):q==="dr"?(+r.dr||0)>0:true; })); stRender(); }
+function stSendWa(){ const ctx=rcptTextCtx()||_rcptText; if(!ctx) return; const ph=ctx.phone?waPhoneFull(ctx.phone,ctx.country):""; const t=stBuildText();
+  window.open("https://wa.me/"+(ph||"")+"?text="+encodeURIComponent(t),"_blank"); logActivity("إرسال كشف كتابةً",(ctx.name||"")+" · "+(_stMode==="part"?"جزئي "+_stSel.size+" حركة":"كامل")); }
+function stCopy(){ const t=stBuildText(); const done=()=>toast("📋 نُسخ نص الكشف"); try{ navigator.clipboard.writeText(t).then(done,()=>{ const pv=document.getElementById("stPreview"); pv.select(); document.execCommand("copy"); done(); }); }catch(e){ const pv=document.getElementById("stPreview"); pv.select(); try{ document.execCommand("copy"); }catch(_){} done(); } }
 function openCarReceipt(o){
   const c=o.plate&&state.customers?state.customers[o.plate]:null;
   document.getElementById("receiptContent").innerHTML=`
@@ -8311,6 +8413,15 @@ document.getElementById("setSave").onclick=()=>{
 document.getElementById("receiptClose").onclick=()=>document.getElementById("receiptModal").style.display="none";
 document.getElementById("receiptPrint").onclick=printReceipt;
 document.getElementById("receiptImg").onclick=shareReceiptImage;
+document.getElementById("receiptPdf").onclick=shareReceiptPdf;
+document.getElementById("receiptText").onclick=openStText;
+if(typeof MutationObserver!=="undefined") new MutationObserver(updRcptTextBtn).observe(document.getElementById("receiptContent"),{childList:true});
+document.querySelectorAll("[data-stmode]").forEach(b=>b.onclick=()=>{ _stMode=b.dataset.stmode; stRender(); });
+document.querySelectorAll("[data-stq]").forEach(b=>b.onclick=()=>stQuick(b.dataset.stq));
+document.getElementById("stRows").addEventListener("change",e=>{ const t=e.target; if(!t||!t.dataset||t.dataset.stI==null) return; const i=+t.dataset.stI; if(t.checked) _stSel.add(i); else _stSel.delete(i); stUpdate(); });
+document.getElementById("stWa").onclick=stSendWa;
+document.getElementById("stCopy").onclick=stCopy;
+document.getElementById("stClose").onclick=()=>{ document.getElementById("stTextModal").style.display="none"; };
 document.getElementById("xlExport").onclick=()=>exportExcel(document.getElementById("xlFrom").value, document.getElementById("xlTo").value);
 document.getElementById("rcptTestBtn").onclick=()=>{ setRcptWidth(document.getElementById("rcptWidthSet").value); openTestReceipt(); };
 (function(){
@@ -8551,7 +8662,7 @@ setTimeout(()=>{ if(!window.cloudReady){ const el=document.getElementById("cloud
 <!-- PWA: service-worker registration + update/install wiring -->
 <script>
 (function(){
-  var APP_VERSION = "2.53.0";
+  var APP_VERSION = "2.54.0";
   window.APP_VERSION = APP_VERSION;
   function $(id){ return document.getElementById(id); }
   // سجّل إصدار هذا الجهاز في الحالة المتزامنة (ليُنبَّه الجهاز القديم)

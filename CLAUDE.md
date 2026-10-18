@@ -525,6 +525,20 @@
   «👷 رئيس العمّال» تُخفى خانات الحمل (`#bkLoadFields`, `#bkLoadKinds`، تلميح `#bkWorkerOnlyHint`) والزر «💾 حفظ رئيس العمّال» (`updPor` في
   `bindBrick`)؛ و`doBrickLoadSave` يحفظ الشخص فقط إن لم يُكتب مبلغ (الحمل **اختياري لأي شخص جديد**، وإلزامي فقط لتسجيل عمل لشخص موجود).
   الاختبار `tests/e2e/brick_worker_add.test.js`.
+- **الكشف PDF + «💬 كتابةً» كامل/جزئي (2.54.0):** نافذة الإيصال/الكشف `#receiptModal` أزرارها `.rcpt-acts`: `#receiptPdf` 📄 PDF، `#receiptImg` 📤 صورة،
+  `#receiptText` 💬 كتابةً (يظهر للكشوف فقط)، `#receiptPrint`، `#receiptClose`. **PDF بلا مكتبة:** `receiptPdfBlob()` = صورة `receiptImageBlob()` تُقسَّم على
+  صفحات A4 (595×842pt، هامش 28) وتُضمَّن JPEG (`/DCTDecode`) عبر كاتب PDF صغير `_pdfFromJpegs(pages)` (كتالوج/صفحات/صورة لكل صفحة + xref)؛
+  `shareReceiptPdf` يشارك `File` باسم `rcptDocName()` («كشف-حساب-الاسم-DD-MM-YYYY.pdf») عبر `navigator.share` وإلا تنزيل. **كتابةً:** كل كشف يستدعي
+  `setRcptText({title,name,phone,country,final,rows:[{d,t,s,dr,cr,show?}]})` (العميل `openDirStatement` من `custLedger`، دبو `openBrickStatement` من
+  `brickPartyRows`، المورّد `openSupplierStatement`)؛ السياق مربوط بالمحتوى بـ`data-txt-tok` و`MutationObserver` يخفي الزر عند فتح إيصال آخر
+  (`rcptTextCtx`/`updRcptTextBtn`). نافذة `#stTextModal` (z 160): `[data-stmode="all|part"]`، اختصارات `[data-stq="month|7|30|dr|all|none"]` (`stQuick`)،
+  قائمة `.st-row` بمربعات `[data-st-i]` (`_stSel`)، معاينة `#stPreview` (`stBuildText`: العنوان، المحل، الفترة و«جزء: n من N»، سطر لكل حركة بـ`frD`، مجموع
+  المختار، «💰 الرصيد الآن»)، `#stWa` → `wa.me/{هاتف الزبون}?text=` (`stSendWa`، يُسجَّل في النشاط) و`#stCopy`. **CSS:** `.st-row input` عرضه 18px إلزامي
+  (نمط `input` العام كان يأخذ العرض كله). **كشف العامل** `openWorkerStatement` صار في `#receiptModal` (دفتر `.rcpt.ledger`: مستحق راتب الشهر
+  `accruedDue` + `credits` «له» + `payments` «أخذ» مع «كان ← صار»، والرصيد `wBalance`) بدل `#wsModal` القديم (باقٍ غير مستعمل)، و`openPorterStatement`
+  (دبو) صار يضبط `setRcptText` (الأعمال «له»، القبض، والسلفة المتبقية فقط `amount−usedAmount` فيتطابق مع `brickPersonBalance`).
+  الاختبار `tests/e2e/statement_pdf_text.test.js`. **قاعدة (كادت تُوقف البوت):** سكربت التطبيق يُشغَّل أيضًا داخل Node في `bot/app-vm.js` بواجهة DOM
+  وهمية — أي واجهة متصفح على المستوى الأعلى (مثل `MutationObserver`) تُحرس بـ`typeof X!=="undefined"`، و`bot_runner` يكشف ذلك.
 - **بطاقة المتجر ▸ الزبائن والديون = بطاقة «الزبائن» (2.53.0):** `storeScreenDebts` يرسم كل شخص من `storeParties()` بشكل `.debtor-card`
   (+ `.party-card`): حرف `.dc-av` (لون `kindColor`)، الاسم + شارة «مورّد»، الهاتف والأيام، **رقم واحد** `.dc-amt.party-net` (`net` عليه/له/متعادل)،
   سطر «🧺 وعليه للمغسلة»، و**العمليات مطوية** بزر `[data-debt-toggle="sp:{key}"]` و`[data-debt-det]` (نفس المستمع العام و`_debtOpen`؛ داخلها
