@@ -525,6 +525,15 @@
   «👷 رئيس العمّال» تُخفى خانات الحمل (`#bkLoadFields`, `#bkLoadKinds`، تلميح `#bkWorkerOnlyHint`) والزر «💾 حفظ رئيس العمّال» (`updPor` في
   `bindBrick`)؛ و`doBrickLoadSave` يحفظ الشخص فقط إن لم يُكتب مبلغ (الحمل **اختياري لأي شخص جديد**، وإلزامي فقط لتسجيل عمل لشخص موجود).
   الاختبار `tests/e2e/brick_worker_add.test.js`.
+- **تبويبات دبو مربعات في صفّين (2.51.0):** `<div class="seg bk-tiles">` شبكة 4 أعمدة (8 على الشاشات العريضة) بلا تمرير أفقي؛ كل زر
+  `[data-bksub]` فيه `.bt-ic` (مربع 34px) و`.bt-t`، ولونه من `BRICK_SUB_COLOR[k]` عبر `brickSubVars(hex)` (متغيرات `--tc/--tb/--ti/--tl/--ts`
+  بـ rgba — **لا `color-mix`** لأن WebView القديم لا يدعمه)؛ النشط `.on` مملوء بلونه ونص أبيض. الفحص في `brick_cards.test.js`.
+- **بطاقات دبو = بطاقات المتجر (2.50.0) — «اجعل الكثير متشابهًا»:** أطراف «الديون والحسابات» (`brickScreenDebts`) والعمّال/الحمّالون
+  (تبويب `porters` ولوحة «مستحقّ للعمّال» في الديون عبر `brickPersonCardHTML(pr)`) تُرسم بـ`personCardHTML` نفسها (`.person-card`): حرف،
+  الاسم، شارة (🏭 مورّد / صفة الشخص)، رقم واحد (`amt` موجب = عليه، سالب = له؛ للعامل `amt=-brickPersonBalance`)، سطر `info`، وأزرار `.r-btn`
+  (`data-bk-pcollect`/`data-bk-ppay`/`data-bk-stmt`/`data-bk-porterpay`/`data-bk-porterstmt`). `personCardHTML` صار يقبل `waText` (زر «تذكير»
+  برسالة الدين) و`mini` بلا `id` (صف «➕ قيد» `data-bk-ladd` بلا أزرار `data-qd` الخاصة بالمتجر). **قاعدة:** أي بطاقة شخص جديدة تستعمل
+  `personCardHTML`. الاختبار `tests/e2e/brick_cards.test.js`.
 - **لا شريط علوي + زر «＋» (2.49.0) — طلب المالك:** `header.top` مخفي في كل الشاشات (`display:none!important`؛ يبقى في DOM لـ`#brandLogo`).
   زر دائري عائم `#fabBtn` (`.fab`) **أسفل اليمين فوق القائمة السفلية** (`right` + `bottom:74px` + safe-area؛ على الشاشات العريضة 20px)
   يفتح `#fabMenu` (`.fab-menu`، **`.fab-menu[hidden]{display:none!important}` ضروري** لأن `display:flex` يتغلّب على `hidden`) فيه:

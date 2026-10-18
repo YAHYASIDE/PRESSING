@@ -40,7 +40,7 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
   log('new worker created with phone; 10 × 1,500 = 15,000 owed to him: '+(r.w && r.ph==='27272727' && r.due===15000)+' (expect true)');
   // حساب العامل في تبويب العمّال والحمّالين: الدين، الكشف، والدفع
   await page.click('[data-bksub="porters"]'); await page.waitForTimeout(250);
-  log('workers tab shows عبد الله owed 30,000 from the batch: '+(await page.evaluate(()=>/له علينا 30,000/.test(document.querySelector('main').textContent) && /العمّال والحمّالون/.test(document.querySelector('[data-bksub="porters"]').textContent)))+' (expect true)');
+  log('workers tab shows عبد الله owed 30,000 from the batch: '+(await page.evaluate(()=>/30,000\s*له/.test(document.querySelector('main').textContent) && /العمّال والحمّالون/.test(document.querySelector('[data-bksub="porters"]').textContent)))+' (expect true)');
   await page.click('[data-bk-porterstmt="po1"]'); await page.waitForTimeout(200);
   log('worker statement lists the batch wage: '+(await page.evaluate(()=>/أجرة خلطة/.test(document.getElementById('receiptContent').textContent) && /30,000/.test(document.getElementById('receiptContent').textContent)))+' (expect true)');
   await page.evaluate(()=>{ document.getElementById('receiptModal').style.display='none'; });

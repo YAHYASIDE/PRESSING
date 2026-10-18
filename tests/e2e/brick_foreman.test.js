@@ -32,7 +32,7 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
 
   // ندفع له 60,000 (أكثر من المستحق بـ8,000) → يُسدَّد كل شيء و8,000 سلفة عليه
   await page.click('[data-bksub="porters"]'); await page.waitForTimeout(250);
-  log('his card shows role badge and «له علينا 52,000»: '+(await page.evaluate(()=>{ const t=document.querySelector('main').textContent; return /رئيس العمّال/.test(t) && /له علينا 52,000/.test(t); }))+' (expect true)');
+  log('his card shows role badge and «له علينا 52,000»: '+(await page.evaluate(()=>{ const t=document.querySelector('main').textContent; return /رئيس العمّال/.test(t) && /52,000\s*له/.test(t); }))+' (expect true)');
   const box0=await page.evaluate(()=>brickCashBalance());
   await page.click(`[data-bk-porterpay="${fid}"]`); await page.waitForTimeout(200);
   log('pay dialog explains that extra becomes an advance: '+(await page.evaluate(()=>/الزائد يُسجَّل سلفة/.test(document.getElementById('storePayTitle').textContent)))+' (expect true)');
@@ -40,7 +40,7 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
   r=await page.evaluate(id=>({ bal:brickPersonBalance(id), adv:brickPersonAdvance(id), box:brickCashBalance(), batchesPaid:state.brickBatches.every(b=>b.workerPaid), cost:brickFin(()=>true).wages, toast:document.getElementById('toast').textContent, card:document.querySelector('main').textContent }),fid);
   log('overpaying 60,000: both batches paid, 8,000 advance → balance −8,000, cashbox −60,000: '+(r.bal===-8000 && r.adv===8000 && r.batchesPaid && r.box===box0-60000)+' (expect true)');
   log('advance is not counted as a cost (wages stay 52,000): '+(r.cost===52000)+' (expect true)');
-  log('toast and card say «سلفة» / «عليه لنا (سلفة) 8,000»: '+(/سلفة عليه 8,000/.test(r.toast) && /عليه لنا \(سلفة\) 8,000/.test(r.card))+' (expect true)');
+  log('toast and card say «سلفة» / «عليه لنا (سلفة) 8,000»: '+(/سلفة عليه 8,000/.test(r.toast) && /8,000\s*عليه/.test(r.card) && /سلفة عليه/.test(r.card))+' (expect true)');
 
   // خلطة جديدة 26,000 → تُخصم السلفة 8,000 تلقائيًا فيبقى له 18,000 (بلا حركة صندوق)
   await page.click('[data-bksub="batches"]'); await page.waitForTimeout(250);
@@ -58,7 +58,7 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
   log('paying 30,000 when owed 18,000 → advance 12,000: '+(await page.evaluate(id=>brickPersonBalance(id)===-12000,fid))+' (expect true)');
   // الحمّال يبقى حمّالًا
   log('the porter keeps the «حمّال» role and a neutral balance: '+(await page.evaluate(()=>brickPersonRole(brickPorter('po1'))==='porter' && brickPersonBalance('po1')===0))+' (expect true)');
-  log('debts tab lists the foreman with «عليه سلفة 12,000»: '+(await page.evaluate(()=>{ state.brickSub='debts'; render(); return /عليه سلفة 12,000/.test(document.querySelector('main').textContent); }))+' (expect true)');
+  log('debts tab lists the foreman with «عليه سلفة 12,000»: '+(await page.evaluate(()=>{ state.brickSub='debts'; render(); const t=document.querySelector('main').textContent; return /12,000\s*عليه/.test(t) && /سلفة عليه/.test(t); }))+' (expect true)');
   log('no horizontal overflow at 400px: '+(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1))+' (expect true)');
   log('\nERRORS:', errors.length?errors.join('\n'):'NONE ✅');
   await browser.close();

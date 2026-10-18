@@ -71,7 +71,7 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
   await page.click('[data-bklk="cement"]'); await page.waitForTimeout(200); await page.selectOption('#bkPorter',await page.evaluate(()=>state.brickPorters[0].id));
   await page.fill('#bkLoadQty','20'); await page.fill('#bkLoadRate','100'); await page.uncheck('#bkLoadPaid'); await page.click('#bkLoadSave'); await page.waitForTimeout(300);
   r=await page.evaluate(()=>({ due:brickPorterDues(state.brickPorters[0].id), f:brickFin(()=>true), card:document.querySelector('main').textContent }));
-  log('unpaid cement load: porter is owed 2,000; costs 7,000 counted in profit; card shows it: '+(r.due===2000 && r.f.porterDues===2000 && r.f.wages===26000+7000 && /له علينا 2,000/.test(r.card))+' (expect true)');
+  log('unpaid cement load: porter is owed 2,000; costs 7,000 counted in profit; card shows it: '+(r.due===2000 && r.f.porterDues===2000 && r.f.wages===26000+7000 && /2,000\s*له/.test(r.card))+' (expect true)');
   // دفع له من البطاقة
   await page.click('[data-bk-porterpay]'); await page.waitForTimeout(200); await page.click('#storePayOk'); await page.waitForTimeout(300);
   r=await page.evaluate(()=>({ due:brickPorterDues(state.brickPorters[0].id), box:brickCashBalance() }));
