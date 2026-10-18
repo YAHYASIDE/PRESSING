@@ -2746,10 +2746,13 @@ function brickScreenPorters(){
     </div>
     <div class="cols">
       <div class="panel">
-        <h3>عمل حمل جديد</h3>
-        <div class="seg" style="margin-bottom:8px">${Object.keys(BRICK_LOADK).map(k=>`<button type="button" data-bklk="${k}" class="${K===k?'on':''}">${BRICK_LOADK[k].ic} ${BRICK_LOADK[k].t}</button>`).join("")}</div>
+        <h3>🚚 عمل حمل / ➕ شخص جديد</h3>
+        <div class="seg" id="bkLoadKinds" style="margin-bottom:8px">${Object.keys(BRICK_LOADK).map(k=>`<button type="button" data-bklk="${k}" class="${K===k?'on':''}">${BRICK_LOADK[k].ic} ${BRICK_LOADK[k].t}</button>`).join("")}</div>
         <div class="field"><label>الحمّال</label><select id="bkPorter"><option value="">— اختر الحمّال —</option>${porters.map(pr=>`<option value="${pr.id}" ${d.porter===pr.id?"selected":""}>${E(pr.name)}${pr.phone?" · "+E(pr.phone):""}</option>`).join("")}<option value="__new" ${isNew?"selected":""}>➕ شخص جديد…</option></select></div>
         <div id="bkPorterNewWrap" style="${isNew?"":"display:none"}"><div class="field"><label>الصفة</label><select id="bkPorterRole"><option value="porter">🚚 حمّال</option><option value="worker">👷 رئيس العمّال (الخلطات)</option></select></div><div class="field"><label>الاسم</label><input id="bkPorterName" type="text" placeholder="الاسم"></div><div class="field"><label>الهاتف</label><div class="phone-row"><select id="bkPorterCountry" class="cc-select">${countryOpts()}</select><input id="bkPorterPhone" class="phone-inp" type="tel" inputmode="numeric" maxlength="9" placeholder="رقم الهاتف"></div></div></div>
+        <div class="hint" id="bkWorkerOnlyHint" style="display:none;margin-bottom:8px">👷 رئيس العمّال لا يحتاج عمل حمل: أجرته تُضاف تلقائيًا من كل خلطة. احفظه فقط.</div>
+        <div id="bkLoadFields">
+        <div class="hint" style="margin-bottom:6px">الحمل اختياري للشخص الجديد — اتركه فارغًا لحفظ الشخص فقط.</div>
         <div class="row2">
           <div class="field"><label>الكمية (${BRICK_LOADK[K].u})</label><input id="bkLoadQty" type="number" min="0" inputmode="decimal" placeholder="0"></div>
           <div class="field"><label>السعر لكل ${BRICK_LOADK[K].u}</label><input id="bkLoadRate" type="number" min="0" inputmode="decimal" value="${rate||""}" placeholder="0"></div>
@@ -2758,6 +2761,7 @@ function brickScreenPorters(){
         <label class="sw" style="margin:4px 0 8px"><input type="checkbox" id="bkLoadPaid" ${d.loadPaid!==false?"checked":""}> 💵 دُفع له الآن من صندوق دبو</label>
         ${pmPickerHTML("bkLoadPm","من أي حساب")}
         <div class="field"><label>ملاحظة</label><input id="bkLoadNote" type="text" placeholder="مثال: تحميل لزبون محمد / تنزيل شاحنة إسمنت"></div>
+        </div>
         <button class="btn-primary" id="bkLoadSave" style="width:100%">💾 تسجيل عمل الحمل</button>
         <div class="hint" style="margin-top:6px">أجور الحمل تُحسب تكلفة على دبو. غير المدفوع يبقى «له علينا» في بطاقة الحمّال وفي الديون.</div>
       </div>
@@ -2767,12 +2771,15 @@ function brickScreenPorters(){
 }
 function doBrickLoadSave(){
   const d=_bkDraft, K=BRICK_LOADK[d.lk||"bricks"]?(d.lk||"bricks"):"bricks"; let pid=(document.getElementById("bkPorter")||{}).value||"";
-  const qty=+document.getElementById("bkLoadQty").value||0, rate=+document.getElementById("bkLoadRate").value||0; let amount=+document.getElementById("bkLoadAmt").value||0; if(!(amount>0)) amount=Math.round(qty*rate);
+  // (2.47.0) الحمل اختياري للشخص الجديد، ولا حمل أبدًا لرئيس العمّال الجديد (أجرته من الخلطات)
+  const newWorker=pid==="__new"&&((document.getElementById("bkPorterRole")||{}).value==="worker");
+  const qty=newWorker?0:(+document.getElementById("bkLoadQty").value||0), rate=+document.getElementById("bkLoadRate").value||0; let amount=newWorker?0:(+document.getElementById("bkLoadAmt").value||0); if(!newWorker&&!(amount>0)) amount=Math.round(qty*rate);
   const paid=!!document.getElementById("bkLoadPaid").checked, note=(document.getElementById("bkLoadNote").value||"").trim();
-  if(!(amount>0)) return toast("أدخل الكمية والسعر أو المبلغ");
+  if(!(amount>0)&&pid!=="__new") return toast("أدخل الكمية والسعر أو المبلغ");
   if(pid==="__new"){ const nm=(document.getElementById("bkPorterName").value||"").trim(); if(!nm) return toast("أدخل اسم الحمّال"); const ph=(document.getElementById("bkPorterPhone").value||"").trim(); if(ph&&!validPhone(ph)) return toast("رقم الهاتف يجب أن يكون 8 أرقام");
     const ex=(state.brickPorters||[]).find(x=>(ph&&normPhone(x.phone)===normPhone(ph))||(x.name||"").trim()===nm); if(ex) pid=ex.id; else { const pr={id:uid(),name:nm,phone:ph,country:document.getElementById("bkPorterCountry").value,role:(document.getElementById("bkPorterRole")||{}).value||"porter",editedAt:iso(new Date())}; state.brickPorters.push(pr); pid=pr.id; } }
   const pr=brickPorter(pid); if(!pr) return toast("اختر الحمّال");
+  if(!(amount>0)){ _bkDraft.porter=pr.id; logActivity("دبو: شخص جديد",(brickPersonRole(pr)==="worker"?"👷 رئيس العمّال ":"🚚 حمّال ")+pr.name); toast("✓ حُفظ «"+pr.name+"»"+(brickPersonRole(pr)==="worker"?" — رئيس العمّال، تُضاف له أجرة كل خلطة":"")); render(); return; }
   const dt=iso(new Date()), x={id:uid(),no:brickSeqNo(state.brickLoads,"H",dt),porterId:pr.id,kind:K,qty,rate,amount,paidAmount:paid?amount:0,paid,note,date:dt,by:currentUser,editedAt:dt};
   if(paid){ x.payMethod=pmVal("bkLoadPm"); addBrickCash("out",amount,"حمل "+BRICK_LOADK[K].t+" — "+pr.name,x.id,x.payMethod); }
   state.brickLoads.push(x); brickApplyAdvance(pr.id); const c=brickCfg(); c.loadRate=c.loadRate||{}; if(rate>0) c.loadRate[K]=rate; _bkDraft.porter=pr.id; _bkDraft.loadPaid=paid; pmReset("bkLoadPm");
@@ -3172,7 +3179,11 @@ function bindBrick(){
   if(bpr) bpr.addEventListener("input",updProfit); if(bq) bq.addEventListener("input",updProfit); if(bst) bst.addEventListener("change",updProfit); updProfit();
   // الحمّالون
   document.querySelectorAll("[data-bklk]").forEach(b=>b.onclick=()=>{ _bkDraft.lk=b.dataset.bklk; render(); });
-  const bp=document.getElementById("bkPorter"); if(bp) bp.onchange=()=>{ _bkDraft.porter=bp.value; const w=document.getElementById("bkPorterNewWrap"); if(w) w.style.display=bp.value==="__new"?"":"none"; };
+  const bp=document.getElementById("bkPorter"), bpRole=document.getElementById("bkPorterRole");
+  const updPor=()=>{ const isNew=bp&&bp.value==="__new", worker=isNew&&bpRole&&bpRole.value==="worker"; const w=document.getElementById("bkPorterNewWrap"); if(w) w.style.display=isNew?"":"none";
+    ["bkLoadFields","bkLoadKinds"].forEach(id=>{ const el=document.getElementById(id); if(el) el.style.display=worker?"none":""; }); const h=document.getElementById("bkWorkerOnlyHint"); if(h) h.style.display=worker?"":"none";
+    const sv=document.getElementById("bkLoadSave"); if(sv) sv.textContent=worker?"💾 حفظ رئيس العمّال":isNew?"💾 حفظ الشخص (والحمل إن كُتب)":"💾 تسجيل عمل الحمل"; };
+  if(bp){ bp.onchange=()=>{ _bkDraft.porter=bp.value; updPor(); }; } if(bpRole) bpRole.addEventListener("change",updPor); updPor();
   const lq=document.getElementById("bkLoadQty"), lr=document.getElementById("bkLoadRate"), la=document.getElementById("bkLoadAmt");
   const updLoad=()=>{ if(la&&!la.dataset.touched) la.value=(+(lq&&lq.value)||0)*(+(lr&&lr.value)||0)||""; }; if(lq) lq.oninput=updLoad; if(lr) lr.oninput=updLoad; if(la) la.oninput=()=>{ la.dataset.touched="1"; };
   on("bkLoadSave",doBrickLoadSave);
@@ -7291,6 +7302,8 @@ function _rand(n){ const a=new Uint8Array(n); crypto.getRandomValues(a); return 
    CHANGELOG: الأحدث أولًا. لكل تعديل: ic, t (العنوان), d (الشرح), go (أين: tab + storeSub/contactsSub/…), sel (العنصر الذي يُشار إليه).
    **قاعدة: كل إصدار جديد يضيف مدخلًا هنا** — يظهر للمستخدم مرة واحدة بعد التحديث مع «تخطي» و«أرني» و«جولة». */
 const CHANGELOG=[
+  {v:"2.47.0",date:"2026-10-18",items:[
+    {ic:"👷",t:"رئيس العمّال بلا «حمل»",d:"في دبو ▸ العمّال والحمّالون: عند إضافة شخص جديد بصفة «رئيس العمّال» تختفي خانات الحمل، وتحفظه فقط — أجرته تُضاف تلقائيًا من كل خلطة. والحمل صار اختياريًا لأي شخص جديد.",go:{tab:"brick",brickSub:"porters"},sel:"#bkLoadSave"}]},
   {v:"2.46.0",date:"2026-10-18",items:[
     {ic:"🧱",t:"دبو: البيع والشراء بأربعة أزرار",d:"في دبو ▸ «💰 البيع والشراء» أربعة أزرار في الأعلى: 🧾 بيع نقدي · 📒 بيع آجل · 💵 شراء نقدي · 📥 شراء آجل — والشراء صار هنا أيضًا.",go:{tab:"brick",brickSub:"sales"},sel:".bk-modes"},
     {ic:"🧾",t:"النموذج كفاتورة",d:"في البيع الآجل والشراء الآجل يظهر الزبون أو المورّد تحت الأزرار مباشرة (إلزامي) ثم الطوب أو المادة والمجموع و«دُفع الآن» الذي يبدأ بـ 0 والمتبقي. في النقدي لا يظهر الطرف، فقط طريقة الدفع.",go:{tab:"brick",brickSub:"sales"},sel:".inv-card"}]},
@@ -8241,7 +8254,7 @@ setTimeout(()=>{ if(!window.cloudReady){ const el=document.getElementById("cloud
 <!-- PWA: service-worker registration + update/install wiring -->
 <script>
 (function(){
-  var APP_VERSION = "2.46.0";
+  var APP_VERSION = "2.47.0";
   window.APP_VERSION = APP_VERSION;
   function $(id){ return document.getElementById(id); }
   // سجّل إصدار هذا الجهاز في الحالة المتزامنة (ليُنبَّه الجهاز القديم)
