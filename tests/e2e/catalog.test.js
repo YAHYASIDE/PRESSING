@@ -56,7 +56,7 @@ const ARDIG=/[٠-٩۰-۹]/; // Arabic-Indic / Extended digits
   await page.click('[data-tab="dashboard"]'); await page.waitForTimeout(300);
   const dashText = await page.textContent('.screen');
   log('DASHBOARD has Arabic-Indic digits:', ARDIG.test(dashText), '(want false)');
-  await page.click('[data-tab="reports"]'); await page.waitForTimeout(300);
+  await page.click('#fabBtn'); await page.click('.fab-item[data-tab="reports"]'); await page.waitForTimeout(300);
   const repText = await page.textContent('.screen');
   log('REPORTS has Arabic-Indic digits:', ARDIG.test(repText), '(want false)');
 

@@ -18,7 +18,7 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
   });
 
   // go to expenses > storemat
-  await page.click('[data-tab="expenses"]'); await page.waitForTimeout(300);
+  await page.click('#fabBtn'); await page.click('.fab-item[data-tab="expenses"]'); await page.waitForTimeout(300);
   const segHasStoremat = await page.$('[data-sub="storemat"]');
   log('storemat sub-tab present:', !!segHasStoremat);
   await page.click('[data-sub="storemat"]'); await page.waitForTimeout(300);
@@ -49,7 +49,7 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
   log('recent list shows صابون:', /صابون/.test(await page.textContent('.screen')));
 
   // unified report reflects internal purchase as laundry expense
-  await page.click('[data-tab="reports"]'); await page.waitForTimeout(300);
+  await page.click('#fabBtn'); await page.click('.fab-item[data-tab="reports"]'); await page.waitForTimeout(300);
   const panel = await page.evaluate(()=>{ const p=[...document.querySelectorAll('.panel')].find(x=>/الربح الموحّد/.test(x.textContent)); return p?p.textContent.replace(/\s+/g,' '):null; });
   log('report internal materials 450:', /مواد من المتجر \(داخلي\)450/.test(panel) || /450/.test(panel));
 

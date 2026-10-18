@@ -30,7 +30,7 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
   log('أحمد oldest 10 days: '+(!!ahmed&&ahmed.days===10)+' (expect true)');
   log('unsaved سارة listed: '+deb.some(d=>d.n==='سارة'&&d.t===500)+' (expect true)');
   log('laundry partner excluded: '+!deb.some(d=>d.n==='المغسلة')+' (expect true) | paid excluded: '+!deb.some(d=>d.n==='مدفوع')+' (expect true)');
-  await page.click('[data-tab="contacts"]'); await page.waitForTimeout(150);
+  await page.click('#fabBtn'); await page.click('.fab-item[data-tab="contacts"]'); await page.waitForTimeout(150);
   await page.click('[data-csub="debts"]'); await page.waitForTimeout(200);
   log('debts tab shows cards: '+((await page.$$('[data-debt-wa]')).length===2)+' (expect true)');
   await page.click('[data-debt-wa]'); await page.waitForTimeout(200);

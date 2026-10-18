@@ -44,7 +44,7 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
   await page.evaluate(()=>{ state.carOps[0].paid=true; save(); render(); }); await page.waitForTimeout(150);
   log('panel disappears when no debts: '+((await page.$$('.sd-panel')).length===0)+' (expect true)');
   // contacts keeps all-sections view
-  await page.click('[data-tab="contacts"]'); await page.click('[data-csub="debts"]'); await page.waitForTimeout(250);
+  await page.click('#fabBtn'); await page.click('.fab-item[data-tab="contacts"]'); await page.click('[data-csub="debts"]'); await page.waitForTimeout(250);
   log('contacts debts still has all sections: '+((await page.$$('[data-debtkind]')).length===6)+' (expect true)');
   log('\nERRORS:', errors.length?errors.join('\n'):'NONE ✅');
   await browser.close();

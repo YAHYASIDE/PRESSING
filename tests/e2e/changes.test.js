@@ -52,7 +52,7 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
   await page.fill('#lockName','سالم المدير'); await page.fill('#lockInput','1234'); await page.click('#lockEnter'); await page.waitForTimeout(500);
   const role = await page.evaluate(()=>currentRole);
   log('logged in role (expect manager):', role);
-  const tabs = await page.$$eval('.nav-btn', els=>els.map(e=>e.dataset.tab));
+  const tabs = await page.$$eval('.nav-btn,.fab-item', els=>els.map(e=>e.dataset.tab));
   log('manager sees reports tab:', tabs.includes('reports'));
   const bellVisible = await page.evaluate(()=>{ const b=document.getElementById('notifBtn'); return b && b.style.display!=='none'; });
   log('manager sees notification bell:', bellVisible);

@@ -96,7 +96,7 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
   const rep2=await page.evaluate(d=>{ openClosing(d); return document.getElementById('receiptContent').textContent; },T);
   log('day report after closing: 100,000 / 70,000 / 30,000 and transferred 70,000 and locked: '+(/100,000/.test(rep2)&&/70,000/.test(rep2)&&/30,000/.test(rep2)&&/إجمالي المحوّل للمتجر/.test(rep2)&&/🔒 مغلق/.test(rep2))+' (expect true)');
   await page.click('#receiptClose');
-  await page.click('[data-tab="reports"]'); await page.waitForTimeout(400);
+  await page.click('#fabBtn'); await page.click('.fab-item[data-tab="reports"]'); await page.waitForTimeout(400);
   const rp=await page.textContent('main');
   const ts=await page.evaluate(()=>transfersSummary(x=>inRange(x)));
   log('reports: transfers summary 1 day / 70,000 / cash 30,000 / bankily 20,000 / bank 20,000 / debts 30,000: '+(ts.n===1&&ts.total===70000&&ts.cash===30000&&ts.bankily===20000&&ts.bank===20000&&ts.newDebts===30000&&ts.collected===0)+' (expect true)');

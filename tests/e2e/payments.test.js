@@ -50,7 +50,7 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
   await page.click('#storePayPm [data-pm="bankily"]'); await page.click('#storePayOk'); await page.waitForTimeout(200);
   log('debt collected via بنكيلي: '+(await page.evaluate(()=>state.storeCash.some(m=>m.type==='in'&&m.amount===300&&m.payMethod==='bankily')))+' (expect true)');
   // 6) expense paid via مصرفي
-  await page.click('[data-tab="expenses"]'); await page.waitForTimeout(200);
+  await page.click('#fabBtn'); await page.click('.fab-item[data-tab="expenses"]'); await page.waitForTimeout(200);
   await page.fill('#expAmount','200'); await page.fill('#expReason','شامبو'); await page.click('#expPm [data-pm="masrvi"]'); await page.click('#expSave'); await page.waitForTimeout(300);
   log('expense via مصرفي: '+(await page.evaluate(()=>state.expenses[0]&&state.expenses[0].payMethod==='masrvi'))+' (expect true)');
 
@@ -59,7 +59,7 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
   log('breakdown: '+JSON.stringify(r));
   log('cash 700 / بنكيلي 1300 / مصرفي 500 / سداد 600: '+(r.cash===700&&r.bankily===1300&&r.masrvi===500&&r.sedad===600)+' (expect true)');
   log('مصرفي net = 500 − 200 = 300: '+(r.masrviNet===300)+' (expect true)');
-  await page.click('[data-tab="reports"]'); await page.waitForTimeout(250);
+  await page.click('#fabBtn'); await page.click('.fab-item[data-tab="reports"]'); await page.waitForTimeout(250);
   const rep = await page.textContent('#payBreakPanel');
   log('reports panel shows bank total 2,400: '+(rep.includes('2,400')&&rep.includes('بنكيلي')&&rep.includes('سداد'))+' (expect true)');
   await page.click('[data-tab="dashboard"]'); await page.waitForTimeout(200);

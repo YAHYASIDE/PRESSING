@@ -19,7 +19,7 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
   const d = await page.evaluate(()=>debtors().map(x=>({n:x.name,t:x.total,by:x.by})));
   const a=d.find(x=>x.n==='أهل دار أنفع');
   log('per-kind totals (car 500, rug 700, lnd 2000, store 300): '+(!!a&&a.by.car===500&&a.by.rug===700&&a.by.lnd===2000&&a.by.store===300&&a.t===3500)+' (expect true)');
-  await page.click('[data-tab="contacts"]'); await page.click('[data-csub="debts"]'); await page.waitForTimeout(250);
+  await page.click('#fabBtn'); await page.click('.fab-item[data-tab="contacts"]'); await page.click('[data-csub="debts"]'); await page.waitForTimeout(250);
   log('section buttons shown with totals: '+((await page.$$('[data-debtkind]')).length===6&&/🚗 السيارات/.test(await page.textContent('.debt-kinds')))+' (expect true)');
   let txt=await page.textContent('main');
   log('"all" view shows per-section breakdown on card: '+(/السيارات: 500/.test(txt)&&/الملابس: 2,000/.test(txt))+' (expect true)');
@@ -38,7 +38,7 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
   // store tab shows store only (no switcher)
   await page.click('[data-tab="store"]'); await page.click('[data-ssub="debts"]'); await page.waitForTimeout(250);
   log('store debts tab has no section switcher and shows 300: '+((await page.$$('[data-debtkind]')).length===0&&/300/.test(await page.textContent('main')))+' (expect true)');
-  await page.click('[data-tab="contacts"]'); await page.click('[data-csub="debts"]'); await page.waitForTimeout(250);
+  await page.click('#fabBtn'); await page.click('.fab-item[data-tab="contacts"]'); await page.click('[data-csub="debts"]'); await page.waitForTimeout(250);
   await page.click('[data-debtkind="all"]'); await page.waitForTimeout(200);
   log('back to all: 4,500 (incl. truck): '+/4,500/.test(await page.textContent('.debt-stat'))+' (expect true)');
   log('bot debts reply split by section: '+(await page.evaluate(()=>/🚗 السيارات: 1,500/.test(tgHandleText('📌 الديون'))&&/👕 الملابس: 2,000/.test(tgHandleText('📌 الديون'))))+' (expect true)');

@@ -34,7 +34,7 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
   // datebar present on other screens
   await page.click('[data-tab="laundry"]'); await page.waitForTimeout(200);
   log('laundry has datebar:', !!(await page.$('.datebar')));
-  await page.click('[data-tab="expenses"]'); await page.waitForTimeout(200);
+  await page.click('#fabBtn'); await page.click('.fab-item[data-tab="expenses"]'); await page.waitForTimeout(200);
   log('expenses has datebar:', !!(await page.$('.datebar')));
   await page.click('[data-tab="store"]'); await page.waitForTimeout(200);
   await page.click('[data-ssub="pos"]'); await page.waitForTimeout(200);

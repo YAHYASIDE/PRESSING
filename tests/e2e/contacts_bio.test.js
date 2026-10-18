@@ -44,7 +44,7 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
 
   // ===== SUPPLIERS =====
   await page.evaluate(()=>{ state.storeProducts=[{id:'p1',name:'صابون',buyPrice:100,sellPrice:150,stock:5,minStock:0,image:'data:image/jpeg;base64,AAAA',editedAt:iso(new Date())}]; state.suppliers=[]; state.storePurchases=[]; state.storeCash=[]; state.storeSales=[]; state.storeCustomers=[]; save(); render(); });
-  await page.click('[data-tab="contacts"]'); await page.waitForTimeout(200);
+  await page.click('#fabBtn'); await page.click('.fab-item[data-tab="contacts"]'); await page.waitForTimeout(200);
   log('contacts head:', (await page.textContent('.screen-head h2')).trim());
   await page.click('[data-csub="suppliers"]'); await page.waitForTimeout(200);
   await page.fill('#spName','مورّد الصابون'); await page.fill('#spPhone','22334455'); await page.fill('#spCategory','منظفات');
@@ -58,7 +58,7 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
   await page.selectOption('#tradeParty','s:'+(await page.evaluate(()=>state.suppliers[0].id))); await page.click('#tradeSave'); await page.waitForTimeout(250);
   const link = await page.evaluate(()=>{ const s=state.suppliers[0]; return { linked: state.storePurchases[0].supplierId===s.id, bal: supplierBalance(s), suppliers: state.suppliers.length }; });
   log('purchase linked to supplier:', link.linked, '| balance owed:', link.bal, '(expect 1000) | no duplicate supplier:', link.suppliers===1);
-  await page.click('[data-tab="contacts"]'); await page.waitForTimeout(150);
+  await page.click('#fabBtn'); await page.click('.fab-item[data-tab="contacts"]'); await page.waitForTimeout(150);
   await page.click('[data-csub="suppliers"]'); await page.waitForTimeout(150);
   await page.click('[data-sp-pay]'); await page.waitForTimeout(200);
   await page.fill('#storePayAmt','600'); await page.click('#storePayOk'); await page.waitForTimeout(250);

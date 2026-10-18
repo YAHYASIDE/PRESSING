@@ -60,12 +60,12 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
   const ws = await page.evaluate(()=>workerStats(()=>true).map(w=>w.name+':'+w.n+':'+w.amt));
   log('worker stats: '+JSON.stringify(ws));
   log('أحمد 3 ops 2000, سيدي 2 ops 1700: '+(ws.includes('أحمد:3:2000')&&ws.includes('سيدي:2:1700'))+' (expect true)');
-  await page.click('[data-tab="reports"]'); await page.waitForTimeout(250);
+  await page.click('#fabBtn'); await page.click('.fab-item[data-tab="reports"]'); await page.waitForTimeout(250);
   const rp = await page.textContent('main');
   log('reports show workers + closings panels: '+(/إنتاجية العمّال/.test(rp)&&/جرد الصندوق/.test(rp)&&/🏆/.test(rp))+' (expect true)');
 
   // ===== 4) recurring expenses =====
-  await page.click('[data-tab="expenses"]'); await page.waitForTimeout(200);
+  await page.click('#fabBtn'); await page.click('.fab-item[data-tab="expenses"]'); await page.waitForTimeout(200);
   await page.fill('#recName','إيجار'); await page.fill('#recAmt','5000'); await page.fill('#recDay','1'); await page.click('#recPm [data-pm="bankily"]'); await page.click('#recAdd'); await page.waitForTimeout(250);
   const re = await page.evaluate(()=>({n:state.recurring.length, auto:state.expenses.filter(e=>e.recurringId).map(e=>({id:e.id,amt:e.amount,pm:e.payMethod,day:ymd(e.date)}))}));
   log('recurring added + this month expense created once: '+(re.n===1&&re.auto.length===1&&re.auto[0].amt===5000&&re.auto[0].pm==='bankily'&&/-01$/.test(re.auto[0].day))+' (expect true) '+JSON.stringify(re.auto));
@@ -97,7 +97,7 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
   log('csv has BOM + sep + sections: '+(csv.charCodeAt(0)===0xFEFF&&csv.includes('sep=,')&&csv.includes('السيارات')&&csv.includes('الملابس')&&csv.includes('جرد الصندوق')&&csv.includes('الملخص'))+' (expect true)');
   log('csv rows contain data: '+(csv.includes('A1')&&csv.includes('قميص ×4')&&csv.includes('دخل بنكيلي'))+' (expect true)');
   await page.evaluate(()=>{ navigator.canShare=()=>false; });
-  await page.click('[data-tab="reports"]'); await page.waitForTimeout(200);
+  await page.click('#fabBtn'); await page.click('.fab-item[data-tab="reports"]'); await page.waitForTimeout(200);
   const [dl] = await Promise.all([ page.waitForEvent('download',{timeout:8000}), page.click('#exportExcel') ]);
   log('excel button downloads .csv: '+/\.csv$/.test(dl.suggestedFilename())+' (expect true) ['+dl.suggestedFilename()+']');
 

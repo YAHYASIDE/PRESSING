@@ -33,7 +33,7 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
   await page.click('#receiptClose');
 
   // ===== التقرير الشهري =====
-  await page.click('[data-tab="reports"]'); await page.waitForTimeout(250);
+  await page.click('#fabBtn'); await page.click('.fab-item[data-tab="reports"]'); await page.waitForTimeout(250);
   log('monthly panel present: '+(await page.isVisible('#monthlyPanel'))+' (expect true)');
   log('chart has 12 columns: '+((await page.$$('#mrChart .mr-col')).length===12)+' (expect true)');
   const prevKey = await page.evaluate(()=>prevMonthKey(monthKey(new Date())));

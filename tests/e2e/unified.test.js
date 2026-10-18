@@ -32,7 +32,7 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
   log('dashboard has ربح المتجر:', /ربح المتجر/.test(dash));
 
   // reports unified panel
-  await page.click('[data-tab="reports"]'); await page.waitForTimeout(300);
+  await page.click('#fabBtn'); await page.click('.fab-item[data-tab="reports"]'); await page.waitForTimeout(300);
   const panel = await page.evaluate(()=>{
     const panels=[...document.querySelectorAll('.panel')];
     const p=panels.find(x=>/الربح الموحّد/.test(x.textContent));

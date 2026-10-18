@@ -525,6 +525,15 @@
   «👷 رئيس العمّال» تُخفى خانات الحمل (`#bkLoadFields`, `#bkLoadKinds`، تلميح `#bkWorkerOnlyHint`) والزر «💾 حفظ رئيس العمّال» (`updPor` في
   `bindBrick`)؛ و`doBrickLoadSave` يحفظ الشخص فقط إن لم يُكتب مبلغ (الحمل **اختياري لأي شخص جديد**، وإلزامي فقط لتسجيل عمل لشخص موجود).
   الاختبار `tests/e2e/brick_worker_add.test.js`.
+- **لا شريط علوي + زر «＋» (2.49.0) — طلب المالك:** `header.top` مخفي في كل الشاشات (`display:none!important`؛ يبقى في DOM لـ`#brandLogo`).
+  زر دائري عائم `#fabBtn` (`.fab`) **أسفل اليمين فوق القائمة السفلية** (`right` + `bottom:74px` + safe-area؛ على الشاشات العريضة 20px)
+  يفتح `#fabMenu` (`.fab-menu`، **`.fab-menu[hidden]{display:none!important}` ضروري** لأن `display:flex` يتغلّب على `hidden`) فيه:
+  `#fabTabs` (تُرسم في `renderNav` من `FAB_TABS`: 👥 الزبائن `contacts` · 💸 المصروفات `expenses` · 📈 التقارير `reports` — العامل بلا تقارير)
+  بأزرار `.fab-item[data-tab]`، ثم `#notifBtn` (🔔 الإشعارات + `#notifBadge`، للمالك/المدير) و`#settingsBtn` (⚙️، بالكود كما كان).
+  `fabOpen/fabClose/fabToggle`؛ يُغلق عند اختيار عنصر أو الضغط خارجه أو Esc. شارة `#fabBadge` على الزر = إشعارات غير مقروءة
+  (`updateNotifBadge`)، والزر يأخذ `.on` عندما تكون الشاشة الحالية من القائمة. **القائمة السفلية 6 أزرار فقط** (الرئيسية/السيارات/
+  الملابس/السجاد/دبو/المتجر) بخط أكبر. **في الاختبارات:** `await page.click('#fabBtn'); await page.click('.fab-item[data-tab="reports"]')`.
+  تقريب: `wagesRange` و`utilityCost` يُرجعان أعدادًا صحيحة (كان «ربح المغسلة» يظهر بكسور). الاختبار `tests/e2e/fab_menu.test.js`.
 - **دبو: «📊 الملخص والتقارير» تبويب واحد (2.48.0) — قرار المجلس، المرحلة الأولى:** `BRICK_SUBS` صار 8 (لا «التقارير»؛
   `state.brickSub==="reports"` يوصل إلى `home`). `brickScreenHome()` أربعة أقسام: **«📅 أرقام الفترة»** `#bkPeriod` يتبع شريط التاريخ العام
   (يظهر في كل تبويبات دبو عدا الديون) مع خطوة يوم `.bk-step` (`[data-bk-dayjump="-1|1"]` ◀ ▶ + «اليوم»، يضبط `state.dateFrom=dateTo` و

@@ -349,9 +349,9 @@
     nav.side{width:100%;flex-direction:row;overflow-x:auto;padding:4px 6px;gap:4px;order:2;position:sticky;bottom:0;
       background:var(--surface);border-top:1px solid var(--line);border-inline-start:none;z-index:20}
     nav.side{padding:4px 4px calc(4px + env(safe-area-inset-bottom,0px));gap:2px}
-    .nav-btn{flex:1 1 0;min-width:0;flex-direction:column;gap:2px;padding:5px 1px;font-size:.62rem;text-align:center;border-radius:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    @media (max-width:380px){ .nav-btn{font-size:.55rem;letter-spacing:-.01em} }
-    .nav-btn svg{width:19px;height:19px}
+    .nav-btn{flex:1 1 0;min-width:0;flex-direction:column;gap:2px;padding:5px 1px;font-size:.7rem;text-align:center;border-radius:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    @media (max-width:380px){ .nav-btn{font-size:.64rem;letter-spacing:-.01em} }
+    .nav-btn svg{width:21px;height:21px}
     .nav-badge{position:absolute;margin:0;top:1px;inset-inline-start:calc(50% + 6px)}
     #toast{bottom:calc(84px + env(safe-area-inset-bottom,0px));max-width:calc(100% - 24px)}
     .seg{overflow-x:auto}
@@ -828,6 +828,32 @@
   #cloudBtn.offline{background:#888}
   .notif-badge{position:absolute;top:-4px;left:-4px;min-width:17px;height:17px;padding:0 4px;border-radius:9px;background:var(--unpaid);color:#fff;font-size:.66rem;font-weight:800;display:flex;align-items:center;justify-content:center;line-height:1}
   #notifBtn{position:relative}
+  /* (2.49.0) الشريط العلوي مخفي في كل الشاشات؛ زر «＋» عائم أسفل اليمين */
+  header.top{display:none!important}
+  main{padding-top:calc(10px + env(safe-area-inset-top,0px))}
+  .fab{position:fixed;right:max(14px,env(safe-area-inset-right,0px));bottom:calc(74px + env(safe-area-inset-bottom,0px));z-index:45;
+    width:50px;height:50px;border-radius:50%;border:none;background:linear-gradient(135deg,var(--brand),var(--brand-2));color:#fff;
+    box-shadow:0 6px 18px rgba(15,31,46,.28);display:grid;place-items:center;padding:0}
+  .fab .fab-ic{font-size:1.7rem;font-weight:800;line-height:1;transition:transform .2s}
+  .fab[aria-expanded="true"] .fab-ic{transform:rotate(45deg)}
+  .fab.on{box-shadow:0 0 0 3px var(--surface),0 0 0 6px var(--brand)}
+  .fab .notif-badge{top:-3px;left:-3px}
+  .fab-menu{position:fixed;right:max(14px,env(safe-area-inset-right,0px));bottom:calc(132px + env(safe-area-inset-bottom,0px));z-index:46;
+    min-width:200px;max-width:calc(100vw - 28px);background:var(--surface);border:1px solid var(--line);border-radius:16px;
+    box-shadow:0 14px 40px rgba(15,31,46,.28);padding:6px;display:flex;flex-direction:column;gap:2px;animation:popIn .16s ease}
+  .fab-menu[hidden]{display:none!important}
+  #fabTabs{display:flex;flex-direction:column;gap:2px}
+  .fab-item{display:flex;align-items:center;gap:10px;width:100%;border:none;background:transparent;color:var(--ink);
+    padding:11px 12px;border-radius:12px;font-size:.95rem;font-weight:700;text-align:start}
+  .fab-item:hover{background:var(--soft)}
+  .fab-item.active{background:var(--brand);color:#fff}
+  .fab-item .fi-ic{width:24px;display:grid;place-items:center;font-size:1.1rem}
+  .fab-item .fi-ic svg{width:20px;height:20px}
+  .fab-item .fi-t{flex:1}
+  .fi-badge{background:var(--unpaid);color:#fff;font-size:.72rem;font-weight:800;min-width:20px;height:20px;border-radius:999px;display:grid;place-items:center;padding:0 6px}
+  @media (min-width:821px){ .fab{bottom:calc(20px + env(safe-area-inset-bottom,0px))} .fab-menu{bottom:calc(80px + env(safe-area-inset-bottom,0px))} }
+  @media (max-width:820px){ main{padding-bottom:70px} }
+  body.printing-report .fab, body.printing-report .fab-menu{display:none!important}
   .nt-row{display:flex;align-items:flex-start;gap:10px;padding:11px 4px;border-bottom:1px solid var(--line)}
   .nt-row.worker{background:var(--wash-bg,#fdf1de)}
   .nt-ic{font-size:1.1rem;flex:none}
@@ -1026,9 +1052,14 @@
       <img class="logo-img" src="" id="brandLogo" alt="مغاسيل صداقة">
       <h1>مغاسيل صداقة</h1>
     </div>
-    <button class="theme-btn" id="notifBtn" title="إشعارات العمّال" aria-label="الإشعارات" style="display:none;position:relative">🔔<span id="notifBadge" class="notif-badge" style="display:none">0</span></button>
-    <button class="theme-btn" id="settingsBtn" title="الإعدادات" aria-label="الإعدادات"></button>
   </header>
+  <!-- (2.49.0) لا شريط علوي: زر «＋» عائم أسفل اليمين فيه الإعدادات والتقارير والمصروفات والزبائن والإشعارات -->
+  <button type="button" id="fabBtn" class="fab" aria-label="المزيد" aria-expanded="false"><span class="fab-ic">＋</span><span id="fabBadge" class="notif-badge" style="display:none">0</span></button>
+  <div id="fabMenu" class="fab-menu" role="menu" hidden>
+    <div id="fabTabs"></div>
+    <button type="button" class="fab-item" id="notifBtn" title="إشعارات العمّال" aria-label="الإشعارات" style="display:none"><span class="fi-ic">🔔</span><span class="fi-t">الإشعارات</span><span id="notifBadge" class="fi-badge" style="display:none">0</span></button>
+    <button type="button" class="fab-item" id="settingsBtn" title="الإعدادات" aria-label="الإعدادات"><span class="fi-ic">⚙️</span><span class="fi-t">الإعدادات</span></button>
+  </div>
 
   <div class="layout">
     <nav class="side" id="nav"></nav>
@@ -1618,7 +1649,7 @@ function mWater(m){ return (m.water!==undefined&&m.water!=="")?(+m.water||0):(+m
 function sortedMeters(){ return state.meters.slice().sort((a,b)=>(a.savedAt||new Date(a.date).getTime())-(b.savedAt||new Date(b.date).getTime())); }
 function meterConsAt(i,list){ if(i<=0) return {elec:0,water:0}; return {elec:Math.max(0,mElec(list[i])-mElec(list[i-1])), water:Math.max(0,mWater(list[i])-mWater(list[i-1]))}; }
 function meterUse(m){return {elec:Math.max(0,(+m.elecEnd||0)-(+m.elecStart||0)), water:Math.max(0,(+m.waterEnd||0)-(+m.waterStart||0))};}
-function utilityCost(f){ const list=sortedMeters(); let t=0; for(let i=0;i<list.length;i++){ if(!f(list[i].date))continue; const u=meterConsAt(i,list); t+=u.elec*state.tariff.elec+u.water*state.tariff.water; } return t; }
+function utilityCost(f){ const list=sortedMeters(); let t=0; for(let i=0;i<list.length;i++){ if(!f(list[i].date))continue; const u=meterConsAt(i,list); t+=u.elec*state.tariff.elec+u.water*state.tariff.water; } return Math.round(t); }
 function wagesFor(f){return f===isToday?wagesToday() : f===isMonth?wagesMonth() : 0;}
 function totalExp(f){return manualExp(f)+utilityCost(f)+wagesFor(f);}
 /* kept name for backward calls -> now returns combined total */
@@ -1653,7 +1684,7 @@ function wagesRange(){
   let start=new Date(state.dateFrom+"T00:00:00"); if(start<mStart)start=new Date(mStart);
   let end=new Date(state.dateTo+"T00:00:00"); if(end>today)end=new Date(today);
   const days=[]; for(let d=new Date(start); d<=end; d.setDate(d.getDate()+1)) days.push(ymd(d));
-  return sum(state.workers, w=>{ let cnt=0; for(const ds of days){ if(!w.absent.some(a=>ymd(a)===ds)) cnt++; } return cnt*dayRate(w); });
+  return Math.round(sum(state.workers, w=>{ let cnt=0; for(const ds of days){ if(!w.absent.some(a=>ymd(a)===ds)) cnt++; } return cnt*dayRate(w); }));
 }
 function todayIncome(){return carIncome(isToday)+carpetIncome(isToday)+laundryIncome(isToday);}
 function monthIncome(){return carIncome(isMonth)+carpetIncome(isMonth)+laundryIncome(isMonth);}
@@ -1902,18 +1933,25 @@ function renderNav(){
     {id:"laundry",label:"الملابس",icon:I.fabric,badge:lndUnpaid},
     {id:"carpets",label:"السجاد",icon:I.rug,badge:unpaid},
     {id:"brick",label:"دبو",icon:I.box},
-    {id:"store",label:"المتجر",icon:I.shop,badge:storeLow},
-    {id:"contacts",label:"الزبائن",icon:I.usertag},
-    {id:"expenses",label:"المصروفات",icon:I.wallet},
-    {id:"reports",label:"التقارير",icon:I.chart}
+    {id:"store",label:"المتجر",icon:I.shop,badge:storeLow}
   ];
-  if(currentRole==="worker"){ items=items.filter(it=>it.id!=="reports"); if(state.tab==="reports") state.tab="dashboard"; }
+  // (2.49.0) الزبائن والمصروفات والتقارير داخل زر «＋» (FAB_TABS)
+  let more=FAB_TABS.slice();
+  if(currentRole==="worker"){ more=more.filter(it=>it.id!=="reports"); if(state.tab==="reports") state.tab="dashboard"; }
   document.getElementById("nav").innerHTML=items.map(it=>`
     <button class="nav-btn ${state.tab===it.id?'active':''}" data-tab="${it.id}">
       ${svg(it.icon)}<span>${it.label}</span>${it.badge?`<span class="nav-badge">${it.badge}</span>`:''}
     </button>`).join("");
   document.querySelectorAll(".nav-btn").forEach(b=>b.onclick=()=>{state.tab=b.dataset.tab;_dateCustomOpen=false;render();});
+  const ft=document.getElementById("fabTabs");
+  if(ft){ ft.innerHTML=more.map(it=>`<button type="button" class="fab-item ${state.tab===it.id?'active':''}" data-tab="${it.id}"><span class="fi-ic">${svg(it.icon)}</span><span class="fi-t">${it.label}</span></button>`).join("");
+    ft.querySelectorAll(".fab-item").forEach(b=>b.onclick=()=>{ fabClose(); state.tab=b.dataset.tab; _dateCustomOpen=false; render(); window.scrollTo(0,0); }); }
+  const fb=document.getElementById("fabBtn"); if(fb) fb.classList.toggle("on", more.some(it=>it.id===state.tab));
 }
+const FAB_TABS=[{id:"contacts",label:"الزبائن",icon:I.usertag},{id:"expenses",label:"المصروفات",icon:I.wallet},{id:"reports",label:"التقارير",icon:I.chart}];
+function fabOpen(){ const m=document.getElementById("fabMenu"), b=document.getElementById("fabBtn"); if(!m||!b) return; m.hidden=false; b.setAttribute("aria-expanded","true"); }
+function fabClose(){ const m=document.getElementById("fabMenu"), b=document.getElementById("fabBtn"); if(!m||!b) return; m.hidden=true; b.setAttribute("aria-expanded","false"); }
+function fabToggle(){ const m=document.getElementById("fabMenu"); if(m&&m.hidden) fabOpen(); else fabClose(); }
 
 /* ================= Screens ================= */
 function buildReportText(){
@@ -6778,7 +6816,7 @@ document.getElementById("themeBtn").onclick=()=>{ state.dark=!state.dark; applyT
 
 /* ---- icons for header buttons ---- */
 function applyHeaderIcons(){
-  const sb=document.getElementById("settingsBtn"); if(sb) sb.innerHTML=svg(I.gear);
+  const sb=document.querySelector("#settingsBtn .fi-ic"); if(sb) sb.innerHTML=svg(I.gear);
 }
 function updateNotifBadge(){
   const btn=document.getElementById("notifBtn"), bad=document.getElementById("notifBadge");
@@ -6787,6 +6825,7 @@ function updateNotifBadge(){
     const n=unseenActivity().length;
     if(bad){ if(n>0){ bad.style.display=""; bad.textContent=n>99?"99+":String(n); } else bad.style.display="none"; }
   } else { btn.style.display="none"; }
+  const fbad=document.getElementById("fabBadge"); if(fbad){ const n=(currentRole==="owner"||currentRole==="manager")?unseenActivity().length:0; fbad.style.display=n>0?"":"none"; fbad.textContent=n>99?"99+":String(n); }
 }
 const ACT_IC={ "غسيل سيارة":"🚗","طلب أفرشة":"🧺","مصروف":"💸","حالة أفرشة":"📦","تحصيل دفع":"💵","تسجيل دخول":"🔑","تسجيل عامل جديد":"🆕","إلغاء غسيل":"🚫","إلغاء طلب أفرشة":"🚫","حذف طلب أفرشة":"🗑️" };
 function openNotif(){
@@ -7295,6 +7334,10 @@ function _rand(n){ const a=new Uint8Array(n); crypto.getRandomValues(a); return 
    CHANGELOG: الأحدث أولًا. لكل تعديل: ic, t (العنوان), d (الشرح), go (أين: tab + storeSub/contactsSub/…), sel (العنصر الذي يُشار إليه).
    **قاعدة: كل إصدار جديد يضيف مدخلًا هنا** — يظهر للمستخدم مرة واحدة بعد التحديث مع «تخطي» و«أرني» و«جولة». */
 const CHANGELOG=[
+  {v:"2.49.0",date:"2026-10-18",items:[
+    {ic:"＋",t:"زر «＋» بدل الشريط العلوي",d:"الشريط العلوي اختفى من كل الشاشات فصار المكان أوسع. اضغط الزر الدائري «＋» أسفل اليمين لتجد: 👥 الزبائن · 💸 المصروفات · 📈 التقارير · 🔔 الإشعارات · ⚙️ الإعدادات. الرقم الأحمر على الزر = إشعارات جديدة.",go:{tab:"dashboard"},sel:"#fabBtn"},
+    {ic:"📱",t:"القائمة السفلية أخف",d:"في الأسفل الآن 6 أزرار فقط: الرئيسية · السيارات · الملابس · السجاد · دبو · المتجر، بخط أوضح.",go:{tab:"dashboard"},sel:"#nav"}
+  ]},
   {v:"2.48.0",date:"2026-10-18",items:[
     {ic:"📊",t:"دبو: الملخص والتقارير في مكان واحد",d:"تبويب «التقارير» دخل في «📊 الملخص والتقارير»: في الأعلى «📅 أرقام الفترة» (المبيعات · التكاليف · الربح) وتتبع أزرار التاريخ، وتحتها «⏱️ الآن» (الصندوق والإسمنت والتراب والديون والمخزون) ولا تتغيّر بالفترة.",go:{tab:"brick",brickSub:"home"},sel:"#bkPeriod"},
     {ic:"◀▶",t:"تنقّل بين الأيام بأرقام لاتينية",d:"زرّا «السابق» و«التالي» بجانب التاريخ للانتقال يومًا بيوم، وتقرير الشهر صار قائمة أشهر بالأرقام (10/2026) بدل خانة الهاتف التي كانت تظهر بالأرقام العربية.",go:{tab:"brick",brickSub:"home"},sel:".bk-step"},
@@ -7695,7 +7738,10 @@ function openLndReceipt(o){
 }
 
 /* ---- wire static controls (once) ---- */
-document.getElementById("settingsBtn").onclick=()=>{ requireCode(openSettings, meterCode(), "كود الإعدادات", "أدخل كود الإعدادات للدخول."); };
+document.getElementById("settingsBtn").onclick=()=>{ fabClose(); requireCode(openSettings, meterCode(), "كود الإعدادات", "أدخل كود الإعدادات للدخول."); }
+document.getElementById("fabBtn").onclick=(e)=>{ e.stopPropagation(); fabToggle(); };
+document.addEventListener("click",e=>{ const m=document.getElementById("fabMenu"); if(m && !m.hidden && !m.contains(e.target) && !e.target.closest("#fabBtn")) fabClose(); });
+document.addEventListener("keydown",e=>{ if(e.key==="Escape") fabClose(); });;
 const SETTINGS_TABS=["app","backup","accounts","prices","msgs","alerts"];
 function settingsTab(k){
   if(!SETTINGS_TABS.includes(k) && k!=="all") k="app";
@@ -7754,7 +7800,7 @@ function openSettings(tab){
   document.getElementById("settingsModal").style.display="flex";
 };
 document.getElementById("setClose").onclick=()=>document.getElementById("settingsModal").style.display="none";
-{ const nb=document.getElementById("notifBtn"); if(nb) nb.onclick=openNotif;
+{ const nb=document.getElementById("notifBtn"); if(nb) nb.onclick=()=>{ fabClose(); openNotif(); };
   const nc=document.getElementById("notifClose"); if(nc) nc.onclick=()=>document.getElementById("notifModal").style.display="none";
   const ns=document.getElementById("notifSeenBtn"); if(ns) ns.onclick=()=>{ markNotifSeen(); document.getElementById("notifModal").style.display="none"; };
   const tgSt=(msg,ok)=>{ const el=document.getElementById("tgStatus"); if(el){ el.textContent=msg; el.style.color=ok===true?"var(--ready)":ok===false?"var(--unpaid)":""; } };
@@ -8251,7 +8297,7 @@ setTimeout(()=>{ if(!window.cloudReady){ const el=document.getElementById("cloud
 <!-- PWA: service-worker registration + update/install wiring -->
 <script>
 (function(){
-  var APP_VERSION = "2.48.0";
+  var APP_VERSION = "2.49.0";
   window.APP_VERSION = APP_VERSION;
   function $(id){ return document.getElementById(id); }
   // سجّل إصدار هذا الجهاز في الحالة المتزامنة (ليُنبَّه الجهاز القديم)

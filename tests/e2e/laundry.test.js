@@ -82,7 +82,7 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
   log('dashboard mentions ملابس:', hasLaundryInc);
 
   // reports
-  await page.click('[data-tab="reports"]');
+  await page.click('#fabBtn'); await page.click('.fab-item[data-tab="reports"]');
   await page.waitForTimeout(400);
   const repText = await page.textContent('.screen');
   log('reports mentions مغسلة الملابس:', /مغسلة الملابس/.test(repText));

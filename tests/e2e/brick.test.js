@@ -83,7 +83,7 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
   // 7) الربح المجمّع في الرئيسية والتقارير يشمل دبو
   await page.click('[data-tab="dashboard"]'); await page.waitForTimeout(300);
   log('dashboard shows a «ربح دبو» card and includes it in the group profit: '+(await page.evaluate(()=>{ const t=document.querySelector('main').textContent; return /ربح دبو/.test(t) && /\+ دبو/.test(t); }))+' (expect true)');
-  await page.click('[data-tab="reports"]'); await page.waitForTimeout(400);
+  await page.click('#fabBtn'); await page.click('.fab-item[data-tab="reports"]'); await page.waitForTimeout(400);
   log('reports unified profit has a 🧱 دبو section: '+(await page.evaluate(()=>/🧱 ربح دبو/.test(document.querySelector('main').textContent) && /دبو \(مصنع الطوب\)/.test(document.querySelector('main').textContent)))+' (expect true)');
   log('periodSummary.group includes brick profit: '+(await page.evaluate(()=>{ const t=ymd(new Date()); const s=periodSummary(t,t); return s.brick===brickFin(x=>ymd(x)===t).profit && s.group===s.lndProfit+s.storeMargin+s.brick; }))+' (expect true)');
   log('CSV export has brick sections: '+(await page.evaluate(()=>{ const c=exportCSV('2000-01-01',ymd(new Date())); return /دبو — الخلطات/.test(c) && /دبو — مبيعات الطوب/.test(c) && /دبو — الصندوق/.test(c); }))+' (expect true)');

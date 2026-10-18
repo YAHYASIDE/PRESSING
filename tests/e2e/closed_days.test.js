@@ -120,7 +120,7 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
   log('expense cancelled not deleted: '+(await page.evaluate(()=>{ const e=state.expenses.find(x=>x.id==='exp1'); return !!e && e.cancelled===true && manualExp(()=>true)===0; }))+' (expect true)');
 
   // ===== 7) التقرير =====
-  await page.click('[data-tab="reports"]'); await page.waitForTimeout(400);
+  await page.click('#fabBtn'); await page.click('.fab-item[data-tab="reports"]'); await page.waitForTimeout(400);
   const rep=await page.textContent('main');
   log('report table present with 3 rows: '+(/سجل تعديلات الأيام المغلقة/.test(rep) && (await page.$$('[data-cde]')).length===3)+' (expect true)');
   log('report row shows 45,000 / 50,000 / +5,000: '+/45,000/.test(rep)+' (expect true)');
