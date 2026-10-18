@@ -525,6 +525,14 @@
   «👷 رئيس العمّال» تُخفى خانات الحمل (`#bkLoadFields`, `#bkLoadKinds`، تلميح `#bkWorkerOnlyHint`) والزر «💾 حفظ رئيس العمّال» (`updPor` في
   `bindBrick`)؛ و`doBrickLoadSave` يحفظ الشخص فقط إن لم يُكتب مبلغ (الحمل **اختياري لأي شخص جديد**، وإلزامي فقط لتسجيل عمل لشخص موجود).
   الاختبار `tests/e2e/brick_worker_add.test.js`.
+- **زبائن بالرقم نفسه + كشوف دبو دفترًا (2.55.0) — «لماذا لا يظهر كشف حساب الديون الأخرى»:** في البيانات زبونان محفوظان بالرقم نفسه
+  («يحي سيدا» 8 ديون و«تجربة» دين واحد)؛ `storeParties` كان يدمجهما في بطاقة واحدة لكن `P.cust` = آخر واحد فقط، فيفتح «كشف»/«تحصيل» حساب «تجربة».
+  الآن `P.custs` (كل الزبائن بالرقم، و`P.cust` = صاحب أكبر دين، والاسم «أ + ب») وسطر «👥 n زبائن محفوظون بالرقم نفسه»؛ الكشف `[data-party-stmt]` →
+  `openPartyStatement(key)` → `openCustsStatement(P)` (يجمع `custLedger` لكل زبون + مشتريات/تسديدات المورّد بالرقم نفسه، **يحذف الحركات المكرّرة** لأن طلبات
+  المغسلة تُطابَق بالهاتف فتظهر لكل زبون، ولا ينقل سطر «⚖️ تسوية» الخاص بكل زبون؛ الرصيد = مجموع الحركات)، والتحصيل `[data-party-pay]` →
+  `_storePayCtx.kind="custMulti"` (يسدّد كل زبون بالدور مع حركة صندوق لكل واحد). في «الزبائن ▸ الديون»: `samePhoneCusts(phone)` > 1 → `[data-phone-stmt]`.
+  **كشوف دبو:** `ledgerRcptHTML({head,rows,final,drLbl,crLbl})` دفتر موحّد (الرصيد الآن، مجموع، «كان ← صار») لـ`openBrickStatement` و`openPorterStatement`.
+  الاختبار في `tests/e2e/store_parties.test.js`.
 - **الكشف PDF + «💬 كتابةً» كامل/جزئي (2.54.0):** نافذة الإيصال/الكشف `#receiptModal` أزرارها `.rcpt-acts`: `#receiptPdf` 📄 PDF، `#receiptImg` 📤 صورة،
   `#receiptText` 💬 كتابةً (يظهر للكشوف فقط)، `#receiptPrint`، `#receiptClose`. **PDF بلا مكتبة:** `receiptPdfBlob()` = صورة `receiptImageBlob()` تُقسَّم على
   صفحات A4 (595×842pt، هامش 28) وتُضمَّن JPEG (`/DCTDecode`) عبر كاتب PDF صغير `_pdfFromJpegs(pages)` (كتالوج/صفحات/صورة لكل صفحة + xref)؛

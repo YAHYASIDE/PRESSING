@@ -2570,13 +2570,38 @@ function brickPartyRows(type,id){
   brickLive(state.brickLedger).forEach(x=>{ if(x.partyType!==type||x.partyId!==id) return; const K=BRICK_LKIND[x.kind]||BRICK_LKIND.other; rows.push({date:x.date,label:K.ic+" "+(x.dir==="on"?"عليه":"له")+" — "+K.t+(x.qty?" "+fmt(x.qty)+" طوبة":"")+(x.note?" · "+x.note:"")+(x.cash?" · "+pmLabel(x.payMethod):""),debit:x.dir==="on"?(+x.amount||0):0,credit:x.dir==="for"?(+x.amount||0):0,ref:x.id,ledger:true}); });
   rows.sort((a,b)=>(a.date||"").localeCompare(b.date||"")); let bal=0; rows.forEach(r=>{ bal+=r.debit-r.credit; r.balance=bal; }); return rows;
 }
+/* (2.55.0) دفتر موحّد لكشوف دبو (مثل كشف الزبون): الرصيد الآن · المجموع · كل حركة مع «كان ← صار» — فيخرج PDF/الصورة مرتّبين.
+   rows:[{d,t,s,dr,cr}] بترتيب زمني؛ dr = عليه (+) ، cr = له (−)؛ final موجب = عليه لنا */
+function ledgerRcptHTML(o){ const E=_esc, R=o.rows.slice().sort((a,b)=>new Date(a.d)-new Date(b.d)), f=o.final, bal=n=>n>0?"عليه "+money(n):n<0?"له "+money(-n):"0";
+  let run=0; const rows=R.length?R.map(r=>{ const before=run; run+=(+r.dr||0)-(+r.cr||0);
+    return `<div class="lg-row"><div class="lg-top"><span class="lg-t">${E(r.t)}</span>${r.dr?`<b class="lg-a dr">+${money(r.dr)}</b>`:r.cr?`<b class="lg-a cr">−${money(r.cr)}</b>`:`<b class="lg-a nz">${money(r.show||0)} ✓</b>`}</div>
+      <div class="lg-sub"><bdi dir="ltr">${frD(r.d)}</bdi>${r.s?` · ${E(r.s)}`:""}${r.dr||r.cr?`<span class="lg-bal">كان ${bal(before)} ← صار <b>${bal(run)}</b></span>`:""}</div></div>`; }).join(""):`<div class="hint">لا تعاملات بعد.</div>`;
+  return `<div class="rcpt ledger">${rcptHeader(o.head)}
+    <div class="lg-final ${f>0?"on":f<0?"for":"zero"}"><small>الرصيد الآن</small><b>${f>0?"عليه لنا":f<0?"له علينا":"متعادل"} ${f?money(Math.abs(f))+" "+CUR:"✓"}</b></div>
+    <div class="lg-sum"><div><small>${o.drLbl||"عليه (مدين)"}</small><b>${money(sum(R,r=>+r.dr||0))}</b></div><div><small>${o.crLbl||"له / دفع (دائن)"}</small><b>${money(sum(R,r=>+r.cr||0))}</b></div><div><small>عدد الحركات</small><b>${R.length}</b></div></div>
+    ${rows}${o.extra||""}
+    <div class="rcpt-total"><span>${f>0?"المستحقّ عليه":f<0?"المستحقّ له":"الرصيد"}</span><b style="color:${f>0?"#d64545":f<0?"#2e9e6b":"inherit"}">${f?money(Math.abs(f))+" "+CUR:"متعادل ✓"}</b></div>${rcptFooter()}</div>`; }
+/* (2.55.0) كشف «الشخص» في المتجر ▸ الزبائن والديون: يجمع كل الزبائن المحفوظين بالرقم نفسه + المورّد بالرقم نفسه */
+function openPartyStatement(key){ const P=storeParties().find(x=>x.key===key); if(P) openCustsStatement(P); }
+/* كشف موحّد لعدّة زبائن بالرقم نفسه (+ المورّد بالرقم نفسه): حركات الطلبات تُطابَق بالهاتف فتتكرّر لكل زبون — تُحذف المكرّرة،
+   وسطر «⚖️ تسوية» الخاص بكل زبون لا يُنقل؛ الرصيد = مجموع الحركات */
+function openCustsStatement(P){
+  const custs=P.custs&&P.custs.length?P.custs:(P.cust?[P.cust]:[]), multi=custs.length>1, R=[], seen=new Set();
+  custs.forEach(c=>{ custLedger(c).rows.forEach(r=>{ if(/تسوية سجلات قديمة/.test(r.t)&&multi) return; const k=[r.d,r.t,+r.dr||0,+r.cr||0,r.show||0,r.no||""].join("|"); if(seen.has(k)) return; seen.add(k);
+    const own=/فاتورة متجر|دين له|دين عليه|حساب دبو|دفعة|💸/.test(r.t); R.push({d:r.d,t:r.t+(multi&&own?" · "+c.name:""),s:r.s||"",dr:+r.dr||0,cr:+r.cr||0,show:r.show}); }); });
+  if(P.sup){ supplierPurchases(P.sup).forEach(x=>R.push({d:x.date,t:"🛒 شراء منه "+(x.no||""),s:purOutstanding(x)>0?"متبقٍ "+money(purOutstanding(x)):"",dr:0,cr:+x.total||0})); (state.storeCash||[]).filter(m=>m.type==="out"&&m.ref===P.sup.id).forEach(m=>R.push({d:m.date,t:"💸 تسديد له (مورّد)",s:pmLabel(m.payMethod),dr:+m.amount||0,cr:0})); }
+  R.sort((a,b)=>new Date(a.d)-new Date(b.d)); const fin=Math.round(multi||P.sup?sum(R,r=>r.dr-r.cr):custLedger(custs[0]).final);
+  const name=P.name||custs.map(c=>c.name).join(" + ");
+  document.getElementById("receiptContent").innerHTML=ledgerRcptHTML({head:"📒 كشف حساب — "+_esc(name)+(P.phone?"<br><small>📞 <bdi dir=\"ltr\">"+_esc(P.phone)+"</bdi></small>":"")+(multi?"<br><small>👥 "+custs.length+" زبائن بالرقم نفسه</small>":"")+(P.sup?"<br><small>🏭 ومورّد: "+_esc(P.sup.name)+"</small>":""),rows:R,final:fin});
+  setRcptText({title:"كشف حساب",name,phone:P.phone||"",country:P.country||"222",final:fin,rows:R});
+  document.getElementById("receiptModal").style.display="flex";
+}
+function samePhoneCusts(phone){ const ph=normPhone(phone||""); return ph?(state.storeCustomers||[]).filter(c=>!c.isLaundry&&normPhone(c.phone||"")===ph):[]; }
 function openBrickStatement(type,id){
   const pt=brickParty(type,id); if(!pt) return; const rows=brickPartyRows(type,id); const bal=rows.length?rows[rows.length-1].balance:0;
-  const body=rows.length?rows.slice().reverse().map(r=>`<div class="rcpt-row" style="align-items:flex-start"><span>${frD(r.date)} — ${_esc(r.label)}</span><b style="white-space:nowrap">${r.debit?`<span style="color:#d64545">+${money(r.debit)}</span>`:`<span style="color:#2e9e6b">−${money(r.credit)}</span>`}<br><small style="color:#777">الرصيد ${money(r.balance)}</small></b></div>`).join(""):'<div class="hint">لا تعاملات بعد.</div>';
-  document.getElementById("receiptContent").innerHTML=`<div class="rcpt">${rcptHeader("🧱 كشف حساب دبو — "+_esc(pt.name)+(pt.phone?"<br><small>📞 "+_esc(pt.phone)+"</small>":"")+(pt.type==="sup"?"<br><small>🏭 مورّد"+(pt.category?" · "+_esc(pt.category):"")+"</small>":""))}
-    <div class="hint" style="margin:4px 0 6px">(+) عليه لنا · (−) له علينا — الأحدث أولًا</div>${body}
-    <div class="rcpt-total"><span>${bal>=0?"المستحقّ عليه":"المستحقّ له"}</span><b style="color:${bal>=0?'#d64545':'#2e9e6b'}">${money(Math.abs(bal))} ${CUR}</b></div>${rcptFooter()}</div>`;
-  setRcptText({title:"كشف حساب دبو",name:pt.name,phone:pt.phone||"",country:pt.country||"222",final:bal,rows:rows.map(r=>({d:r.date,t:r.label,s:"",dr:+r.debit||0,cr:+r.credit||0}))});
+  const R=rows.map(r=>({d:r.date,t:r.label,s:"",dr:+r.debit||0,cr:+r.credit||0}));
+  document.getElementById("receiptContent").innerHTML=ledgerRcptHTML({head:"🧱 كشف حساب دبو — "+_esc(pt.name)+(pt.phone?"<br><small>📞 <bdi dir=\"ltr\">"+_esc(pt.phone)+"</bdi></small>":"")+(pt.type==="sup"?"<br><small>🏭 مورّد"+(pt.category?" · "+_esc(pt.category):"")+"</small>":""),rows:R,final:bal});
+  setRcptText({title:"كشف حساب دبو",name:pt.name,phone:pt.phone||"",country:pt.country||"222",final:bal,rows:R});
   document.getElementById("receiptModal").style.display="flex";
 }
 
@@ -3117,15 +3142,12 @@ function brickPorterSettle(id,amount,method){ let left=+amount||0; const pr=bric
   return (+amount||0)-left; }
 function brickPorterJobs(id){ return [...brickLive(state.brickLoads).filter(x=>x.porterId===id&&brickIsJob(x)).map(x=>{ const T=BRICK_LOADK[x.kind]||BRICK_LOADK.other; return {date:x.date,label:T.t+" "+fmt(x.qty)+" "+T.u+(x.note?" · "+x.note:""),amount:+x.amount||0,paid:+x.paidAmount||0}; }),
   ...brickLive(state.brickBatches).filter(b=>b.workerId===id).map(b=>({date:b.date,label:"🧱 أجرة خلطة "+b.no+" · "+brickTypeName(b)+" "+fmt(b.bricks)+" طوبة · "+fmt(b.cementBags)+" خنشة",amount:+b.workerPay||0,paid:+b.workerPaidAmt||0}))].sort((a,b)=>(b.date||"").localeCompare(a.date||"")); }
-function openPorterStatement(id){ const pr=brickPorter(id); if(!pr) return; const L=brickPorterJobs(id);
-  const body=L.map(x=>`<div class="rcpt-row"><span>${frD(x.date)} — ${_esc(x.label)}</span><b>${money(x.amount)}${x.amount-x.paid>0?` <span style="color:#d64545">(باقٍ ${money(x.amount-x.paid)})</span>`:""}</b></div>`).join("")||'<div class="hint">لا أعمال.</div>';
-  document.getElementById("receiptContent").innerHTML=`<div class="rcpt">${rcptHeader(BRICK_PROLE[brickPersonRole(pr)].ic+" كشف حساب — "+_esc(pr.name)+" ("+BRICK_PROLE[brickPersonRole(pr)].t+")"+(pr.phone?"<br><small>📞 "+_esc(pr.phone)+"</small>":""))}${body}
-    <div class="rcpt-row"><span>المجموع</span><b>${money(sum(L,x=>x.amount))}</b></div><div class="rcpt-row"><span>المدفوع</span><b>${money(sum(L,x=>x.paid))}</b></div>
-    ${brickLive(state.brickLoads).filter(x=>x.porterId===id&&x.kind==="advance").map(a=>`<div class="rcpt-row"><span>${frD(a.date)} — 💵 سلفة ${a.note&&a.note!=="سلفة (دفع أكثر من المستحق)"?"· "+_esc(a.note):""}</span><b style="color:#d64545">${money(a.amount)}${+a.usedAmount?` (خُصم ${money(a.usedAmount)})`:""}</b></div>`).join("")}
-    ${(()=>{ const b=brickPersonBalance(id); return `<div class="rcpt-total"><span>${b>=0?"المستحقّ له":"عليه لنا (سلفة)"}</span><b style="color:${b>=0?'#d64545':'#2e9e6b'}">${money(Math.abs(b))} ${CUR}</b></div>`; })()}${rcptFooter()}</div>`;
-  { const R=[]; L.forEach(x=>{ R.push({d:x.date,t:x.label,s:x.paid>=x.amount?"مدفوع":x.paid>0?"دُفع "+money(x.paid):"",dr:0,cr:x.amount}); if(x.paid>0) R.push({d:x.date,t:"💵 قبض على: "+x.label,s:"",dr:x.paid,cr:0}); });
-    brickLive(state.brickLoads).filter(x=>x.porterId===id&&x.kind==="advance").forEach(a=>{ const left=(+a.amount||0)-(+a.usedAmount||0); if(left>0) R.push({d:a.date,t:"💵 سلفة"+(+a.usedAmount?" (خُصم منها "+money(a.usedAmount)+")":""),s:"",dr:left,cr:0}); });
-    R.sort((a,b)=>new Date(a.d)-new Date(b.d)); setRcptText({title:"كشف حساب "+BRICK_PROLE[brickPersonRole(pr)].t,name:pr.name,phone:pr.phone||"",country:pr.country||"222",final:-brickPersonBalance(id),rows:R}); }
+function openPorterStatement(id){ const pr=brickPorter(id); if(!pr) return; const L=brickPorterJobs(id), RL=BRICK_PROLE[brickPersonRole(pr)];
+  const R=[]; L.forEach(x=>{ R.push({d:x.date,t:x.label,s:x.paid>=x.amount&&x.amount>0?"مدفوع":x.paid>0?"دُفع "+money(x.paid):"",dr:0,cr:x.amount}); if(x.paid>0) R.push({d:x.date,t:"💵 قبض",s:"",dr:x.paid,cr:0}); });
+  brickLive(state.brickLoads).filter(x=>x.porterId===id&&x.kind==="advance").forEach(a=>{ const left=(+a.amount||0)-(+a.usedAmount||0); R.push({d:a.date,t:"💵 سلفة "+money(a.amount)+(+a.usedAmount?" (خُصم "+money(a.usedAmount)+")":"")+(a.note&&a.note!=="سلفة (دفع أكثر من المستحق)"?" · "+a.note:""),s:left>0?"متبقٍ عليه "+money(left):"خُصمت كلها",dr:left,cr:0}); });
+  const fin=-brickPersonBalance(id);
+  document.getElementById("receiptContent").innerHTML=ledgerRcptHTML({head:RL.ic+" كشف حساب — "+_esc(pr.name)+" ("+RL.t+")"+(pr.phone?"<br><small>📞 <bdi dir=\"ltr\">"+_esc(pr.phone)+"</bdi></small>":""),rows:R,final:fin,drLbl:"قبض / سلفة",crLbl:"أعمال (له)"});
+  setRcptText({title:"كشف حساب "+RL.t,name:pr.name,phone:pr.phone||"",country:pr.country||"222",final:fin,rows:R.filter(r=>r.dr||r.cr)});
   document.getElementById("receiptModal").style.display="flex"; }
 function brickScreenDebts(){
   const E=_esc, P=brickParties(), q=(state.brickSearch||"").trim();
@@ -3798,7 +3820,7 @@ function contactsDebts(noStats,fixedKind){
         ${ph?rb(`data-debt-wa="${E(d.key)}"`,"💬","واتساب","wa"):""}
         ${tl?`<a class="r-btn call" href="${tl}" title="اتصال"><span class="rb-ic">📞</span><small>اتصال</small></a>`:""}
         ${canPay?rb(`data-dc-pay="${d.custId}"`,"💵","تحصيل","pay"):""}
-        ${d.custId?rb(`data-dc-stmt="${d.custId}"`,"📄","كشف",""):rb(`data-dc-stmtk="${E(d.key)}"`,"📄","كشف","")}
+        ${samePhoneCusts(d.phone).length>1?rb(`data-phone-stmt="${E(d.phone)}"`,"📄","كشف",""):d.custId?rb(`data-dc-stmt="${d.custId}"`,"📄","كشف",""):rb(`data-dc-stmtk="${E(d.key)}"`,"📄","كشف","")}
       </div>
       <div class="dc-mini"><button type="button" class="dcm on" data-qd="on|${E(d.key)}">➕ عليه</button><button type="button" class="dcm for" data-qd="for|${E(d.key)}">➕ له</button>${d.custId?`<button type="button" class="dcm" data-dc-edit="${d.custId}" title="تعديل الزبون">✏️ تعديل</button><button type="button" class="dcm del" data-dc-del="${d.custId}" title="حذف الزبون">🗑️ حذف</button>`:`<button type="button" class="dcm" data-dc-savek="${E(d.key)}" title="حفظ في دليل الزبائن">💾 حفظ الزبون</button>`}</div>
     </div>`; }).join(""):`<div class="panel empty" style="grid-column:1/-1">${svg(I.empty)}${q?"لا يوجد مدين مطابق للبحث.":(kind==="all"?"لا توجد ديون على الزبائن 🎉":"لا توجد ديون في قسم "+debtKindLabel(kind)+" 🎉")}</div>`;
@@ -4605,13 +4627,13 @@ function manualDebtFormHTML(){
 function storeParties(){
   const by={}, nm=x=>(x||"").trim(), keyOf=(name,phone)=>{ const p=normPhone(phone||""); return p?"p:"+p:"n:"+nm(name); };
   const get=(name,phone,country)=>{ const k=keyOf(name,phone); return by[k]||(by[k]={key:k,name:nm(name),phone:phone||"",country:country||"222",cust:null,sup:null,on:0,crCust:0,crSup:0,items:[]}); };
-  (state.storeCustomers||[]).filter(c=>!c.isLaundry).forEach(c=>{ const on=custBalance(c.id), cr=custCredit(c.id); if(on<=0&&cr<=0) return; const P=get(c.name,c.phone,c.country); P.cust=c; P.on+=on; P.crCust+=cr;
+  (state.storeCustomers||[]).filter(c=>!c.isLaundry).forEach(c=>{ const on=custBalance(c.id), cr=custCredit(c.id); if(on<=0&&cr<=0) return; const P=get(c.name,c.phone,c.country); (P.custs=P.custs||[]).push(c); if(!P.cust||on>custBalance(P.cust.id)) P.cust=c; P.on+=on; P.crCust+=cr;
     (state.storeSales||[]).filter(x=>!x.cancelled&&x.customerId===c.id&&saleOutstanding(x)>0).forEach(x=>P.items.push({dir:"on",ic:"🧾",t:"فاتورة "+(x.no||""),date:x.date,amt:saleOutstanding(x)}));
     custManualDebts(c.id,"on").filter(x=>debtOutstanding(x)>0).forEach(x=>P.items.push({dir:"on",ic:"📝",t:"دين يدوي "+(x.note||""),date:x.date,amt:debtOutstanding(x),md:x.id}));
     custManualDebts(c.id,"for").filter(x=>debtOutstanding(x)>0).forEach(x=>P.items.push({dir:"for",ic:"📝",t:"له: "+(x.note||"دين له"),date:x.date,amt:debtOutstanding(x),md:x.id})); });
   (state.suppliers||[]).forEach(sp=>{ const b=supplierBalance(sp); if(b<=0) return; const P=get(sp.name,sp.phone,sp.country); P.sup=sp; P.crSup+=b; if(!P.phone&&sp.phone) P.phone=sp.phone;
     supplierPurchases(sp).filter(x=>purOutstanding(x)>0).forEach(x=>P.items.push({dir:"for",ic:"🛒",t:"شراء "+(x.no||"")+(sp.category?" · "+sp.category:""),date:x.date,amt:purOutstanding(x)})); });
-  return Object.values(by).map(P=>{ P.for=P.crCust+P.crSup; P.net=P.on-P.for; P.items.sort((a,b)=>new Date(a.date)-new Date(b.date)); const o=P.items[0]; P.days=o?Math.max(0,Math.floor((Date.now()-new Date(o.date))/864e5)):0; return P; })
+  return Object.values(by).map(P=>{ P.custs=P.custs||[]; if(P.custs.length>1) P.name=P.custs.map(c=>c.name).filter((n,i,a)=>n&&a.indexOf(n)===i).join(" + "); P.for=P.crCust+P.crSup; P.net=P.on-P.for; P.items.sort((a,b)=>new Date(a.date)-new Date(b.date)); const o=P.items[0]; P.days=o?Math.max(0,Math.floor((Date.now()-new Date(o.date))/864e5)):0; return P; })
     .sort((a,b)=>Math.abs(b.net)-Math.abs(a.net)||b.on+b.for-(a.on+a.for));
 }
 /* مقاصة: ما عليه يُسدَّد بما له (بلا حركة صندوق) — الأقدم أولًا في الجهتين */
@@ -4643,6 +4665,7 @@ function storeScreenDebts(){
         <div class="dc-amt party-net">${p.net>0?`<b>${money(p.net)}</b><small>عليه · ${CUR}</small>`:p.net<0?`<b style="color:var(--ready)">${money(-p.net)}</b><small>له · ${CUR}</small>`:`<b style="color:var(--ready);font-size:.9rem">متعادل ✓</b>`}</div>
       </div>
       ${ld>0?`<div class="meta" style="color:var(--brand);font-weight:800">🧺 وعليه للمغسلة أيضًا: ${money(ld)}</div>`:""}
+      ${p.custs.length>1?`<div class="meta" style="color:var(--wash);font-weight:700">👥 ${p.custs.length} زبائن محفوظون بالرقم نفسه (${p.custs.map(c=>E(c.name)).join("، ")}) — الكشف والتحصيل يجمعانهم</div>`:""}
       <button type="button" class="dc-toggle" data-debt-toggle="${E(k)}" data-n="${n}">${open?"▴ إخفاء التفاصيل":"▾ التفاصيل"} (${n})</button>
       <div class="dc-details" data-debt-det="${E(k)}" style="${open?"":"display:none"}">
         ${both?`<div class="meta">📥 عليه <b style="color:var(--unpaid)">${money(p.on)}</b> · 📤 له <b style="color:var(--ready)">${money(p.for)}</b></div>`:""}
@@ -4651,12 +4674,12 @@ function storeScreenDebts(){
       <div class="r-btns">
         ${ph?(p.on>0&&p.cust?rb(`data-debt-wa="c:${p.cust.id}"`,"💬","واتساب","wa"):`<a class="r-btn wa" href="https://wa.me/${ph}" target="_blank" rel="noopener" title="واتساب"><span class="rb-ic">💬</span><small>واتساب</small></a>`):""}
         ${tl?`<a class="r-btn call" href="${tl}" title="اتصال"><span class="rb-ic">📞</span><small>اتصال</small></a>`:""}
-        ${p.on>0&&p.cust?rb(`data-dc-pay="${p.cust.id}"`,"💵","تحصيل","pay"):""}
-        ${p.crCust>0?rb(`data-cc-pay="${p.cust.id}"`,"💸","تسديد له","pay"):""}
+        ${p.on>0&&p.cust?(p.custs.length>1?rb(`data-party-pay="${E(p.key)}"`,"💵","تحصيل","pay"):rb(`data-dc-pay="${p.cust.id}"`,"💵","تحصيل","pay")):""}
+        ${p.crCust>0?rb(`data-cc-pay="${(p.custs.find(c=>custCredit(c.id)>0)||p.cust).id}"`,"💸","تسديد له","pay"):""}
         ${p.crSup>0?rb(`data-sp-pay="${p.sup.id}"`,"💸","للمورّد","pay"):""}
         ${both&&currentRole!=="worker"?rb(`data-offset="${E(p.key)}"`,"⚖️","مقاصة "+money(Math.min(p.on,p.for)),""):""}
-        ${p.cust?rb(`data-dc-stmt="${p.cust.id}"`,"📄","كشف",""):""}
-        ${p.sup?rb(`data-sp-stmt="${p.sup.id}"`,"🛒",p.cust?"كشف المورّد":"كشف",""):""}
+        ${p.custs.length>1||(p.cust&&p.sup)?rb(`data-party-stmt="${E(p.key)}"`,"📄","كشف",""):p.cust?rb(`data-dc-stmt="${p.cust.id}"`,"📄","كشف",""):""}
+        ${p.sup&&!p.cust?rb(`data-sp-stmt="${p.sup.id}"`,"🛒","كشف",""):""}
       </div>
       ${p.cust?`<div class="dc-mini"><button type="button" class="dcm on" data-qd="on|id:${p.cust.id}">➕ عليه</button><button type="button" class="dcm for" data-qd="for|id:${p.cust.id}">➕ له</button></div>`:""}
     </div>`; }).join("");
@@ -4755,6 +4778,8 @@ function bindDebtsUI(){
   const dso=document.getElementById("debtSort"); if(dso) dso.onchange=()=>{ state.debtSort=dso.value; render(); };
   const cs=document.getElementById("contactSearch"); if(cs) cs.oninput=()=>{ state.contactSearch=cs.value; _refocus="contactSearch"; render(); };
   document.querySelectorAll("[data-dc-pay]").forEach(b=>b.onclick=()=>{ const c=storeCust(b.dataset.dcPay); if(c){ _storePayCtx={kind:"cust",id:c.id}; openStorePay(custBalance(c.id),"تحصيل من "+c.name); } });
+  document.querySelectorAll("[data-party-stmt]").forEach(b=>b.onclick=()=>openPartyStatement(b.dataset.partyStmt));
+  document.querySelectorAll("[data-party-pay]").forEach(b=>b.onclick=()=>{ const P=storeParties().find(x=>x.key===b.dataset.partyPay); if(P){ _storePayCtx={kind:"custMulti",ids:P.custs.map(c=>c.id)}; openStorePay(sum(P.custs,c=>custBalance(c.id)),"تحصيل من "+P.name); } });
   document.querySelectorAll("[data-dc-stmt]").forEach(b=>b.onclick=()=>{ const c=storeCust(b.dataset.dcStmt); if(c) openDirStatement(c); });
   document.querySelectorAll("[data-sp-pay]").forEach(b=>b.onclick=()=>{ const s=supplierById(b.dataset.spPay); if(s){ _storePayCtx={kind:"supplier",id:s.id}; openStorePay(supplierBalance(s),"تسديد للمورّد "+s.name); } });
   document.querySelectorAll("[data-sp-stmt]").forEach(b=>b.onclick=()=>{ const s=supplierById(b.dataset.spStmt); if(s) openSupplierStatement(s); });
@@ -5356,6 +5381,9 @@ function confirmStorePay(){
   if(_storePayCtx.kind==="sale"){
     const s=storeSale(_storePayCtx.id);
     if(s){ const pay=Math.min(amt,saleOutstanding(s)); s.paidAmount=(+s.paidAmount||0)+pay; if(saleOutstanding(s)<=0)s.paid=true; s.editedAt=iso(new Date()); addCashMove("in",pay,"تحصيل فاتورة "+s.no,s.customerId,s.id,pmVal("storePayPm")); logActivity("تحصيل متجر",s.no+" · "+money(pay)+" "+CUR); toast("تم التحصيل ✓"); }
+  } else if(_storePayCtx.kind==="custMulti"){
+    let left=amt, got=0; const pm=pmVal("storePayPm"); (_storePayCtx.ids||[]).map(storeCust).filter(Boolean).forEach(c=>{ if(left<=0) return; const pay=Math.min(left,custBalance(c.id)); if(pay<=0) return; const a=allocatePayment(c.id,pay); if(a>0){ addCashMove("in",a,"تحصيل من "+c.name,c.id,null,pm); left-=a; got+=a; } });
+    if(got>0){ logActivity("تحصيل متجر","من "+(_storePayCtx.ids||[]).map(id=>(storeCust(id)||{}).name).join(" + ")+" · "+money(got)+" "+CUR); toast("تم تحصيل "+money(got)+" ✓"); }
   } else if(_storePayCtx.kind==="cust"){
     const c=storeCust(_storePayCtx.id);
     if(c){ const bal=custBalance(c.id); const pay=Math.min(amt,bal); const allocated=allocatePayment(c.id,pay); addCashMove("in",allocated,"تحصيل من "+c.name,c.id,null,pmVal("storePayPm")); logActivity("تحصيل متجر","من "+c.name+" · "+money(allocated)+" "+CUR); toast("تم تحصيل "+money(allocated)+" ✓"); }
@@ -5565,6 +5593,7 @@ function saveQuickDebt(){ if(!_qd) return; const m=document.getElementById("qdMo
   const x={id:uid(),customerId:c.id,dir,amount:amt,paidAmount:0,paid:false,note,cash,payMethod:cash?"cash":undefined,date:d,by:currentUser,editedAt:d}; state.storeDebts.push(x);
   if(cash){ if(dir==="on") addCashMove("out",amt,"سلفة لـ "+c.name+" — "+note,c.id,x.id,"cash"); else addCashMove("in",amt,"استلام من "+c.name+" (دين له) — "+note,c.id,x.id,"cash"); }
   logActivity(dir==="on"?"دين يدوي عليه":"دين يدوي له",c.name+" · "+money(amt)+" "+CUR+" · "+note); m.style.display="none"; _qd=null; toast((dir==="on"?"سُجّل على ":"سُجّل لـ ")+c.name+" ✓"); render(); }
+document.addEventListener("click",e=>{ const b=e.target&&e.target.closest&&e.target.closest("[data-phone-stmt]"); if(!b) return; const cs=samePhoneCusts(b.dataset.phoneStmt); if(cs.length) openCustsStatement({custs:cs,name:cs.map(c=>c.name).filter((n,i,a)=>a.indexOf(n)===i).join(" + "),phone:b.dataset.phoneStmt,country:cs[0].country||"222"}); });
 document.addEventListener("click",e=>{ const t=e.target&&e.target.closest&&e.target.closest("[data-qd],[data-dc-stmtk],[data-dc-savek],#qdSave,#qdCancel"); if(!t) return;
   if(t.id==="qdSave") return saveQuickDebt(); if(t.id==="qdCancel"){ document.getElementById("qdModal").style.display="none"; _qd=null; return; }
   if(t.dataset.qd){ const [dir,key]=t.dataset.qd.split("|"); const c=key.startsWith("id:")?storeCust(key.slice(3)):debtorPerson(key); openQuickDebt(dir,c); return; }
@@ -7603,6 +7632,10 @@ function _rand(n){ const a=new Uint8Array(n); crypto.getRandomValues(a); return 
    CHANGELOG: الأحدث أولًا. لكل تعديل: ic, t (العنوان), d (الشرح), go (أين: tab + storeSub/contactsSub/…), sel (العنصر الذي يُشار إليه).
    **قاعدة: كل إصدار جديد يضيف مدخلًا هنا** — يظهر للمستخدم مرة واحدة بعد التحديث مع «تخطي» و«أرني» و«جولة». */
 const CHANGELOG=[
+  {v:"2.55.0",date:"2026-10-18",items:[
+    {ic:"📒",t:"كشف الحساب يجمع كل من له الرقم نفسه",d:"إن حُفظ زبونان بالرقم نفسه (مثل «يحي سيدا» و«تجربة») تظهر بطاقة واحدة تذكرهما، و«📄 كشف» يعرض حركات الاثنين معًا بالرصيد الصحيح، و«💵 تحصيل» يسدّد ديون الاثنين. في «الزبائن ▸ الديون» أيضًا.",go:{tab:"store",storeSub:"debts"},sel:".party-card"},
+    {ic:"🧱",t:"كشف حساب دبو دفتر مرتّب (PDF)",d:"كشف الزبون/المورّد في دبو، وكشف العامل والحمّال، صار مثل كشف الزبون: الرصيد الآن في الأعلى، مجموع عليه/له، وكل حركة مع «كان ← صار» — فيخرج الـ PDF مرتّبًا.",go:{tab:"brick",brickSub:"debts"},sel:'[data-bksub="debts"]'}
+  ]},
   {v:"2.54.0",date:"2026-10-18",items:[
     {ic:"📄",t:"كشف الحساب ملف PDF",d:"في أي كشف حساب أو إيصال زر «📄 PDF» يجهّز ملف PDF حقيقيًا (صفحات A4) فتُرسله بالواتساب أو تحفظه. يعمل دون إنترنت.",go:{tab:"store",storeSub:"debts"},sel:".party-card"},
     {ic:"💬",t:"إرسال الكشف كتابةً — كامل أو جزئي",d:"في كشف حساب الزبون (والمورّد ودبو) زر «💬 كتابةً»: «📄 كامل» يرسل كل الحركات، و«✂️ جزئي» تختار: هذا الشهر · آخر 7 أيام · آخر 30 يومًا · عليه فقط، أو تحدد الحركات بنفسك ✓. النص يُفتح في واتساب الزبون مباشرة مع «الرصيد الآن»، وزر «📋 نسخ».",go:{tab:"store",storeSub:"debts"},sel:".party-card"},
@@ -8662,7 +8695,7 @@ setTimeout(()=>{ if(!window.cloudReady){ const el=document.getElementById("cloud
 <!-- PWA: service-worker registration + update/install wiring -->
 <script>
 (function(){
-  var APP_VERSION = "2.54.0";
+  var APP_VERSION = "2.55.0";
   window.APP_VERSION = APP_VERSION;
   function $(id){ return document.getElementById(id); }
   // سجّل إصدار هذا الجهاز في الحالة المتزامنة (ليُنبَّه الجهاز القديم)

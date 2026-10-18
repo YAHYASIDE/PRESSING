@@ -53,6 +53,34 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
   log('«➕ له» opens the quick entry for that customer: '+(await page.evaluate(()=>getComputedStyle(document.getElementById('qdModal')).display!=='none' && /سالم/.test(document.getElementById('qdModal').textContent)))+' (expect true)');
   await page.evaluate(()=>{ document.getElementById('qdModal').style.display='none'; });
   log('no horizontal overflow: '+(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth))+' (expect true)');
+  // 2.55.0 — زبونان محفوظان بالرقم نفسه (مثل «يحي سيدا» و«تجربة»): الكشف والتحصيل يجمعانهما
+  await page.evaluate(()=>{ const d=iso(new Date(Date.now()-2*864e5));
+    state.storeCustomers=[{id:'y1',name:'يحي سيدا',phone:'22227268',country:'222',editedAt:d},{id:'t1',name:'تجربة',phone:'22227268',country:'222',editedAt:d}];
+    state.suppliers=[]; state.storeSales=[]; state.storePurchases=[]; state.storeCash=[];
+    state.storeDebts=[{id:'a1',customerId:'y1',dir:'on',amount:4800,paidAmount:0,paid:false,note:'تمر',date:d,editedAt:d},{id:'a2',customerId:'y1',dir:'on',amount:2100,paidAmount:0,paid:false,note:'دواء',date:d,editedAt:d},{id:'a3',customerId:'t1',dir:'on',amount:10000,paidAmount:0,paid:false,note:'وصف',date:d,editedAt:d}];
+    state.tab='store'; state.storeSub='debts'; state.debtView=null; render(); });
+  await page.waitForTimeout(250);
+  r=await page.evaluate(()=>{ const c=document.querySelector('.party-card'); return { n:document.querySelectorAll('.party-card').length, name:/يحي سيدا \+ تجربة/.test(c.textContent), note:/2 زبائن محفوظون بالرقم نفسه/.test(c.textContent), amt:c.querySelector('.dc-amt').textContent, stmt:!!c.querySelector('[data-party-stmt]'), pay:!!c.querySelector('[data-party-pay]') }; });
+  log('same phone = one card that names both customers: '+(r.n===1 && r.name && r.note && /16,900/.test(r.amt) && r.stmt && r.pay)+' (expect true) '+JSON.stringify(r));
+  await page.click('.party-card [data-party-stmt]'); await page.waitForTimeout(250);
+  r=await page.evaluate(()=>{ const t=document.getElementById('receiptContent').textContent; return { all:/تمر/.test(t)&&/دواء/.test(t)&&/وصف/.test(t), n:(t.match(/دين عليه/g)||[]).length, bal:/عليه لنا 16,900/.test(t), txt:getComputedStyle(document.getElementById('receiptText')).display!=='none' }; });
+  log('«كشف» shows the movements of BOTH customers (3) and the total 16,900: '+(r.all && r.n===3 && r.bal && r.txt)+' (expect true) '+JSON.stringify(r));
+  await page.evaluate(()=>{ document.getElementById('receiptModal').style.display='none'; });
+  await page.click('.party-card [data-party-pay]'); await page.waitForTimeout(200);
+  r=await page.evaluate(()=>document.getElementById('storePayAmt').value);
+  log('«تحصيل» proposes the whole 16,900: '+(r==='16900')+' (expect true) '+r);
+  await page.click('#storePayOk'); await page.waitForTimeout(300);
+  r=await page.evaluate(()=>({ y:custBalance('y1'), t:custBalance('t1'), cash:sum(state.storeCash.filter(m=>m.type==='in'),m=>m.amount), n:state.storeCash.length, cards:document.querySelectorAll('.party-card').length }));
+  log('paying it settles both customers (two cash entries, 16,900 in the box): '+(r.y===0 && r.t===0 && r.cash===16900 && r.n===2)+' (expect true) '+JSON.stringify(r));
+  // نفس الحالة في «الزبائن ▸ الديون» + طلب مغسلة بالرقم نفسه لا يتكرّر في الكشف
+  await page.evaluate(()=>{ const d=iso(new Date(Date.now()-864e5)); state.storeDebts.forEach(x=>{ x.paidAmount=0; x.paid=false; }); state.storeCash=[];
+    state.laundryOrders=[{id:'lo1',no:'L-1',customer:'يحي سيدا',phone:'22227268',country:'222',type:'قميص',service:'كي',count:2,price:600,paid:false,status:'wash',date:d,editedAt:d}];
+    state.tab='contacts'; state.contactsSub='debts'; state.debtKind='all'; render(); });
+  await page.waitForTimeout(250);
+  const ps=await page.$('[data-phone-stmt="22227268"]'); log('contacts debts card offers the combined statement: '+(!!ps)+' (expect true)');
+  if(ps){ await ps.click(); await page.waitForTimeout(250); }
+  r=await page.evaluate(()=>{ const t=document.getElementById('receiptContent').textContent; return { lnd:(t.match(/ملابس/g)||[]).length, all:/تمر/.test(t)&&/دواء/.test(t)&&/وصف/.test(t), bal:/عليه لنا 17,500/.test(t) }; });
+  log('combined statement: both customers + the laundry order once, total 17,500: '+(r.lnd===1 && r.all && r.bal)+' (expect true) '+JSON.stringify(r));
   log('\nERRORS:', errors.length?errors.join('\n'):'NONE ✅');
   await browser.close();
 })().catch(e=>{console.error('CRASH',e);process.exit(1);});
