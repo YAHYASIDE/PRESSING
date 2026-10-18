@@ -18,7 +18,7 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
     state.brickPurchases=[{id:'p1',no:'BP1',material:'cement',name:'إسمنت',unit:'خنشة',qty:20,unitCost:3600,total:72000,paid:true,paidAmount:72000,date:d,editedAt:d},{id:'p2',no:'BP2',material:'sand',name:'تراب',unit:'فياج',qty:6,unitCost:15000,total:90000,paid:true,paidAmount:90000,date:d,editedAt:d}];
     state.brickBatches=[{id:'b1',no:'K1',btype:'t15',cementBags:20,sandLoads:6,bricks:1500,workerPay:26000,workerPaidAmt:26000,workerPaid:true,date:d,editedAt:d}];
     state.brickCfg={price:180,types:[{k:"t15",name:"15 بريك",price:180,wage:1300,load:0},{k:"t56",name:"56 وردي",price:0,wage:1300},{k:"t20k",name:"20 كري",price:0,wage:1300},{k:"t20b",name:"20 بليه",price:0,wage:1300}]};
-    state.tab='brick'; state.brickSub='sales'; save(); render(); });
+    state.tab='brick'; state.brickSub='sales'; _bkDraft.side='sell'; _bkDraft.paid=false; save(); render(); }); // 2.46.0: الطرف يظهر في «بيع آجل» فقط
   await page.waitForTimeout(300);
   // تكلفة الطوبة = (72,000 + 90,000 + 26,000) / 1500 = 125.33
   await page.selectOption('#bkCust','c:cu1'); await page.fill('#bkQty','1000'); await page.fill('#bkPrice','180'); await page.fill('#bkSaleNote','ملاحظة مهمة');

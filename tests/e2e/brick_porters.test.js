@@ -53,7 +53,7 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
   r=await page.evaluate(()=>({ c:brickTypeCost('t15'), pf:brickSaleProfit(state.brickSales[0]) }));
   log('after editing the batch to 940 bricks: cost 200, sale profit 5,000: '+(Math.abs(r.c-200)<0.01 && Math.round(r.pf)===5000)+' (expect true)');
   // البحث في البيع
-  await page.evaluate(()=>{ state.brickSub='sales'; render(); }); await page.waitForTimeout(250);
+  await page.evaluate(()=>{ state.brickSub='sales'; _bkDraft.side='sell'; _bkDraft.paid=false; render(); }); await page.waitForTimeout(250);
   await page.fill('#bkCustFind','سالم'); await page.waitForTimeout(150);
   log('sale party search picks سالم البناء: '+(await page.evaluate(()=>document.getElementById('bkCust').value==='c:cu2'))+' (expect true)');
 

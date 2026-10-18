@@ -521,6 +521,22 @@
   التي كانت في يومه (`reApplyDate`)، ولا يُنقل مصروف إلى يوم مغلق. الحركات المرتبطة بعملية لا تُعدَّل مباشرة (تُعدَّل العملية).
   كل تعديل يختم `editedAt` ويُسجَّل «تعديل …» مع المبلغ قبل ← بعد. تعديل السيارات/السجاد/الملابس صار يشمل **الهاتف** وطريقة
   الدفع للمدفوع. الاختبار `tests/e2e/edit_all.test.js`.
+- **دبو ▸ «البيع والشراء» بأربعة أزرار + فاتورة (2.46.0):** تبويب `sales` صار «💰 البيع والشراء»: `brickModeTiles()` (`.bk-modes`، نفس
+  `TRADE_MODES`) — البيع بـ`[data-bkpaid="1|0"]` (`_bkDraft.side="sell"`, `paid`)، والشراء بـ`[data-bkbuy="1|0"]` (`side="buy"`, `purPaid`) →
+  `brickMode()`. البيع = `brickScreenSales` والشراء = `brickScreenBuy` (نموذج المواد نفسه بالمعرّفات نفسها + `brickPurCardsHTML`؛ تبويب «المواد»
+  باقٍ للمخزون والرصيد الافتتاحي). شكل فاتورة `.inv-card` (`invHead(mode,no)`، `.inv-party`، `.inv-sec`، `.inv-total`): **الطرف يظهر فقط في الآجل**
+  تحت الأزرار (`#bkCust`/`#bkPurParty` إلزامي، والهاتف `#bkPartyPhone`)، والنقدي بلا طرف (طريقة الدفع فقط). **دُفع الآن** في الآجل `#bkSalePaidNow`/
+  `#bkPurPaidNow` يبدأ بـ 0، المتبقي `#bkSaleRem`/`#bkPurRem`، والطريقة تظهر إن دُفع شيء → `paidAmount` جزئي + حركة صندوق دبو. `#bkPurPaid` صار خانة
+  مخفية تتبع الوضع. الاختبار `tests/e2e/brick_trade.test.js`.
+- **مصاريف باليومية (مثل الإيجار) + أزرار الأكل (2.45.0):** المصروفات ▸ «باليومية» (`expSub="daily"`, `expDaily`/`bindDaily`). مصفوفتان مُزامنتان
+  (SYNC_ARRAYS/BACKUP_KEYS/Lstore): `state.dailyCosts` `{id,name,monthly,start,end?,deleted?,salaryHist}` و`state.dailyCostPays` `{id,costId,amount,
+  payMethod,note,date,by}` (مسطّحة، لا مصفوفة متداخلة). **الحساب مثل العمّال:** كل يوم = `monthlyOn(c,ds)/_dim(d)` (أيام الشهر فعليًا) من `start` حتى
+  اليوم/`end` — `dcDays/dcAccrued/dailyCostBetween(from,to)` يدخل `periodSummary.daily` و`lndExp` والرئيسية (`exp:daily` + `stmtDailyRows`) وتقرير
+  اليوم والبوت. **الدفع** «💵 دفع» (`#dcModal`, `saveDcModal`) يُخصم من الطريقة (`payBreakdown`/`payLines`) **ولا يُحسب مصروفًا** (`manualExp` لا
+  يراه)؛ المستحق `dcDue = المتراكم − المدفوع`، والكشف `openDcStatement` (أيام كل شهر + الدفعات). تعديل المبلغ يسري من اليوم (`salaryHist`)، ⏸ إيقاف
+  `end`=أمس، الحذف بالكود `deleted` (الأيام السابقة تبقى في تقاريرها لأن `dailyCostBetween` يستعمل `dcAll`). `resetFinancials` يمسح الدفعات ويبدأ كل
+  بند من اليوم. **أزرار الأكل** `MEALS` (`[data-meal]`، `bindMealChips`): 🍳 فطور · 🍲 غداء · 🌙 العشاء تملأ الاسم كما سُجّل سابقًا (`mealName`)
+  والفئة «مواد» وآخر مبلغ (`mealLastAmount`). الاختبار `tests/e2e/daily_cost.test.js`.
 - **تعديل المصروفات من «كشف حساب المصروفات» (2.44.0):** `expStatementHTML()` (`#expStmt`) بطاقة `.exs-g` لكل صنف (لا جدول، فلا تُقصّ
   الأسماء) — `expGroups(q)` يجمع بـ`expGroupKey(e)` (اسم المصروف؛ للثابت = اسم القالب أو الاسم بلا «(الشهر)»)، **الملغى لا يُحسب**. الضغط على
   الرأس `[data-exs-tog]` يفتح القيود (`_exsOpen` محلي، بلا إعادة رسم) بتاريخ/مبلغ/طريقة/كاتب، ولكل قيد `recEditBtn("exp",id)` و`[data-del-exp]`.
