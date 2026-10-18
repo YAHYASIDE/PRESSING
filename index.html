@@ -452,6 +452,19 @@
   .ov-row.ready .ov-main b{color:var(--ready)} .ov-row.late .ov-main b{color:var(--unpaid)}
   .cash-count{background:var(--soft);border:1px dashed var(--brand-2);border-radius:12px;padding:10px;margin:10px 0}
   .cash-count .cc-title{font-weight:800;margin-bottom:4px}
+  .exs-list{display:flex;flex-direction:column;gap:6px}
+  .exs-g{border:1px solid var(--line);border-radius:12px;background:var(--surface);overflow:hidden}
+  .exs-h{display:flex;align-items:center;gap:8px;width:100%;padding:9px 10px;border:none;background:none;color:inherit;font:inherit;text-align:start;cursor:pointer}
+  .exs-nm{flex:1;min-width:0;font-weight:800;font-size:.9rem;overflow-wrap:anywhere}
+  .exs-n{font-size:.76rem;color:var(--muted);font-weight:700;white-space:nowrap}
+  .exs-t{white-space:nowrap;font-variant-numeric:tabular-nums}
+  .exs-ar{font-style:normal;color:var(--muted);transition:transform .15s} .exs-g.open .exs-ar{transform:rotate(180deg)}
+  .exs-body{display:none;border-top:1px dashed var(--line);padding:6px 10px 8px} .exs-g.open .exs-body{display:block}
+  .exs-sum{font-size:.76rem;color:var(--muted);display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:4px} .exs-sum .mini{padding:4px 10px;font-size:.76rem}
+  .exs-it{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px dashed var(--line)} .exs-it:last-child{border-bottom:none}
+  .exs-it-m{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px;font-size:.78rem} .exs-it-m b{font-size:.88rem;font-variant-numeric:tabular-nums} .exs-it-m span{color:var(--muted)}
+  .exs-it-r{color:var(--ink)!important;font-weight:600}
+  .exs-it-a{display:flex;gap:4px;flex:none} .exs-it-a .icon-btn{width:30px;height:30px}
   .ccx{border:1px solid var(--line);border-radius:10px;padding:6px 8px;margin:4px 0;background:var(--surface)}
   .ccx summary{cursor:pointer;font-size:.84rem;font-weight:700}
   .ccx-row{display:flex;justify-content:space-between;gap:8px;font-size:.8rem;padding:3px 0;border-bottom:1px dashed var(--line)}
@@ -1291,6 +1304,11 @@
   <div class="field"><label>المبلغ (أوقية)</label><input id="wqAmt" type="number" min="0" inputmode="decimal" placeholder="0" data-nokeep></div>
   <div class="field"><label>الوصف</label><input id="wqNote" type="text" data-nokeep></div>
   <div class="modal-actions"><button class="btn-primary" id="wqSave" style="flex:1">💾 حفظ</button><button class="mini" id="wqCancel">إلغاء</button></div></div></div>
+<div id="exgModal" class="modal" style="z-index:150"><div class="modal-box">
+  <h3 id="exgTitle" style="margin:0 0 6px"></h3><div class="hint" id="exgHint" style="margin-bottom:8px"></div>
+  <div class="field"><label>اسم الصنف</label><input id="exgName" type="text" data-nokeep></div>
+  <div class="field"><label>الفئة (اختر أو اكتب فئة جديدة)</label><input id="exgCat" type="text" list="exgCats" data-nokeep autocomplete="off"><datalist id="exgCats"></datalist></div>
+  <div class="modal-actions"><button class="btn-primary" id="exgSave" style="flex:1">💾 حفظ للكل</button><button class="mini" id="exgCancel">إلغاء</button></div></div></div>
 <div id="weModal" class="modal" style="z-index:150"><div class="modal-box">
   <h3 style="margin:0 0 8px">✏️ تعديل العامل والراتب</h3>
   <div class="field"><label>الاسم</label><input id="weName" type="text" data-nokeep></div>
@@ -3937,7 +3955,7 @@ function applyRecurring(){
     for(let i=11;i>=0;i--){ const d=new Date(now.getFullYear(),now.getMonth()-i,1); const ym=monthKey(d); if(ym<start) continue;
       const due=ymd(new Date(d.getFullYear(),d.getMonth(),day)); if(due>today) continue;
       const id=recExpId(r,ym); if(ids.has(id)||(state.deleted||{})["rec:"+id]) continue;
-      state.expenses.push({id,amount:+r.amount||0,category:r.category||"أخرى",reason:r.name+" ("+monthLabel(ym)+")",payMethod:normPM(r.payMethod),recurringId:r.id,date:iso(new Date(d.getFullYear(),d.getMonth(),day,9,0,0)),by:"تلقائي",editedAt:iso(new Date())});
+      state.expenses.push({id,amount:+r.amount||0,category:r.category||"أخرى",reason:r.name+" ("+ym.slice(5)+"/"+ym.slice(0,4)+")",payMethod:normPM(r.payMethod),recurringId:r.id,date:iso(new Date(d.getFullYear(),d.getMonth(),day,9,0,0)),by:"تلقائي",editedAt:iso(new Date())});
       ids.add(id); added++; }
   });
   if(added){ logActivity("مصروف ثابت تلقائي", added+" مصروف"); save(); }
@@ -5280,7 +5298,7 @@ function expGeneral(){
       <td>${e.reason||"—"}${e.recurringId?' <span class="badge b-done">ثابت</span>':''}${e.cancelled?' <span class="badge b-unpaid">ملغى</span>':''}${pmTag(e)?`<div style="font-size:.7rem;color:var(--brand)">${pmLabel(e.payMethod)}</div>`:""}</td><td class="amt" style="${e.cancelled?'text-decoration:line-through;color:var(--muted)':''}">${money(e.amount)}</td>
       <td style="text-align:left;white-space:nowrap">${e.cancelled?"":`${recEditBtn("exp",e.id)}<button class="icon-btn" data-del-exp="${e.id}" title="حذف">${svg(I.trash)}</button>`}</td></tr>`).join("")
     :`<tr><td colspan="5"><div class="empty">${svg(I.empty)}لا توجد مصروفات في هذه الفترة.</div></td></tr>`;
-  const opts=EXP_CATS.map(c=>`<option value="${c}">${c}</option>`).join("");
+  const opts=expCats().map(c=>`<option value="${_esc(c)}">${_esc(c)}</option>`).join("");
   const reasonOpts=[...new Set(state.expenses.map(e=>(e.reason||"").trim()).filter(Boolean))].map(r=>`<option value="${r}"></option>`).join("");
   return `
     <div class="cols">
@@ -5303,32 +5321,57 @@ function expGeneral(){
       </div>
     </div>
     ${(()=>{
-      const q=(state.expSearch||"").trim();
-      let all=state.expenses.slice();
-      if(q) all=all.filter(e=>((e.reason||"").includes(q))||((e.category||"").includes(q)));
-      const groups={};
-      all.forEach(e=>{ const key=(e.reason&&e.reason.trim())?e.reason.trim():("["+e.category+"]"); if(!groups[key])groups[key]={key,count:0,total:0,cat:e.category}; groups[key].count++; groups[key].total+=e.amount; });
-      const gl=Object.values(groups).sort((a,b)=>b.total-a.total);
-      const grand=sum(all,e=>e.amount);
-      const catTot={}; all.forEach(e=>{ catTot[e.category]=(catTot[e.category]||0)+e.amount; });
-      const body=gl.length?gl.map(g=>`<tr>
-          <td><b>${g.key}</b></td>
-          <td><span class="badge b-done">${g.cat}</span></td>
-          <td class="amt" style="text-align:center;font-weight:800">${g.count}</td>
-          <td class="amt">${money(g.total)}</td></tr>`).join(""):`<tr><td colspan="4"><div class="empty">${svg(I.empty)}لا توجد مصروفات مسجّلة${q?" مطابقة للبحث":""}.</div></td></tr>`;
-      return `
-    <div class="panel" style="margin-top:18px">
-      <h3>كشف حساب المصروفات</h3>
-      <input class="search-inp" id="expSearch" type="text" placeholder="بحث باسم الصنف (شامبو…) أو الفئة" value="${q}">
-      ${Object.keys(catTot).length?`<div class="cat-tot">${Object.entries(catTot).map(([c,t])=>`<span>${c}: <b>${money(t)}</b></span>`).join("")}</div>`:""}
-      <div class="tbl-wrap"><table class="tbl"><thead><tr><th>الصنف</th><th>الفئة</th><th>مرات</th><th>الإجمالي</th></tr></thead>
-        <tbody>${body}</tbody>
-        ${gl.length?`<tfoot><tr style="border-top:2px solid var(--line);font-weight:800"><td colspan="3">الإجمالي الكلي</td><td class="amt" style="color:var(--brand)">${money(grand)}</td></tr></tfoot>`:""}
-      </table></div>
-    </div>`;
+      return expStatementHTML();
     })()}`;
 }
 
+/* (2.44.0) كشف حساب المصروفات: بطاقة لكل صنف (لا جدول يُقصّ)، الضغط يفتح قيوده بتعديل/حذف لكل قيد، و«✏️ تعديل الكل» للاسم والفئة */
+let _exsOpen={};
+function expGroupKey(e){ if(e.recurringId){ const r=(state.recurring||[]).find(x=>x.id===e.recurringId); if(r&&r.name) return r.name.trim(); const b=String(e.reason||"").replace(/\s*\([^)]*\)\s*$/,"").trim(); if(b) return b; } return (e.reason&&e.reason.trim())?e.reason.trim():("["+(e.category||"أخرى")+"]"); }
+function expCats(){ return [...new Set([...EXP_CATS,...(state.expenses||[]).map(e=>e.category).filter(Boolean),...(state.recurring||[]).map(r=>r.category).filter(Boolean)])]; }
+function expGroups(q){ let all=(state.expenses||[]).filter(e=>!e.cancelled);
+  if(q) all=all.filter(e=>expGroupKey(e).includes(q)||(e.reason||"").includes(q)||(e.category||"").includes(q));
+  const G={}; all.forEach(e=>{ const k=expGroupKey(e); const g=G[k]||(G[k]={key:k,items:[],total:0,cats:{}}); g.items.push(e); g.total+=+e.amount||0; g.cats[e.category||"أخرى"]=(g.cats[e.category||"أخرى"]||0)+1; });
+  return { all, list:Object.values(G).map(g=>{ g.cat=Object.keys(g.cats).sort((a,b)=>g.cats[b]-g.cats[a])[0]; g.items.sort((a,b)=>String(b.date).localeCompare(String(a.date))); g.last=g.items[0]&&g.items[0].date; return g; }).sort((a,b)=>b.total-a.total) }; }
+function expStatementHTML(){
+  const q=(state.expSearch||"").trim(), {all,list}=expGroups(q), E=_esc, canEdit=currentRole!=="worker";
+  const grand=sum(all,e=>+e.amount||0), catTot={}; all.forEach(e=>{ const c=e.category||"أخرى"; catTot[c]=(catTot[c]||0)+(+e.amount||0); });
+  const cards=list.length?list.map((g,i)=>{ const open=!!_exsOpen[g.key];
+    const rows=g.items.map(e=>`<div class="exs-it"><div class="exs-it-m"><b>${money(e.amount)}</b><span>📅 <bdi dir="ltr">${frD(e.date)} ${timeStr(e.date)}</bdi>${pmTag(e)?" · "+pmLabel(e.payMethod):""}${e.by?" · ✍️ "+E(e.by):""}</span>${(e.reason||"").trim()&&(e.reason||"").trim()!==g.key?`<span class="exs-it-r">${E(e.reason)}</span>`:""}${Object.keys(g.cats).length>1?`<span class="kchip">${E(e.category||"")}</span>`:""}</div>
+      <div class="exs-it-a">${recEditBtn("exp",e.id)}<button class="icon-btn" data-del-exp="${e.id}" title="حذف">${svg(I.trash)}</button></div></div>`).join("");
+    return `<div class="exs-g${open?" open":""}" data-exs-g="${i}">
+      <button type="button" class="exs-h" data-exs-tog="${E(g.key)}"><span class="exs-nm">${E(g.key)}${g.items.some(e=>e.recurringId)?' <span class="badge b-done">ثابت</span>':''}</span><span class="kchip">${E(g.cat)}${Object.keys(g.cats).length>1?" +":""}</span><span class="exs-n">×${g.items.length}</span><b class="exs-t">${money(g.total)}</b><i class="exs-ar">▾</i></button>
+      <div class="exs-body"><div class="exs-sum">آخر مرة: <bdi dir="ltr">${frD(g.last)}</bdi> · المتوسط ${money(Math.round(g.total/g.items.length))}${canEdit?` <button type="button" class="mini" data-exs-edit="${E(g.key)}">✏️ تعديل الكل (الاسم/الفئة)</button>`:""}</div>${rows}</div></div>`; }).join("")
+    :`<div class="empty">${svg(I.empty)}لا توجد مصروفات مسجّلة${q?" مطابقة للبحث":""}.</div>`;
+  return `<div class="panel" style="margin-top:18px" id="expStmt">
+      <h3>كشف حساب المصروفات</h3>
+      <input class="search-inp" id="expSearch" type="text" placeholder="بحث باسم الصنف (شامبو…) أو الفئة" value="${E(q)}">
+      ${Object.keys(catTot).length?`<div class="cat-tot">${Object.entries(catTot).map(([c,t])=>`<span>${E(c)}: <b>${money(t)}</b></span>`).join("")}</div>`:""}
+      <div class="hint" style="margin:4px 0 6px">اضغط على أي صنف لترى قيوده وتعدّل أو تحذف أي واحد منها.</div>
+      <div class="exs-list">${cards}</div>
+      ${list.length?`<div class="sum-row"><span>الإجمالي الكلي</span><span class="big">${money(grand)}</span></div>`:""}
+    </div>`;
+}
+let _exg=null;
+function openExpGroupEdit(key){ const {list}=expGroups(""), g=list.find(x=>x.key===key); if(!g) return; _exg={key};
+  const m=document.getElementById("exgModal"); m.querySelector("#exgTitle").textContent="✏️ تعديل «"+key+"» ("+g.items.length+" قيد)";
+  m.querySelector("#exgName").value=key.startsWith("[")?"":key; m.querySelector("#exgCat").value=g.cat||"";
+  m.querySelector("#exgCats").innerHTML=expCats().map(c=>`<option value="${_esc(c)}"></option>`).join("");
+  const closed=g.items.filter(e=>closedDayOf(e.date)).length; m.querySelector("#exgHint").textContent="يتغيّر الاسم والفئة في كل قيود هذا الصنف. المبالغ والتواريخ لا تتغيّر (عدّلها من كل قيد)."+(closed?" ⚠️ "+closed+" قيد في أيام مغلقة 🔒 لن يتغيّر.":"");
+  m.style.display="flex"; }
+function saveExpGroupEdit(){ if(!_exg) return; const m=document.getElementById("exgModal"), {list}=expGroups(""), g=list.find(x=>x.key===_exg.key); if(!g) return;
+  const name=(m.querySelector("#exgName").value||"").trim(), cat=(m.querySelector("#exgCat").value||"").trim();
+  if(!name&&!cat) return toast("اكتب الاسم أو الفئة"); let n=0, skip=0; const now=iso(new Date());
+  g.items.forEach(e=>{ if(closedDayOf(e.date)){ skip++; return; } let ch=false;
+    if(name&&name!==g.key){ if(e.recurringId){ const m2=(e.reason||"").match(/\(([^)]*)\)\s*$/); e.reason=name+(m2?" ("+m2[1]+")":""); } else e.reason=name; ch=true; }
+    if(cat&&cat!==e.category){ e.category=cat; ch=true; } if(ch){ e.editedAt=now; n++; } });
+  const recIds=[...new Set(g.items.map(e=>e.recurringId).filter(Boolean))]; recIds.forEach(id=>{ const r=(state.recurring||[]).find(x=>x.id===id); if(r){ if(name) r.name=name; if(cat) r.category=cat; r.editedAt=now; } });
+  if(_exsOpen[g.key]&&name){ delete _exsOpen[g.key]; _exsOpen[name]=true; }
+  logActivity("تعديل صنف مصروفات","«"+g.key+"»"+(name&&name!==g.key?" ← «"+name+"»":"")+(cat?" · الفئة: "+cat:"")+" · "+n+" قيد"+(skip?" ("+skip+" في أيام مغلقة لم تتغيّر)":""));
+  m.style.display="none"; _exg=null; toast("✓ عُدِّل "+n+" قيد"+(skip?" — "+skip+" في أيام مغلقة لم تتغيّر":"")); render(); }
+document.addEventListener("click",e=>{ const t=e.target&&e.target.closest&&e.target.closest("[data-exs-tog]"); if(t){ const k=t.dataset.exsTog, g=t.closest(".exs-g"); if(_exsOpen[k]) delete _exsOpen[k]; else _exsOpen[k]=true; if(g) g.classList.toggle("open",!!_exsOpen[k]); return; }
+  const ed=e.target&&e.target.closest&&e.target.closest("[data-exs-edit]"); if(ed){ openExpGroupEdit(ed.dataset.exsEdit); return; }
+  if(e.target&&e.target.id==="exgSave") saveExpGroupEdit(); if(e.target&&e.target.id==="exgCancel"){ document.getElementById("exgModal").style.display="none"; _exg=null; } });
 function expStoreMaterials(){
   const prods=(state.storeProducts||[]).filter(p=>!p.archived);
   const laundryCusts=(state.storeCustomers||[]).filter(c=>c.isLaundry);
@@ -7094,6 +7137,10 @@ function _rand(n){ const a=new Uint8Array(n); crypto.getRandomValues(a); return 
    CHANGELOG: الأحدث أولًا. لكل تعديل: ic, t (العنوان), d (الشرح), go (أين: tab + storeSub/contactsSub/…), sel (العنصر الذي يُشار إليه).
    **قاعدة: كل إصدار جديد يضيف مدخلًا هنا** — يظهر للمستخدم مرة واحدة بعد التحديث مع «تخطي» و«أرني» و«جولة». */
 const CHANGELOG=[
+  {v:"2.44.0",date:"2026-10-18",items:[
+    {ic:"✏️",t:"تعديل المصروفات من الكشف",d:"في «المصروفات ▸ كشف حساب المصروفات» اضغط على أي صنف (فطور، غداء…) فتظهر كل قيوده بتاريخها ومبلغها، ولكل قيد زر ✏️ تعديل و🗑️ حذف.",go:{tab:"expenses",expSub:"general"},sel:"#expStmt"},
+    {ic:"🏷️",t:"تعديل الكل دفعة واحدة",d:"زر «✏️ تعديل الكل» داخل الصنف يغيّر اسمه وفئته في كل قيوده معًا، ويمكنك كتابة فئة جديدة (مثل «أكل»).",go:{tab:"expenses",expSub:"general"},sel:"#expStmt"},
+    {ic:"📐",t:"الأسماء لا تُقصّ",d:"الكشف صار بطاقات بدل جدول، فتظهر أسماء الأصناف كاملة على الهاتف، والقيود الملغاة لم تعد تُحسب في المجموع.",go:{tab:"expenses",expSub:"general"},sel:"#expStmt"}]},
   {v:"2.43.0",date:"2026-10-18",items:[
     {ic:"🧮",t:"من أين جاء الرقم المتوقع؟",d:"في «📊 تقرير اليوم» صار تحت «الكاش المتوقع في الدرج» تفصيل كل حركة: دخل السيارات والسجاد والملابس، كل وارد وصادر، وكل مصروف — فتفهم الفرق فورًا.",go:{tab:"dashboard"},sel:"#openClosing"},
     {ic:"📱",t:"جرد التطبيقات البنكية",d:"بجانب الكاش: بنكيلي ومصرفي وسداد، تكتب صافي اليوم كما في سجل التطبيق فيقارنه التطبيق بحسابه ويظهر الفرق حيًّا.",go:{tab:"dashboard"},sel:"#openClosing"},
@@ -7877,6 +7924,8 @@ loadPhotos(); // الصور من IndexedDB (غير متزامنة؛ تُعاد �
 function ensureCarNos(){ if(!state.carSeq) state.carSeq={}; (state.carOps||[]).forEach(o=>{ if(!o.no) o.no=carNo(o.vehicle); }); }
 function runMigrations(){
   let changed=false;
+  // (2.44.0) شهر المصروف الثابت بالأرقام «(10/2026)» بدل اسم الشهر
+  (state.expenses||[]).forEach(e=>{ if(!e.recurringId) return; const m=String(e.id||"").match(/_(\d{4})-(\d{2})$/), r=(state.recurring||[]).find(x=>x.id===e.recurringId); if(!m) return; const nm=r&&r.name?r.name:String(e.reason||"").replace(/\s*\([^)]*\)\s*$/,""); if(!nm) return; const want=nm+" ("+m[2]+"/"+m[1]+")"; if(e.reason!==want && /\([^)]*[^\d/)\s][^)]*\d{4}\)\s*$/.test(e.reason||"")){ e.reason=want; e.editedAt=iso(new Date()); changed=true; } });
   if(state.adMsg==="🎁 اجمع 5 غسلات واحصل على غسلة مجانية!\nنغسل السجاد والموكيت والأفرشة أيضًا 🧼\nشاركنا مع أصدقائك 🙌"){ state.adMsg=""; changed=true; }
   if(state.codesV!==3){ state.lock={enabled:true,pin:"0707"}; if(!state.meterPin) state.meterPin="070752"; state.codesV=3; changed=true; }
   if(!state.deleted) state.deleted={};
@@ -8030,7 +8079,7 @@ setTimeout(()=>{ if(!window.cloudReady){ const el=document.getElementById("cloud
 <!-- PWA: service-worker registration + update/install wiring -->
 <script>
 (function(){
-  var APP_VERSION = "2.43.0";
+  var APP_VERSION = "2.44.0";
   window.APP_VERSION = APP_VERSION;
   function $(id){ return document.getElementById(id); }
   // سجّل إصدار هذا الجهاز في الحالة المتزامنة (ليُنبَّه الجهاز القديم)
