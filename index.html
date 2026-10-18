@@ -455,6 +455,19 @@
   .exs-list{display:flex;flex-direction:column;gap:6px}
   .meal-chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
   .bk-modes{margin-bottom:10px}
+  .bk-sec{margin-bottom:12px} .bk-sec-h{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap} .bk-sec-h h3{margin:0}
+  .bk-step{display:flex;align-items:center;gap:6px;margin:8px 0;flex-wrap:wrap} .bk-step b{font-variant-numeric:tabular-nums;min-width:96px;text-align:center}
+  .bk-step .mini{padding:5px 12px;white-space:nowrap}
+  .bk-bigs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px} .bk-bigs>.bk-big:only-child,.bk-bigs>.bk-big:nth-child(3){grid-column:1/-1}
+  .bk-big{border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:var(--surface);display:flex;flex-direction:column;gap:2px;min-width:0}
+  .bk-big-l{font-size:.8rem;font-weight:800;color:var(--muted)} .bk-big b{font-size:1.35rem;font-variant-numeric:tabular-nums} .bk-big small{font-size:.72rem;color:var(--muted);line-height:1.4}
+  .bk-mini{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:.8rem;color:var(--muted);margin-top:8px} .bk-mini b{color:var(--ink)}
+  .bk-nows{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,140px),1fr));gap:6px;margin-top:8px}
+  .bk-now{border:1px solid var(--line);border-radius:10px;padding:8px 10px;display:flex;flex-direction:column;gap:1px;min-width:0} .bk-now span{font-size:.76rem;color:var(--muted);font-weight:700} .bk-now b{font-size:1.05rem;font-variant-numeric:tabular-nums} .bk-now small{font-size:.68rem;color:var(--muted);line-height:1.35}
+  .bk-sub-h{font-weight:800;font-size:.84rem;margin:12px 0 6px}
+  .bk-types{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,120px),1fr));gap:6px}
+  .bk-type{border:1px solid var(--line);border-radius:10px;padding:6px 10px;display:flex;flex-direction:column;min-width:0} .bk-type b{font-size:1.1rem;color:var(--brand);font-variant-numeric:tabular-nums} .bk-type span{font-size:.8rem;font-weight:800} .bk-type small{font-size:.7rem;color:var(--muted)}
+  .bk-fold{margin-bottom:12px} .bk-fold summary{cursor:pointer;font-weight:800;display:flex;flex-wrap:wrap;gap:4px 10px;align-items:center}
   .inv-card{border-top:4px solid var(--brand)}
   .inv-head{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin:-2px 0 10px;padding-bottom:8px;border-bottom:2px dashed var(--line)}
   .inv-head b{font-size:1rem;color:var(--tc,var(--brand))} .inv-head span{font-size:.76rem;color:var(--muted);font-weight:700}
@@ -2353,7 +2366,7 @@ function screenLaundry(){
    نبيع الطوب بالعدد نقدًا أو بالدين (brickSales)، ومصاريف ماء/كهرباء… (brickExpenses)، وكل المال في صندوق دبو (brickCash). */
 const BRICK_MAT={cement:{t:"إسمنت",unit:"خنشة",ic:"🪨"},sand:{t:"تراب",unit:"فياج",ic:"⛰️"},other:{t:"أخرى",unit:"",ic:"📦"}};
 const BRICK_EXP={water:{t:"ماء",ic:"💧"},power:{t:"كهرباء/وقود",ic:"⚡"},transport:{t:"نقل",ic:"🚚"},other:{t:"أخرى",ic:"📦"}};
-const BRICK_SUBS=[{k:"home",t:"الملخص",ic:"📊"},{k:"batches",t:"الإنتاج",ic:"🧱"},{k:"sales",t:"البيع والشراء",ic:"💰"},{k:"purchases",t:"المواد",ic:"🛒"},{k:"porters",t:"العمّال والحمّالون",ic:"👷"},{k:"expenses",t:"المصاريف",ic:"💸"},{k:"debts",t:"الديون والحسابات",ic:"📌"},{k:"reports",t:"التقارير",ic:"📈"},{k:"cash",t:"الصندوق",ic:"🏦"}];
+const BRICK_SUBS=[{k:"home",t:"الملخص والتقارير",ic:"📊"},{k:"batches",t:"الإنتاج",ic:"🧱"},{k:"sales",t:"البيع والشراء",ic:"💰"},{k:"purchases",t:"المواد",ic:"🛒"},{k:"porters",t:"العمّال والحمّالون",ic:"👷"},{k:"expenses",t:"المصاريف",ic:"💸"},{k:"debts",t:"الديون والحسابات",ic:"📌"},{k:"cash",t:"الصندوق",ic:"🏦"}];
 const BRICK_LKIND={cash:{t:"مال",ic:"💵"},bricks:{t:"طوب",ic:"🧱"},other:{t:"أخرى",ic:"📦"}};
 /* أنواع الطوب: لكل نوع سعر بيع وأجرة العامل لكل خنشة إسمنت (قابلة للتعديل). السجلات القديمة بلا نوع = «15 بريك» */
 const BRICK_TYPES_DEFAULT=[{k:"t15",name:"15 بريك",price:0,wage:1300},{k:"t56",name:"56 وردي",price:0,wage:1300},{k:"t20k",name:"20 كري",price:0,wage:1300},{k:"t20b",name:"20 بليه",price:0,wage:1300}];
@@ -2410,7 +2423,7 @@ function brickFin(F){
     custDebt:sum(brickParties().filter(x=>x.balance>0),x=>x.balance), supDebt:Math.abs(sum(brickParties().filter(x=>x.balance<0),x=>x.balance)), wageDues:sum(brickLive(state.brickBatches),b=>brickWageOut(b))+sum(brickLive(state.brickLoads),x=>brickLoadOut(x)), porterDues:sum(brickLive(state.brickLoads).filter(x=>brickIsJob(x)),x=>brickLoadOut(x))+sum(brickLive(state.brickBatches).filter(b=>b.workerId),b=>brickWageOut(b)),
     stock:brickStock(), cement:brickMatStock("cement"), sand:brickMatStock("sand"), box:brickCashBalance()};
 }
-function brickPeriodTxt(){ const t=ymd(new Date()); return (state.dateFrom===state.dateTo)?(state.dateFrom===t?"اليوم":state.dateFrom):`${frDay(state.dateFrom)} ← ${frDay(state.dateTo)}`; }
+function brickPeriodTxt(){ const t=ymd(new Date()); if(!state.dateFrom||state.dateFrom<="1970-01-01") return "الكل"; return (state.dateFrom===state.dateTo)?(state.dateFrom===t?"اليوم":frDay(state.dateFrom)):`${frDay(state.dateFrom)} ← ${frDay(state.dateTo)}`; }
 function brickPartyOpts(sel,allowCash){ const E=_esc; const cs=(state.storeCustomers||[]).filter(c=>!c.isLaundry).slice().sort((a,b)=>(a.name||"").localeCompare(b.name||"","ar")); const ss=(state.suppliers||[]).slice().sort((a,b)=>(a.name||"").localeCompare(b.name||"","ar"));
   return (allowCash?`<option value="">زبون نقدي (بلا اسم)</option>`:`<option value="">— اختر الطرف —</option>`)
     +`<optgroup label="👤 الزبائن">${cs.map(c=>`<option value="c:${c.id}" ${sel==="c:"+c.id?"selected":""}>${E(c.name)}${c.phone?" · "+E(c.phone):""}</option>`).join("")}</optgroup>`
@@ -2450,16 +2463,70 @@ function openBrickStatement(type,id){
 
 let _bkDraft={cust:"",paid:true,purPaid:true,wagePaid:false};
 function screenBrick(){
+  // (2.48.0) «التقارير» دُمج في «الملخص» — الاسم القديم يوصل إلى الملخص
+  if(state.brickSub==="reports") state.brickSub="home";
   const sub=BRICK_SUBS.some(s=>s.k===state.brickSub)?state.brickSub:"home";
   const subs=BRICK_SUBS.map(s=>`<button data-bksub="${s.k}" class="${sub===s.k?'on':''}">${s.ic} ${s.t}</button>`).join("");
-  const body= sub==="batches"?brickScreenBatches() : sub==="sales"?brickScreenSales() : sub==="purchases"?brickScreenPurchases() : sub==="expenses"?brickScreenExpenses() : sub==="porters"?brickScreenPorters() : sub==="debts"?brickScreenDebts() : sub==="reports"?brickScreenReports() : sub==="cash"?brickScreenCash() : brickScreenHome();
+  const body= sub==="batches"?brickScreenBatches() : sub==="sales"?brickScreenSales() : sub==="purchases"?brickScreenPurchases() : sub==="expenses"?brickScreenExpenses() : sub==="porters"?brickScreenPorters() : sub==="debts"?brickScreenDebts() : sub==="cash"?brickScreenCash() : brickScreenHome();
   return `
     <div class="screen-head"><h2>🧱 دبو — مصنع الطوب</h2><span>تراب + إسمنت ← خلطات ← طوب يُباع — بصندوق وربح مستقلّين</span></div>
     <div class="seg">${subs}</div>
-    ${(sub!=="debts"&&sub!=="reports")?dateBarHTML():""}
+    ${sub!=="debts"?dateBarHTML():""}
     ${body}`;
 }
-function brickScreenHome(){ return brickStockByTypeHTML()+brickScreenHomeBase()+(currentRole!=="worker"?brickTypesAdminHTML():""); }
+/* (2.48.0) الملخص = الملخص + التقارير (قرار المجلس): «📅 أرقام الفترة» يتبع شريط التاريخ، «⏱️ الآن» أرقام اللحظة دائمًا،
+   تقرير الشهر وكشوف الحسابات مطويّان، وجملة شرح تحت كل رقم كبير. العامل لا يرى التكلفة والربح. */
+function brickScreenHome(){
+  const W=currentRole==="worker", F=d=>inRange(d), f=brickFin(F), pt=brickPeriodTxt(), today=ymd(new Date()), single=state.dateFrom===state.dateTo, day=single?state.dateFrom:today;
+  state.brickRepDay=day;
+  const big=(l,v,c,ex)=>`<div class="bk-big"><span class="bk-big-l">${l}</span><b style="color:${c}">${v}</b><small>${ex}</small></div>`;
+  const now=(l,v,c,ex)=>`<div class="bk-now"><span>${l}</span><b style="color:${c||'var(--ink)'}">${v}</b>${ex?`<small>${ex}</small>`:""}</div>`;
+  const cement=brickMatStock("cement"), sand=brickMatStock("sand"), lowCement=cement<(+brickCfg().lowCement>0?+brickCfg().lowCement:20), lowSand=sand<=0, box=brickCashBalance();
+  const isToday=single&&day===today;
+  const step=`<div class="bk-step"><button type="button" class="mini" data-bk-dayjump="-1" title="اليوم السابق">▶ السابق</button><b dir="ltr">${single?frDay(day):brickPeriodTxt()}</b><button type="button" class="mini" data-bk-dayjump="1" title="اليوم التالي" ${single&&day>=today?"disabled":""}>التالي ◀</button>${isToday?"":`<button type="button" class="mini" data-bk-dayjump="0">اليوم</button>`}</div>`;
+  const period=`<div class="panel bk-sec" id="bkPeriod">
+      <div class="bk-sec-h"><h3>📅 أرقام الفترة: ${pt}</h3>${single?`<button class="mini" id="bkRepWa">💬 واتساب</button>`:""}</div>
+      ${step}
+      <div class="bk-bigs">
+        ${big("💰 المبيعات",money(f.sales),"var(--ready)",`${fmt(f.sold)} طوبة بيعت · مستلم ${money(f.salesPaid)} · آجل ${money(f.newDebts)}`)}
+        ${W?"":big("🧾 التكاليف",money(f.cost),"var(--unpaid)",`مواد ${money(f.purchases)} + أجور ${money(f.wages)} + مصاريف ${money(f.expenses)}`)}
+        ${W?"":big(`📈 ربح ${isToday?"اليوم":"الفترة"}`,money(f.profit),f.profit<0?"var(--unpaid)":"var(--brand)","المبيعات − التكاليف (الشراء يُحسب بتاريخه)")}
+      </div>
+      <div class="bk-mini"><span>🧱 أُنتج <b>${fmt(f.produced)}</b> طوبة (${fmt(f.nBatches)} خلطة · ${fmt(f.bags)} خنشة · ${fmt(f.loads)} فياج)</span>${W?"":`<span>💲 تكلفة الطوبة <b>${f.costPerBrick?money(Math.round(f.costPerBrick*100)/100):"—"}</b></span>`}</div>
+      <div class="pm-strip" style="margin-top:8px">${PAY_METHODS.map(m=>`<div class="pm-chip ${m.k}"><span>${m.ic} ${m.t}</span><b>${money(f.pm[m.k].net)}</b></div>`).join("")}</div>
+      <div class="hint" style="margin-top:4px">صافي ما دخل الصندوق وخرج منه في الفترة بكل طريقة. الفترة تتغيّر من الأزرار في الأعلى أو «السابق / التالي».</div>
+    </div>`;
+  const nowSec=`<div class="panel bk-sec" id="bkNow">
+      <div class="bk-sec-h"><h3>⏱️ الآن</h3><span class="hint" style="margin:0">لا تتغيّر بالفترة</span></div>
+      <div class="bk-nows">
+        ${now("🏦 صندوق دبو",money(box),box<0?"var(--unpaid)":"var(--ready)","كل المال في صندوق دبو منذ البداية — ليس الربح")}
+        ${now("🪨 الإسمنت",fmt(cement)+" خنشة"+(lowCement?" ⚠️":""),lowCement?"var(--unpaid)":"")}
+        ${now("⛰️ التراب",fmt(sand)+" فياج"+(lowSand?" ⚠️":""),lowSand?"var(--unpaid)":"")}
+        ${now("📌 لنا على الزبائن",money(f.custDebt),"var(--unpaid)")}
+        ${now("🏭 علينا للموردين",money(f.supDebt),"var(--wash)")}
+        ${now("👷 أجور لم تُدفع",money(f.wageDues),"var(--wash)")}
+      </div>
+      <div class="bk-sub-h">🧱 مخزون الطوب حسب النوع</div>
+      <div class="bk-types">${brickTypes().map(t=>{ const c=brickTypeCost(t.k); return `<div class="bk-type"><b>${fmt(brickStock(t.k))}</b><span>${_esc(t.name)}</span><small>${+t.price?"بيع "+money(t.price):""}${!W&&c>0?" · تكلفة "+brickCostTxt(c):""}</small></div>`; }).join("")}</div>
+    </div>`;
+  // تقرير الشهر (مطوي): قائمة أشهر بأرقام لاتينية بدل حقل الشهر الأصلي
+  const month=state.brickRepMonth||today.slice(0,7), months=new Set([today.slice(0,7),month]);
+  [state.brickSales,state.brickBatches,state.brickPurchases,state.brickExpenses,state.brickLedger].forEach(a=>brickLive(a).forEach(x=>{ if(x.date) months.add(ymd(x.date).slice(0,7)); }));
+  const mOpts=[...months].sort().reverse().map(m=>`<option value="${m}" ${m===month?"selected":""}>${m.slice(5)}/${m.slice(0,4)}</option>`).join("");
+  const days=new Set(); [state.brickSales,state.brickBatches,state.brickPurchases,state.brickExpenses,state.brickLedger].forEach(a=>brickLive(a).forEach(x=>{ const d=ymd(x.date); if(d.slice(0,7)===month) days.add(d); }));
+  const mRows=[...days].sort().reverse().map(d=>{ const g=brickDayFin(d); return `<tr class="day-row" data-bk-day="${d}" title="اضغط لعرض اليوم"><td>${frDay(d)}</td><td class="amt">${fmt(g.produced)}</td><td class="amt" style="color:var(--ready)">${money(g.sales)}</td>${W?"":`<td class="amt" style="color:var(--unpaid)">${money(g.cost)}</td><td class="amt" style="font-weight:800;color:${g.profit<0?'var(--unpaid)':'var(--brand)'}">${money(g.profit)}</td>`}</tr>`; }).join("");
+  const mf=brickFin(x=>ymd(x).slice(0,7)===month), tile=(l,v,c)=>`<div class="s"><div class="v" style="color:${c||'var(--ink)'}">${v}</div><div class="l">${l}</div></div>`;
+  const monthSec=`<details class="panel bk-fold" id="bkMonthBox"${_bkDraft.monthOpen?" open":""}><summary>🗓️ تقرير الشهر <span class="hint" style="margin:0">${month.slice(5)}/${month.slice(0,4)} · مبيعات ${money(mf.sales)}${W?"":" · ربح الشهر "+money(mf.profit)}</span></summary>
+      <div class="set-row" style="gap:8px;align-items:center;margin-top:8px"><select id="bkRepMonth" style="max-width:160px">${mOpts}</select></div>
+      <div class="store-stat" style="margin-top:10px">${tile("💰 مبيعات الشهر",money(mf.sales),"var(--ready)")}${tile("🧱 طوب منتج",fmt(mf.produced))}${W?"":tile("التكاليف",money(mf.cost),"var(--unpaid)")+tile("📈 ربح الشهر",money(mf.profit),mf.profit<0?"var(--unpaid)":"var(--brand)")}</div>
+      <div class="tbl-wrap"><table class="tbl"><thead><tr><th>اليوم</th><th>منتج</th><th>مبيعات</th>${W?"":"<th>تكاليف</th><th>ربح</th>"}</tr></thead><tbody>${mRows||`<tr><td colspan="5"><div class="hint">لا حركة في هذا الشهر.</div></td></tr>`}</tbody></table></div>
+      <div class="hint">اضغط على يوم لعرض أرقامه في الأعلى.</div></details>`;
+  const parties=brickParties(), E=_esc;
+  const pRows=parties.length?parties.map(x=>`<tr><td><b>${x.type==="sup"?"🏭 ":"👤 "}${E(x.name)}</b>${x.phone?`<div style="font-size:.72rem;color:var(--muted)">📞 ${E(x.phone)}</div>`:""}</td><td class="amt" style="font-weight:800;color:${x.balance>0?'var(--unpaid)':x.balance<0?'var(--wash)':'var(--muted)'}">${x.balance>0?"عليه ":x.balance<0?"له ":""}${money(Math.abs(x.balance))}</td><td style="text-align:left"><button class="mini" data-bk-stmt="${x.key}">📄 كشف</button></td></tr>`).join(""):`<tr><td colspan="3"><div class="hint">لا حسابات بعد.</div></td></tr>`;
+  const stmtSec=`<details class="panel bk-fold" id="bkStmtBox"${_bkDraft.stmtOpen?" open":""}><summary>📄 كشوف الحسابات (${parties.length})</summary><div class="tbl-wrap" style="margin-top:8px"><table class="tbl"><thead><tr><th>الطرف</th><th>الرصيد</th><th></th></tr></thead><tbody>${pRows}</tbody></table></div></details>`;
+  const reset=!W?`<div class="panel" style="margin-top:12px;border:1px solid var(--unpaid)"><h3>🧹 تصفير دبو والبدء من 0</h3><div class="hint" style="margin-bottom:8px">يُمحى كل ما في دبو: الفواتير، الخلطات، المشتريات، المصاريف، القيود، أعمال الحمل، والصندوق. <b>يبقى:</b> أنواع الطوب وأسعارها، آخر سعر للإسمنت والتراب، الزبائن والموردون، والعمّال والحمّالون. تُحفظ نسخة احتياطية قبل المسح.</div><button class="mini" id="bkResetAll" style="width:100%;color:var(--unpaid);border-color:var(--unpaid);font-weight:800">🧹 تصفير كل شيء في دبو</button></div>`:"";
+  return period+nowSec+monthSec+stmtSec+(W?"":brickTypesAdminHTML())+reset;
+}
 function brickStockByTypeHTML(){ return `<div class="panel" style="margin-bottom:12px"><h3>🧱 مخزون الطوب حسب النوع</h3><div class="store-stat">${brickTypes().map(t=>`<div class="s"><div class="v" style="color:var(--brand)">${fmt(brickStock(t.k))}</div><div class="l">${_esc(t.name)}${+t.price?" · بيع "+money(t.price):""}${brickTypeCost(t.k)>0?" · تكلفة "+brickCostTxt(brickTypeCost(t.k)):""}</div></div>`).join("")}</div></div>`; }
 function brickTypesAdminHTML(){ const c=brickCfg(); return `<details class="panel" style="margin-top:12px"${_bkDraft.typesOpen?" open":""} id="bkTypesBox"><summary style="font-weight:800;cursor:pointer">⚙️ أنواع الطوب: سعر البيع والأجرة والحمل</summary>
   ${brickTypes().map(t=>`<div class="bkt-card" style="border:1px solid var(--line);border-radius:12px;padding:10px;margin-top:10px">
@@ -2475,39 +2542,6 @@ function brickTypesAdminHTML(){ const c=brickCfg(); return `<details class="pane
   <div class="row2" style="margin-top:10px"><div class="field"><label>➕ نوع جديد</label><input id="bkTypeNew" type="text" placeholder="مثال: 10 بريك"></div><div class="field"><label>⚠️ نبّهني إن قلّ الإسمنت عن (خنشة)</label><input id="bkLowCement" type="number" min="0" value="${+c.lowCement>0?+c.lowCement:20}"></div></div>
   <button class="btn-primary" id="bkTypesSave" style="width:100%">💾 حفظ الأنواع</button>
   <div class="hint" style="margin-top:6px">سعر البيع يُملأ تلقائيًا في البيع. أجرة الخلطة = الخنشات × أجرة الخنشة. حمل الطوبة يُحسب تلقائيًا عند البيع (العدد × حمل الطوبة) ويُسجَّل مستحقًّا للحمّال الذي تختاره. التكلفة الحالية = (مواد + أجرة) ÷ الطوب من الخلطات.</div></details>`; }
-function brickScreenHomeBase(){
-  const F=(d)=>inRange(d), f=brickFin(F), pt=brickPeriodTxt();
-  const stock=brickStock(), cement=brickMatStock("cement"), sand=brickMatStock("sand");
-  const lowCement=cement<(+brickCfg().lowCement>0?+brickCfg().lowCement:20), lowSand=sand<=0;
-  return `
-    <div class="store-stat">
-      <div class="s"><div class="v" style="color:var(--brand)">${fmt(stock)}</div><div class="l">🧱 طوب جاهز في المخزون</div></div>
-      <div class="s"><div class="v" style="color:${lowCement?'var(--unpaid)':'var(--ink)'}">${fmt(cement)}</div><div class="l">🪨 خنشات إسمنت${lowCement?" ⚠️":""}</div></div>
-      <div class="s"><div class="v" style="color:${lowSand?'var(--unpaid)':'var(--ink)'}">${fmt(sand)}</div><div class="l">⛰️ فياجات تراب${lowSand?" ⚠️":""}</div></div>
-      <div class="s"><div class="v" style="color:${f.box<0?'var(--unpaid)':'var(--ready)'}">${money(f.box)}</div><div class="l">🏦 صندوق دبو</div></div>
-    </div>
-    <div class="panel">
-      <h3>💰 ربح دبو (${pt})</h3>
-      <div class="store-stat" style="margin-bottom:10px">
-        <div class="s"><div class="v" style="color:${f.profit<0?'var(--unpaid)':'var(--brand)'}">${money(f.profit)}</div><div class="l">الربح (مبيعات − تكاليف)</div></div>
-        <div class="s"><div class="v" style="color:var(--ready)">${money(f.sales)}</div><div class="l">مبيعات الطوب (${fmt(f.sold)} طوبة)</div></div>
-        <div class="s"><div class="v" style="color:var(--unpaid)">${money(f.cost)}</div><div class="l">التكاليف (مواد + أجور + مصاريف)</div></div>
-        <div class="s"><div class="v" style="color:var(--wash)">${f.costPerBrick?money(Math.round(f.costPerBrick*100)/100):"—"}</div><div class="l">تكلفة الطوبة الواحدة</div></div>
-      </div>
-      ${(()=>{ const row=(l,v,c,b)=>`<div style="display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px solid var(--line);${b?'font-weight:800':''}"><span>${l}</span><b class="amt" style="color:${c||'inherit'};white-space:nowrap">${v}</b></div>`;
-        return row("🧱 الإنتاج",`${fmt(f.produced)} طوبة`)+`<div class="hint" style="margin:-4px 0 4px">${fmt(f.nBatches)} خلطة · ${fmt(f.bags)} خنشة إسمنت · ${fmt(f.loads)} فياج تراب</div>`
-          +row("🛒 شراء مواد",money(f.purchases),"var(--unpaid)")+row("👷 أجور الخلطات والحمّالين",money(f.wages),"var(--unpaid)")+row("💸 مصاريف (ماء/كهرباء…)",money(f.expenses),"var(--unpaid)")
-          +row("💰 مبيعات",money(f.sales),"var(--ready)")+`<div class="hint" style="margin:-4px 0 4px">مستلم ${money(f.salesPaid)} · دين جديد ${money(f.newDebts)}</div>`
-          +row("📈 الربح",money(f.profit),f.profit<0?"var(--unpaid)":"var(--brand)",true); })()}
-      <div class="hint" style="margin-top:6px">تكلفة الطوبة = (مواد الخلطات بمتوسط سعر الشراء + الأجور + المصاريف) ÷ الطوب المنتج في الفترة. الربح يحسب الشراء بتاريخه.</div>
-    </div>
-    <div class="store-stat" style="margin-top:12px">
-      <div class="s"><div class="v" style="color:var(--unpaid)">${money(f.custDebt)}</div><div class="l">📌 ديون الزبائن (طوب)</div></div>
-      <div class="s"><div class="v" style="color:var(--wash)">${money(f.supDebt)}</div><div class="l">علينا للموردين (مواد)</div></div>
-      <div class="s"><div class="v" style="color:var(--wash)">${money(f.wageDues)}</div><div class="l">أجور عمّال لم تُدفع</div></div>
-    </div>
-    <div class="pm-strip" style="margin-top:10px">${PAY_METHODS.map(m=>`<div class="pm-chip ${m.k}"><span>${m.ic} ${m.t}</span><b>${money(f.pm[m.k].net)}</b></div>`).join("")}</div>`;
-}
 function brickScreenBatches(){
   const E=_esc, cfg=brickCfg(), L=brickLive(state.brickBatches).filter(b=>inRange(b.date)).slice().sort((a,b)=>(b.date||"").localeCompare(a.date||""));
   const cards=L.length?L.map(b=>`
@@ -2875,47 +2909,6 @@ function brickResetAll(){
 }
 function brickDayFin(day){ return brickFin(x=>ymd(x)===day); }
 function brickReportText(day){ const f=brickDayFin(day); return `🧱 *دبو — تقرير ${day}*\n━━━━━━━━━━\n🧱 الإنتاج: ${fmt(f.produced)} طوبة (${fmt(f.nBatches)} خلطة)\n💰 المبيعات: ${money(f.sales)} (${fmt(f.sold)} طوبة) — مستلم ${money(f.salesPaid)} · آجل ${money(f.newDebts)}\n🛒 شراء مواد: ${money(f.purchases)}\n👷 أجور: ${money(f.wages)}\n💸 مصاريف: ${money(f.expenses)}\n📈 الربح: ${money(f.profit)} ${CUR}\n🏦 صافي الصندوق: ${money(PAY_METHODS.reduce((t,m)=>t+f.pm[m.k].net,0))}\n📦 المخزون الآن: ${brickStockText()}\n💲 تكلفة الطوبة: ${brickTypes().filter(t=>brickTypeCost(t.k)>0).map(t=>t.name+" "+brickCostTxt(brickTypeCost(t.k))).join(" · ")||"—"} · 🪨 ${fmt(brickMatStock("cement"))} خنشة · ⛰️ ${fmt(brickMatStock("sand"))} فياج\n📌 لنا ${money(f.custDebt)} · علينا ${money(f.supDebt)}`; }
-function brickScreenReports(){
-  const E=_esc, today=ymd(new Date()); const day=state.brickRepDay||today; const month=state.brickRepMonth||today.slice(0,7);
-  const f=brickDayFin(day);
-  const tile=(l,v,c)=>`<div class="s"><div class="v" style="color:${c||'var(--ink)'}">${v}</div><div class="l">${l}</div></div>`;
-  // الشهر: صف لكل يوم فيه حركة
-  const days=new Set(); [state.brickSales,state.brickBatches,state.brickPurchases,state.brickExpenses,state.brickLedger].forEach(a=>brickLive(a).forEach(x=>{ const d=ymd(x.date); if(d.slice(0,7)===month) days.add(d); }));
-  const mRows=[...days].sort().reverse().map(d=>{ const g=brickDayFin(d); return `<tr class="day-row" data-bk-day="${d}" title="اضغط لعرض اليوم"><td>${frDay(d)}</td><td class="amt">${fmt(g.produced)}</td><td class="amt" style="color:var(--ready)">${money(g.sales)}</td><td class="amt" style="color:var(--unpaid)">${money(g.cost)}</td><td class="amt" style="font-weight:800;color:${g.profit<0?'var(--unpaid)':'var(--brand)'}">${money(g.profit)}</td></tr>`; }).join("");
-  const mf=brickFin(x=>ymd(x).slice(0,7)===month);
-  const parties=brickParties();
-  const pRows=parties.length?parties.map(x=>`<tr><td><b>${x.type==="sup"?"🏭 ":"👤 "}${E(x.name)}</b>${x.phone?`<div style="font-size:.72rem;color:var(--muted)">📞 ${E(x.phone)}</div>`:""}</td><td class="amt" style="font-weight:800;color:${x.balance>0?'var(--unpaid)':x.balance<0?'var(--wash)':'var(--muted)'}">${x.balance>0?"عليه ":x.balance<0?"له ":""}${money(Math.abs(x.balance))}</td><td style="text-align:left"><button class="mini" data-bk-stmt="${x.key}">📄 كشف</button></td></tr>`).join(""):`<tr><td colspan="3"><div class="hint">لا حسابات بعد.</div></td></tr>`;
-  return `
-    <div class="panel">
-      <h3>📅 تقرير يوم</h3>
-      <div class="set-row" style="gap:8px;flex-wrap:wrap;align-items:center">
-        <input type="date" id="bkRepDay" value="${day}" style="max-width:180px">
-        <button class="mini" data-bk-dayjump="-1">◀ أمس</button><button class="mini" data-bk-dayjump="0">اليوم</button><button class="mini" data-bk-dayjump="1">▶</button>
-        <button class="mini" id="bkRepWa" style="margin-inline-start:auto">💬 واتساب</button>
-      </div>
-      <div class="store-stat" style="margin-top:10px">
-        ${tile("💰 دخل اليوم (مبيعات)",money(f.sales),"var(--ready)")}${tile("💵 المستلم فعلًا",money(f.salesPaid),"var(--ready)")}${tile("📝 بيع آجل",money(f.newDebts),"var(--unpaid)")}
-        ${tile("🧱 منتج / مباع",fmt(f.produced)+" / "+fmt(f.sold))}${tile("🛒 مواد + 👷 أجور + 💸 مصاريف",money(f.cost),"var(--unpaid)")}${tile("📈 ربح اليوم",money(f.profit),f.profit<0?"var(--unpaid)":"var(--brand)")}
-      </div>
-      <div class="pm-strip" style="margin-top:8px">${PAY_METHODS.map(m=>`<div class="pm-chip ${m.k}"><span>${m.ic} ${m.t}</span><b>${money(f.pm[m.k].net)}</b></div>`).join("")}</div>
-    </div>
-    <div class="panel" style="margin-top:12px">
-      <h3>🗓️ تقرير شهر</h3>
-      <div class="set-row" style="gap:8px;align-items:center"><input type="month" id="bkRepMonth" value="${month}" style="max-width:180px"></div>
-      <div class="store-stat" style="margin-top:10px">
-        ${tile("💰 مبيعات الشهر",money(mf.sales),"var(--ready)")}${tile("🧱 طوب منتج",fmt(mf.produced))}${tile("التكاليف",money(mf.cost),"var(--unpaid)")}${tile("📈 ربح الشهر",money(mf.profit),mf.profit<0?"var(--unpaid)":"var(--brand)")}${tile("تكلفة الطوبة",mf.costPerBrick?money(Math.round(mf.costPerBrick*100)/100):"—","var(--wash)")}
-      </div>
-      <div class="tbl-wrap"><table class="tbl"><thead><tr><th>اليوم</th><th>منتج</th><th>مبيعات</th><th>تكاليف</th><th>ربح</th></tr></thead><tbody>${mRows||`<tr><td colspan="5"><div class="hint">لا حركة في هذا الشهر.</div></td></tr>`}</tbody></table></div>
-    </div>
-    <div class="panel" style="margin-top:12px">
-      <h3>📄 كشوف الحسابات (${parties.length})</h3>
-      <div class="tbl-wrap"><table class="tbl"><thead><tr><th>الطرف</th><th>الرصيد</th><th></th></tr></thead><tbody>${pRows}</tbody></table></div>
-    </div>
-    ${currentRole!=="worker"?`<div class="panel" style="margin-top:12px;border:1px solid var(--unpaid)">
-      <h3>🧹 تصفير دبو والبدء من 0</h3>
-      <div class="hint" style="margin-bottom:8px">يُمحى كل ما في دبو: الفواتير، الخلطات، المشتريات، المصاريف، القيود، أعمال الحمل، الصندوق والتقارير. <b>يبقى:</b> أنواع الطوب وأسعار البيع والأجرة والحمل، آخر سعر شراء للإسمنت والتراب، الزبائن والموردون بأرقامهم، والعمّال والحمّالون بأسمائهم وأرقامهم. تُحفظ نسخة احتياطية قبل المسح.</div>
-      <button class="mini" id="bkResetAll" style="width:100%;color:var(--unpaid);border-color:var(--unpaid);font-weight:800">🧹 تصفير كل شيء في دبو</button></div>`:""}`;
-}
 function doBrickLedgerSave(){
   const d=_bkDraft, dir=d.ldir==="for"?"for":"on", kind=BRICK_LKIND[d.lkind||"cash"]?(d.lkind||"cash"):"cash";
   const sel=document.getElementById("bkLParty"); let key=sel?sel.value:"";
@@ -3137,10 +3130,10 @@ function bindBrick(){
   const lp=document.getElementById("bkLParty"); if(lp) lp.onchange=()=>{ _bkDraft.lparty=lp.value; const w=document.getElementById("bkLNewWrap"); if(w) w.style.display=lp.value==="__new"?"":"none"; };
   const lc=document.getElementById("bkLCash"); if(lc) lc.onchange=()=>{ _bkDraft.lcash=lc.checked; const w=document.getElementById("bkLPmWrap"); if(w) w.style.display=lc.checked?"":"none"; };
   // التقارير
-  const rd=document.getElementById("bkRepDay"); if(rd) rd.onchange=()=>{ state.brickRepDay=rd.value||ymd(new Date()); render(); };
   const rm=document.getElementById("bkRepMonth"); if(rm) rm.onchange=()=>{ state.brickRepMonth=rm.value||ymd(new Date()).slice(0,7); render(); };
-  document.querySelectorAll("[data-bk-dayjump]").forEach(b=>b.onclick=()=>{ const k=+b.dataset.bkDayjump; if(k===0) state.brickRepDay=ymd(new Date()); else { const cur=state.brickRepDay||ymd(new Date()); const dt=new Date(cur+"T12:00:00Z"); dt.setUTCDate(dt.getUTCDate()+k); state.brickRepDay=dt.toISOString().slice(0,10); } render(); });
-  document.querySelectorAll("[data-bk-day]").forEach(b=>b.onclick=()=>{ state.brickRepDay=b.dataset.bkDay; render(); try{ window.scrollTo({top:0,behavior:"smooth"}); }catch(e){} });
+  document.querySelectorAll("[data-bk-dayjump]").forEach(b=>b.onclick=()=>{ const k=+b.dataset.bkDayjump, today=ymd(new Date()); let nd=today; if(k!==0){ const cur=(state.dateFrom===state.dateTo?state.dateFrom:null)||today; const dt=new Date(cur+"T12:00:00Z"); dt.setUTCDate(dt.getUTCDate()+k); nd=dt.toISOString().slice(0,10); if(nd>today) nd=today; } state.brickRepDay=nd; state.dateFrom=state.dateTo=nd; render(); });
+  document.querySelectorAll("[data-bk-day]").forEach(b=>b.onclick=()=>{ state.brickRepDay=b.dataset.bkDay; state.dateFrom=state.dateTo=b.dataset.bkDay; render(); try{ window.scrollTo({top:0,behavior:"smooth"}); }catch(e){} });
+  [["bkMonthBox","monthOpen"],["bkStmtBox","stmtOpen"]].forEach(([id,k])=>{ const el=document.getElementById(id); if(el) el.addEventListener("toggle",()=>{ _bkDraft[k]=el.open; }); });
   // أنواع الطوب + الخلطة + البيع + الرصيد الافتتاحي
   const bt=document.getElementById("bkType"), bb=document.getElementById("bkBags"), bw=document.getElementById("bkWage");
   const updWage=()=>{ if(!bt||!bb||!bw) return; const T=brickType(bt.value); if(!bw.dataset.touched) bw.value=Math.round((+bb.value||0)*(+T.wage||0)); const h=document.getElementById("bkWageHint"); if(h) h.textContent="خنشات × "+money(+T.wage||0); };
@@ -7302,6 +7295,10 @@ function _rand(n){ const a=new Uint8Array(n); crypto.getRandomValues(a); return 
    CHANGELOG: الأحدث أولًا. لكل تعديل: ic, t (العنوان), d (الشرح), go (أين: tab + storeSub/contactsSub/…), sel (العنصر الذي يُشار إليه).
    **قاعدة: كل إصدار جديد يضيف مدخلًا هنا** — يظهر للمستخدم مرة واحدة بعد التحديث مع «تخطي» و«أرني» و«جولة». */
 const CHANGELOG=[
+  {v:"2.48.0",date:"2026-10-18",items:[
+    {ic:"📊",t:"دبو: الملخص والتقارير في مكان واحد",d:"تبويب «التقارير» دخل في «📊 الملخص والتقارير»: في الأعلى «📅 أرقام الفترة» (المبيعات · التكاليف · الربح) وتتبع أزرار التاريخ، وتحتها «⏱️ الآن» (الصندوق والإسمنت والتراب والديون والمخزون) ولا تتغيّر بالفترة.",go:{tab:"brick",brickSub:"home"},sel:"#bkPeriod"},
+    {ic:"◀▶",t:"تنقّل بين الأيام بأرقام لاتينية",d:"زرّا «السابق» و«التالي» بجانب التاريخ للانتقال يومًا بيوم، وتقرير الشهر صار قائمة أشهر بالأرقام (10/2026) بدل خانة الهاتف التي كانت تظهر بالأرقام العربية.",go:{tab:"brick",brickSub:"home"},sel:".bk-step"},
+    {ic:"💡",t:"شرح تحت كل رقم",d:"تحت كل رقم كبير جملة تشرحه، مثل: «صندوق دبو = كل المال في الصندوق منذ البداية — ليس الربح». وتقرير الشهر وكشوف الحسابات صارا مطويّين تحته.",go:{tab:"brick",brickSub:"home"},sel:"#bkNow"}]},
   {v:"2.47.0",date:"2026-10-18",items:[
     {ic:"👷",t:"رئيس العمّال بلا «حمل»",d:"في دبو ▸ العمّال والحمّالون: عند إضافة شخص جديد بصفة «رئيس العمّال» تختفي خانات الحمل، وتحفظه فقط — أجرته تُضاف تلقائيًا من كل خلطة. والحمل صار اختياريًا لأي شخص جديد.",go:{tab:"brick",brickSub:"porters"},sel:"#bkLoadSave"}]},
   {v:"2.46.0",date:"2026-10-18",items:[
@@ -8254,7 +8251,7 @@ setTimeout(()=>{ if(!window.cloudReady){ const el=document.getElementById("cloud
 <!-- PWA: service-worker registration + update/install wiring -->
 <script>
 (function(){
-  var APP_VERSION = "2.47.0";
+  var APP_VERSION = "2.48.0";
   window.APP_VERSION = APP_VERSION;
   function $(id){ return document.getElementById(id); }
   // سجّل إصدار هذا الجهاز في الحالة المتزامنة (ليُنبَّه الجهاز القديم)

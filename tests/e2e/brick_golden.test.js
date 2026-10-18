@@ -1,0 +1,52 @@
+// 2.48.0 — اختبار «ذهبي» لأرقام دبو: يُثبّت الأرقام قبل دمج الملخص والتقارير وبعده (يجب أن تبقى نفسها بالضبط).
+const { chromium } = require('/opt/node22/lib/node_modules/playwright');
+const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favicon|CONNECT|installations|BloomFilter|Fetch API|Access-Control|CORS|the server responded|400 \(|403 \(|wa\.me|telegram/i;
+(async () => {
+  const browser = await chromium.launch();
+  const page = await (await browser.newContext({ viewport:{width:390,height:860} })).newPage();
+  const errors=[]; page.on('console',m=>{ if(m.type()==='error'&&!IGNORE.test(m.text())) errors.push('C:'+m.text()); });
+  page.on('pageerror',e=>{ if(!IGNORE.test(e.message)) errors.push('P:'+e.message); });
+  page.on('dialog', d=>d.accept());
+  const log=(...a)=>console.log(...a);
+  await page.goto('http://localhost:8123/index.html',{waitUntil:'load'}); await page.waitForTimeout(1200);
+  if(await page.isVisible('#lockSwitch')) await page.click('#lockSwitch');
+  await page.fill('#lockName','مالك'); await page.fill('#lockInput','0707'); await page.click('#lockEnter'); await page.waitForTimeout(400);
+  await page.evaluate(()=>{ const d=iso(new Date()), y=new Date(); y.setDate(y.getDate()-1); const yd=iso(y);
+    ['brickBatches','brickPurchases','brickSales','brickExpenses','brickCash','brickLedger','brickLoads','brickPorters'].forEach(k=>state[k]=[]);
+    state.storeCustomers=[{id:'cu1',name:'محمد',phone:'22334455',country:'222',editedAt:d}]; state.suppliers=[];
+    state.brickCfg={price:180,types:[{k:"t15",name:"15 بريك",price:180,wage:1300,load:0},{k:"t56",name:"56 وردي",price:350,wage:1300}]};
+    state.brickPurchases=[{id:'p1',no:'BP1',material:'cement',name:'إسمنت',unit:'خنشة',qty:10,unitCost:3000,total:30000,paid:true,paidAmount:30000,payMethod:'cash',date:d,editedAt:d},{id:'p2',no:'BP2',material:'sand',name:'تراب',unit:'فياج',qty:2,unitCost:5000,total:10000,paid:true,paidAmount:10000,payMethod:'cash',date:d,editedAt:d}];
+    state.brickBatches=[{id:'b1',no:'K1',btype:'t15',cementBags:5,sandLoads:1,bricks:500,workerPay:6500,workerPaidAmt:0,workerPaid:false,date:d,editedAt:d}];
+    state.brickSales=[{id:'s1',no:'BS1',btype:'t15',qty:200,unitPrice:180,total:36000,paidAmount:36000,paid:true,payMethod:'cash',customerName:'زبون نقدي',date:d,editedAt:d},{id:'s2',no:'BS2',btype:'t15',qty:100,unitPrice:180,total:18000,paidAmount:0,paid:false,partyType:'cust',partyId:'cu1',customerId:'cu1',customerName:'محمد',phone:'22334455',date:d,editedAt:d}];
+    state.brickExpenses=[{id:'e1',category:'water',amount:2000,note:'ماء',payMethod:'cash',date:d,editedAt:d}];
+    state.brickCash=[{id:'c1',type:'out',amount:30000,ref:'p1',payMethod:'cash',date:d},{id:'c2',type:'out',amount:10000,ref:'p2',payMethod:'cash',date:d},{id:'c3',type:'in',amount:36000,ref:'s1',payMethod:'cash',date:d},{id:'c4',type:'out',amount:2000,ref:'e1',payMethod:'cash',date:d},{id:'c5',type:'in',amount:50000,reason:'رصيد سابق',payMethod:'cash',date:yd}];
+    state.tab='brick'; state.brickSub='home'; state.dateFrom=state.dateTo=ymd(new Date()); save(); render(); });
+  await page.waitForTimeout(300);
+  const want={sales:54000,cost:48500,profit:5500,produced:500,sold:300,salesPaid:36000,newDebts:18000,box:44000,stock:200,cement:5,sand:1,custDebt:18000,wageDues:6500};
+  let r=await page.evaluate(()=>{ const f=brickFin(x=>inRange(x)); return {sales:f.sales,cost:f.cost,profit:f.profit,produced:f.produced,sold:f.sold,salesPaid:f.salesPaid,newDebts:f.newDebts,box:brickCashBalance(),stock:brickStock(),cement:brickMatStock('cement'),sand:brickMatStock('sand'),custDebt:f.custDebt,wageDues:f.wageDues}; });
+  const bad=Object.keys(want).filter(k=>r[k]!==want[k]);
+  log('golden numbers: sales 54,000 · cost 48,500 · profit 5,500 · box 44,000 · stock 200 · cement 5 · debts 18,000 · wages due 6,500: '+(bad.length===0)+' (expect true)'+(bad.length?' '+bad.map(k=>k+'='+r[k]).join(','):''));
+  const t=await page.evaluate(()=>document.querySelector('main').textContent);
+  const shown=['54,000','48,500','5,500','44,000','18,000','6,500'].filter(v=>!t.includes(v));
+  log('the summary screen shows all of them: '+(shown.length===0)+' (expect true)'+(shown.length?' missing '+shown.join(','):''));
+
+  // المرحلة الأولى: تبويب واحد للملخص والتقارير
+  log('one «الملخص والتقارير» tab, no separate reports tab: '+(await page.evaluate(()=>!document.querySelector('[data-bksub="reports"]') && /الملخص والتقارير/.test(document.querySelector('[data-bksub="home"]').textContent)))+' (expect true)');
+  log('sections: period + now + month (folded) + statements (folded): '+(await page.evaluate(()=>!!document.querySelector('#bkPeriod') && !!document.querySelector('#bkNow') && !document.querySelector('#bkMonthBox').open && !document.querySelector('#bkStmtBox').open))+' (expect true)');
+  log('each big number has an explanation line: '+(await page.evaluate(()=>[...document.querySelectorAll('.bk-big')].length===3 && [...document.querySelectorAll('.bk-big small')].every(x=>x.textContent.trim().length>5)))+' (expect true)');
+  log('box explains it is not profit: '+(await page.evaluate(()=>/ليس الربح/.test(document.querySelector('#bkNow').textContent)))+' (expect true)');
+  log('month select uses Latin MM/YYYY (no native month input): '+(await page.evaluate(()=>{ const s=document.querySelector('#bkRepMonth'); return s.tagName==='SELECT' && [...s.options].every(o=>/^\d\d\/\d{4}$/.test(o.textContent)) && !document.querySelector('main input[type=month],main input[type=date]#bkRepDay'); }))+' (expect true)');
+  log('no Arabic-Indic digits on the screen: '+(await page.evaluate(()=>!/[٠-٩۰-۹]/.test(document.querySelector('main').textContent)))+' (expect true)');
+  await page.click('[data-bk-dayjump="-1"]'); await page.waitForTimeout(250);
+  log('◀ moves the date bar to yesterday and the numbers follow: '+(await page.evaluate(()=>{ const y=new Date(); y.setDate(y.getDate()-1); const yd=ymd(y); return state.dateFrom===yd && state.dateTo===yd && state.brickRepDay===yd && document.querySelector('.bk-big b').textContent.replace(/\D/g,'')==='0'; }))+' (expect true)');
+  await page.click('[data-bk-dayjump="1"]'); await page.waitForTimeout(250);
+  log('▶ back to today restores 54,000: '+(await page.evaluate(()=>document.querySelector('.bk-big b').textContent.includes('54,000')))+' (expect true)');
+  log('▶ is disabled at today (no future): '+(await page.evaluate(()=>{ const b=document.querySelector('[data-bk-dayjump="1"]'); return !b || b.disabled; }))+' (expect true)');
+  await page.evaluate(()=>{ state.brickSub='reports'; render(); }); await page.waitForTimeout(200);
+  log('old «reports» sub opens the merged screen: '+(await page.evaluate(()=>!!document.querySelector('#bkPeriod') && document.querySelector('[data-bksub="home"]').classList.contains('on')))+' (expect true)');
+  await page.evaluate(()=>{ currentRole='worker'; render(); }); await page.waitForTimeout(200);
+  log('worker sees sales but not cost/profit: '+(await page.evaluate(()=>{ const t=document.querySelector('#bkPeriod').textContent; return /المبيعات/.test(t) && !/التكاليف/.test(t) && !/ربح/.test(t) && document.querySelectorAll('.bk-big').length===1; }))+' (expect true)');
+  await page.evaluate(()=>{ currentRole='owner'; render(); });
+  log('\nERRORS:', errors.length?errors.join('\n'):'NONE ✅');
+  await browser.close();
+})().catch(e=>{console.error('CRASH',e);process.exit(1);});

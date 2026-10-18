@@ -15,7 +15,7 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
 
   log('nav has «دبو» after carpets: '+(await page.evaluate(()=>{ const t=[...document.querySelectorAll('.nav-btn')].map(b=>b.dataset.tab); return t.indexOf('brick')===t.indexOf('carpets')+1; }))+' (expect true)');
   await page.click('[data-tab="brick"]'); await page.waitForTimeout(300);
-  log('brick screen has 7 sub-tabs and opens on the summary: '+(await page.evaluate(()=>document.querySelectorAll('[data-bksub]').length===9 && /ربح دبو/.test(document.querySelector('main').textContent)))+' (expect true)');
+  log('brick screen has 8 sub-tabs and opens on the summary: '+(await page.evaluate(()=>document.querySelectorAll('[data-bksub]').length===8 && /الربح/.test(document.querySelector('main').textContent)))+' (expect true)');
 
   // 1) شراء 10 أكياس إسمنت × 2,000 = 20,000 مدفوع كاش من مورّد «شركة الإسمنت»
   await page.click('[data-bksub="purchases"]'); await page.waitForTimeout(250);
@@ -112,11 +112,11 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
   log('statement: phone, sale, payment, ledger rows with running balance ending at 10,000: '+(/22334455/.test(r.t) && /بيع 15 بريك/.test(r.t) && /دفعة على/.test(r.t) && /أخذ بلا فاتورة/.test(r.t) && r.n===4 && r.last===10000 && /10,000/.test(r.t))+' (expect true)');
   await page.evaluate(()=>{ document.getElementById('receiptModal').style.display='none'; });
   // تقارير دبو: تقرير اليوم والشهر وكشوف الحسابات
-  await page.click('[data-bksub="reports"]'); await page.waitForTimeout(300);
+  await page.click('[data-bksub="home"]'); await page.waitForTimeout(300); // 2.48.0: التقارير صارت داخل الملخص
   r=await page.evaluate(()=>{ const t=document.querySelector('main').textContent; const f=brickDayFin(ymd(new Date())); return { t, ok:/ربح اليوم/.test(t) && /ربح الشهر/.test(t) && /كشوف الحسابات/.test(t), sales:f.sales, stmts:document.querySelectorAll('[data-bk-stmt]').length, rows:document.querySelectorAll('[data-bk-day]').length, wa:/واتساب/.test(t), phone:/22334455/.test(t) }; });
   log('reports tab: day + month + statements list with phones, today row and WhatsApp: '+(r.ok && r.sales===58000 && r.stmts>=2 && r.rows===1 && r.wa && r.phone)+' (expect true)');
   await page.click('[data-bk-dayjump="-1"]'); await page.waitForTimeout(250);
-  log('yesterday has zero sales: '+(await page.evaluate(()=>brickDayFin(state.brickRepDay).sales===0 && state.brickRepDay<ymd(new Date())))+' (expect true)');
+  log('yesterday has zero sales: '+(await page.evaluate(()=>brickDayFin(state.brickRepDay).sales===0 && state.brickRepDay<ymd(new Date()) && state.dateFrom===state.brickRepDay))+' (expect true)');
   await page.click('[data-bk-dayjump="0"]'); await page.waitForTimeout(200);
   log('report text for WhatsApp mentions profit: '+(await page.evaluate(()=>/الربح/.test(brickReportText(ymd(new Date())))))+' (expect true)');
   // 8) المزامنة: خلطة من جهاز آخر تُضاف ولا تضيع المحلية؛ النسخة السحابية تحوي مصفوفات دبو
