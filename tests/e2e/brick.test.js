@@ -15,7 +15,7 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
 
   log('nav has «دبو» after carpets: '+(await page.evaluate(()=>{ const t=[...document.querySelectorAll('.nav-btn')].map(b=>b.dataset.tab); return t.indexOf('brick')===t.indexOf('carpets')+1; }))+' (expect true)');
   await page.click('[data-tab="brick"]'); await page.waitForTimeout(300);
-  log('brick screen has 8 sub-tabs and opens on the summary: '+(await page.evaluate(()=>document.querySelectorAll('[data-bksub]').length===8 && /الربح/.test(document.querySelector('main').textContent)))+' (expect true)');
+  log('brick screen has 9 sub-tabs and opens on the summary: '+(await page.evaluate(()=>document.querySelectorAll('[data-bksub]').length===9 && /الربح/.test(document.querySelector('main').textContent)))+' (expect true)');
 
   // 1) شراء 10 أكياس إسمنت × 2,000 = 20,000 مدفوع كاش من مورّد «شركة الإسمنت»
   await page.click('[data-bksub="purchases"]'); await page.waitForTimeout(250);

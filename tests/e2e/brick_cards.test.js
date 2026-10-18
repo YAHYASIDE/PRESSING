@@ -41,7 +41,7 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
   // 2.51.0 — تبويبات دبو صفّان من المربعات الملوّنة
   r=await page.evaluate(()=>{ const seg=document.querySelector('.seg.bk-tiles'), B=[...seg.querySelectorAll('[data-bksub]')], tops=new Set(B.map(b=>Math.round(b.getBoundingClientRect().top))), on=seg.querySelector('.on');
     return { n:B.length, rows:tops.size, noScroll:seg.scrollWidth<=seg.clientWidth+1, icon:B.every(b=>b.querySelector('.bt-ic')&&b.querySelector('.bt-ic').getBoundingClientRect().width>=30), colored:new Set(B.map(b=>getComputedStyle(b).backgroundColor)).size>=6, onBg:getComputedStyle(on).backgroundColor, onC:getComputedStyle(on).color, h:B[0].getBoundingClientRect().height }; });
-  log('brick tabs: 8 colored square tiles in 2 rows, no side scrolling, icons ≥30px: '+(r.n===8 && r.rows===2 && r.noScroll && r.icon && r.colored && r.h>=60)+' (expect true) '+JSON.stringify(r));
+  log('brick tabs: 9 colored square tiles in 2 rows, no side scrolling, icons ≥30px: '+(r.n===9 && r.rows===2 && r.noScroll && r.icon && r.colored && r.h>=60)+' (expect true) '+JSON.stringify(r));
   log('active tile is filled with its color and white text: '+(r.onC==='rgb(255, 255, 255)' && r.onBg!=='rgba(0, 0, 0, 0)')+' (expect true)');
   log('\nERRORS:', errors.length?errors.join('\n'):'NONE ✅');
   await browser.close();

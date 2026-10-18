@@ -828,8 +828,20 @@
   #cloudBtn.offline{background:#888}
   .notif-badge{position:absolute;top:-4px;left:-4px;min-width:17px;height:17px;padding:0 4px;border-radius:9px;background:var(--unpaid);color:#fff;font-size:.66rem;font-weight:800;display:flex;align-items:center;justify-content:center;line-height:1}
   #notifBtn{position:relative}
+  /* (2.52.0) الطلبيات والتجفيف */
+  .ord-bar{height:8px;border-radius:999px;background:var(--chip);overflow:hidden;margin:6px 0 2px}
+  .ord-bar i{display:block;height:100%;background:linear-gradient(90deg,#3b5bdb,#2e9e6b);border-radius:999px}
+  .bk-ord.s-cancelled{opacity:.7}
+  .ord-trips{display:flex;flex-direction:column;gap:3px;margin:6px 0;padding:6px 8px;border-radius:10px;background:var(--chip)}
+  .ord-trip{display:flex;justify-content:space-between;align-items:center;gap:6px;font-size:.78rem}
+  .ord-trip .mini{padding:3px 8px}
+  .bk-dlv{margin-top:8px;padding-top:8px;border-top:1px dashed var(--line)}
+  .bk-dry{border-inline-start:4px solid var(--wash)}
+  .bk-dry-list{display:flex;flex-direction:column;gap:6px}
+  .bk-dry-row{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:.85rem}
+  .bk-dry-row small{color:var(--muted)}
   /* (2.51.0) تبويبات دبو: صفّان من المربعات الملوّنة */
-  .seg.bk-tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;overflow:visible;background:transparent;border:0;padding:0;margin-bottom:10px}
+  .seg.bk-tiles{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;overflow:visible;background:transparent;border:0;padding:0;margin-bottom:10px}
   .seg.bk-tiles button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-width:0;min-height:66px;padding:7px 3px;
     border-radius:14px;border:1px solid var(--tl);background:var(--tb);
     color:var(--ink);font-size:.7rem;font-weight:800;line-height:1.15;white-space:normal;text-align:center;box-shadow:none}
@@ -837,7 +849,8 @@
   .seg.bk-tiles .bt-t{display:block;max-width:100%;overflow-wrap:anywhere}
   .seg.bk-tiles button.on{background:var(--tc);border-color:var(--tc);color:#fff;box-shadow:0 4px 12px var(--ts)}
   .seg.bk-tiles button.on .bt-ic{background:rgba(255,255,255,.22)}
-  @media (min-width:821px){ .seg.bk-tiles{grid-template-columns:repeat(8,minmax(0,1fr))} }
+  @media (min-width:821px){ .seg.bk-tiles{grid-template-columns:repeat(9,minmax(0,1fr))} }
+  @media (max-width:820px){ .seg.bk-tiles button{font-size:.64rem;padding:6px 2px;min-height:62px} .seg.bk-tiles .bt-ic{width:30px;height:30px;font-size:1.15rem} }
   /* (2.49.0) الشريط العلوي مخفي في كل الشاشات؛ زر «＋» عائم أسفل اليمين */
   header.top{display:none!important}
   main{padding-top:calc(10px + env(safe-area-inset-top,0px))}
@@ -1565,6 +1578,8 @@ const state = {
   brickCash:[],             /* صندوق دبو: {id,type,amount,reason,ref,payMethod,date,by,editedAt} */
   brickLedger:[],           /* قيود يدوية على الأطراف: {id,partyType:"cust"|"sup",partyId,dir:"on"|"for",kind:cash|bricks|other,amount,qty,note,cash,payMethod,date,by,editedAt} */
   brickPorters:[],          /* الحمّالون: {id,name,phone,country,editedAt} */
+  brickOrders:[],           /* (2.52.0) طلبيات: {id,no,partyType,partyId,customerName,phone,btype,qty,unitPrice,total,address,note,status:open|done|cancelled,date,by,editedAt} — التسليم = brickSales.orderId، العربون = brickCash بـ ref=id */
+  brickWaste:[],            /* (2.52.0) طوب مكسور/تالف: {id,no,btype,qty,unitCost,note,date,by,editedAt} — يُنقص المخزون */
   brickLoads:[],            /* أعمال الحمل: {id,no,porterId,kind:bricks|cement|other,qty,rate,amount,paidAmount,paid,payMethod,note,date,by,editedAt} */
   brickCfg:{price:0,workerPerBatch:0}, brickSub:"home", brickSearch:"", brickRepDay:"", brickRepMonth:"",
   storeSeq:0, storePurSeq:0,
@@ -2414,8 +2429,8 @@ function screenLaundry(){
    نبيع الطوب بالعدد نقدًا أو بالدين (brickSales)، ومصاريف ماء/كهرباء… (brickExpenses)، وكل المال في صندوق دبو (brickCash). */
 const BRICK_MAT={cement:{t:"إسمنت",unit:"خنشة",ic:"🪨"},sand:{t:"تراب",unit:"فياج",ic:"⛰️"},other:{t:"أخرى",unit:"",ic:"📦"}};
 const BRICK_EXP={water:{t:"ماء",ic:"💧"},power:{t:"كهرباء/وقود",ic:"⚡"},transport:{t:"نقل",ic:"🚚"},other:{t:"أخرى",ic:"📦"}};
-const BRICK_SUBS=[{k:"home",t:"الملخص والتقارير",ic:"📊"},{k:"batches",t:"الإنتاج",ic:"🧱"},{k:"sales",t:"البيع والشراء",ic:"💰"},{k:"purchases",t:"المواد",ic:"🛒"},{k:"porters",t:"العمّال والحمّالون",ic:"👷"},{k:"expenses",t:"المصاريف",ic:"💸"},{k:"debts",t:"الديون والحسابات",ic:"📌"},{k:"cash",t:"الصندوق",ic:"🏦"}];
-const BRICK_SUB_COLOR={home:"#1c6ea4",batches:"#9a5b2e",sales:"#2e9e6b",purchases:"#e07b1f",porters:"#c79a00",expenses:"#d64545",debts:"#7c4dcc",cash:"#0e9aa7"};
+const BRICK_SUBS=[{k:"home",t:"الملخص والتقارير",ic:"📊"},{k:"batches",t:"الإنتاج",ic:"🧱"},{k:"sales",t:"البيع والشراء",ic:"💰"},{k:"orders",t:"الطلبيات",ic:"📦"},{k:"purchases",t:"المواد",ic:"🛒"},{k:"porters",t:"العمّال والحمّالون",ic:"👷"},{k:"expenses",t:"المصاريف",ic:"💸"},{k:"debts",t:"الديون والحسابات",ic:"📌"},{k:"cash",t:"الصندوق",ic:"🏦"}];
+const BRICK_SUB_COLOR={orders:"#3b5bdb",home:"#1c6ea4",batches:"#9a5b2e",sales:"#2e9e6b",purchases:"#e07b1f",porters:"#c79a00",expenses:"#d64545",debts:"#7c4dcc",cash:"#0e9aa7"};
 function brickSubVars(h){ const n=parseInt(h.slice(1),16), r=n>>16&255, g=n>>8&255, b=n&255, a=x=>`rgba(${r},${g},${b},${x})`; return `--tc:${h};--tb:${a(.1)};--ti:${a(.22)};--tl:${a(.38)};--ts:${a(.4)}`; }
 const BRICK_LKIND={cash:{t:"مال",ic:"💵"},bricks:{t:"طوب",ic:"🧱"},other:{t:"أخرى",ic:"📦"}};
 /* أنواع الطوب: لكل نوع سعر بيع وأجرة العامل لكل خنشة إسمنت (قابلة للتعديل). السجلات القديمة بلا نوع = «15 بريك» */
@@ -2451,7 +2466,24 @@ function brickMatShort(bags,loads,ex){ /* ما ينقص لخلطة: ex = خلط�
 function brickMatShortMsg(L){ return "⛔ لا يمكن الإنتاج قبل شراء المواد — "+L.join(" · ")+". سجّل الشراء في «المواد» أولًا"; }
 function brickMatStock(mat){ const bought=sum(brickLive(state.brickPurchases).filter(p=>p.material===mat),p=>+p.qty||0); const used=sum(brickLive(state.brickBatches),b=>mat==="cement"?(+b.cementBags||0):mat==="sand"?(+b.sandLoads||0):0); return bought-used; }
 function brickAvgCost(mat){ const L=brickLive(state.brickPurchases).filter(p=>p.material===mat); const q=sum(L,p=>+p.qty||0); return q>0?sum(L,p=>+p.total||0)/q:(+((brickCfg().lastCost||{})[mat])||0); }
-function brickStock(k){ const f=x=>!k||bType(x)===k; return sum(brickLive(state.brickBatches).filter(f),b=>+b.bricks||0)-sum(brickLive(state.brickSales).filter(f),s=>+s.qty||0)-sum(brickLive(state.brickLedger).filter(x=>x.kind==="bricks"&&f(x)),x=>(x.dir==="on"?1:-1)*(+x.qty||0)); }
+function brickStock(k){ const f=x=>!k||bType(x)===k; return sum(brickLive(state.brickBatches).filter(f),b=>+b.bricks||0)-sum(brickLive(state.brickSales).filter(f),s=>+s.qty||0)-sum(brickLive(state.brickWaste).filter(f),w=>+w.qty||0)-sum(brickLive(state.brickLedger).filter(x=>x.kind==="bricks"&&f(x)),x=>(x.dir==="on"?1:-1)*(+x.qty||0)); }
+/* (2.52.0) التجفيف: الخلطة الجديدة ready:false حتى يضغط «✅ جاهزة» (القديمة بلا الحقل = جاهزة). المكسور يُنقص المخزون.
+   الطلبيات تحجز طوبًا (المتبقي من كل طلبية مفتوحة) — الجاهز للبيع الحر = الجاهز − المحجوز. */
+function brickDrying(k){ return sum(brickLive(state.brickBatches).filter(b=>b.ready===false&&(!k||bType(b)===k)),b=>+b.bricks||0); }
+function brickReady(k){ return Math.max(0,brickStock(k)-brickDrying(k)); }
+function brickReserved(k){ return sum((state.brickOrders||[]).filter(o=>o.status==="open"&&(!k||bType(o)===k)),o=>brickOrderLeft(o)); }
+function brickStockHintTxt(k){ const st=brickStock(k), dr=brickDrying(k), rs=brickReserved(k); return "المخزون: "+fmt(st)+(dr?" · ✅ جاهز "+fmt(brickReady(k))+" · 🌬️ يجفّ "+fmt(dr):"")+(rs?" · 📦 محجوز "+fmt(rs):""); }
+function brickReadyWarn(k,qty,forOrder){ const free=brickReady(k)-(forOrder?0:brickReserved(k)); if(qty<=free) return true;
+  return confirm("⚠️ الجاهز للبيع من «"+brickType(k).name+"»: "+fmt(Math.max(0,free))+" طوبة"+(brickDrying(k)?" (يجفّ "+fmt(brickDrying(k))+")":"")+(!forOrder&&brickReserved(k)?" (محجوز للطلبيات "+fmt(brickReserved(k))+")":"")+".\nتبيع "+fmt(qty)+" — متابعة؟"); }
+const BRICK_OSTAT={open:{t:"مفتوحة",c:"b-unpaid"},done:{t:"مكتملة",c:"b-paid"},cancelled:{t:"ملغاة",c:"b-done"}};
+function brickOrder(id){ return (state.brickOrders||[]).find(o=>o.id===id); }
+function brickOrderSales(o){ return brickLive(state.brickSales).filter(s=>s.orderId===o.id); }
+function brickOrderDelivered(o){ return sum(brickOrderSales(o),s=>+s.qty||0); }
+function brickOrderLeft(o){ return o.status==="open"?Math.max(0,(+o.qty||0)-brickOrderDelivered(o)):0; }
+function brickOrderDeposit(o){ return sum((state.brickCash||[]).filter(m=>m.ref===o.id),m=>m.type==="in"?(+m.amount||0):-(+m.amount||0)); }
+function brickOrderDepLeft(o){ return Math.max(0,brickOrderDeposit(o)-sum(brickOrderSales(o),s=>+s.depUsed||0)); }
+/* ما بقي عليه في الطلبية = غير المدفوع من الرحلات + قيمة الطوب الذي لم يُسلَّم − العربون المتبقي */
+function brickOrderDue(o){ return sum(brickOrderSales(o),s=>brickOut(s))+brickOrderLeft(o)*(+o.unitPrice||0)-brickOrderDepLeft(o); }
 function brickCashIn(F){ return sum((state.brickCash||[]).filter(m=>m.type==="in"&&F(m.date)),m=>+m.amount||0); }
 function brickCashOut(F){ return sum((state.brickCash||[]).filter(m=>m.type==="out"&&F(m.date)),m=>+m.amount||0); }
 function brickCashBalance(){ return brickCashIn(()=>true)-brickCashOut(()=>true); }
@@ -2468,8 +2500,9 @@ function brickFin(F){
   const prodCost=matUsed+wages+expenses, costPerBrick=produced>0?prodCost/produced:0;
   const cost=purchases+wages+expenses, profit=sales-cost;
   const salesPaid=sum(S,s=>Math.min(+s.total||0,+s.paidAmount||0)), newDebts=sum(S,s=>brickOut(s));
+  const W=brickLive(state.brickWaste).filter(w=>F(w.date)), wasteQty=sum(W,w=>+w.qty||0), wasteValue=Math.round(sum(W,w=>(+w.qty||0)*(+w.unitCost||0)));
   const pm={}; PAY_METHODS.forEach(m=>pm[m.k]={inc:0,out:0,net:0}); (state.brickCash||[]).forEach(m=>{ if(!F(m.date)) return; const k=normPM(m.payMethod); if(m.type==="in") pm[k].inc+=+m.amount||0; else pm[k].out+=+m.amount||0; }); PAY_METHODS.forEach(m=>pm[m.k].net=pm[m.k].inc-pm[m.k].out);
-  return {nBatches:B.length,nSales:S.length,produced,sold,bags,loads,purchases,wages,expenses,sales,salesPaid,newDebts,cost,profit,matUsed,prodCost,costPerBrick,pm,
+  return {wasteQty,wasteValue,drying:brickDrying(),reserved:brickReserved(),nBatches:B.length,nSales:S.length,produced,sold,bags,loads,purchases,wages,expenses,sales,salesPaid,newDebts,cost,profit,matUsed,prodCost,costPerBrick,pm,
     custDebt:sum(brickParties().filter(x=>x.balance>0),x=>x.balance), supDebt:Math.abs(sum(brickParties().filter(x=>x.balance<0),x=>x.balance)), wageDues:sum(brickLive(state.brickBatches),b=>brickWageOut(b))+sum(brickLive(state.brickLoads),x=>brickLoadOut(x)), porterDues:sum(brickLive(state.brickLoads).filter(x=>brickIsJob(x)),x=>brickLoadOut(x))+sum(brickLive(state.brickBatches).filter(b=>b.workerId),b=>brickWageOut(b)),
     stock:brickStock(), cement:brickMatStock("cement"), sand:brickMatStock("sand"), box:brickCashBalance()};
 }
@@ -2485,20 +2518,22 @@ function brickSaleParty(x){ return x.partyType==="sup"?{type:"sup",id:x.partyId}
 /* الأطراف (زبائن + موردون) مع رصيد كل طرف في دبو: موجب = عليه لنا، سالب = له علينا */
 function brickParties(){
   const map=new Map();
-  const get=(type,id)=>{ const pt=brickParty(type,id); if(!pt) return null; let d=map.get(pt.key); if(!d){ d=Object.assign({salesOut:0,purOut:0,ledgerOn:0,ledgerFor:0,nSales:0,nPur:0,nLedger:0,last:""},pt); map.set(pt.key,d); } return d; };
+  const get=(type,id)=>{ const pt=brickParty(type,id); if(!pt) return null; let d=map.get(pt.key); if(!d){ d=Object.assign({salesOut:0,purOut:0,ledgerOn:0,ledgerFor:0,depFor:0,nSales:0,nPur:0,nLedger:0,nOrders:0,last:""},pt); map.set(pt.key,d); } return d; };
   const touch=(d,date)=>{ if(date&&date>d.last) d.last=date; };
   brickLive(state.brickSales).forEach(x=>{ const pp=brickSaleParty(x); const d=get(pp.type,pp.id); if(!d) return; d.salesOut+=brickOut(x); d.nSales++; touch(d,x.date); });
   brickLive(state.brickPurchases).forEach(x=>{ const d=x.partyType==="cust"?get("cust",x.partyId):x.supplierId?get("sup",x.supplierId):null; if(!d) return; d.purOut+=brickOut(x); d.nPur++; touch(d,x.date); });
   brickLive(state.brickLedger).forEach(x=>{ const d=get(x.partyType,x.partyId); if(!d) return; if(x.dir==="on") d.ledgerOn+=+x.amount||0; else d.ledgerFor+=+x.amount||0; d.nLedger++; touch(d,x.date); });
-  return [...map.values()].map(d=>Object.assign(d,{balance:d.salesOut+d.ledgerOn-d.purOut-d.ledgerFor})).sort((a,b)=>Math.abs(b.balance)-Math.abs(a.balance));
+  (state.brickOrders||[]).forEach(o=>{ const left=brickOrderDepLeft(o); const d=left>0||o.status==="open"?get(o.partyType,o.partyId):null; if(!d) return; d.depFor+=left; d.nOrders++; touch(d,o.date); });
+  return [...map.values()].map(d=>Object.assign(d,{balance:d.salesOut+d.ledgerOn-d.purOut-d.ledgerFor-d.depFor})).sort((a,b)=>Math.abs(b.balance)-Math.abs(a.balance));
 }
 /* كشف حساب طرف: كل القيود بترتيب زمني مع رصيد جارٍ (مدين = عليه، دائن = له) */
 function brickPartyRows(type,id){
   const pt=brickParty(type,id); if(!pt) return []; const rows=[];
-  brickLive(state.brickSales).forEach(x=>{ const pp=brickSaleParty(x); if(pp.type!==type||pp.id!==id) return; rows.push({date:x.date,label:"🧱 بيع "+brickTypeName(x)+" "+x.no+" ("+fmt(x.qty)+" × "+money(x.unitPrice)+(x.transport&&x.transportBy==="cust"?" + نقل "+money(x.transport):"")+")"+(x.paid&&x.payMethod?" · "+pmLabel(x.payMethod):""),debit:+x.total||0,credit:0,ref:x.id});
+  brickLive(state.brickSales).forEach(x=>{ const pp=brickSaleParty(x); if(pp.type!==type||pp.id!==id) return; rows.push({date:x.date,label:(x.orderId?"🚚 تسليم ":"🧱 بيع ")+brickTypeName(x)+" "+x.no+(x.orderId&&brickOrder(x.orderId)?" (طلبية "+brickOrder(x.orderId).no+")":"")+(x.depUsed?" · من العربون "+money(x.depUsed):"")+" ("+fmt(x.qty)+" × "+money(x.unitPrice)+(x.transport&&x.transportBy==="cust"?" + نقل "+money(x.transport):"")+")"+(x.paid&&x.payMethod?" · "+pmLabel(x.payMethod):""),debit:+x.total||0,credit:0,ref:x.id});
     (state.brickCash||[]).forEach(m=>{ if(m.ref===x.id&&m.type==="in") rows.push({date:m.date,label:"💵 دفعة على "+x.no+" · "+pmLabel(m.payMethod),debit:0,credit:+m.amount||0,ref:m.id}); }); });
   brickLive(state.brickPurchases).forEach(x=>{ if(!((type==="sup"&&x.supplierId===id&&x.partyType!=="cust")||(type==="cust"&&x.partyType==="cust"&&x.partyId===id))) return; rows.push({date:x.date,label:"🛒 شراء "+(x.name||"")+" "+x.no+" ("+fmt(x.qty)+" × "+money(x.unitCost)+")",debit:0,credit:+x.total||0,ref:x.id});
     (state.brickCash||[]).forEach(m=>{ if(m.ref===x.id&&m.type==="out") rows.push({date:m.date,label:"💸 تسديد على "+x.no+" · "+pmLabel(m.payMethod),debit:+m.amount||0,credit:0,ref:m.id}); }); });
+  (state.brickOrders||[]).forEach(o=>{ if(o.partyType!==type||o.partyId!==id) return; (state.brickCash||[]).forEach(m=>{ if(m.ref!==o.id) return; rows.push({date:m.date,label:(m.type==="in"?"📦 عربون طلبية ":"↩️ ردّ عربون ")+o.no+" · "+pmLabel(m.payMethod),debit:m.type==="out"?(+m.amount||0):0,credit:m.type==="in"?(+m.amount||0):0,ref:m.id}); }); });
   brickLive(state.brickLedger).forEach(x=>{ if(x.partyType!==type||x.partyId!==id) return; const K=BRICK_LKIND[x.kind]||BRICK_LKIND.other; rows.push({date:x.date,label:K.ic+" "+(x.dir==="on"?"عليه":"له")+" — "+K.t+(x.qty?" "+fmt(x.qty)+" طوبة":"")+(x.note?" · "+x.note:"")+(x.cash?" · "+pmLabel(x.payMethod):""),debit:x.dir==="on"?(+x.amount||0):0,credit:x.dir==="for"?(+x.amount||0):0,ref:x.id,ledger:true}); });
   rows.sort((a,b)=>(a.date||"").localeCompare(b.date||"")); let bal=0; rows.forEach(r=>{ bal+=r.debit-r.credit; r.balance=bal; }); return rows;
 }
@@ -2518,7 +2553,7 @@ function screenBrick(){
   const sub=BRICK_SUBS.some(s=>s.k===state.brickSub)?state.brickSub:"home";
   // (2.51.0) صفّان من المربعات الملوّنة بدل شريط يُمرَّر يمينًا ويسارًا
   const subs=BRICK_SUBS.map(s=>`<button data-bksub="${s.k}" class="${sub===s.k?'on':''}" style="${brickSubVars(BRICK_SUB_COLOR[s.k]||'#1c6ea4')}"><span class="bt-ic">${s.ic}</span><span class="bt-t">${s.t}</span></button>`).join("");
-  const body= sub==="batches"?brickScreenBatches() : sub==="sales"?brickScreenSales() : sub==="purchases"?brickScreenPurchases() : sub==="expenses"?brickScreenExpenses() : sub==="porters"?brickScreenPorters() : sub==="debts"?brickScreenDebts() : sub==="cash"?brickScreenCash() : brickScreenHome();
+  const body= sub==="batches"?brickScreenBatches() : sub==="sales"?brickScreenSales() : sub==="orders"?brickScreenOrders() : sub==="purchases"?brickScreenPurchases() : sub==="expenses"?brickScreenExpenses() : sub==="porters"?brickScreenPorters() : sub==="debts"?brickScreenDebts() : sub==="cash"?brickScreenCash() : brickScreenHome();
   return `
     <div class="screen-head"><h2>🧱 دبو — مصنع الطوب</h2><span>تراب + إسمنت ← خلطات ← طوب يُباع — بصندوق وربح مستقلّين</span></div>
     <div class="seg bk-tiles">${subs}</div>
@@ -2543,7 +2578,7 @@ function brickScreenHome(){
         ${W?"":big("🧾 التكاليف",money(f.cost),"var(--unpaid)",`مواد ${money(f.purchases)} + أجور ${money(f.wages)} + مصاريف ${money(f.expenses)}`)}
         ${W?"":big(`📈 ربح ${isToday?"اليوم":"الفترة"}`,money(f.profit),f.profit<0?"var(--unpaid)":"var(--brand)","المبيعات − التكاليف (الشراء يُحسب بتاريخه)")}
       </div>
-      <div class="bk-mini"><span>🧱 أُنتج <b>${fmt(f.produced)}</b> طوبة (${fmt(f.nBatches)} خلطة · ${fmt(f.bags)} خنشة · ${fmt(f.loads)} فياج)</span>${W?"":`<span>💲 تكلفة الطوبة <b>${f.costPerBrick?money(Math.round(f.costPerBrick*100)/100):"—"}</b></span>`}</div>
+      <div class="bk-mini"><span>🧱 أُنتج <b>${fmt(f.produced)}</b> طوبة (${fmt(f.nBatches)} خلطة · ${fmt(f.bags)} خنشة · ${fmt(f.loads)} فياج)</span>${W?"":`<span>💲 تكلفة الطوبة <b>${f.costPerBrick?money(Math.round(f.costPerBrick*100)/100):"—"}</b></span>`}${f.wasteQty?`<span style="color:var(--unpaid)">💔 مكسور <b>${fmt(f.wasteQty)}</b> طوبة${W?"":` (قيمته ${money(f.wasteValue)} — داخلة في التكاليف)`}</span>`:""}</div>
       <div class="pm-strip" style="margin-top:8px">${PAY_METHODS.map(m=>`<div class="pm-chip ${m.k}"><span>${m.ic} ${m.t}</span><b>${money(f.pm[m.k].net)}</b></div>`).join("")}</div>
       <div class="hint" style="margin-top:4px">صافي ما دخل الصندوق وخرج منه في الفترة بكل طريقة. الفترة تتغيّر من الأزرار في الأعلى أو «السابق / التالي».</div>
     </div>`;
@@ -2556,9 +2591,11 @@ function brickScreenHome(){
         ${now("📌 لنا على الزبائن",money(f.custDebt),"var(--unpaid)")}
         ${now("🏭 علينا للموردين",money(f.supDebt),"var(--wash)")}
         ${now("👷 أجور لم تُدفع",money(f.wageDues),"var(--wash)")}
+        ${f.drying?now("🌬️ طوب يجفّ",fmt(f.drying)+" طوبة","var(--wash)","اضغط «✅ جاهزة» في «الإنتاج» عندما يجفّ"):""}
+        ${f.reserved||(state.brickOrders||[]).some(o=>o.status==="open")?now("📦 محجوز للطلبيات",fmt(f.reserved)+" طوبة","#3b5bdb",(state.brickOrders||[]).filter(o=>o.status==="open").length+" طلبية مفتوحة"):""}
       </div>
       <div class="bk-sub-h">🧱 مخزون الطوب حسب النوع</div>
-      <div class="bk-types">${brickTypes().map(t=>{ const c=brickTypeCost(t.k); return `<div class="bk-type"><b>${fmt(brickStock(t.k))}</b><span>${_esc(t.name)}</span><small>${+t.price?"بيع "+money(t.price):""}${!W&&c>0?" · تكلفة "+brickCostTxt(c):""}</small></div>`; }).join("")}</div>
+      <div class="bk-types">${brickTypes().map(t=>{ const c=brickTypeCost(t.k); return `<div class="bk-type"><b>${fmt(brickStock(t.k))}</b><span>${_esc(t.name)}</span>${brickDrying(t.k)||brickReserved(t.k)?`<small style="font-weight:800">✅ جاهز ${fmt(brickReady(t.k))}${brickDrying(t.k)?" · 🌬️ يجفّ "+fmt(brickDrying(t.k)):""}${brickReserved(t.k)?" · 📦 محجوز "+fmt(brickReserved(t.k)):""}</small>`:""}<small>${+t.price?"بيع "+money(t.price):""}${!W&&c>0?" · تكلفة "+brickCostTxt(c):""}</small></div>`; }).join("")}</div>
     </div>`;
   // تقرير الشهر (مطوي): قائمة أشهر بأرقام لاتينية بدل حقل الشهر الأصلي
   const month=state.brickRepMonth||today.slice(0,7), months=new Set([today.slice(0,7),month]);
@@ -2597,18 +2634,32 @@ function brickScreenBatches(){
   const E=_esc, cfg=brickCfg(), L=brickLive(state.brickBatches).filter(b=>inRange(b.date)).slice().sort((a,b)=>(b.date||"").localeCompare(a.date||""));
   const cards=L.length?L.map(b=>`
     <div class="order">
-      <div class="cust">🧱 ${E(b.no)} · ${E(brickTypeName(b))}${b.opening?' <span class="badge b-done">رصيد افتتاحي</span>':''} <span class="badge ${brickWageOut(b)>0?'b-unpaid':'b-paid'}">${brickWageOut(b)>0?'أجرة غير مدفوعة':'الأجرة مدفوعة'}</span></div>
+      <div class="cust">🧱 ${E(b.no)} · ${E(brickTypeName(b))}${b.opening?' <span class="badge b-done">رصيد افتتاحي</span>':''}${b.ready===false?' <span class="badge b-unpaid">🌬️ تجفّ</span>':b.readyAt?' <span class="badge b-paid">✅ جاهزة</span>':''} <span class="badge ${brickWageOut(b)>0?'b-unpaid':'b-paid'}">${brickWageOut(b)>0?'أجرة غير مدفوعة':'الأجرة مدفوعة'}</span></div>
       <div class="meta">${frD(b.date)} ${timeStr(b.date)} · ${E(b.by||"")}</div>
       <div class="price">${fmt(b.bricks)} طوبة</div>
       ${b.opening?"":`<div class="meta" style="color:var(--wash);font-weight:800">💲 تكلفة الطوبة في هذه الخلطة: ${brickCostTxt(brickBatchCost(b))} ${CUR}</div>`}
       <div class="meta">🪨 ${fmt(b.cementBags)} خنشة · ⛰️ ${fmt(b.sandLoads)} فياج · 👷 ${money(b.workerPay)}${b.workers?" ("+E(b.workers)+")":""}${b.workerId&&brickWageOut(b)>0?" · دين في حسابه":""}</div>
       ${b.note?`<div class="meta">${E(b.note)}</div>`:""}
       <div class="order-acts-sub">
+        ${b.ready===false?`<button class="mini act-pay" data-bk-ready="${b.id}">✅ جاهزة للبيع</button>`:b.readyAt&&currentRole!=="worker"?`<button class="mini" data-bk-unready="${b.id}" title="إرجاعها إلى «تجفّ»">↩️ تجفّ</button>`:""}
         ${brickWageOut(b)>0?`<button class="mini act-pay" data-bk-wage="${b.id}">👷 دفع الأجرة ${money(brickWageOut(b))}</button>`:""}
         ${currentRole!=="worker"?`${recEditBtn("bbatch",b.id)}<button class="icon-btn" data-bk-del="batch:${b.id}" title="حذف">${svg(I.trash)}</button>`:""}
       </div>
     </div>`).join(""):`<div class="panel empty" style="grid-column:1/-1">${svg(I.empty)}لا خلطات في هذه الفترة.</div>`;
-  return `
+  const dryB=brickLive(state.brickBatches).filter(b=>b.ready===false).sort((a,b)=>(a.date||"").localeCompare(b.date||""));
+  const dryPanel=dryB.length?`<div class="panel bk-dry" style="margin-bottom:12px"><h3>🌬️ يجفّ الآن: ${fmt(brickDrying())} طوبة (${dryB.length} خلطة)</h3>
+      <div class="bk-dry-list">${dryB.map(b=>`<div class="bk-dry-row"><span><b>${E(b.no)}</b> · ${E(brickTypeName(b))} · ${fmt(b.bricks)} طوبة<small> — منذ ${Math.max(0,Math.floor((Date.now()-new Date(b.date))/864e5))} يوم</small></span><button class="mini act-pay" data-bk-ready="${b.id}">✅ جاهزة</button></div>`).join("")}</div>
+      ${dryB.length>1?`<button class="mini" data-bk-readyall="1" style="width:100%;margin-top:6px">✅ كلها جاهزة</button>`:""}
+      <div class="hint" style="margin-top:6px">الطوب الذي يجفّ يبقى في المخزون، لكن البيع منه يُظهر تنبيهًا.</div></div>`:"";
+  const WL=brickLive(state.brickWaste).filter(w=>inRange(w.date)).slice().sort((a,b)=>(b.date||"").localeCompare(a.date||""));
+  const wastePanel=`<details class="panel bk-fold" id="bkWasteBox" style="margin-top:12px"${_bkDraft.wasteOpen?" open":""}><summary>💔 طوب مكسور / تالف${WL.length?` <span class="hint" style="margin:0">${fmt(sum(WL,w=>+w.qty||0))} طوبة (${brickPeriodTxt()})</span>`:""}</summary>
+      <div class="row2" style="margin-top:8px"><div class="field"><label>نوع الطوب</label><select id="bkWType">${brickTypeOpts(_bkDraft.wtype||_bkDraft.btype||brickTypes()[0].k)}</select></div><div class="field"><label>عدد المكسور <span style="color:var(--unpaid)">*</span></label><input id="bkWQty" type="number" min="0" inputmode="numeric" placeholder="0"></div></div>
+      <div class="field"><label>السبب / ملاحظة</label><input id="bkWNote" type="text" placeholder="مثال: انكسر أثناء التحميل"></div>
+      <button class="btn-primary" id="bkWSave" style="width:100%">💔 تسجيل المكسور</button>
+      <div class="hint" style="margin-top:6px">يُنقص المخزون فقط. قيمته (العدد × تكلفة الطوبة) تظهر للمعلومة — هي محسوبة أصلًا في تكاليف المواد والأجور.</div>
+      ${WL.length?`<div class="tbl-wrap" style="margin-top:8px"><table class="tbl"><thead><tr><th>التاريخ</th><th>النوع</th><th>العدد</th><th>القيمة</th><th></th></tr></thead><tbody>${WL.map(w=>`<tr><td>${frD(w.date)}<div style="font-size:.7rem;color:var(--muted)">${E(w.by||"")}${w.note?" · "+E(w.note):""}</div></td><td>${E(brickTypeName(w))}</td><td class="amt">${fmt(w.qty)}</td><td class="amt">${money(Math.round((+w.qty||0)*(+w.unitCost||0)))}</td><td>${currentRole!=="worker"?`<button class="icon-btn" data-bk-wdel="${w.id}" title="حذف">${svg(I.trash)}</button>`:""}</td></tr>`).join("")}</tbody></table></div>`:""}
+    </details>`;
+  return `${dryPanel}
     <div class="cols">
       <div class="panel">
         <h3>خلطة جديدة</h3>
@@ -2629,9 +2680,9 @@ function brickScreenBatches(){
         ${pmPickerHTML("bkBatchPm","من أي حساب")}
         <div class="field"><label>ملاحظة</label><input id="bkNote" type="text" placeholder="اختياري"></div>
         <button class="btn-primary" id="bkBatchSave" style="width:100%">💾 تسجيل الخلطة</button>
-        <div class="hint" style="margin-top:6px">تُنقص الإسمنت والتراب وتزيد مخزون الطوب. الأجرة غير المدفوعة تظهر في «الديون ▸ أجور العمّال».</div>
+        <div class="hint" style="margin-top:6px">تُنقص الإسمنت والتراب وتزيد مخزون الطوب (🌬️ «تجفّ» حتى تضغط «✅ جاهزة»). الأجرة غير المدفوعة تظهر في «الديون ▸ أجور العمّال».</div>
       </div>
-      <div><div class="grid orders">${cards}</div></div>
+      <div><div class="grid orders">${cards}</div>${wastePanel}</div>
     </div>`;
 }
 /* (2.46.0) دبو ▸ «البيع والشراء»: أربعة أزرار في الأعلى (بيع نقدي/آجل، شراء نقدي/آجل) والنموذج كفاتورة؛ الطرف يظهر فقط في الآجل */
@@ -2672,7 +2723,7 @@ function brickScreenSales(){
         <div class="inv-sec">🧱 الطوب</div>
         ${(()=>{ const st=_bkDraft.stype||brickTypes()[0].k, T=brickType(st); return `<div class="field"><label>نوع الطوب</label><select id="bkSaleType">${brickTypeOpts(st)}</select></div>
         <div class="row2">
-          <div class="field"><label>عدد الطوب <span style="color:var(--unpaid)">*</span></label><input id="bkQty" type="number" min="0" inputmode="numeric" placeholder="0"><div class="hint" id="bkStockHint">المخزون: ${fmt(brickStock(st))}</div></div>
+          <div class="field"><label>عدد الطوب <span style="color:var(--unpaid)">*</span></label><input id="bkQty" type="number" min="0" inputmode="numeric" placeholder="0"><div class="hint" id="bkStockHint">${brickStockHintTxt(st)}</div></div>
           <div class="field"><label>سعر الطوبة</label><input id="bkPrice" type="number" min="0" inputmode="decimal" value="${+T.price||+cfg.price||""}"><div class="hint" id="bkProfitHint" style="display:none">${(()=>{ const c=brickTypeCost(st); return c>0?"تكلفة الطوبة "+brickCostTxt(c):"لا توجد خلطات لهذا النوع بعد"; })()}</div></div>
         </div>`; })()}
         <div class="field"><label>🚚 النقل</label><div class="seg">${[["none","بلا نقل"],["cust","على الزبون"],["us","علينا"]].map(([k,t])=>`<button type="button" data-bktr="${k}" class="${(_bkDraft.tr||"none")===k?"on":""}">${t}</button>`).join("")}</div></div>
@@ -2692,6 +2743,160 @@ function brickScreenSales(){
         <div class="grid orders">${cards}</div>
       </div>
     </div>`;
+}
+/* ---------- (2.52.0) دبو ▸ الطلبيات ---------- */
+function brickOrderText(o){ const pt=brickParty(o.partyType,o.partyId), S=brickOrderSales(o);
+  return ["📦 طلبية طوب "+o.no+" — "+(shopInfo().name||"دبو"),"👤 "+(pt?pt.name:o.customerName||""),"🧱 "+brickTypeName(o)+": "+fmt(o.qty)+" طوبة × "+money(o.unitPrice)+" = "+money(o.total)+" "+CUR,
+    "🚚 سُلّم "+fmt(brickOrderDelivered(o))+" · بقي "+fmt(brickOrderLeft(o))+" طوبة",...S.map(s=>"  • "+frD(s.date)+": "+fmt(s.qty)+" طوبة"+(s.driver?" ("+s.driver+")":"")),
+    "💵 العربون: "+money(brickOrderDeposit(o))+(brickOrderDepLeft(o)?" (متبقٍ منه "+money(brickOrderDepLeft(o))+")":""),"💰 بقي عليه: "+money(Math.max(0,brickOrderDue(o)))+" "+CUR,o.address?"📍 "+o.address:""].filter(Boolean).join("\n"); }
+function openBrickOrderReceipt(o,last){
+  const pt=brickParty(o.partyType,o.partyId), S=brickOrderSales(o), E=_esc;
+  document.getElementById("receiptContent").innerHTML=`<div class="rcpt">${rcptHeader((last?"🚚 وصل تسليم — "+E(last.no)+"<br><small>":"📦 طلبية طوب — ")+E(o.no)+(last?"</small>":""))}
+    <div class="rcpt-row"><span>الزبون</span><b>${E(pt?pt.name:o.customerName||"")}${(pt&&pt.phone)||o.phone?" · "+E((pt&&pt.phone)||o.phone):""}</b></div>
+    ${o.address?`<div class="rcpt-row"><span>📍 العنوان</span><b>${E(o.address)}</b></div>`:""}
+    ${last?`<div class="rcpt-row"><span>هذه الرحلة (${frD(last.date)} ${timeStr(last.date)})</span><b>${fmt(last.qty)} طوبة</b></div>${last.driver?`<div class="rcpt-row"><span>🚚 الناقل</span><b>${E(last.driver)}</b></div>`:""}${last.transport&&last.transportBy==="cust"?`<div class="rcpt-row"><span>أجرة النقل</span><b>${money(last.transport)}</b></div>`:""}`:""}
+    <div class="rcpt-row"><span>${E(brickTypeName(o))}: ${fmt(o.qty)} طوبة × ${money(o.unitPrice)}</span><b>${money(o.total)}</b></div>
+    ${S.length?`<div class="rcpt-row" style="font-weight:800"><span>الرحلات</span><b></b></div>${S.map(s=>`<div class="rcpt-row"><span>${frD(s.date)}${s.driver?" · "+E(s.driver):""}</span><b>${fmt(s.qty)} طوبة</b></div>`).join("")}`:""}
+    <div class="rcpt-row"><span>سُلّم / بقي</span><b>${fmt(brickOrderDelivered(o))} / ${fmt(brickOrderLeft(o))}</b></div>
+    <div class="rcpt-row"><span>💵 العربون</span><b>${money(brickOrderDeposit(o))}</b></div>
+    <div class="rcpt-total"><span>بقي عليه</span><b style="color:#d64545">${money(Math.max(0,brickOrderDue(o)))} ${CUR}</b></div>
+    ${rcptFooter()}</div>`;
+  document.getElementById("receiptModal").style.display="flex";
+}
+function brickScreenOrders(){
+  const E=_esc, d=_bkDraft, all=state.brickOrders||[], open=all.filter(o=>o.status==="open").sort((a,b)=>(a.date||"").localeCompare(b.date||""));
+  const closed=all.filter(o=>o.status!=="open"&&(d.ordAll||inRange(o.date)||inRange(o.doneAt))).sort((a,b)=>(b.date||"").localeCompare(a.date||""));
+  const st=d.otype||brickTypes()[0].k, T=brickType(st), isNew=d.oparty==="__new";
+  const P=(state.brickPorters||[]).slice().sort((a,b)=>(a.name||"").localeCompare(b.name||"","ar"));
+  const card=o=>{ const pt=brickParty(o.partyType,o.partyId), del=brickOrderDelivered(o), left=brickOrderLeft(o), pct=o.qty>0?Math.min(100,Math.round(del*100/o.qty)):0, dep=brickOrderDeposit(o), depL=brickOrderDepLeft(o), due=brickOrderDue(o), S=brickOrderSales(o);
+    const ph=pt?waPhoneFull(pt.phone,pt.country):"", stt=BRICK_OSTAT[o.status]||BRICK_OSTAT.open, dl=d.odeliv===o.id;
+    return `<div class="order bk-ord s-${o.status}">
+      <div class="cust">📦 ${E(o.no)} · ${E(pt?pt.name:o.customerName||"")} <span class="badge ${stt.c}">${stt.t}</span></div>
+      <div class="meta">${pt&&pt.phone?"📞 "+E(pt.phone)+" · ":""}${frD(o.date)} · ${E(o.by||"")}</div>
+      <div class="meta" style="font-weight:800">🧱 ${E(brickTypeName(o))}: ${fmt(o.qty)} طوبة × ${money(o.unitPrice)} = ${money(o.total)} ${CUR}</div>
+      <div class="ord-bar"><i style="width:${pct}%"></i></div>
+      <div class="meta">🚚 سُلّم <b>${fmt(del)}</b> من ${fmt(o.qty)}${o.status==="open"?` · بقي <b>${fmt(left)}</b> طوبة`:""}</div>
+      <div class="meta">💵 العربون ${money(dep)}${depL>0?` (متبقٍ منه <b>${money(depL)}</b>)`:""} · <span style="color:${due>0?'var(--unpaid)':'var(--ready)'}">💰 ${due>0?"بقي عليه "+money(due):due<0?"له عندنا "+money(-due):"مسدَّد"}</span></div>
+      ${o.address?`<div class="meta">📍 ${E(o.address)}</div>`:""}${o.note?`<div class="meta">${E(o.note)}</div>`:""}
+      ${S.length?`<div class="ord-trips">${S.map(s=>`<div class="ord-trip"><span>${frD(s.date)} · ${fmt(s.qty)} طوبة${s.driver?" · 🚚 "+E(s.driver):""}${brickOut(s)>0?` · <b style="color:var(--unpaid)">غير مدفوع ${money(brickOut(s))}</b>`:""}</span><button class="mini" data-bk-ordrcpt="${o.id}|${s.id}" title="وصل التسليم">🧾</button></div>`).join("")}</div>`:""}
+      <div class="order-acts-sub">
+        ${o.status==="open"?`<button class="mini act-pay" data-bk-odeliv="${o.id}">🚚 تسليم رحلة</button><button class="mini" data-bk-odep="${o.id}">💵 عربون / دفعة</button>`:""}
+        ${o.status==="cancelled"&&depL>0?`<button class="mini act-pay" data-bk-orefund="${o.id}">↩️ ردّ العربون ${money(depL)}</button>`:""}
+        <button class="mini" data-bk-ordrcpt="${o.id}">🧾 الوصل</button>
+        ${ph?`<a class="mini" href="https://wa.me/${ph}?text=${encodeURIComponent(brickOrderText(o))}" target="_blank" rel="noopener" style="text-decoration:none">💬 واتساب</a>`:""}
+        ${o.status==="open"&&currentRole!=="worker"?`<button class="icon-btn" data-bk-ocancel="${o.id}" title="إلغاء الطلبية">${svg(I.trash)}</button>`:""}
+      </div>
+      ${dl?`<div class="bk-dlv">
+        <div class="inv-sec">🚚 تسليم رحلة</div>
+        <div class="row2"><div class="field"><label>عدد الطوب في الرحلة <span style="color:var(--unpaid)">*</span></label><input id="bkDlvQty" type="number" min="0" inputmode="numeric" value="${left}"><div class="hint">${brickStockHintTxt(bType(o))}</div></div>
+          <div class="field"><label>🚚 الناقل / الحمّال</label><select id="bkDlvPorter"><option value="">— بلا —</option>${P.map(p=>`<option value="${p.id}" ${d.dlvPorter===p.id?"selected":""}>${E(p.name)}${p.phone?" · "+E(p.phone):""}</option>`).join("")}</select>${+T.load||+brickType(bType(o)).load?`<div class="hint">حمل الطوبة ${money(+brickType(bType(o)).load||0)} يُسجَّل مستحقًّا له</div>`:""}</div></div>
+        <div class="field"><label>النقل</label><div class="seg">${[["none","بلا نقل"],["cust","على الزبون"],["us","علينا"]].map(([k,t])=>`<button type="button" data-bkdtr="${k}" class="${(d.dtr||"none")===k?"on":""}">${t}</button>`).join("")}</div></div>
+        <div style="${(d.dtr||"none")==="none"?"display:none":""}"><div class="field"><label>أجرة النقل</label><input id="bkDlvTrAmt" type="number" min="0" inputmode="decimal" placeholder="0"><div class="hint">${d.dtr==="cust"?"تُضاف إلى فاتورة هذه الرحلة":"تُسجَّل مصروف نقل من صندوق دبو"}</div></div>${d.dtr==="us"?pmPickerHTML("bkDlvTrPm","النقل من أي حساب"):""}</div>
+        <div class="field"><label>ملاحظة</label><input id="bkDlvNote" type="text" placeholder="اختياري"></div>
+        <div class="hint" style="margin-bottom:6px">${depL>0?"💵 تُخصم قيمة الرحلة من العربون أولًا (متبقٍ "+money(depL)+")، والباقي دين عليه.":"تُسجَّل الرحلة بيعًا آجلًا على الزبون."}</div>
+        <div class="set-row" style="gap:8px"><button class="btn-primary" id="bkDlvSave" style="flex:1">✅ تسجيل التسليم</button><button class="mini" id="bkDlvClose">إلغاء</button></div>
+      </div>`:""}
+    </div>`; };
+  const openCnt=open.length, reserved=brickReserved(), depHeld=sum(all,o=>brickOrderDepLeft(o)), dueAll=sum(open,o=>Math.max(0,brickOrderDue(o)));
+  return `
+    <div class="store-stat">
+      <div class="s"><div class="v" style="color:#3b5bdb">${fmt(openCnt)}</div><div class="l">📦 طلبيات مفتوحة</div></div>
+      <div class="s"><div class="v" style="color:var(--wash)">${fmt(reserved)}</div><div class="l">🧱 طوب محجوز (لم يُسلَّم)</div></div>
+      <div class="s"><div class="v" style="color:var(--ready)">${money(depHeld)}</div><div class="l">💵 عربون عندنا</div></div>
+      <div class="s"><div class="v" style="color:var(--unpaid)">${money(dueAll)}</div><div class="l">💰 بقي على الزبائن</div></div>
+    </div>
+    <div class="cols">
+      <div class="panel inv-card">
+        <div class="inv-head" style="--tc:#3b5bdb"><b>📦 طلبية جديدة</b><span><bdi dir="ltr">${frD(new Date())}</bdi> · <bdi dir="ltr">${E(brickSeqNo(all,"BO",iso(new Date())))}</bdi></span></div>
+        <div class="inv-party"><div class="inv-lbl">👤 الزبون <span style="color:var(--unpaid)">*</span></div><div class="field" style="margin:0"><input id="bkOrdFind" class="search-inp" type="text" placeholder="🔎 ابحث بالاسم أو الهاتف" style="margin:0 0 6px"><select id="bkOrdParty">${brickPartyOpts(d.oparty||"",false).replace(/<option value=""[^>]*>[^<]*<\/option>/,'<option value="">— اختر الزبون —</option>')}</select></div>
+          <div id="bkOrdNewWrap" style="${isNew?"":"display:none"}"><div class="field"><label>اسم الزبون الجديد <span style="color:var(--unpaid)">*</span></label><input id="bkOrdNewName" type="text" placeholder="الاسم"></div><div class="field"><label>الهاتف <span style="color:var(--unpaid)">*</span></label><div class="phone-row"><select id="bkOrdNewCountry" class="cc-select">${countryOpts()}</select><input id="bkOrdNewPhone" class="phone-inp" type="tel" inputmode="numeric" maxlength="9" placeholder="رقم الهاتف"></div></div></div>
+          <div class="field" style="margin-top:6px"><label>📞 هاتف الزبون (إلزامي إن لم يكن محفوظًا)</label><input id="bkOrdPhone" class="phone-inp" type="tel" inputmode="numeric" maxlength="9" placeholder="رقم الهاتف" style="width:100%"></div></div>
+        <div class="inv-sec">🧱 الطوب المطلوب</div>
+        <div class="field"><label>نوع الطوب</label><select id="bkOrdType">${brickTypeOpts(st)}</select></div>
+        <div class="row2">
+          <div class="field"><label>العدد <span style="color:var(--unpaid)">*</span></label><input id="bkOrdQty" type="number" min="0" inputmode="numeric" placeholder="0"><div class="hint" id="bkOrdStock">${brickStockHintTxt(st)}</div></div>
+          <div class="field"><label>سعر الطوبة</label><input id="bkOrdPrice" type="number" min="0" inputmode="decimal" value="${+T.price||""}"></div>
+        </div>
+        <div class="field"><label>📍 عنوان التسليم</label><input id="bkOrdAddr" type="text" placeholder="الحي / الموقع"></div>
+        <div class="inv-sec">💵 العربون</div>
+        <div class="row2 inv-pay"><div class="field"><label>العربون المدفوع الآن</label><input id="bkOrdDep" type="number" min="0" inputmode="decimal" value="0"></div><div class="field"><label>المتبقي بعد العربون</label><div class="t-rem" id="bkOrdRem">—</div></div></div>
+        <div id="bkOrdPmWrap" style="display:none">${pmPickerHTML("bkOrdPm","العربون عبر")}</div>
+        <div class="field"><label>ملاحظة</label><input id="bkOrdNote" type="text" placeholder="اختياري"></div>
+        <div class="inv-total"><span>إجمالي الطلبية</span><b id="bkOrdTotal">0 ${CUR}</b></div>
+        <button class="btn-primary" id="bkOrdSave" style="width:100%">💾 حفظ الطلبية</button>
+        <div class="hint" style="margin-top:6px">الطلبية حجز فقط: لا تنقص المخزون ولا تُحسب بيعًا. كل «🚚 تسليم رحلة» = بيع بعدده يُخصم من العربون أولًا.</div>
+      </div>
+      <div>
+        <div class="grid orders">${open.length?open.map(card).join(""):`<div class="panel empty" style="grid-column:1/-1">${svg(I.empty)}لا طلبيات مفتوحة.</div>`}</div>
+        <button class="mini" id="bkOrdAll" style="width:100%;margin:10px 0">${d.ordAll?"إخفاء المكتملة والملغاة":"عرض المكتملة والملغاة"+(all.length-open.length?" ("+(all.length-open.length)+")":"")}</button>
+        ${closed.length?`<div class="grid orders">${closed.map(card).join("")}</div>`:""}
+      </div>
+    </div>`;
+}
+function doBrickOrderSave(){
+  const sel=document.getElementById("bkOrdParty"); let key=sel?sel.value:"";
+  const qty=+toLatinDigits(document.getElementById("bkOrdQty").value||"")||0, price=+toLatinDigits(document.getElementById("bkOrdPrice").value||"")||0, dep=Math.max(0,+toLatinDigits((document.getElementById("bkOrdDep")||{}).value||"")||0);
+  const btype=(document.getElementById("bkOrdType")||{}).value||brickTypes()[0].k, addr=(document.getElementById("bkOrdAddr").value||"").trim(), note=(document.getElementById("bkOrdNote").value||"").trim();
+  if(!key) return toast("اختر الزبون");
+  if(!(qty>0)) return toast("أدخل عدد الطوب");
+  if(!(price>0)) return toast("أدخل سعر الطوبة");
+  if(dep>qty*price) return toast("العربون أكبر من قيمة الطلبية");
+  if(key==="__new"){ const name=(document.getElementById("bkOrdNewName").value||"").trim(); if(!name) return toast("أدخل اسم الزبون الجديد");
+    const phone=(document.getElementById("bkOrdNewPhone").value||"").trim(), country=document.getElementById("bkOrdNewCountry").value;
+    if(!phone) return toast("الطلبية تحتاج رقم هاتف الزبون"); if(!validPhone(phone)) return toast("رقم الهاتف يجب أن يكون 8 أرقام");
+    const dup=(state.storeCustomers||[]).find(c=>normPhone(c.phone)===normPhone(phone));
+    if(dup) key="c:"+dup.id; else { const c={id:uid(),name,phone,country,isLaundry:false,note:"",by:currentUser,editedAt:iso(new Date())}; state.storeCustomers.push(c); key="c:"+c.id; logActivity("زبون جديد (دبو)",name); } }
+  const pt=brickPartyFromKey(key); if(!pt) return toast("اختر الزبون");
+  const er=brickRequirePhone(pt,"bkOrdPhone"); if(er) return toast(er);
+  const d=iso(new Date()), o={id:uid(),no:brickSeqNo(state.brickOrders,"BO",d),partyType:pt.type,partyId:pt.id,customerName:pt.name,phone:pt.phone||"",btype,qty,unitPrice:price,total:qty*price,address:addr,note,status:"open",date:d,by:currentUser,editedAt:d};
+  state.brickOrders.push(o); if(dep>0) addBrickCash("in",dep,"عربون طلبية "+o.no+" — "+pt.name,o.id,pmVal("bkOrdPm"));
+  _bkDraft.oparty=""; _bkDraft.otype=btype; brickType(btype).price=price; pmReset("bkOrdPm");
+  logActivity("دبو: طلبية جديدة",o.no+" · "+pt.name+" · "+brickTypeName(o)+" "+fmt(qty)+" × "+money(price)+" = "+money(o.total)+(dep?" · عربون "+money(dep):""));
+  toast("📦 حُفظت الطلبية "+o.no+" ✓"+(dep?" — عربون "+money(dep):"")); render();
+}
+function brickOrderDeliver(o,qty,opt){
+  const pt=brickParty(o.partyType,o.partyId), btype=bType(o), d=iso(new Date()), price=+o.unitPrice||0, tr=opt.tr||"none", trAmt=tr==="none"?0:(+opt.trAmt||0);
+  const total=qty*price+(tr==="cust"?trAmt:0), use=Math.min(total,brickOrderDepLeft(o)), por=opt.porterId?brickPorter(opt.porterId):null;
+  const dm=(state.brickCash||[]).find(m=>m.ref===o.id&&m.type==="in");
+  const s={id:uid(),no:brickSeqNo(state.brickSales,"BS",d),btype,orderId:o.id,transport:trAmt||undefined,transportBy:trAmt?tr:undefined,partyType:o.partyType,partyId:o.partyId,customerId:o.partyType==="cust"?o.partyId:null,customerName:pt?pt.name:o.customerName,phone:pt?pt.phone:(o.phone||""),country:pt?pt.country:"222",qty,unitPrice:price,total,paidAmount:use,paid:use>=total,note:"تسليم طلبية "+o.no+(opt.note?" — "+opt.note:""),date:d,by:currentUser,editedAt:d};
+  if(use>0){ s.depUsed=use; s.payMethod=dm?normPM(dm.payMethod):"cash"; if(s.paid) s.paidDate=d; }
+  if(por) s.driver=por.name;
+  state.brickSales.push(s);
+  const lr=+brickType(btype).load||0; if(lr>0&&por) state.brickLoads.push({id:uid(),no:brickSeqNo(state.brickLoads,"H",d),porterId:por.id,kind:"bricks",qty,rate:lr,amount:Math.round(qty*lr),paidAmount:0,paid:false,ref:s.id,btype,note:"حمل تسليم "+s.no+" (طلبية "+o.no+")",date:d,by:currentUser,editedAt:d});
+  if(tr==="us"&&trAmt>0){ const e={id:uid(),category:"transport",amount:trAmt,note:"نقل "+s.no+" (طلبية "+o.no+")",payMethod:opt.trPm||"cash",ref:s.id,date:d,by:currentUser,editedAt:d}; state.brickExpenses.push(e); addBrickCash("out",trAmt,"نقل "+s.no,e.id,e.payMethod); }
+  if(brickOrderDelivered(o)>=(+o.qty||0)){ o.status="done"; o.doneAt=d; } o.editedAt=d;
+  logActivity("دبو: تسليم طلبية",o.no+" · "+(pt?pt.name:"")+" · "+fmt(qty)+" طوبة"+(use?" · من العربون "+money(use):"")+(por?" · "+por.name:""));
+  return s;
+}
+function doBrickDeliverSave(){
+  const o=brickOrder(_bkDraft.odeliv); if(!o||o.status!=="open") return;
+  const qty=+toLatinDigits(document.getElementById("bkDlvQty").value||"")||0, k=bType(o);
+  if(!(qty>0)) return toast("أدخل عدد الطوب في الرحلة");
+  if(qty>brickOrderLeft(o)) return toast("أكثر من المتبقي في الطلبية ("+fmt(brickOrderLeft(o))+")");
+  if(qty>brickStock(k)) return toast("المخزون لا يكفي (المتاح من "+brickType(k).name+": "+fmt(brickStock(k))+")");
+  const tr=_bkDraft.dtr||"none", trAmt=tr==="none"?0:(+toLatinDigits((document.getElementById("bkDlvTrAmt")||{}).value||"")||0);
+  if(tr!=="none"&&!(trAmt>0)) return toast("أدخل أجرة النقل أو اختر «بلا نقل»");
+  if(!brickReadyWarn(k,qty,true)) return;
+  const por=(document.getElementById("bkDlvPorter")||{}).value||""; _bkDraft.dlvPorter=por;
+  const s=brickOrderDeliver(o,qty,{porterId:por,tr,trAmt,trPm:tr==="us"?pmVal("bkDlvTrPm"):null,note:(document.getElementById("bkDlvNote").value||"").trim()});
+  if(tr==="us") pmReset("bkDlvTrPm"); _bkDraft.odeliv=null; _bkDraft.dtr="none";
+  toast("🚚 سُجّل التسليم ✓ — "+fmt(qty)+" طوبة"+(o.status==="done"?" · اكتملت الطلبية 🎉":" · بقي "+fmt(brickOrderLeft(o)))); render(); openBrickOrderReceipt(o,s);
+}
+function brickOrderCancel(o){
+  requireCode(()=>{ const now=iso(new Date()), S=brickOrderSales(o), dep=brickOrderDeposit(o);
+    if(!S.length&&!(state.brickCash||[]).some(m=>m.ref===o.id)){ tomb(o.id); state.brickOrders=state.brickOrders.filter(x=>x.id!==o.id); logActivity("دبو: حذف طلبية",o.no+" · "+(o.customerName||"")); toast("حُذفت الطلبية"); render(); return; }
+    o.status="cancelled"; o.cancelledAt=now; o.cancelledBy=currentUser; o.editedAt=now;
+    logActivity("دبو: إلغاء طلبية",o.no+" · "+(o.customerName||"")+" · سُلّم "+fmt(brickOrderDelivered(o))+(dep?" · العربون المتبقي "+money(brickOrderDepLeft(o))+" له":""));
+    toast("أُلغيت الطلبية — "+(brickOrderDepLeft(o)>0?"العربون المتبقي "+money(brickOrderDepLeft(o))+" يبقى له (زر «ردّ العربون»)":"الرحلات المسلَّمة تبقى")); render(); }, SECRET_CODE, "إلغاء طلبية "+o.no, (o.customerName||"")+" — "+fmt(o.qty)+" طوبة");
+}
+function doBrickWasteSave(){
+  const k=(document.getElementById("bkWType")||{}).value||brickTypes()[0].k, qty=+toLatinDigits(document.getElementById("bkWQty").value||"")||0, note=(document.getElementById("bkWNote").value||"").trim();
+  if(!(qty>0)) return toast("أدخل عدد الطوب المكسور");
+  if(qty>brickStock(k)) return toast("أكثر من المخزون (المتاح من "+brickType(k).name+": "+fmt(brickStock(k))+")");
+  const d=iso(new Date()), w={id:uid(),no:brickSeqNo(state.brickWaste,"W",d),btype:k,qty,unitCost:brickTypeCost(k)||0,note,date:d,by:currentUser,editedAt:d};
+  state.brickWaste.push(w); _bkDraft.wtype=k; _bkDraft.wasteOpen=true;
+  logActivity("دبو: طوب مكسور",brickTypeName(w)+" · "+fmt(qty)+" طوبة"+(w.unitCost?" · قيمته "+money(Math.round(qty*w.unitCost)):"")+(note?" · "+note:""));
+  toast("💔 سُجّل المكسور ✓ — نقص المخزون "+fmt(qty)); render();
 }
 function brickPurCardsHTML(L){ const E=_esc; return L.length?L.map(p=>{ const out=brickOut(p), M=BRICK_MAT[p.material]||BRICK_MAT.other; return `
     <div class="order">
@@ -2888,13 +3093,13 @@ function openPorterStatement(id){ const pr=brickPorter(id); if(!pr) return; cons
 function brickScreenDebts(){
   const E=_esc, P=brickParties(), q=(state.brickSearch||"").trim();
   const lna=sum(P.filter(x=>x.balance>0),x=>x.balance), alina=-sum(P.filter(x=>x.balance<0),x=>x.balance);
-  let L=P.filter(x=>x.balance!==0||x.nLedger||x.nSales||x.nPur); if(q) L=L.filter(x=>(x.name||"").includes(q)||(x.phone||"").includes(q));
+  let L=P.filter(x=>x.balance!==0||x.nLedger||x.nSales||x.nPur||x.nOrders); if(q) L=L.filter(x=>(x.name||"").includes(q)||(x.phone||"").includes(q));
   const wages=brickLive(state.brickBatches).filter(b=>brickWageOut(b)>0&&!b.workerId).sort((a,b)=>(a.date||"").localeCompare(b.date||""));
   const d=_bkDraft, isNew=d.lparty==="__new";
   // (2.50.0) نفس بطاقة الزبون في المتجر والزبائن (personCardHTML): حرف · الاسم · رقم واحد عليه/له · أزرار دائرية
   const cards=L.length?L.map(x=>{ const owes=x.balance>0;
     const msg=owes?buildMsg("debt",{"الاسم":x.name,"المبلغ":money(x.balance),"العملة":CUR,"العدد":String(x.nSales+x.nLedger),"الأيام":String(x.last?Math.max(0,Math.floor((Date.now()-new Date(x.last))/864e5)):0)}):"";
-    const info=[x.salesOut>0?`🧱 مبيعات آجلة ${money(x.salesOut)}`:"",x.purOut>0?`🛒 مشتريات غير مسدَّدة ${money(x.purOut)}`:"",x.ledgerOn||x.ledgerFor?`📝 قيود: عليه ${money(x.ledgerOn)} / له ${money(x.ledgerFor)}`:"",x.last?`آخر حركة ${frD(x.last)}`:""].filter(Boolean).join(" · ");
+    const info=[x.salesOut>0?`🧱 مبيعات آجلة ${money(x.salesOut)}`:"",x.purOut>0?`🛒 مشتريات غير مسدَّدة ${money(x.purOut)}`:"",x.ledgerOn||x.ledgerFor?`📝 قيود: عليه ${money(x.ledgerOn)} / له ${money(x.ledgerFor)}`:"",x.depFor>0?`📦 عربون عندنا ${money(x.depFor)}`:"",x.last?`آخر حركة ${frD(x.last)}`:""].filter(Boolean).join(" · ");
     const btns=[]; if(owes) btns.push([`data-bk-pcollect="${x.key}"`,"💵","تحصيل","pay"]); if(x.balance<0) btns.push([`data-bk-ppay="${x.key}"`,"💸","تسديد له","pay"]); btns.push([`data-bk-stmt="${x.key}"`,"📄","كشف"]);
     return personCardHTML({name:x.name,phone:x.phone,country:x.country,amt:x.balance,badge:x.type==="sup"?"🏭 مورّد":(x.category||""),info,waText:msg||"",btns,mini:[[`data-bk-ladd="${x.key}"`,"➕ قيد"]]}); }).join(""):`<div class="panel empty" style="grid-column:1/-1">${svg(I.empty)}${q?"لا طرف مطابق.":"لا حسابات بعد — سجّل بيعًا آجلًا أو قيدًا."}</div>`;
   const wCards=wages.length?wages.map(b=>`
@@ -2935,7 +3140,7 @@ function brickScreenDebts(){
 /* تصفير دبو والبدء من 0: يُمحى كل ما سُجّل في دبو (فواتير، خلطات، مشتريات، مصاريف، قيود، حمل، صندوق) مع tombstones
    ليُمحى من كل الأجهزة. يبقى: أنواع الطوب وأسعار البيع والأجرة والحمل، آخر سعر شراء للإسمنت والتراب، الزبائن والموردون
    بأرقامهم، والعمّال/الحمّالون بأسمائهم وأرقامهم. تُؤخذ نسخة احتياطية قبل المسح. */
-const BRICK_RESET_KEYS=["brickBatches","brickPurchases","brickSales","brickExpenses","brickCash","brickLedger","brickLoads"];
+const BRICK_RESET_KEYS=["brickBatches","brickPurchases","brickSales","brickExpenses","brickCash","brickLedger","brickLoads","brickOrders","brickWaste"];
 function brickResetAll(){
   const n=sum(BRICK_RESET_KEYS,k=>(state[k]||[]).length);
   const c=brickCfg(); c.lastCost=c.lastCost||{}; ["cement","sand"].forEach(m=>{ const L=brickLive(state.brickPurchases).filter(p=>p.material===m&&!p.opening); const q=sum(L,p=>+p.qty||0); if(q>0) c.lastCost[m]=Math.round(sum(L,p=>+p.total||0)/q); });
@@ -3015,11 +3220,11 @@ function doBrickBatchSave(){
   if(!(bricks>0)) return toast("أدخل عدد الطوب المنتج");
   const short=brickMatShort(bags,loads); if(short.length) return toast(brickMatShortMsg(short));
   const btype=(document.getElementById("bkType")||{}).value||brickTypes()[0].k;
-  const d=iso(new Date()), b={id:uid(),no:brickSeqNo(state.brickBatches,"K",d),btype,cementBags:bags,sandLoads:loads,bricks,workerPay:wage,workerId:wkr?wkr.id:null,workerPaidAmt:paid?wage:0,workerPaid:paid||wage<=0,workers,note,date:d,by:currentUser,editedAt:d};
+  const d=iso(new Date()), b={id:uid(),no:brickSeqNo(state.brickBatches,"K",d),btype,ready:false,cementBags:bags,sandLoads:loads,bricks,workerPay:wage,workerId:wkr?wkr.id:null,workerPaidAmt:paid?wage:0,workerPaid:paid||wage<=0,workers,note,date:d,by:currentUser,editedAt:d};
   if(paid&&wage>0){ b.payMethod=pmVal("bkBatchPm"); addBrickCash("out",wage,"أجرة خلطة "+b.no+(workers?" — "+workers:""),b.id,b.payMethod); }
   state.brickBatches.push(b); if(b.workerId) brickApplyAdvance(b.workerId); _bkDraft.btype=btype; _bkDraft.wagePaid=paid; _bkDraft.batchWorker=wid; pmReset("bkBatchPm"); brickLowCementCheck();
   logActivity("دبو: خلطة",b.no+" · "+brickTypeName(b)+" · "+fmt(bricks)+" طوبة · أجرة "+money(wage)+(paid?" (مدفوعة)":" (دين)"));
-  toast("🧱 سُجّلت الخلطة ✓ — تكلفة الطوبة "+brickCostTxt(brickBatchCost(b))+" "+CUR); render();
+  toast("🧱 سُجّلت الخلطة ✓ (🌬️ تجفّ) — تكلفة الطوبة "+brickCostTxt(brickBatchCost(b))+" "+CUR); render();
 }
 function doBrickSaleSave(){
   const sel=document.getElementById("bkCust"); let key=sel?sel.value:"";
@@ -3029,6 +3234,7 @@ function doBrickSaleSave(){
   const btype=(document.getElementById("bkSaleType")||{}).value||brickTypes()[0].k;
   if(qty>brickStock(btype)) return toast("المخزون لا يكفي (المتاح من "+brickType(btype).name+": "+fmt(brickStock(btype))+")");
   const tr=_bkDraft.tr||"none", trAmt=tr==="none"?0:(+((document.getElementById("bkTrAmt")||{}).value)||0);
+  if(!brickReadyWarn(btype,qty,false)) return;
   if(tr!=="none"&&!(trAmt>0)) return toast("أدخل أجرة النقل أو اختر «بلا نقل»");
   if(key==="__new"){
     const name=(document.getElementById("bkNewName").value||"").trim(); if(!name) return toast("أدخل اسم الزبون الجديد");
@@ -3187,7 +3393,7 @@ function bindBrick(){
     box.innerHTML=br>0?`💲 تكلفة الطوبة الآن: <span style="color:var(--wash);font-size:1.15em">${brickCostTxt(tot/br)} ${CUR}</span><div class="hint" style="font-weight:600;margin-top:4px">إسمنت ${fmt(bags)} × ${money(Math.round(cc))} + تراب ${fmt(lds)} × ${money(Math.round(sc))} + أجرة ${money(w)} = ${money(Math.round(tot))} ÷ ${fmt(br)} طوبة</div>`
       :`💲 تكلفة الخلطة: ${money(Math.round(tot))} ${CUR}<div class="hint" style="font-weight:600;margin-top:4px">اكتب عدد الطوب لتظهر تكلفة الطوبة الواحدة${!(cc>0)||!(sc>0)?" · سجّل أسعار شراء الإسمنت والتراب في «المواد»":""}</div>`; };
   ["bkBags","bkLoads","bkBricks","bkWage"].forEach(id=>{ const el=document.getElementById(id); if(el) el.addEventListener("input",updBatchCost); }); if(bt) bt.addEventListener("change",()=>setTimeout(updBatchCost,0)); updBatchCost();
-  const st=document.getElementById("bkSaleType"); if(st) st.onchange=()=>{ _bkDraft.stype=st.value; const T=brickType(st.value); const pr=document.getElementById("bkPrice"); if(pr&&+T.price) pr.value=+T.price; const h=document.getElementById("bkStockHint"); if(h) h.textContent="المخزون: "+fmt(brickStock(st.value)); };
+  const st=document.getElementById("bkSaleType"); if(st) st.onchange=()=>{ _bkDraft.stype=st.value; const T=brickType(st.value); const pr=document.getElementById("bkPrice"); if(pr&&+T.price) pr.value=+T.price; const h=document.getElementById("bkStockHint"); if(h) h.textContent=brickStockHintTxt(st.value); };
   document.querySelectorAll("[data-bktr]").forEach(b=>b.onclick=()=>{ _bkDraft.tr=b.dataset.bktr; render(); });
   on("bkOpSave",()=>requireCode(doBrickOpeningSave,SECRET_CODE,"رصيد افتتاحي لدبو","يُضاف المخزون الموجود الآن"));
   const tb=document.getElementById("bkTypesBox"); if(tb) tb.ontoggle=()=>{ _bkDraft.typesOpen=tb.open; };
@@ -3197,6 +3403,28 @@ function bindBrick(){
     logActivity("دبو: أنواع الطوب",T.map(t=>t.name+" بيع "+money(t.price)+" · أجرة "+money(t.wage)+" · حمل "+money(+t.load||0)).join(" | ")); toast("حُفظت الأنواع ✓"); render(); });
   // البحث في قوائم الأطراف (البيع والشراء)
   [["bkCustFind","bkCust"],["bkPurFind","bkPurParty"]].forEach(([fi,si])=>{ const f=document.getElementById(fi), sel=document.getElementById(si); if(!f||!sel) return; f.oninput=()=>{ const q=f.value.trim(); let first=null; sel.querySelectorAll("option").forEach(o=>{ const hit=!q||!o.value||o.value==="__new"||o.textContent.includes(q); o.hidden=!hit; if(q&&hit&&o.value&&o.value!=="__new"&&!first) first=o; }); if(first){ sel.value=first.value; sel.dispatchEvent(new Event("change")); } }; });
+  // (2.52.0) التجفيف والمكسور والطلبيات
+  document.querySelectorAll("[data-bk-ready]").forEach(b=>b.onclick=()=>{ const x=(state.brickBatches||[]).find(r=>r.id===b.dataset.bkReady); if(!x) return; const now=iso(new Date()); x.ready=true; x.readyAt=now; x.readyBy=currentUser; x.editedAt=now; logActivity("دبو: خلطة جاهزة",x.no+" · "+brickTypeName(x)+" · "+fmt(x.bricks)+" طوبة"); toast("✅ "+x.no+" جاهزة للبيع"); render(); });
+  document.querySelectorAll("[data-bk-unready]").forEach(b=>b.onclick=()=>{ const x=(state.brickBatches||[]).find(r=>r.id===b.dataset.bkUnready); if(!x) return; x.ready=false; delete x.readyAt; x.editedAt=iso(new Date()); render(); });
+  document.querySelectorAll("[data-bk-readyall]").forEach(b=>b.onclick=()=>{ const now=iso(new Date()), L=brickLive(state.brickBatches).filter(x=>x.ready===false); L.forEach(x=>{ x.ready=true; x.readyAt=now; x.readyBy=currentUser; x.editedAt=now; }); logActivity("دبو: كل الخلطات جاهزة",L.map(x=>x.no).join("، ")); toast("✅ "+L.length+" خلطات جاهزة للبيع"); render(); });
+  { const wb=document.getElementById("bkWasteBox"); if(wb) wb.addEventListener("toggle",()=>{ _bkDraft.wasteOpen=wb.open; }); }
+  on("bkWSave",doBrickWasteSave);
+  document.querySelectorAll("[data-bk-wdel]").forEach(b=>b.onclick=()=>{ const w=(state.brickWaste||[]).find(r=>r.id===b.dataset.bkWdel); if(!w) return; requireCode(()=>{ tomb(w.id); state.brickWaste=state.brickWaste.filter(r=>r.id!==w.id); logActivity("دبو: حذف مكسور",brickTypeName(w)+" · "+fmt(w.qty)); toast("تم الحذف"); render(); }, SECRET_CODE, "حذف المكسور", fmt(w.qty)+" طوبة"); });
+  { const op=document.getElementById("bkOrdParty"); if(op) op.onchange=()=>{ _bkDraft.oparty=op.value; const w=document.getElementById("bkOrdNewWrap"); if(w) w.style.display=op.value==="__new"?"":"none"; };
+    const of=document.getElementById("bkOrdFind"); if(of&&op) of.oninput=()=>{ const q=of.value.trim(); let first=null; op.querySelectorAll("option").forEach(o=>{ const hit=!q||!o.value||o.value==="__new"||o.textContent.includes(q); o.hidden=!hit; if(q&&hit&&o.value&&o.value!=="__new"&&!first) first=o; }); if(first){ op.value=first.value; op.dispatchEvent(new Event("change")); } };
+    const ot=document.getElementById("bkOrdType"); if(ot) ot.onchange=()=>{ _bkDraft.otype=ot.value; const T=brickType(ot.value), pr=document.getElementById("bkOrdPrice"); if(pr&&+T.price){ pr.value=+T.price; pr.dispatchEvent(new Event("input")); } const h=document.getElementById("bkOrdStock"); if(h) h.textContent=brickStockHintTxt(ot.value); };
+    const oq=document.getElementById("bkOrdQty"), opr=document.getElementById("bkOrdPrice"), od=document.getElementById("bkOrdDep");
+    if(oq&&opr&&od){ const upd=()=>{ const tot=(+toLatinDigits(oq.value)||0)*(+toLatinDigits(opr.value)||0), dv=Math.max(0,+toLatinDigits(od.value)||0); const t=document.getElementById("bkOrdTotal"), r=document.getElementById("bkOrdRem"), w=document.getElementById("bkOrdPmWrap"); if(t) t.textContent=money(tot)+" "+CUR; if(r) r.textContent=money(Math.max(0,tot-dv)); if(w) w.style.display=dv>0?"":"none"; }; [oq,opr,od].forEach(el=>el.addEventListener("input",upd)); setTimeout(upd,0); } }
+  on("bkOrdSave",doBrickOrderSave);
+  on("bkOrdAll",()=>{ _bkDraft.ordAll=!_bkDraft.ordAll; render(); });
+  document.querySelectorAll("[data-bk-odeliv]").forEach(b=>b.onclick=()=>{ _bkDraft.odeliv=_bkDraft.odeliv===b.dataset.bkOdeliv?null:b.dataset.bkOdeliv; _bkDraft.dtr="none"; render(); setTimeout(()=>{ const q=document.getElementById("bkDlvQty"); if(q){ q.scrollIntoView({block:"center"}); q.focus(); } },50); });
+  document.querySelectorAll("[data-bkdtr]").forEach(b=>b.onclick=()=>{ _bkDraft.dtr=b.dataset.bkdtr; render(); });
+  on("bkDlvSave",doBrickDeliverSave);
+  on("bkDlvClose",()=>{ _bkDraft.odeliv=null; render(); });
+  document.querySelectorAll("[data-bk-odep]").forEach(b=>b.onclick=()=>{ const o=brickOrder(b.dataset.bkOdep); if(!o) return; _storePayCtx={kind:"brickOrderDep",id:o.id}; openStorePay(Math.max(0,brickOrderDue(o)),"💵 عربون / دفعة مقدّمة — "+o.no+" · "+(o.customerName||"")); });
+  document.querySelectorAll("[data-bk-orefund]").forEach(b=>b.onclick=()=>{ const o=brickOrder(b.dataset.bkOrefund); if(!o) return; _storePayCtx={kind:"brickOrderRefund",id:o.id}; openStorePay(brickOrderDepLeft(o),"↩️ ردّ العربون — "+o.no+" · "+(o.customerName||"")); });
+  document.querySelectorAll("[data-bk-ocancel]").forEach(b=>b.onclick=()=>{ const o=brickOrder(b.dataset.bkOcancel); if(o) brickOrderCancel(o); });
+  document.querySelectorAll("[data-bk-ordrcpt]").forEach(b=>b.onclick=()=>{ const [oid,sid]=b.dataset.bkOrdrcpt.split("|"); const o=brickOrder(oid); if(!o) return; openBrickOrderReceipt(o,sid?(state.brickSales||[]).find(x=>x.id===sid):null); });
   const pp=document.getElementById("bkPurParty"); if(pp) pp.onchange=()=>{ _bkDraft.purParty=pp.value; const w=document.getElementById("bkPurNewWrap"); if(w) w.style.display=pp.value==="__new"?"":"none"; };
   const bpr=document.getElementById("bkPrice"), bq=document.getElementById("bkQty"), bst=document.getElementById("bkSaleType");
   const updLoad2=()=>{ if(!bst) return; const L=+brickType(bst.value).load||0, w=document.getElementById("bkSaleLoadWrap"), r=document.getElementById("bkSaleLoadRate"), h=document.getElementById("bkSaleLoadHint"), ps=document.getElementById("bkSalePorter"); if(w) w.style.display=L>0?"":"none"; if(r) r.textContent=money(L); const q=+(bq&&bq.value)||0; if(h&&ps&&ps.options.length>1) h.textContent=ps.value?("الحمل: "+money(Math.round(q*L))+" — يُسجَّل مستحقًّا للحمّال"):"بلا حمل"; };
@@ -4146,6 +4374,8 @@ function exportCSV(from,to){
   sec("دبو — شراء المواد",["التاريخ","رقم","المادة","الكمية","سعر الوحدة","الإجمالي","المدفوع","المتبقي","المورّد","بواسطة"],brickLive(state.brickPurchases).filter(x=>F(x.date)).map(x=>[ymd(x.date),x.no,x.name,x.qty,x.unitCost,x.total,x.paidAmount||0,brickOut(x),x.supplier,x.by]));
   sec("دبو — المصاريف",["التاريخ","النوع","البيان","المبلغ","طريقة الدفع","بواسطة"],brickLive(state.brickExpenses).filter(x=>F(x.date)).map(x=>[ymd(x.date),(BRICK_EXP[x.category]||{}).t||x.category,x.note,x.amount,pmLabel(x.payMethod),x.by]));
   sec("دبو — قيود الحسابات",["التاريخ","الطرف","الاتجاه","النوع","المبلغ","الكمية","البيان","عبر الصندوق","بواسطة"],brickLive(state.brickLedger).filter(x=>F(x.date)).map(x=>{ const pt=brickParty(x.partyType,x.partyId); return [ymd(x.date),pt?pt.name:"",x.dir==="on"?"عليه":"له",(BRICK_LKIND[x.kind]||{}).t||x.kind,x.amount,x.qty||"",x.note,x.cash?pmLabel(x.payMethod):"لا",x.by]; }));
+  sec("دبو — الطلبيات",["التاريخ","رقم","الزبون","الهاتف","النوع","الكمية","السعر","الإجمالي","سُلّم","العربون","الحالة","العنوان"],(state.brickOrders||[]).filter(o=>F(o.date)).map(o=>[ymd(o.date),o.no,o.customerName||"",o.phone||"",brickTypeName(o),o.qty,o.unitPrice,o.total,brickOrderDelivered(o),brickOrderDeposit(o),BRICK_OSTAT[o.status]?BRICK_OSTAT[o.status].t:o.status,o.address||""]));
+  sec("دبو — الطوب المكسور",["التاريخ","رقم","النوع","العدد","تكلفة الطوبة","القيمة","ملاحظة","بواسطة"],brickLive(state.brickWaste).filter(w=>F(w.date)).map(w=>[ymd(w.date),w.no,brickTypeName(w),w.qty,Math.round(+w.unitCost||0),Math.round((+w.qty||0)*(+w.unitCost||0)),w.note||"",w.by||""]));
   sec("دبو — الحمّالون",["التاريخ","رقم","الحمّال","الهاتف","العمل","الكمية","المبلغ","المدفوع","بواسطة"],brickLive(state.brickLoads).filter(x=>F(x.date)).map(x=>{ const pr=brickPorter(x.porterId); return [ymd(x.date),x.no,pr?pr.name:"",pr?pr.phone:"",x.kind==="advance"?"سلفة":((BRICK_LOADK[x.kind]||{}).t||x.kind),x.qty,x.amount,x.paidAmount||0,x.by]; }));
   sec("دبو — الصندوق",["التاريخ","النوع","البيان","المبلغ","طريقة الدفع","بواسطة"],(state.brickCash||[]).filter(m=>F(m.date)).map(m=>[ymd(m.date),m.type==="in"?"وارد":"صادر",m.reason,m.amount,pmLabel(m.payMethod),m.by]));
   sec("حركات الصندوق",["التاريخ","النوع","البيان","المبلغ","طريقة الدفع","بواسطة"],(state.storeCash||[]).filter(m=>F(m.date)).map(m=>[ymd(m.date),m.type==="in"?"وارد":"صادر",m.reason,m.amount,pmLabel(m.payMethod),m.by]));
@@ -5093,6 +5323,8 @@ function confirmStorePay(){
   } else if(_storePayCtx.kind==="brickParty"){
     const pt=brickPartyFromKey(_storePayCtx.key);
     if(pt){ const paid=brickPartySettle(pt,amt,pmVal("storePayPm"),!!_storePayCtx.toUs); if(paid>0){ logActivity(_storePayCtx.toUs?"دبو: تحصيل":"دبو: تسديد",pt.name+" · "+money(paid)+" "+CUR); toast((_storePayCtx.toUs?"تم تحصيل ":"تم تسديد ")+money(paid)+" ✓"); } }
+  } else if(_storePayCtx.kind==="brickOrderDep"||_storePayCtx.kind==="brickOrderRefund"){
+    const o=brickOrder(_storePayCtx.id); if(o){ const dep=_storePayCtx.kind==="brickOrderDep", pay=dep?amt:Math.min(amt,brickOrderDepLeft(o)); if(pay>0){ addBrickCash(dep?"in":"out",pay,(dep?"عربون طلبية ":"ردّ عربون ")+o.no+" — "+(o.customerName||""),o.id,pmVal("storePayPm")); o.editedAt=iso(new Date()); logActivity(dep?"دبو: عربون طلبية":"دبو: ردّ عربون",o.no+" · "+(o.customerName||"")+" · "+money(pay)+" "+CUR); toast((dep?"💵 سُجّل العربون ":"↩️ رُدّ العربون ")+money(pay)+" ✓"); } }
   } else if(_storePayCtx.kind==="brickSale"){
     const s=(state.brickSales||[]).find(x=>x.id===_storePayCtx.id);
     if(s){ const pay=Math.min(amt,brickOut(s)); if(pay>0){ s.paidAmount=(+s.paidAmount||0)+pay; if(brickOut(s)<=0){ s.paid=true; s.payMethod=pmVal("storePayPm"); } s.paidDate=iso(new Date()); s.editedAt=iso(new Date()); addBrickCash("in",pay,"تحصيل طوب "+s.no+(s.customerName?" — "+s.customerName:""),s.id,pmVal("storePayPm")); logActivity("دبو: تحصيل",s.no+" · "+money(pay)+" "+CUR); toast("تم التحصيل ✓"); } }
@@ -6525,7 +6757,7 @@ function verCmp(a,b){ const A=String(a||"0").split(".").map(x=>+x||0), B=String(
 let _cdEdit=null, _cdConfirmOpen=false;
 function save(){ saveLocal(); if(!_unsyncedSince) _unsyncedSince=Date.now(); if(_cdEdit && !_cdConfirmOpen){ setTimeout(cdAfterSave,0); } updateCloudBtn("pending"); L_pending_push=true; if(window.cloudReady && !_applyingRemote){ clearTimeout(_pushT); _pushT=setTimeout(()=>{ try{ window.cloudPush(cloudCopy()); L_pending_push=false; }catch(e){ updateCloudBtn("offline"); } }, 600); } }
 function load(){ try{ const d=localStorage.getItem(LS_KEY); if(d) Object.assign(state, JSON.parse(d)); }catch(e){} }
-const SYNC_ARRAYS=["carOps","carpetOrders","laundryOrders","expenses","meters","workers","users","managers","storeProducts","storeSales","storePurchases","storeCustomers","storeCash","storeDebts","brickBatches","brickPurchases","brickSales","brickExpenses","brickCash","brickLedger","brickPorters","brickLoads","suppliers","closings","recurring","dailyCosts","dailyCostPays","activity","logins","closedDayEdits"];
+const SYNC_ARRAYS=["carOps","carpetOrders","laundryOrders","expenses","meters","workers","users","managers","storeProducts","storeSales","storePurchases","storeCustomers","storeCash","storeDebts","brickBatches","brickPurchases","brickSales","brickExpenses","brickCash","brickLedger","brickPorters","brickLoads","brickOrders","brickWaste","suppliers","closings","recurring","dailyCosts","dailyCostPays","activity","logins","closedDayEdits"];
 function _editedAtOf(id){ for(const k of SYNC_ARRAYS){ const r=(state[k]||[]).find(x=>x&&x.id===id); if(r) return +new Date(r.editedAt||0)||0; } return 0; }
 function tombTs(id){ return Math.max(Date.now(), _editedAtOf(id)+1); }
 function tomb(id){ if(!state.deleted) state.deleted={}; state.deleted["rec:"+id]=tombTs(id); }
@@ -6621,7 +6853,7 @@ function applyRemote(remote){
   const localDel=state.deleted||{};
   const pm=Object.assign({}, _photoCache, capturePhotos(state)); // كل الصور المحلية قبل الدمج
   // ⚠️ يجب التقاط بيانات المتجر والموردين المحلية قبل Object.assign وإلا ضاعت (كان خطأ يمحو سجلات المتجر)
-  const Lstore={ storeProducts:state.storeProducts||[], storeSales:state.storeSales||[], storePurchases:state.storePurchases||[], storeCustomers:state.storeCustomers||[], storeCash:state.storeCash||[], storeDebts:state.storeDebts||[], brickBatches:state.brickBatches||[], brickPurchases:state.brickPurchases||[], brickSales:state.brickSales||[], brickExpenses:state.brickExpenses||[], brickCash:state.brickCash||[], brickLedger:state.brickLedger||[], brickPorters:state.brickPorters||[], brickLoads:state.brickLoads||[], suppliers:state.suppliers||[], closings:state.closings||[], dailyCosts:state.dailyCosts||[], dailyCostPays:state.dailyCostPays||[], recurring:state.recurring||[] };
+  const Lstore={ storeProducts:state.storeProducts||[], storeSales:state.storeSales||[], storePurchases:state.storePurchases||[], storeCustomers:state.storeCustomers||[], storeCash:state.storeCash||[], storeDebts:state.storeDebts||[], brickBatches:state.brickBatches||[], brickPurchases:state.brickPurchases||[], brickSales:state.brickSales||[], brickExpenses:state.brickExpenses||[], brickCash:state.brickCash||[], brickLedger:state.brickLedger||[], brickPorters:state.brickPorters||[], brickLoads:state.brickLoads||[], brickOrders:state.brickOrders||[], brickWaste:state.brickWaste||[], suppliers:state.suppliers||[], closings:state.closings||[], dailyCosts:state.dailyCosts||[], dailyCostPays:state.dailyCostPays||[], recurring:state.recurring||[] };
   const localSent=Object.assign({}, state.autoClosingSent||{}); const localTgLast=+state.tgLastUpdate||0;
   const localAppVer=state.appVer||"0";
   const localRem=Object.assign({}, state.debtReminded||{});
@@ -6658,7 +6890,7 @@ function applyRemote(remote){
   state.storeCustomers=mergeById(Lstore.storeCustomers, remote.storeCustomers, state.deleted);
   state.storeCash=mergeById(Lstore.storeCash, remote.storeCash, state.deleted);
   state.storeDebts=mergeById(Lstore.storeDebts, remote.storeDebts, state.deleted);
-  ["brickBatches","brickPurchases","brickSales","brickExpenses","brickCash","brickLedger","brickPorters","brickLoads"].forEach(k=>{ state[k]=mergeById(Lstore[k], remote[k], state.deleted); });
+  ["brickBatches","brickPurchases","brickSales","brickExpenses","brickCash","brickLedger","brickPorters","brickLoads","brickOrders","brickWaste"].forEach(k=>{ state[k]=mergeById(Lstore[k], remote[k], state.deleted); });
   state.activity=mergeById(L.activity, remote.activity, state.deleted).sort((a,b)=>(a.ts||0)-(b.ts||0)).slice(-400);
   state.notifSeenTs=Math.max(localSeenTs, remote.notifSeenTs||0);
   const cs=Object.assign({}, remote.customers||{});
@@ -6962,7 +7194,7 @@ function importData(file){
    - محليًا على الجهاز (IndexedDB) + في السحابة (backups/{يوم}) — آخر 30 يومًا.
    - نسخة لكل يوم تُحدَّث كل 20 دقيقة على الأكثر أثناء العمل.
    - الاسترجاع «يُعيد المفقود فقط» ولا يمسح أي شيء أحدث. */
-const BACKUP_KEEP=30, BACKUP_EVERY=20*60*1000, BACKUP_KEYS=["carOps","carpetOrders","laundryOrders","expenses","meters","workers","users","managers","storeProducts","storeSales","storePurchases","storeCustomers","storeCash","storeDebts","brickBatches","brickPurchases","brickSales","brickExpenses","brickCash","brickLedger","brickPorters","brickLoads","suppliers","closings","recurring","dailyCosts","dailyCostPays","closedDayEdits"];
+const BACKUP_KEEP=30, BACKUP_EVERY=20*60*1000, BACKUP_KEYS=["carOps","carpetOrders","laundryOrders","expenses","meters","workers","users","managers","storeProducts","storeSales","storePurchases","storeCustomers","storeCash","storeDebts","brickBatches","brickPurchases","brickSales","brickExpenses","brickCash","brickLedger","brickPorters","brickLoads","brickOrders","brickWaste","suppliers","closings","recurring","dailyCosts","dailyCostPays","closedDayEdits"];
 let _lastBackupAt=0;
 function _idb(){ return new Promise((res,rej)=>{ try{ if(!window.indexedDB) return rej(new Error("no idb")); const r=indexedDB.open("sadaqa-backups",3); r.onupgradeneeded=()=>{ const d=r.result; if(!d.objectStoreNames.contains("days")) d.createObjectStore("days",{keyPath:"id"}); if(!d.objectStoreNames.contains("photos")) d.createObjectStore("photos",{keyPath:"k"}); if(!d.objectStoreNames.contains("snaps")) d.createObjectStore("snaps",{keyPath:"id"}); }; r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }catch(e){ rej(e); } }); }
 async function localBackupPut(rec){ const db=await _idb(); return new Promise((res,rej)=>{ const tx=db.transaction("days","readwrite"); tx.objectStore("days").put(rec); tx.oncomplete=()=>res(); tx.onerror=()=>rej(tx.error); }); }
@@ -7284,13 +7516,13 @@ function resetFinancials(){
   const tombArr=(arr)=>{ (arr||[]).forEach(o=>{ if(o&&o.id) D["rec:"+o.id]=Math.max(Date.now(), (+new Date(o.editedAt||0)||0)+1); }); };
   tombArr(state.carOps); tombArr(state.carpetOrders); tombArr(state.laundryOrders);
   tombArr(state.expenses); tombArr(state.meters);
-  tombArr(state.storeSales); tombArr(state.storePurchases); tombArr(state.storeCash); tombArr(state.storeDebts); tombArr(state.brickBatches); tombArr(state.brickPurchases); tombArr(state.brickSales); tombArr(state.brickExpenses); tombArr(state.brickCash); tombArr(state.brickLedger); tombArr(state.brickLoads);
+  tombArr(state.storeSales); tombArr(state.storePurchases); tombArr(state.storeCash); tombArr(state.storeDebts); tombArr(state.brickBatches); tombArr(state.brickPurchases); tombArr(state.brickSales); tombArr(state.brickExpenses); tombArr(state.brickCash); tombArr(state.brickLedger); tombArr(state.brickLoads); tombArr(state.brickOrders); tombArr(state.brickWaste);
   tombArr(state.activity); tombArr(state.closings); tombArr(state.closedDayEdits); tombArr(state.dailyCostPays);
   state.dailyCostPays=[]; (state.dailyCosts||[]).forEach(c=>{ c.start=ymd(new Date()); c.salaryHist=[]; c.editedAt=iso(new Date()); });
   state.closings=[]; state.autoClosingSent={}; state.closedDayEdits=[];
   state.carOps=[]; state.carpetOrders=[]; state.laundryOrders=[];
   state.expenses=[]; state.meters=[];
-  state.storeSales=[]; state.storePurchases=[]; state.storeCash=[]; state.storeDebts=[]; state.brickBatches=[]; state.brickPurchases=[]; state.brickSales=[]; state.brickExpenses=[]; state.brickCash=[]; state.brickLedger=[]; state.brickLoads=[];
+  state.storeSales=[]; state.storePurchases=[]; state.storeCash=[]; state.storeDebts=[]; state.brickBatches=[]; state.brickPurchases=[]; state.brickSales=[]; state.brickExpenses=[]; state.brickCash=[]; state.brickLedger=[]; state.brickLoads=[]; state.brickOrders=[]; state.brickWaste=[];
   state.activity=[];
   state.orderSeq=0; state.carSeq={}; state.lndSeq=0; state.storeSeq=0; state.storePurSeq=0;
   Object.keys(state.customers||{}).forEach(k=>{ const c=state.customers[k]; if(c){ c.stamps=0; c.totalWashes=0; c.freeWashes=0; } });
@@ -7335,6 +7567,11 @@ function _rand(n){ const a=new Uint8Array(n); crypto.getRandomValues(a); return 
    CHANGELOG: الأحدث أولًا. لكل تعديل: ic, t (العنوان), d (الشرح), go (أين: tab + storeSub/contactsSub/…), sel (العنصر الذي يُشار إليه).
    **قاعدة: كل إصدار جديد يضيف مدخلًا هنا** — يظهر للمستخدم مرة واحدة بعد التحديث مع «تخطي» و«أرني» و«جولة». */
 const CHANGELOG=[
+  {v:"2.52.0",date:"2026-10-18",items:[
+    {ic:"📦",t:"دبو: الطلبيات والعربون والتوصيل",d:"تبويب جديد «📦 الطلبيات»: سجّل طلبية لزبون (العدد والسعر والعنوان) مع العربون. الطوب يُحجز له ولا ينقص المخزون. كل «🚚 تسليم رحلة» تختار فيه العدد والناقل والنقل (بلا / على الزبون / علينا)، فيُسجَّل بيعًا ويُخصم من العربون أولًا، ويُفتح «وصل تسليم» تُرسله بالواتساب. ترى سُلّم كم وبقي كم.",go:{tab:"brick",brickSub:"orders"},sel:'[data-bksub="orders"]'},
+    {ic:"🌬️",t:"الطوب يجفّ ثم «✅ جاهزة»",d:"كل خلطة جديدة تظهر «🌬️ تجفّ» في «الإنتاج». عندما يجفّ اضغط «✅ جاهزة». المخزون يُعرض: جاهز · يجفّ · محجوز، والبيع من طوب يجفّ يُظهر تنبيهًا فقط.",go:{tab:"brick",brickSub:"batches"},sel:'[data-bksub="batches"]'},
+    {ic:"💔",t:"تسجيل الطوب المكسور",d:"في «الإنتاج» أسفل الخلطات: «💔 طوب مكسور / تالف» — العدد والسبب. يُنقص المخزون وتظهر قيمته في الملخص.",go:{tab:"brick",brickSub:"batches"},sel:'[data-bksub="batches"]'}
+  ]},
   {v:"2.51.0",date:"2026-10-18",items:[
     {ic:"🟦",t:"تبويبات دبو مربعات ملوّنة في صفّين",d:"في أعلى دبو لم تعد تحتاج التمرير يمينًا ويسارًا: كل التبويبات (الملخص · الإنتاج · البيع والشراء · المواد · العمّال · المصاريف · الديون · الصندوق) ظاهرة في صفّين، كل واحد بلون وأيقونة أكبر.",go:{tab:"brick",brickSub:"home"},sel:".bk-tiles"}
   ]},
@@ -8191,7 +8428,7 @@ function runMigrations(){
       if(Array.isArray(o.items)) o.items.forEach(i=>{ if((+i.unit||0)%1){ i.unit=Math.round(+i.unit); i.price=i.unit*(+i.count||1); ch=true; } else if((+i.price||0)%1){ i.price=Math.round(+i.price); ch=true; } });
       if(ch||(+o.price||0)%1){ o.price=Array.isArray(o.items)?sum(o.items,i=>+i.price||0):Math.round(+o.price||0); if((+o.unit||0)%1) o.unit=Math.round(+o.unit); ch=true; }
       if(ch) o.editedAt=dRound; })); }
-  ["brickBatches","brickPurchases","brickSales","brickExpenses","brickCash","brickLedger","brickPorters","brickLoads"].forEach(k=>{ if(!Array.isArray(state[k])) state[k]=[]; });
+  ["brickBatches","brickPurchases","brickSales","brickExpenses","brickCash","brickLedger","brickPorters","brickLoads","brickOrders","brickWaste"].forEach(k=>{ if(!Array.isArray(state[k])) state[k]=[]; });
   if(!state.brickCfg||typeof state.brickCfg!=="object") state.brickCfg={price:0,workerPerBatch:0};
   if(typeof state.storeSeq!=="number") state.storeSeq=(state.storeSales||[]).length;
   if(typeof state.storePurSeq!=="number") state.storePurSeq=(state.storePurchases||[]).length;
@@ -8304,7 +8541,7 @@ setTimeout(()=>{ if(!window.cloudReady){ const el=document.getElementById("cloud
 <!-- PWA: service-worker registration + update/install wiring -->
 <script>
 (function(){
-  var APP_VERSION = "2.51.0";
+  var APP_VERSION = "2.52.0";
   window.APP_VERSION = APP_VERSION;
   function $(id){ return document.getElementById(id); }
   // سجّل إصدار هذا الجهاز في الحالة المتزامنة (ليُنبَّه الجهاز القديم)

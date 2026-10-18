@@ -525,6 +525,24 @@
   «👷 رئيس العمّال» تُخفى خانات الحمل (`#bkLoadFields`, `#bkLoadKinds`، تلميح `#bkWorkerOnlyHint`) والزر «💾 حفظ رئيس العمّال» (`updPor` في
   `bindBrick`)؛ و`doBrickLoadSave` يحفظ الشخص فقط إن لم يُكتب مبلغ (الحمل **اختياري لأي شخص جديد**، وإلزامي فقط لتسجيل عمل لشخص موجود).
   الاختبار `tests/e2e/brick_worker_add.test.js`.
+- **دبو: الطلبيات + التجفيف + المكسور (2.52.0) — اختيار المالك من الاقتراحات:** (1) **الطلبيات** تبويب `orders` (`BRICK_SUBS` صار 9 →
+  شبكة `.bk-tiles` 5 أعمدة في صفّين، 9 على العريضة): مصفوفة مُزامنة `state.brickOrders` `{id,no:"BO…",partyType,partyId,customerName,phone,btype,qty,
+  unitPrice,total,address,note,status:open|done|cancelled,doneAt?,cancelledAt?}` (في SYNC_ARRAYS/BACKUP_KEYS/Lstore/runMigrations/BRICK_RESET_KEYS/
+  resetFinancials/CSV «دبو — الطلبيات»). **الطلبية حجز فقط** (لا مخزون ولا بيع): `brickReserved(k)` = المتبقي من المفتوحة. **العربون = حركات `brickCash`
+  بـ`ref`=معرّف الطلبية** (`brickOrderDeposit`: وارد − صادر)، **كل تسليم = `brickSales` بـ`orderId`** (`brickOrderDeliver` → `doBrickDeliverSave`) يُخصم
+  من العربون أولًا: `depUsed` يدخل `paidAmount` **بلا حركة صندوق** (المال دخل يوم العربون)، `brickOrderDepLeft` = العربون − Σ`depUsed`. رصيد الطرف
+  `brickParties` يطرح `depFor` (= العربون المتبقي، «له عندنا»)، وكشف الحساب `brickPartyRows` يضيف صفوف «📦 عربون طلبية / ↩️ ردّ عربون» ولا يضيف
+  صفًّا لـ`depUsed` (فيتطابق الكشف مع الرصيد). الرحلة: العدد (افتراضي المتبقي)، الناقل من `brickPorters` (`s.driver` + عمل حمل إن كان للنوع `load`)،
+  النقل `_bkDraft.dtr` بلا/على الزبون/علينا (مثل البيع)، ثم يُفتح `openBrickOrderReceipt(o,sale)` «وصل تسليم». اكتمال العدد → `done`. «💵 عربون/دفعة»
+  و«↩️ ردّ العربون» عبر `openStorePay` (`_storePayCtx.kind="brickOrderDep"|"brickOrderRefund"`). الإلغاء بالكود `brickOrderCancel`: بلا رحلات ولا عربون
+  = حذف (tomb)، وإلا `cancelled` والعربون المتبقي يبقى له. `brickOrderDue` = غير المدفوع + قيمة غير المسلَّم − العربون المتبقي؛ واتساب `brickOrderText`.
+  المكتملة/الملغاة تظهر في يومها أو بزر «عرض المكتملة» (`_bkDraft.ordAll`). (2) **التجفيف (يدوي، اختيار المالك):** الخلطة الجديدة `ready:false`
+  («🌬️ تجفّ»، والقديمة بلا الحقل = جاهزة) حتى `[data-bk-ready]` «✅ جاهزة» (`readyAt/readyBy`؛ `[data-bk-unready]` للمالك/المدير، `[data-bk-readyall]`)؛
+  لوحة `.bk-dry` أعلى «الإنتاج». `brickDrying(k)`, `brickReady(k)=stock−drying`, `brickStockHintTxt(k)` (المخزون · جاهز · يجفّ · محجوز) في البيع والطلبية
+  والرحلة وبطاقات الأنواع في «الآن». **البيع من غير الجاهز = تنبيه فقط** `brickReadyWarn(k,qty,forOrder)` (`confirm`؛ البيع الحر يحسب المحجوز أيضًا).
+  (3) **المكسور:** مصفوفة مُزامنة `state.brickWaste` `{id,no:"W…",btype,qty,unitCost,note}` من `<details id="bkWasteBox">` في «الإنتاج» (`doBrickWasteSave`،
+  حذف بالكود `[data-bk-wdel]`)؛ `brickStock` يطرحه، و`brickFin.wasteQty/wasteValue` (القيمة = العدد × `brickTypeCost` وقت التسجيل، **للمعلومة فقط** لأنها
+  داخلة أصلًا في تكاليف المواد والأجور) في سطر `.bk-mini` بالملخص. CSV «دبو — الطوب المكسور». الاختبار `tests/e2e/brick_orders.test.js`.
 - **تبويبات دبو مربعات في صفّين (2.51.0):** `<div class="seg bk-tiles">` شبكة 4 أعمدة (8 على الشاشات العريضة) بلا تمرير أفقي؛ كل زر
   `[data-bksub]` فيه `.bt-ic` (مربع 34px) و`.bt-t`، ولونه من `BRICK_SUB_COLOR[k]` عبر `brickSubVars(hex)` (متغيرات `--tc/--tb/--ti/--tl/--ts`
   بـ rgba — **لا `color-mix`** لأن WebView القديم لا يدعمه)؛ النشط `.on` مملوء بلونه ونص أبيض. الفحص في `brick_cards.test.js`.
