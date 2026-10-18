@@ -525,6 +525,12 @@
   «👷 رئيس العمّال» تُخفى خانات الحمل (`#bkLoadFields`, `#bkLoadKinds`، تلميح `#bkWorkerOnlyHint`) والزر «💾 حفظ رئيس العمّال» (`updPor` في
   `bindBrick`)؛ و`doBrickLoadSave` يحفظ الشخص فقط إن لم يُكتب مبلغ (الحمل **اختياري لأي شخص جديد**، وإلزامي فقط لتسجيل عمل لشخص موجود).
   الاختبار `tests/e2e/brick_worker_add.test.js`.
+- **بطاقة المتجر ▸ الزبائن والديون = بطاقة «الزبائن» (2.53.0):** `storeScreenDebts` يرسم كل شخص من `storeParties()` بشكل `.debtor-card`
+  (+ `.party-card`): حرف `.dc-av` (لون `kindColor`)، الاسم + شارة «مورّد»، الهاتف والأيام، **رقم واحد** `.dc-amt.party-net` (`net` عليه/له/متعادل)،
+  سطر «🧺 وعليه للمغسلة»، و**العمليات مطوية** بزر `[data-debt-toggle="sp:{key}"]` و`[data-debt-det]` (نفس المستمع العام و`_debtOpen`؛ داخلها
+  «عليه/له» عند وجودهما + كل العمليات مع تعديل/حذف الديون اليدوية). أزرار دائرية `.r-btn`: واتساب (`data-debt-wa="c:id"` إن عليه دين، وإلا رابط
+  مباشر)، اتصال، تحصيل `data-dc-pay`، تسديد له `data-cc-pay`، للمورّد `data-sp-pay`، مقاصة `data-offset` (بالمبلغ)، كشف `data-dc-stmt`/`data-sp-stmt`؛
+  و`.dc-mini` «➕ عليه/➕ له» (`data-qd="on|id:…"`) للزبون. **في الاختبارات:** أزرار `data-md-del`/`sdebt` داخل التفاصيل المطوية — افتحها أولًا.
 - **دبو: الطلبيات + التجفيف + المكسور (2.52.0) — اختيار المالك من الاقتراحات:** (1) **الطلبيات** تبويب `orders` (`BRICK_SUBS` صار 9 →
   شبكة `.bk-tiles` 5 أعمدة في صفّين، 9 على العريضة): مصفوفة مُزامنة `state.brickOrders` `{id,no:"BO…",partyType,partyId,customerName,phone,btype,qty,
   unitPrice,total,address,note,status:open|done|cancelled,doneAt?,cancelledAt?}` (في SYNC_ARRAYS/BACKUP_KEYS/Lstore/runMigrations/BRICK_RESET_KEYS/

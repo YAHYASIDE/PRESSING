@@ -22,7 +22,7 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
   log('store debts shows only store total 300 (1 مدين): '+(/ديون المتجر لنا \(1 مدين\)/.test(txt)&&!/4,400/.test(txt)&&!/السجاد/.test(txt.replace(/السجاد\s*$/,'')))+' (expect true)');
   log('no section switcher on store screen: '+((await page.$$('[data-debtkind]')).length===0)+' (expect true)');
   log('card shows laundry debt note: '+/وعليه للمغسلة أيضًا: 2,500/.test(txt)+' (expect true)');
-  log('store card amount is 300: '+/300 أوقية/.test(txt)+' (expect true)');
+  log('store card amount is 300: '+/300\s*عليه/.test(txt)+' (expect true)');
   // laundry screen panel
   await page.click('[data-tab="laundry"]'); await page.waitForTimeout(250);
   txt=await page.textContent('main');

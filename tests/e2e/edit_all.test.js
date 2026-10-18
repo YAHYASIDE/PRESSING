@@ -46,6 +46,7 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
 
   // ===== دين يدوي على محمد 5,000 عبر الصندوق → 4,000 ووصف جديد
   await page.evaluate(()=>{ const d=iso(new Date()); state.storeDebts.push({id:'md1',customerId:'cu1',dir:'on',amount:5000,paidAmount:0,paid:false,note:'سلفة',cash:true,payMethod:'cash',date:d,by:'مالك',editedAt:d}); addCashMove('out',5000,'سلفة','cu1','md1','cash'); state.storeSub='debts'; state.debtView='debt'; render(); });
+  await page.evaluate(()=>document.querySelectorAll('[data-debt-det]').forEach(d=>d.style.display='')); 
   log('manual debt item has an edit button in the debts list: '+(await page.isVisible('[data-rec-edit="sdebt:md1"]'))+' (expect true)');
   await open('[data-rec-edit="sdebt:md1"]'); await page.fill('#re_amount','4000'); await page.fill('#re_note','سلفة معدّلة'); await saveEdit();
   r=await page.evaluate(()=>({ a:state.storeDebts[0].amount, n:state.storeDebts[0].note, mv:state.storeCash.find(m=>m.ref==='md1').amount, bal:custBalance('cu1') }));

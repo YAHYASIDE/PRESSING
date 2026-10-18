@@ -41,7 +41,7 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
   r=await page.evaluate(()=>({ x:state.storeDebts[1], credit:custCredit('cu1'), bal:custBalance('cu1'), m:state.storeCash[0], cc:custCreditors() }));
   log('manual debt «for» saved with cash-in movement (bankily 1,500, ref=debt): '+(r.x.dir==='for' && r.m && r.m.type==='in' && r.m.amount===1500 && r.m.payMethod==='bankily' && r.m.ref===r.x.id)+' (expect true)');
   log('credit 1,500 is separate from his debt (balance still 5,000): '+(r.credit===1500 && r.bal===5000)+' (expect true) | listed among customer creditors: '+(r.cc.length===1 && r.cc[0].bal===1500)+' (expect true)');
-  log('same card shows only the net «عليه لنا 3,500» (5,000 − his credit 1,500), not both sides: '+(await page.evaluate(()=>{ const t=document.querySelector('.grid.orders').textContent; return document.querySelectorAll('.party-card').length===1 && /عليه لنا 3,500/.test(t) && !/له عندنا\s*1,500/.test(t) && /له: دفع مقدّمًا/.test(t); }))+' (expect true)');
+  log('same card shows only the net «عليه لنا 3,500» (5,000 − his credit 1,500), not both sides: '+(await page.evaluate(()=>{ const t=document.querySelector('.grid.orders').textContent; return document.querySelectorAll('.party-card').length===1 && /3,500\s*عليه/.test(t) && !/له عندنا\s*1,500/.test(t) && /له: دفع مقدّمًا/.test(t); }))+' (expect true)');
 
   // الدائنون — علينا: بطاقة الزبون + زر تسديد له
   await page.click('[data-debtview="cred"]'); await page.waitForTimeout(250);
@@ -94,7 +94,7 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
   log('merge keeps local manual debts and adds the remote one: '+(r.n===r.mine+1 && r.has)+' (expect true) | included in the cloud copy: '+r.inCloud+' (expect true)');
   // الحذف بالكود + tombstone
   await page.evaluate(()=>{ state.tab='store'; state.storeSub='debts'; state.debtView='debt'; render(); }); await page.waitForTimeout(200);
-  await page.click('[data-md-del="rd1"]'); await page.waitForTimeout(200);
+  await page.evaluate(()=>document.querySelectorAll('[data-debt-det]').forEach(d=>d.style.display='')); await page.click('[data-md-del="rd1"]'); await page.waitForTimeout(200);
   await page.fill('#codeInput','070752'); await page.click('#codeOk'); await page.waitForTimeout(300);
   log('delete needs the code and keeps the record (marked deleted, no tombstone): '+(await page.evaluate(()=>{ const x=state.storeDebts.find(x=>x.id==='rd1'); return !!x && x.cancelled===true && !!x.cancelledBy && !state.deleted['rec:rd1']; }))+' (expect true)');
   log('no horizontal overflow at 400px: '+(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1))+' (expect true)');

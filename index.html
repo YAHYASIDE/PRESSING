@@ -4595,26 +4595,33 @@ function storeScreenDebts(){
   const nHist=(state.storeDebts||[]).length, nDel=(state.storeDebts||[]).filter(x=>x.cancelled).length;
   let L=view==="debt"?all.filter(p=>p.on>0):view==="cred"?all.filter(p=>p.for>0):all;
   if(q) L=L.filter(p=>(p.name||"").includes(q)||normPhone(p.phone||"").includes(normPhone(q)));
-  const netTxt=p=>p.net>0?`<span style="color:var(--unpaid)">عليه لنا ${money(p.net)} ${CUR}</span>`:p.net<0?`<span style="color:var(--wash)">له علينا ${money(-p.net)} ${CUR}</span>`:`<span style="color:var(--ready)">متعادل ✓</span>`;
-  const cards=L.map(p=>{ const tl=telLink(p.phone,p.country), both=p.on>0&&p.for>0; return `
-    <div class="order party-card">
-      <div class="cust">${E(p.name||"بدون اسم")} ${p.cust?`<span class="badge b-done">زبون</span>`:""}${p.sup?` <span class="badge b-wash">مورّد</span>`:""}</div>
-      ${p.phone?`<div class="meta">📞 ${E(p.phone)}</div>`:""}
-      <div class="price party-net" style="font-size:1.1rem">${netTxt(p)}</div>
-      ${lndDebt(p)>0?`<div class="meta" style="color:var(--brand);font-weight:800">🧺 وعليه للمغسلة أيضًا: ${money(lndDebt(p))}</div>`:""}
-      <div class="meta">${p.items.length} عملية مفتوحة · أقدمها منذ <b>${p.days}</b> يوم</div>
-      ${p.items.slice(0,8).map(x=>`<div class="meta party-item" style="display:flex;justify-content:space-between;gap:8px;align-items:center"><span>${x.ic} ${E(x.t)} · <bdi dir="ltr">${frD(x.date)}</bdi></span><b style="color:${x.dir==="on"?"var(--unpaid)":"var(--wash)"};white-space:nowrap">${x.dir==="on"?"+":"−"}${money(x.amt)}${x.md&&currentRole!=="worker"?` ${recEditBtn("sdebt",x.md)}<button class="icon-btn" data-md-del="${x.md}" title="حذف" style="margin-inline-start:4px">${svg(I.trash)}</button>`:""}</b></div>`).join("")}
-      ${p.items.length>8?`<div class="hint">+ ${p.items.length-8} أخرى في كشف الحساب</div>`:""}
-      <div class="order-acts-sub">
-        ${p.on>0&&p.cust?`<button class="mini act-pay" data-dc-pay="${p.cust.id}">📥 تحصيل</button>`:""}
-        ${p.crCust>0?`<button class="mini" data-cc-pay="${p.cust.id}">💸 تسديد له</button>`:""}
-        ${p.crSup>0?`<button class="mini" data-sp-pay="${p.sup.id}">💸 تسديد للمورّد</button>`:""}
-        ${both&&currentRole!=="worker"?`<button class="mini" data-offset="${E(p.key)}" title="يُسدَّد ما عليه بما له، بلا صندوق">⚖️ مقاصة ${money(Math.min(p.on,p.for))}</button>`:""}
-        ${p.on>0&&p.cust&&p.phone?`<button class="mini" data-debt-wa="c:${p.cust.id}">💬 تذكير</button>`:""}
-        ${tl?`<a class="mini" href="${tl}" style="text-decoration:none">📞 اتصال</a>`:""}
-        ${p.cust?`<button class="icon-btn" data-dc-stmt="${p.cust.id}" title="كشف حساب الزبون">📄</button>`:""}
-        ${p.sup?`<button class="icon-btn" data-sp-stmt="${p.sup.id}" title="كشف حساب المورّد">🛒</button>`:""}
+  // (2.53.0) نفس بطاقة «الزبائن»: حرف · رقم واحد · العمليات مطوية · أزرار دائرية · ➕ عليه/له
+  const rb=(attr,ic,t,cls)=>`<button type="button" class="r-btn${cls?" "+cls:""}" ${attr} title="${t}"><span class="rb-ic">${ic}</span><small>${t}</small></button>`;
+  const cards=L.map(p=>{ const tl=telLink(p.phone,p.country), ph=waPhoneFull(p.phone,p.country), both=p.on>0&&p.for>0, k="sp:"+p.key, open=_debtOpen.has(k), n=p.items.length, c=kindColor(p.net>0?"store":"customers"), ld=lndDebt(p);
+    return `
+    <div class="order debtor-card party-card">
+      <div class="dc-head">
+        <div class="dc-av" style="background:${c[1]};color:${c[0]}">${E((p.name||"؟").trim().charAt(0)||"؟")}</div>
+        <div class="dc-who"><b class="dc-name">${E(p.name||"بدون اسم")}${p.sup?` <span class="badge b-wash">مورّد</span>`:""}</b><span class="dc-ph">${p.phone?"📞 "+E(p.phone):"بلا رقم هاتف"}${p.days?` · منذ ${p.days} يوم`:""}</span></div>
+        <div class="dc-amt party-net">${p.net>0?`<b>${money(p.net)}</b><small>عليه · ${CUR}</small>`:p.net<0?`<b style="color:var(--ready)">${money(-p.net)}</b><small>له · ${CUR}</small>`:`<b style="color:var(--ready);font-size:.9rem">متعادل ✓</b>`}</div>
       </div>
+      ${ld>0?`<div class="meta" style="color:var(--brand);font-weight:800">🧺 وعليه للمغسلة أيضًا: ${money(ld)}</div>`:""}
+      <button type="button" class="dc-toggle" data-debt-toggle="${E(k)}" data-n="${n}">${open?"▴ إخفاء التفاصيل":"▾ التفاصيل"} (${n})</button>
+      <div class="dc-details" data-debt-det="${E(k)}" style="${open?"":"display:none"}">
+        ${both?`<div class="meta">📥 عليه <b style="color:var(--unpaid)">${money(p.on)}</b> · 📤 له <b style="color:var(--ready)">${money(p.for)}</b></div>`:""}
+        ${p.items.map(x=>`<div class="meta party-item" style="display:flex;justify-content:space-between;gap:8px;align-items:center"><span>${x.ic} ${E(x.t)} · <bdi dir="ltr">${frD(x.date)}</bdi></span><b style="color:${x.dir==="on"?"var(--unpaid)":"var(--ready)"};white-space:nowrap">${x.dir==="on"?"+":"−"}${money(x.amt)}${x.md&&currentRole!=="worker"?` ${recEditBtn("sdebt",x.md)}<button class="icon-btn" data-md-del="${x.md}" title="حذف" style="margin-inline-start:4px">${svg(I.trash)}</button>`:""}</b></div>`).join("")}
+      </div>
+      <div class="r-btns">
+        ${ph?(p.on>0&&p.cust?rb(`data-debt-wa="c:${p.cust.id}"`,"💬","واتساب","wa"):`<a class="r-btn wa" href="https://wa.me/${ph}" target="_blank" rel="noopener" title="واتساب"><span class="rb-ic">💬</span><small>واتساب</small></a>`):""}
+        ${tl?`<a class="r-btn call" href="${tl}" title="اتصال"><span class="rb-ic">📞</span><small>اتصال</small></a>`:""}
+        ${p.on>0&&p.cust?rb(`data-dc-pay="${p.cust.id}"`,"💵","تحصيل","pay"):""}
+        ${p.crCust>0?rb(`data-cc-pay="${p.cust.id}"`,"💸","تسديد له","pay"):""}
+        ${p.crSup>0?rb(`data-sp-pay="${p.sup.id}"`,"💸","للمورّد","pay"):""}
+        ${both&&currentRole!=="worker"?rb(`data-offset="${E(p.key)}"`,"⚖️","مقاصة "+money(Math.min(p.on,p.for)),""):""}
+        ${p.cust?rb(`data-dc-stmt="${p.cust.id}"`,"📄","كشف",""):""}
+        ${p.sup?rb(`data-sp-stmt="${p.sup.id}"`,"🛒",p.cust?"كشف المورّد":"كشف",""):""}
+      </div>
+      ${p.cust?`<div class="dc-mini"><button type="button" class="dcm on" data-qd="on|id:${p.cust.id}">➕ عليه</button><button type="button" class="dcm for" data-qd="for|id:${p.cust.id}">➕ له</button></div>`:""}
     </div>`; }).join("");
   const empty=view==="cred"?"لا توجد ديون علينا 🎉":view==="debt"?"لا توجد ديون لنا 🎉":"لا ديون لنا ولا علينا 🎉";
   return `
@@ -7567,6 +7574,9 @@ function _rand(n){ const a=new Uint8Array(n); crypto.getRandomValues(a); return 
    CHANGELOG: الأحدث أولًا. لكل تعديل: ic, t (العنوان), d (الشرح), go (أين: tab + storeSub/contactsSub/…), sel (العنصر الذي يُشار إليه).
    **قاعدة: كل إصدار جديد يضيف مدخلًا هنا** — يظهر للمستخدم مرة واحدة بعد التحديث مع «تخطي» و«أرني» و«جولة». */
 const CHANGELOG=[
+  {v:"2.53.0",date:"2026-10-18",items:[
+    {ic:"👤",t:"بطاقة الزبون في المتجر مثل «الزبائن»",d:"في المتجر ▸ الزبائن والديون صارت البطاقة: حرف الاسم، رقم واحد «عليه» أو «له»، والعمليات مطوية تفتحها بـ«▾ التفاصيل». الأزرار دائرية: واتساب · اتصال · تحصيل · تسديد له · مقاصة · كشف الحساب، وتحتها «➕ عليه» و«➕ له».",go:{tab:"store",storeSub:"debts"},sel:".party-card"}
+  ]},
   {v:"2.52.0",date:"2026-10-18",items:[
     {ic:"📦",t:"دبو: الطلبيات والعربون والتوصيل",d:"تبويب جديد «📦 الطلبيات»: سجّل طلبية لزبون (العدد والسعر والعنوان) مع العربون. الطوب يُحجز له ولا ينقص المخزون. كل «🚚 تسليم رحلة» تختار فيه العدد والناقل والنقل (بلا / على الزبون / علينا)، فيُسجَّل بيعًا ويُخصم من العربون أولًا، ويُفتح «وصل تسليم» تُرسله بالواتساب. ترى سُلّم كم وبقي كم.",go:{tab:"brick",brickSub:"orders"},sel:'[data-bksub="orders"]'},
     {ic:"🌬️",t:"الطوب يجفّ ثم «✅ جاهزة»",d:"كل خلطة جديدة تظهر «🌬️ تجفّ» في «الإنتاج». عندما يجفّ اضغط «✅ جاهزة». المخزون يُعرض: جاهز · يجفّ · محجوز، والبيع من طوب يجفّ يُظهر تنبيهًا فقط.",go:{tab:"brick",brickSub:"batches"},sel:'[data-bksub="batches"]'},
@@ -8541,7 +8551,7 @@ setTimeout(()=>{ if(!window.cloudReady){ const el=document.getElementById("cloud
 <!-- PWA: service-worker registration + update/install wiring -->
 <script>
 (function(){
-  var APP_VERSION = "2.52.0";
+  var APP_VERSION = "2.53.0";
   window.APP_VERSION = APP_VERSION;
   function $(id){ return document.getElementById(id); }
   // سجّل إصدار هذا الجهاز في الحالة المتزامنة (ليُنبَّه الجهاز القديم)

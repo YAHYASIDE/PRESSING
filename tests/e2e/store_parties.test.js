@@ -22,7 +22,7 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
   let r=await page.evaluate(()=>{ const cards=[...document.querySelectorAll('.party-card')].map(c=>c.textContent.replace(/\s+/g,' ')); return { n:cards.length, ahmad:cards.filter(t=>/أحمد/.test(t)), all:document.querySelector('[data-debtview="all"]').classList.contains('on') }; });
   log('default view «الكل» lists 3 people (customer+supplier with the same phone merged): '+(r.all && r.n===3 && r.ahmad.length===1)+' (expect true)');
   const a=r.ahmad[0]||'';
-  log('أحمد (8,000 on him, 6,000 for him) shows only the net «عليه لنا 2,000»: '+(/عليه لنا 2,000/.test(a) && !/له عندنا\s*6,000/.test(a) && /زبون/.test(a) && /مورّد/.test(a))+' (expect true)');
+  log('أحمد (8,000 on him, 6,000 for him) shows only the net «عليه لنا 2,000»: '+(/2,000\s*عليه/.test(a) && !/له عندنا\s*6,000/.test(a) && /مورّد/.test(a))+' (expect true)');
   log('his card lists the invoice, the credit and the purchase: '+(/فاتورة S-1/.test(a) && /له: دفع مقدّمًا/.test(a) && /شراء P-1/.test(a))+' (expect true)');
   log('his card has collect, pay-credit, pay-supplier and offset buttons: '+(await page.evaluate(()=>!!document.querySelector('[data-dc-pay="cu1"]') && !!document.querySelector('[data-cc-pay="cu1"]') && !!document.querySelector('[data-sp-pay="su1"]') && /6,000/.test((document.querySelector('[data-offset]')||{}).textContent||'')))+' (expect true)');
   r=await page.evaluate(()=>{ const t=document.querySelector('.store-stat').textContent; return /10,000/.test(t) && /7,200/.test(t) && /2,800/.test(t); });
@@ -38,10 +38,21 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
   await page.click('[data-offset]'); await page.waitForTimeout(200); await page.fill('#codeInput','070752'); await page.click('#codeOk'); await page.waitForTimeout(300);
   r=await page.evaluate(()=>({ on:custBalance('cu1'), cr:custCredit('cu1'), sup:supplierBalance(state.suppliers[0]), cash:state.storeCash.length, s1:state.storeSales[0].paidAmount, act:state.activity.some(a=>/مقاصة/.test(a.action)) }));
   log('offset 6,000: invoice left 2,000, credit 0, supplier 0, no cash movement, logged: '+(r.on===2000 && r.cr===0 && r.sup===0 && r.s1===6000 && r.cash===0 && r.act)+' (expect true)');
-  log('after offset his card shows only «عليه لنا 2,000» and no offset button: '+(await page.evaluate(()=>{ const c=[...document.querySelectorAll('.party-card')].find(x=>/أحمد/.test(x.textContent)); return !!c && /عليه لنا 2,000/.test(c.textContent) && !document.querySelector('[data-offset]'); }))+' (expect true)');
+  log('after offset his card shows only «عليه لنا 2,000» and no offset button: '+(await page.evaluate(()=>{ const c=[...document.querySelectorAll('.party-card')].find(x=>/أحمد/.test(x.textContent)); return !!c && /2,000\s*عليه/.test(c.textContent) && !document.querySelector('[data-offset]'); }))+' (expect true)');
   await page.click('[data-dc-pay="cu1"]'); await page.waitForTimeout(200); await page.fill('#storePayAmt','2000'); await page.click('#storePayOk'); await page.waitForTimeout(300);
   log('collecting 2,000 clears him; he leaves the list: '+(await page.evaluate(()=>custBalance('cu1')===0 && ![...document.querySelectorAll('.party-card')].some(x=>/أحمد/.test(x.textContent))))+' (expect true)');
   log('no horizontal overflow at 400px: '+(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1))+' (expect true)');
+  // 2.53.0 — نفس بطاقة «الزبائن»: العمليات مطوية + أزرار دائرية + ➕ عليه/له
+  await page.evaluate(()=>{ state.tab='store'; state.storeSub='debts'; state.debtView=null; render(); }); await page.waitForTimeout(200);
+  r=await page.evaluate(()=>{ const c=[...document.querySelectorAll('.party-card')].find(x=>/سالم/.test(x.textContent)); const det=c.querySelector('[data-debt-det]');
+    return { av:!!c.querySelector('.dc-av'), folded:det.style.display==='none', btns:[...c.querySelectorAll('.r-btn small')].map(x=>x.textContent), mini:!!c.querySelector('[data-qd="on|id:cu2"]')&&!!c.querySelector('[data-qd="for|id:cu2"]') }; });
+  log('store card looks like the customers card: letter, operations folded, round واتساب/اتصال/تحصيل/كشف, ➕ عليه/له: '+(r.av && r.folded && r.btns.join(',')==='واتساب,اتصال,تحصيل,كشف' && r.mini)+' (expect true) '+r.btns);
+  await page.evaluate(()=>{ const c=[...document.querySelectorAll('.party-card')].find(x=>/سالم/.test(x.textContent)); c.querySelector('[data-debt-toggle]').click(); });
+  log('«▾ التفاصيل» opens the operations: '+(await page.evaluate(()=>{ const c=[...document.querySelectorAll('.party-card')].find(x=>/سالم/.test(x.textContent)); return c.querySelector('[data-debt-det]').style.display!=='none' && /S-2/.test(c.querySelector('[data-debt-det]').textContent) && /إخفاء/.test(c.querySelector('[data-debt-toggle]').textContent); }))+' (expect true)');
+  await page.evaluate(()=>{ const c=[...document.querySelectorAll('.party-card')].find(x=>/سالم/.test(x.textContent)); c.querySelector('[data-qd="for|id:cu2"]').click(); }); await page.waitForTimeout(200);
+  log('«➕ له» opens the quick entry for that customer: '+(await page.evaluate(()=>getComputedStyle(document.getElementById('qdModal')).display!=='none' && /سالم/.test(document.getElementById('qdModal').textContent)))+' (expect true)');
+  await page.evaluate(()=>{ document.getElementById('qdModal').style.display='none'; });
+  log('no horizontal overflow: '+(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth))+' (expect true)');
   log('\nERRORS:', errors.length?errors.join('\n'):'NONE ✅');
   await browser.close();
 })().catch(e=>{console.error('CRASH',e);process.exit(1);});
