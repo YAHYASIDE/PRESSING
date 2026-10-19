@@ -20,7 +20,7 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
     state.brickLoads=[{id:'l1',porterId:'po1',kind:'bricks',qty:1000,rate:10,amount:10000,paidAmount:0,paid:false,date:d,editedAt:d}];
     state.tab='brick'; state.brickSub='debts'; save(); render(); });
   await page.waitForTimeout(300);
-  let r=await page.evaluate(()=>{ const cs=[...document.querySelectorAll('main .person-card')]; const m=cs.find(c=>/محمد/.test(c.textContent)), s=cs.find(c=>/حمد و باي/.test(c.textContent)), p=cs.find(c=>/دبيته/.test(c.textContent));
+  let r=await page.evaluate(()=>{ const cs=[...document.querySelectorAll('main .person-card')].filter(c=>!c.closest('.ux-wrap')); const m=cs.find(c=>/محمد/.test(c.textContent)), s=cs.find(c=>/حمد و باي/.test(c.textContent)), p=cs.find(c=>/دبيته/.test(c.textContent));
     const btns=c=>c?[...c.querySelectorAll('.r-btn small')].map(x=>x.textContent):[];
     return { n:cs.length, mAv:!!(m&&m.querySelector('.dc-av')), mAmt:m&&m.querySelector('.dc-amt').textContent, mBtns:btns(m), wa:m&&(m.querySelector('.r-btn.wa')||{}).href||'', mini:!!(m&&m.querySelector('.dc-mini [data-bk-ladd]')), noQd:!document.querySelector('main .person-card [data-qd]'),
       sAmt:s&&s.querySelector('.dc-amt').textContent, sBadge:s&&/مورّد/.test(s.textContent), sBtns:btns(s), pAmt:p&&p.querySelector('.dc-amt').textContent, pBtns:btns(p), overflow:document.documentElement.scrollWidth>innerWidth }; });

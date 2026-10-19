@@ -525,6 +525,18 @@
   «👷 رئيس العمّال» تُخفى خانات الحمل (`#bkLoadFields`, `#bkLoadKinds`، تلميح `#bkWorkerOnlyHint`) والزر «💾 حفظ رئيس العمّال» (`updPor` في
   `bindBrick`)؛ و`doBrickLoadSave` يحفظ الشخص فقط إن لم يُكتب مبلغ (الحمل **اختياري لأي شخص جديد**، وإلزامي فقط لتسجيل عمل لشخص موجود).
   الاختبار `tests/e2e/brick_worker_add.test.js`.
+- **🔁 الحساب بين دبو والمتجر (2.59.0) — قرار المجلس + المالك («نضيف المتجر مثل الزبون… في الجهتين»):** مصفوفة مُزامنة `state.unitXfers`
+  `{id,no:"U…",dir:"s2b"|"b2s",amount,cash,payMethod,note,date,by,editedAt,cancelled?}` (في SYNC_ARRAYS/BACKUP_KEYS/Lstore/runMigrations/
+  **BRICK_RESET_KEYS**/resetFinancials/CSV «دبو ⇄ المتجر»). `s2b` = قيمة من المتجر إلى دبو (دبو يدين للمتجر). `uxBalance()` محسوب (+ = دبو يدين للمتجر)،
+  `uxView(side)` من جهة كل وحدة. **`cash:true`** = المال انتقل بين الدرجين → حركتان **مشتقّتان** بمعرّف ثابت `UX-{id}-s` في `storeCash` و`UX-{id}-b` في
+  `brickCash` (`kind:"unitXfer"`, `ref`=القيد) يعيد بناءهما `syncUnitMoves()` دائمًا من القيد (في `save()` وقبل البصمة في `applyRemote`)، ويحذف (tomb) أي حركة
+  `unitXfer` بلا قيد حيّ — فلا تفترق الحركتان أبدًا (تصفير دبو يمسح القيد فتختفي حركة المتجر أيضًا). **ليست دخلًا ولا ربحًا:** `payBreakdown` يضعها في `xfer`
+  (`net = inc − out + xfer`، `inc` لا يتغيّر)، و`payLines` يعرضها في «من أين المتوقع؟» عند الجرد. الواجهة: `uxCardHTML(side)` = `personCardHTML` («🏪 المتجر» في
+  `brickScreenDebts`، «🧱 دبو» في `storeScreenDebts` عدا «السجل»، مالك/مدير فقط) بأزرار `[data-ux-q="side|on|for|in|out"]` (`UX_ACT` → `openUxQuick` في
+  `#editModal`، `_editCtx.kind="uxq"` → `uxQuickSave`؛ الدين فقط يتطلب بيانًا؛ لا تاريخ في يوم مغلق) و`[data-ux-stmt]` → `openUxStatement` (`ledgerRcptHTML`
+  + `setRcptText`)، وتحتها `<details>` «🔁 قيود …» بتعديل `recEditBtn("uxf")` وحذف ناعم بالكود `[data-ux-del]` واستعادة `[data-ux-restore]`. الحركات المشتقّة بلا
+  حذف/تعديل مباشر (لها `kind`/`ref`) وشارة «🔁 دبو» في صندوق المتجر. فحص جديد في `auditChecks()`: كل قيد نقدي له حركتاه بالمبلغ نفسه. الاختبار
+  `tests/e2e/unit_xfer.test.js`. **التالي (لم يُبنَ):** خانة «📍 استُلم في المتجر» عند التحصيل في دبو و«دُفع من المتجر» عند تسديد مورّد دبو، و«👤 المالك» مصدرًا ثالثًا.
 - **🩺 فحص الحسابات + مهارة «فاحص الأخطاء» (2.58.0) — «ابحث عن skill تعثر على الأخطاء»:** `auditChecks()` دالة نقية تُرجع
   `{issues:[{lvl:"err"|"warn",area,t,d,go}],ok,n}`: كشف كل زبون = رصيده (`custLedger` أضاف «⚖️ تسوية سجلات قديمة» ⇒ خطأ مع السبب: ديون «له»
   مسدَّدة بلا حركة صندوق)، كشف دبو = البطاقة (`brickPartyRows`/`brickParties`)، كشف عامل دبو = `brickPersonBalance`، المبالغ أرقام ≥ 0، المدفوع ≤
