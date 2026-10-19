@@ -525,6 +525,17 @@
   «👷 رئيس العمّال» تُخفى خانات الحمل (`#bkLoadFields`, `#bkLoadKinds`، تلميح `#bkWorkerOnlyHint`) والزر «💾 حفظ رئيس العمّال» (`updPor` في
   `bindBrick`)؛ و`doBrickLoadSave` يحفظ الشخص فقط إن لم يُكتب مبلغ (الحمل **اختياري لأي شخص جديد**، وإلزامي فقط لتسجيل عمل لشخص موجود).
   الاختبار `tests/e2e/brick_worker_add.test.js`.
+- **🩺 فحص الحسابات + مهارة «فاحص الأخطاء» (2.58.0) — «ابحث عن skill تعثر على الأخطاء»:** `auditChecks()` دالة نقية تُرجع
+  `{issues:[{lvl:"err"|"warn",area,t,d,go}],ok,n}`: كشف كل زبون = رصيده (`custLedger` أضاف «⚖️ تسوية سجلات قديمة» ⇒ خطأ مع السبب: ديون «له»
+  مسدَّدة بلا حركة صندوق)، كشف دبو = البطاقة (`brickPartyRows`/`brickParties`)، كشف عامل دبو = `brickPersonBalance`، المبالغ أرقام ≥ 0، المدفوع ≤
+  القيمة، المخزون (المتجر/الطوب/الإسمنت/التراب) ≥ 0، الصناديق ≥ 0 (دبو: يذكر أكبر صرف)، العمليات لأشخاص موجودين، حركات الصندوق لعمليات موجودة،
+  لا معرّفات مكرّرة، لا زبونين بالرقم نفسه، التواريخ، الحفظ/المزامنة/حجم المستند. الواجهة: الإعدادات ▸ 📱 التطبيق ▸ «🩺 فحص الحسابات» (`#btnAudit` →
+  `runAudit` → `#auditOut` بـ`auditHTML`: `.audit-sum`/`.audit-row.err|warn`، «📍 افتح» `[data-audit-go]` ينقل للشاشة). **المهارة**
+  `.claude/skills/bug-hunt/SKILL.md` — **رسالة تبدأ بالرقم 7** = شغّل الفاحص: `node tests/audit/live_audit.js [--file data.json] [--out DIR]` يقرأ
+  `appState/main` (قراءة فقط؛ Firestore في الصفحة ممنوع و`save` معطّل) ويشغّل `auditChecks()` + يمرّ على كل الشاشات والتبويبات الفرعية بعرض 360
+  (انهيار، كونسول، NaN/undefined، تجاوز أفقي، أرقام عربية، تواريخ ISO) ويفتح كل الكشوف — تقرير عربي + `audit.json` (**لا يُرفع للمستودع**).
+  **قاعدة: نوع خطأ جديد = فحص جديد في `auditChecks()` + `tests/e2e/audit.test.js`.** `txtD(s)` يعرض تواريخ ISO داخل النصوص القديمة (سبب حركة
+  الصندوق «تحويل دخل المغسلة 2026-10-17») بصيغة DD/MM/YYYY، والتحويلات الجديدة تُكتب بـ`frDay`.
 - **رصيد العامل يدويًا في دبو (2.57.0) — «لا يمكن إضافة رصيد للعمّال»:** بطاقة العامل/الحمّال (`brickPersonCardHTML`) فيها `[data-bk-pq="for|id"]`
   «➕ له» و`[data-bk-pq="on|id"]` «➖ عليه» (مستمع عام) → `openBrickPersonQuick(dir,id)` في `#editModal` (`_editCtx.kind="pq"` → `brickPersonQuickSave`).
   «له» = سجل `brickLoads` بـ`kind:"credit"` (`opening:true` «رصيد سابق» افتراضيًا **لا يُحسب تكلفة** — `portersCost` يستثني `opening`؛ أو `opening:false` «أجرة
@@ -795,6 +806,8 @@ mobile/package.json            # اعتماديات Capacitor
   تعني: اعرض ما بعدها على المجلس (5 مستشارين مستقلين + مراجعة عمياء + حكم الرئيس كتقرير
   عربي) قبل البناء، ثم اسأله هل نبني أول خطوة. القرارات تُسجَّل في
   `.claude/skills/council/decisions.md`.
+- **فاحص الأخطاء:** `.claude/skills/bug-hunt/SKILL.md` — **أي رسالة تبدأ بالرقم 7** = افحص التطبيق على البيانات الحقيقية
+  (`tests/audit/live_audit.js`) وقدّم تقريرًا عربيًا بالأسباب ثم أصلح ما يختاره المالك.
 - **مهارة الذوق/التصميم:** `.claude/skills/taste/SKILL.md` (من `leonxlnx/taste-skill`، MIT؛ المراجع في
   `references/`: `redesign.md` الأساسي لتطبيقنا، `taste-v2.md`، `minimalist.md`، `soft.md`). **أي رسالة
   من المالك تبدأ بالرقم 6** تعني: حسّن واجهة الشاشة/العنصر المذكور بعدها بهذه المهارة (تدقيق ← إصلاحات

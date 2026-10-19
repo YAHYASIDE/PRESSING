@@ -878,6 +878,12 @@
     min-width:200px;max-width:calc(100vw - 28px);background:var(--surface);border:1px solid var(--line);border-radius:16px;
     box-shadow:0 14px 40px rgba(15,31,46,.28);padding:6px;display:flex;flex-direction:column;gap:2px;animation:popIn .16s ease}
   .fab-menu[hidden]{display:none!important}
+  .audit-sum{border-radius:12px;padding:10px 12px;font-weight:800;display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px}
+  .audit-sum small{font-weight:600;color:var(--muted)}
+  .audit-sum.good{background:rgba(46,158,107,.12);color:var(--ready)} .audit-sum.warn{background:rgba(230,160,40,.14);color:#b7791f} .audit-sum.bad{background:rgba(214,69,69,.12);color:var(--unpaid)}
+  .audit-row{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 10px;border-radius:10px;border:1px solid var(--line);margin-bottom:6px;border-inline-start:4px solid #e6a028}
+  .audit-row.err{border-inline-start-color:var(--unpaid)} .audit-row>div{min-width:0} .audit-row small{display:block;color:var(--muted);font-size:.78rem;margin-top:2px;word-break:break-word}
+  .audit-ok{margin-top:6px;font-size:.85rem;color:var(--muted)} .audit-ok summary{cursor:pointer;font-weight:700}
   #fabTabs{display:flex;flex-direction:column;gap:2px}
   .fab-item{display:flex;align-items:center;gap:10px;width:100%;border:none;background:transparent;color:var(--ink);
     padding:11px 12px;border-radius:12px;font-size:.95rem;font-weight:700;text-align:start}
@@ -1250,6 +1256,12 @@
       <div class="set-title">🩺 صحة البيانات</div>
       <div class="hint" style="margin-bottom:8px">فحص سريع يكشف أي مشكلة في الحفظ قبل أن تضيع بيانات: الحفظ على الجهاز، الرفع إلى السحابة، الصور، وإصدارات الأجهزة.</div>
       <div id="healthAdmin"><div class="hint">جارٍ الفحص…</div></div>
+    </div>
+    <div class="set-sec" data-stab="app">
+      <div class="set-title">🩺 فحص الحسابات</div>
+      <div class="hint" style="margin-bottom:8px">يفحص كل الأرقام: هل كل بطاقة تطابق كشفها، المخزون والصناديق، عمليات لأشخاص محذوفين، أرقام مكرّرة، والمزامنة. لا يغيّر أي شيء.</div>
+      <button class="btn-primary" id="btnAudit" type="button" style="width:100%">🩺 افحص الآن</button>
+      <div id="auditOut" style="margin-top:8px"></div>
     </div>
     <div class="set-sec" data-stab="app"><div class="set-title">لون التطبيق</div><div class="pal-row" id="palRow"></div></div>
     <div class="set-sec" data-stab="backup">
@@ -4130,7 +4142,7 @@ function closeDay(day){
   const ids=[]; const amt=Math.round(snap.received);
   if(amt>0){ const id=transferIdOf(day);
     // حركة واحدة لليوم بمعرّف ثابت — إن وُجدت (من جهاز آخر/تحديث/إعادة محاولة) لا تُنشأ ثانية
-    if(!(state.storeCash||[]).some(x=>x.id===id)){ state.storeCash.push({id,type:"in",amount:amt,reason:"تحويل دخل المغسلة "+day,kind:"lndTransfer",day,customerId:null,ref:closingIdOf(day),payMethod:"cash",pm:Object.assign({},snap.by),svc:Object.assign({},snap.bySvc),fin:{services:snap.services,paidSame:snap.paidSame,newDebts:snap.newDebts,collected:snap.collected,received:snap.received,svc:Object.assign({},snap.svc)},date:now,by:currentUser,editedAt:now}); }
+    if(!(state.storeCash||[]).some(x=>x.id===id)){ state.storeCash.push({id,type:"in",amount:amt,reason:"تحويل دخل المغسلة "+frDay(day),kind:"lndTransfer",day,customerId:null,ref:closingIdOf(day),payMethod:"cash",pm:Object.assign({},snap.by),svc:Object.assign({},snap.bySvc),fin:{services:snap.services,paidSame:snap.paidSame,newDebts:snap.newDebts,collected:snap.collected,received:snap.received,svc:Object.assign({},snap.svc)},date:now,by:currentUser,editedAt:now}); }
     ids.push(id); }
   Object.assign(c,{cid:closingIdOf(day),locked:true,status:"locked",closedAt:now,closedBy:currentUser,snap,transferred:Object.assign({},snap.by),transfers:ids,edits:c.edits||0,editedAt:now});
   c.verify=verifyDay(day);
@@ -4294,7 +4306,7 @@ function openCloseDayConfirm(day){
   if(nowExp!==cc.expected){ toast("⚠️ تغيّرت حركات اليوم بعد الجرد (المتوقع صار "+money(nowExp)+") — أعد حفظ الجرد"); openClosing(day); focusCount(); return; }
   const f=daySnapshot(day); const m=document.getElementById("closeDayModal"); if(!m) return;
   const row=(l,v,c)=>`<div class="rcpt-row"><span>${l}</span><b style="${c?'color:'+c:''}">${money(v)} ${CUR}</b></div>`;
-  document.getElementById("cdyBody").innerHTML=`<p>هل تريد إغلاق يوم <b>${day}</b> وتحويل دخل المغسلة إلى حساب المتجر؟</p>
+  document.getElementById("cdyBody").innerHTML=`<p>هل تريد إغلاق يوم <b>${frDay(day)}</b> وتحويل دخل المغسلة إلى حساب المتجر؟</p>
     ${row("🧾 إجمالي الخدمات",f.services)}${row("💵 المدفوع نقدًا",f.by.cash,"#e67e22")}${row("📱 التطبيقات البنكية",f.apps,"#1b6ea4")}${BANK_APPS.filter(k=>f.by[k]).map(k=>{ const m=PAY_METHODS.find(x=>x.k===k); return `<div class="rcpt-row" style="padding-inline-start:18px;font-size:.85rem"><span>└ ${m.ic} ${m.t}</span><b>${money(f.by[k])}</b></div>`; }).join("")}${row("🔴 الديون (لا تُحوَّل)",f.newDebts,"#c0392b")}${f.collected?row("💠 ديون محصّلة اليوم",f.collected,"#1b6ea4"):""}
     <div class="rcpt-total"><span>💰 إجمالي ما سيُحوَّل للمتجر</span><b>${money(f.received)} ${CUR}</b></div>
     <div class="rcpt-row"><span>🧮 الجرد</span><b style="color:${cashCountIssues(cc).length?'var(--unpaid)':'var(--ready)'}">${cashCountIssues(cc).length?"فرق محفوظ بسبب: "+_esc(cc.note||""):"✔ مطابق"}</b></div>
@@ -5286,7 +5298,7 @@ function storeScreenCashbox(){
   const moves=(state.storeCash||[]).filter(m=>inRange(m.date)).slice().reverse().slice(0,60).map(m=>`
     <tr ${m.kind?`class="day-row" data-cash-view="${m.id}" title="اضغط للتفاصيل"`:""}><td>${frD(m.date)}<div style="font-size:.7rem;color:var(--muted)">${timeStr(m.date)}</div></td>
       <td><span class="badge ${m.type==='in'?'b-paid':'b-unpaid'}">${m.type==='in'?'وارد':'صادر'}</span></td>
-      <td>${m.reason||'—'}${m.kind==='lndTransfer'?' <span class="badge b-done">🧺 المغسلة</span>':m.kind==='lndAdj'?` <span class="badge b-wash">تسوية</span>`:''}<div style="font-size:.7rem;color:var(--muted)">${m.pm?PAY_METHODS.filter(x=>m.pm[x.k]).map(x=>x.t+" "+money(m.pm[x.k])).join(" · ")||pmLabel(m.payMethod):pmLabel(m.payMethod)}${m.ref&&m.kind==='lndAdj'?` · مرتبط بـ ${_esc(m.ref)}`:''}</div></td>
+      <td>${m.reason?txtD(m.reason):'—'}${m.kind==='lndTransfer'?' <span class="badge b-done">🧺 المغسلة</span>':m.kind==='lndAdj'?` <span class="badge b-wash">تسوية</span>`:''}<div style="font-size:.7rem;color:var(--muted)">${m.pm?PAY_METHODS.filter(x=>m.pm[x.k]).map(x=>x.t+" "+money(m.pm[x.k])).join(" · ")||pmLabel(m.payMethod):pmLabel(m.payMethod)}${m.ref&&m.kind==='lndAdj'?` · مرتبط بـ ${_esc(m.ref)}`:''}</div></td>
       <td class="amt" style="color:${m.type==='in'?'var(--ready)':'var(--unpaid)'}">${m.type==='in'?'+':'−'}${money(m.amount)}</td>
       <td style="text-align:left;white-space:nowrap">${m.kind?'':`${m.ref?'':recEditBtn("scash",m.id)}<button class="icon-btn" data-cash-del="${m.id}" title="حذف">${svg(I.trash)}</button>`}</td></tr>`).join("")||`<tr><td colspan="5"><div class="empty">${svg(I.empty)}لا توجد حركات في هذه الفترة.</div></td></tr>`;
   return `
@@ -7593,6 +7605,65 @@ async function renderDriveAdmin(){
     }catch(e){ list.innerHTML='<div class="hint" style="color:var(--unpaid)">تعذّر جلب القائمة: '+_esc(driveErr((e&&e.code)||"",e))+'</div>'; }
   } else list.innerHTML="";
 }
+/* ================= (2.58.0) 🩺 فحص الحسابات — يكشف أي اختلاف في الأرقام أو السجلات =================
+   auditChecks() دالة نقية (تعمل في المتصفح وفي سكربت «فاحص الأخطاء») تُرجع {issues:[{lvl:"err"|"warn",area,t,d,go?}],ok:[…],n}.
+   err = رقم خاطئ أو سجل مكسور يجب إصلاحه · warn = يحتاج انتباهًا (رقم مكرّر، رصيد سالب…). */
+function auditChecks(){
+  const I=[], OK=[], E=(lvl,area,t,d,go)=>I.push({lvl,area,t,d:d||"",go:go||null}), R=n=>Math.round(+n||0), bad=v=>v!=null&&(typeof v!=="number"||!isFinite(v));
+  let nChk=0; const chk=(name,fn)=>{ nChk++; const before=I.length; try{ fn(); }catch(e){ E("err","الفحص",name+" — تعذّر الفحص",e&&e.message); } if(I.length===before) OK.push(name); };
+  const live=a=>(state[a]||[]).filter(x=>x&&!x.cancelled&&!x.deleted);
+  chk("كشف كل زبون يطابق رصيده",()=>{ (state.storeCustomers||[]).filter(c=>!c.isLaundry).forEach(c=>{ const L=custLedger(c), adj=L.rows.find(r=>/تسوية سجلات قديمة/.test(r.t));
+    if(!adj) return; const dIds=new Set((state.storeDebts||[]).map(x=>x.id)), M=(state.storeCash||[]).filter(m=>m.customerId===c.id&&!(m.ref&&dIds.has(m.ref)));
+    const pf=sum((state.storeDebts||[]).filter(x=>!x.cancelled&&x.customerId===c.id&&x.dir==="for"),x=>+x.paidAmount||0), po=sum(M.filter(m=>m.type==="out"),m=>+m.amount||0);
+    const why=Math.abs(pf-po)>1?" · السبب: ديون «له» معلَّمة مسدَّدة بـ "+money(pf)+" لكن المسجّل من دفعاتنا له "+money(po)+" (فرق "+money(Math.abs(pf-po))+" بلا حركة صندوق — مقاصة أو تسديد قديم)":"";
+    E("err","الزبائن","كشف «"+c.name+"» لا يطابق رصيده","الحركات تعطي "+money(R(adj.before))+" والرصيد المحسوب "+money(R(L.final))+" — الفرق "+money(Math.abs(R(L.final-adj.before)))+why,{tab:"store",storeSub:"debts"}); }); });
+  chk("كشف دبو لكل طرف يطابق رصيده",()=>{ brickParties().forEach(x=>{ const rows=brickPartyRows(x.type,x.id), f=rows.length?rows[rows.length-1].balance:0; if(Math.abs(R(f)-R(x.balance))>1) E("err","دبو","كشف «"+x.name+"» في دبو لا يطابق بطاقته","الكشف "+money(R(f))+" والبطاقة "+money(R(x.balance)),{tab:"brick",brickSub:"debts"}); }); });
+  chk("كشف كل عامل وحمّال في دبو يطابق رصيده",()=>{ (state.brickPorters||[]).forEach(pr=>{ const J=brickPorterJobs(pr.id), adv=sum(brickLive(state.brickLoads).filter(x=>x.porterId===pr.id&&x.kind==="advance"),a=>brickAdvLeft(a));
+    const f=sum(J,j=>(j.amount||0)-(j.paid||0))-adv, b=brickPersonBalance(pr.id); if(Math.abs(R(f)-R(b))>1) E("err","دبو","كشف «"+pr.name+"» لا يطابق بطاقته","الكشف "+money(R(f))+" والبطاقة "+money(R(b)),{tab:"brick",brickSub:"porters"});
+    J.forEach(j=>{ if((j.paid||0)>(j.amount||0)+1) E("err","دبو","مدفوع أكثر من المستحق لـ«"+pr.name+"»",j.label+" · المستحق "+money(j.amount)+" والمدفوع "+money(j.paid),{tab:"brick",brickSub:"porters"}); }); }); });
+  chk("المبالغ أرقام صحيحة",()=>{ const F={carOps:["price"],carpetOrders:["price"],laundryOrders:["price"],expenses:["amount"],storeSales:["total","paidAmount"],storePurchases:["total","paidAmount"],storeCash:["amount"],storeDebts:["amount","paidAmount"],brickSales:["total","paidAmount","qty"],brickPurchases:["total","paidAmount","qty"],brickBatches:["bricks","workerPay","workerPaidAmt"],brickExpenses:["amount"],brickCash:["amount"],brickLedger:["amount"],brickLoads:["amount","paidAmount"],brickOrders:["qty","total"],brickWaste:["qty"],dailyCostPays:["amount"]};
+    Object.keys(F).forEach(a=>live(a).forEach(x=>F[a].forEach(k=>{ const v=x[k]; if(bad(v)||(typeof v==="number"&&v<0)) E("err","السجلات","رقم غير صالح في "+a+" "+(x.no||x.id),k+" = "+String(v)); }))); });
+  chk("لا مدفوع أكثر من قيمة العملية",()=>{ [["storeSales","total","فاتورة متجر"],["storePurchases","total","شراء متجر"],["storeDebts","amount","دين يدوي"],["brickSales","total","بيع طوب"],["brickPurchases","total","شراء مواد دبو"]].forEach(([a,k,t])=>live(a).forEach(x=>{ if((+x.paidAmount||0)>(+x[k]||0)+1) E("err","السجلات",t+" "+(x.no||x.note||"")+": المدفوع أكبر من القيمة","القيمة "+money(x[k])+" والمدفوع "+money(x.paidAmount)); }));
+    live("brickBatches").forEach(b=>{ if((+b.workerPaidAmt||0)>(+b.workerPay||0)+1) E("err","دبو","أجرة الخلطة "+(b.no||"")+": المدفوع أكبر من الأجرة",money(b.workerPaidAmt)+" > "+money(b.workerPay)); }); });
+  chk("المخزون غير سالب",()=>{ (state.storeProducts||[]).forEach(pd=>{ if((+pd.stock||0)<0) E("warn","المتجر","مخزون سالب: «"+pd.name+"»","المخزون "+fmt(pd.stock),{tab:"store",storeSub:"products"}); });
+    brickTypes().forEach(t=>{ const st=brickStock(t.k); if(st<0) E("err","دبو","مخزون طوب سالب: «"+t.name+"»","المخزون "+fmt(st),{tab:"brick",brickSub:"batches"}); });
+    [["cement","الإسمنت"],["sand","التراب"]].forEach(([m,t])=>{ const st=brickMatStock(m); if(st<0) E("err","دبو","مخزون "+t+" سالب","المتاح "+fmt(st),{tab:"brick",brickSub:"purchases"}); }); });
+  chk("الصناديق غير سالبة",()=>{ PAY_METHODS.forEach(pm=>{ const v=sum(state.storeCash||[],m=>moveByMethod(m,pm.k)); if(v<-1) E("warn","المتجر","صندوق المتجر سالب في «"+pm.t+"»",money(R(v))+" "+CUR,{tab:"store",storeSub:"cash"}); });
+    const bx=brickCashBalance(); if(bx<-1){ const big=(state.brickCash||[]).filter(m=>m.type==="out").sort((a,b)=>(+b.amount||0)-(+a.amount||0))[0]; E("warn","دبو","صندوق دبو سالب: "+money(R(bx))+" "+CUR,"خرج منه أكثر مما دخل"+(big?" — أكبر صرف: "+(big.reason||"")+" "+money(big.amount)+" ("+frD(big.date)+")":"")+". إن دُفع من مال آخر سجّل «إيداع» في صندوق دبو",{tab:"brick",brickSub:"cash"}); } });
+  chk("كل عملية مرتبطة بشخص موجود",()=>{ const cu=new Set((state.storeCustomers||[]).map(c=>c.id)), su=new Set((state.suppliers||[]).map(c=>c.id)), po=new Set((state.brickPorters||[]).map(c=>c.id));
+    live("storeSales").forEach(x=>{ if(x.customerId&&!cu.has(x.customerId)&&saleOutstanding(x)>0) E("err","المتجر","فاتورة بالدين لزبون محذوف: "+(x.no||""),(x.customerName||"")+" · متبقٍ "+money(saleOutstanding(x))); });
+    live("storeDebts").forEach(x=>{ if(!cu.has(x.customerId)&&debtOutstanding(x)>0) E("err","المتجر","دين يدوي لزبون محذوف",(x.note||"")+" · "+money(debtOutstanding(x))); });
+    live("storePurchases").forEach(x=>{ if(x.supplierId&&!su.has(x.supplierId)&&purOutstanding(x)>0) E("err","المتجر","شراء غير مسدَّد لمورّد محذوف: "+(x.no||""),(x.supplier||"")+" · "+money(purOutstanding(x))); });
+    brickLive(state.brickSales).forEach(x=>{ const pp=brickSaleParty(x); if(pp.id&&!brickParty(pp.type,pp.id)&&brickOut(x)>0) E("err","دبو","بيع طوب آجل لطرف محذوف: "+(x.no||""),(x.customerName||"")+" · "+money(brickOut(x))); });
+    brickLive(state.brickLedger).forEach(x=>{ if(!brickParty(x.partyType,x.partyId)) E("err","دبو","قيد لطرف محذوف",(x.note||"")+" · "+money(x.amount)); });
+    brickLive(state.brickLoads).forEach(x=>{ if(!po.has(x.porterId)) E("err","دبو","عمل حمل لشخص محذوف: "+(x.no||""),money(x.amount)); });
+    brickLive(state.brickBatches).forEach(b=>{ if(b.workerId&&!po.has(b.workerId)&&brickWageOut(b)>0) E("err","دبو","أجرة خلطة لعامل محذوف: "+(b.no||""),money(brickWageOut(b))); });
+    (state.brickOrders||[]).filter(o=>o.status==="open").forEach(o=>{ if(!brickParty(o.partyType,o.partyId)) E("err","دبو","طلبية مفتوحة لطرف محذوف: "+(o.no||""),o.customerName||""); }); });
+  chk("حركات الصندوق مرتبطة بعملية موجودة",()=>{ const ids=new Set(); SYNC_ARRAYS.forEach(a=>(state[a]||[]).forEach(x=>x&&x.id&&ids.add(x.id))); (state.suppliers||[]).forEach(x=>ids.add(x.id));
+    [["storeCash","المتجر"],["brickCash","دبو"]].forEach(([a,t])=>(state[a]||[]).forEach(m=>{ if(m.ref&&!m.kind&&!String(m.ref).startsWith("Laundry")&&!ids.has(m.ref)) E("warn",t,"حركة صندوق لعملية محذوفة",(m.reason||"")+" · "+money(m.amount)+" · "+frD(m.date),{tab:a==="brickCash"?"brick":"store",storeSub:"cash",brickSub:"cash"}); })); });
+  chk("لا معرّفات مكرّرة",()=>{ SYNC_ARRAYS.forEach(a=>{ const seen=new Set(); (state[a]||[]).forEach(x=>{ if(!x||!x.id) return; if(seen.has(x.id)) E("err","السجلات","معرّف مكرّر في "+a,x.id); seen.add(x.id); }); }); });
+  chk("لا زبونين بالرقم نفسه",()=>{ const m={}; (state.storeCustomers||[]).filter(c=>!c.isLaundry).forEach(c=>{ const ph=normPhone(c.phone||""); if(ph) (m[ph]=m[ph]||[]).push(c.name); });
+    Object.keys(m).forEach(ph=>{ if(m[ph].length>1) E("warn","الزبائن","رقم واحد لعدّة زبائن: "+ph,m[ph].join(" · ")+" — الكشف يجمعهم، والأفضل تعديل الرقم الخاطئ",{tab:"store",storeSub:"debts"}); });
+    const sm={}; (state.suppliers||[]).forEach(x=>{ const ph=normPhone(x.phone||""); if(ph) (sm[ph]=sm[ph]||[]).push(x.name); }); Object.keys(sm).forEach(ph=>{ if(sm[ph].length>1) E("warn","الموردون","رقم واحد لعدّة موردين: "+ph,sm[ph].join(" · ")); }); });
+  chk("التواريخ صالحة",()=>{ let n=0; SYNC_ARRAYS.forEach(a=>(state[a]||[]).forEach(x=>{ if(x&&x.date&&isNaN(new Date(x.date))) { n++; if(n<=5) E("err","السجلات","تاريخ غير صالح في "+a+" "+(x.no||x.id),String(x.date)); } })); });
+  chk("الحفظ والمزامنة",()=>{ if(typeof _localSaveErr!=="undefined"&&_localSaveErr&&!(_localSaveOk>0)) E("err","الحفظ","الحفظ على هذا الجهاز فشل",String(_localSaveErr&&_localSaveErr.message||_localSaveErr));
+    if(typeof _unsyncedSince!=="undefined"&&_unsyncedSince&&Date.now()-_unsyncedSince>120000) E("err","المزامنة","تسجيلات هذا الجهاز لم تُرفع للسحابة منذ "+Math.round((Date.now()-_unsyncedSince)/60000)+" دقيقة","لا تظهر على الأجهزة الأخرى — افتح الإعدادات ▸ المزامنة");
+    try{ const kb=JSON.stringify(cloudCopy()).length/1024; if(kb>700) E("warn","المزامنة","حجم البيانات السحابية كبير: "+Math.round(kb)+" KB","الحدّ 1024 KB — قد يتوقف الحفظ"); }catch(e){} });
+  return {issues:I.sort((a,b)=>(a.lvl==="err"?0:1)-(b.lvl==="err"?0:1)),ok:OK,n:nChk};
+}
+let _auditRes=null;
+/* نص فيه تاريخ ISO قديم (مثل «تحويل دخل المغسلة 2026-10-17») → يُعرض DD/MM/YYYY */
+function txtD(s){ return _esc(String(s==null?"":s)).replace(/\b(\d{4})-(\d{2})-(\d{2})\b/g,"$3/$2/$1"); }
+function auditHTML(res){ const E=_esc; if(!res) return `<div class="hint">اضغط «🩺 افحص الآن» — يفحص كل الحسابات والسجلات على هذا الجهاز ولا يغيّر شيئًا.</div>`;
+  const nE=res.issues.filter(x=>x.lvl==="err").length, nW=res.issues.length-nE;
+  return `<div class="audit-sum ${nE?"bad":nW?"warn":"good"}">${nE?"❌ "+nE+" خطأ":""}${nE&&nW?" · ":""}${nW?"⚠️ "+nW+" تنبيه":""}${!nE&&!nW?"✅ كل الحسابات سليمة":""}<small>${res.n} فحصًا · ${res.ok.length} سليم</small></div>
+    ${res.issues.map((x,i)=>`<div class="audit-row ${x.lvl}"><div><b>${x.lvl==="err"?"❌":"⚠️"} ${E(x.t)}</b><small>${E(x.area)}${x.d?" · "+E(x.d):""}</small></div>${x.go?`<button type="button" class="mini" data-audit-go="${i}">📍 افتح</button>`:""}</div>`).join("")}
+    ${res.ok.length?`<details class="audit-ok"><summary>✅ السليم (${res.ok.length})</summary>${res.ok.map(t=>`<div>✓ ${E(t)}</div>`).join("")}</details>`:""}`; }
+function runAudit(){ _auditRes=auditChecks(); const h=document.getElementById("auditOut"); if(h) h.innerHTML=auditHTML(_auditRes);
+  const nE=_auditRes.issues.filter(x=>x.lvl==="err").length; toast(nE?"❌ وُجد "+nE+" خطأ — انظر القائمة":_auditRes.issues.length?"⚠️ "+_auditRes.issues.length+" تنبيه":"✅ كل الحسابات سليمة"); return _auditRes; }
+if(typeof document!=="undefined"&&document.addEventListener) document.addEventListener("click",ev=>{ const b=ev.target&&ev.target.closest&&ev.target.closest("#btnAudit,[data-audit-go]"); if(!b) return;
+  if(b.id==="btnAudit") return runAudit(); const x=_auditRes&&_auditRes.issues[+b.dataset.auditGo]; if(!x||!x.go) return; const g=x.go;
+  document.getElementById("settingsModal").style.display="none"; state.tab=g.tab; if(g.storeSub) state.storeSub=g.storeSub; if(g.brickSub) state.brickSub=g.brickSub; if(g.tab==="store"&&g.storeSub==="debts") state.debtView="all"; render(); try{ window.scrollTo({top:0}); }catch(e){} },true);
 function renderHealthAdmin(){
   const host=document.getElementById("healthAdmin"); if(!host) return;
   const ver=window.APP_VERSION||"—";
@@ -7716,6 +7787,9 @@ function _rand(n){ const a=new Uint8Array(n); crypto.getRandomValues(a); return 
    CHANGELOG: الأحدث أولًا. لكل تعديل: ic, t (العنوان), d (الشرح), go (أين: tab + storeSub/contactsSub/…), sel (العنصر الذي يُشار إليه).
    **قاعدة: كل إصدار جديد يضيف مدخلًا هنا** — يظهر للمستخدم مرة واحدة بعد التحديث مع «تخطي» و«أرني» و«جولة». */
 const CHANGELOG=[
+  {v:"2.58.0",date:"2026-10-19",items:[
+    {ic:"🩺",t:"فحص الحسابات بضغطة",d:"زر «＋» ▸ الإعدادات ▸ 📱 التطبيق ▸ «🩺 افحص الآن»: يفحص هل كل بطاقة تطابق كشفها، المخزون والصناديق، عمليات لأشخاص محذوفين، الأرقام المكرّرة، والمزامنة — ويقول لك السبب، و«📍 افتح» يأخذك للمكان. لا يغيّر أي شيء.",go:{tab:"dashboard"},sel:'#fabBtn'},
+    {ic:"📅",t:"تاريخ تحويل المغسلة بالفرنسية",d:"في صندوق المتجر كان سطر «تحويل دخل المغسلة» يُظهر التاريخ بصيغة 2026-10-17، صار 17/10/2026.",go:{tab:"store",storeSub:"cashbox"},sel:'[data-ssub="cashbox"]'}]},
   {v:"2.57.0",date:"2026-10-19",items:[
     {ic:"👷",t:"رصيد للعامل: «➕ له» و«➖ عليه»",d:"في دبو ▸ العمّال والحمّالون، كل بطاقة فيها «➕ له» (رصيد سابق لا يُحسب تكلفة، أو أجرة إضافية) و«➖ عليه» (سلفة نقدًا من الصندوق أو دين عليه بلا صندوق). يظهر كل ذلك في كشفه.",go:{tab:"brick",brickSub:"porters"},sel:'[data-bksub="porters"]'}]},
   {v:"2.56.0",date:"2026-10-19",items:[
@@ -8785,7 +8859,7 @@ setTimeout(()=>{ if(!window.cloudReady){ const el=document.getElementById("cloud
 <!-- PWA: service-worker registration + update/install wiring -->
 <script>
 (function(){
-  var APP_VERSION = "2.57.0";
+  var APP_VERSION = "2.58.0";
   window.APP_VERSION = APP_VERSION;
   function $(id){ return document.getElementById(id); }
   // سجّل إصدار هذا الجهاز في الحالة المتزامنة (ليُنبَّه الجهاز القديم)
