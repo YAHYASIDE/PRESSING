@@ -34,7 +34,8 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
   log('metre price remembered as default: '+(await page.evaluate(()=>state.piecePrices['سجاد داكن']===1200))+' (expect true)');
   const card=await page.textContent('.grid.orders');
   log('card shows 6 م: '+/سجاد داكن 6 م/.test(card)+' (expect true)');
-  await page.click(`[data-receipt="${o.id}"]`); await page.waitForTimeout(150);
+  // (2.60.0) زر 🧾 يفتح فاتورة الصورة؛ الإيصال النصّي الصغير يُفتح هكذا
+  await page.evaluate(id=>openReceipt(state.carpetOrders.find(x=>x.id===id)),o.id); await page.waitForTimeout(150);
   log('receipt shows الطول line: '+/الطول/.test(await page.textContent('#receiptContent'))+' (expect true)'); await page.click('#receiptClose');
   log('bot list shows length: '+(await page.evaluate(()=>/سجاد داكن 6 م/.test(tgHandleText('🧺 السجاد'))))+' (expect true)');
   // mixed invoice: موكيت 3×2 @800 + وسادة 500

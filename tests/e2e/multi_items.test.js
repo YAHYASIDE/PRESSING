@@ -59,7 +59,8 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
   log('edited: 3 items, 12 pieces, total 1900: '+(o.items.length===3&&o.count===12&&o.price===1900)+' (expect true) ['+o.count+'/'+o.price+']');
   log('mixed services -> full flow: '+(o.service==='غسيل وكي')+' (expect true)');
   // receipt lists items
-  await page.click(`[data-lnd-receipt="${aid}"]`); await page.waitForTimeout(150);
+  // (2.60.0) زر 🧾 يفتح فاتورة الصورة؛ الإيصال النصّي الصغير يُفتح هكذا
+  await page.evaluate(id=>openLndReceipt(state.laundryOrders.find(x=>x.id===id)),aid); await page.waitForTimeout(150);
   const rt = await page.textContent('#receiptContent');
   log('receipt lists each item: '+(rt.includes('قميص')&&rt.includes('بنطلون')&&rt.includes('بطانية')&&rt.includes('1,900'))+' (expect true)');
   await page.click('#receiptClose');

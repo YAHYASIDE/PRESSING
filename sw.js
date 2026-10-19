@@ -5,7 +5,7 @@
    - Cross-origin requests (Firebase / Google Fonts / Firestore) are never
      intercepted — they manage their own networking and offline behaviour.
 */
-const VERSION = "2.59.0";
+const VERSION = "2.60.0";
 const CACHE = "sadaqa-" + VERSION;
 const CORE = [
   "./",
@@ -15,7 +15,8 @@ const CORE = [
   "./assets/icon-512.png",
   "./assets/icon-maskable-512.png",
   "./assets/apple-touch-icon.png",
-  "./assets/vendor/html-to-image.js"
+  "./assets/vendor/html-to-image.js",
+  "./assets/invoice-wash.jpg"
 ];
 
 self.addEventListener("install", (e) => {

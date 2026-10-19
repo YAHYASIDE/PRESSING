@@ -29,7 +29,8 @@ const PNG='/tmp/claude-0/-home-user-PRESSING/1dfcf506-9062-545f-ac7d-aa216f6c086
   const c = await page.evaluate(()=>state.carpetOrders[0]);
   log('saved notes per item: '+(c.items&&c.items[0].note==='سجاد 6×4 أحمر واضح'&&c.items[1].note==='أزرق')+' (expect true)');
   log('card shows notes: '+/📝 .*سجاد 6×4 أحمر واضح/.test(await page.textContent('.grid.orders'))+' (expect true)');
-  await page.click(`[data-receipt="${c.id}"]`); await page.waitForTimeout(150);
+  // (2.60.0) زر 🧾 يفتح فاتورة الصورة؛ الإيصال النصّي الصغير يُفتح هكذا
+  await page.evaluate(id=>openReceipt(state.carpetOrders.find(x=>x.id===id)),c.id); await page.waitForTimeout(150);
   log('receipt shows note: '+/6×4 أحمر/.test(await page.textContent('#receiptContent'))+' (expect true)'); await page.click('#receiptClose');
   log('bot list shows note: '+(await page.evaluate(()=>/\[سجاد 6×4 أحمر واضح\]/.test(tgHandleText('🧺 السجاد'))))+' (expect true)');
   // edit: note editable
