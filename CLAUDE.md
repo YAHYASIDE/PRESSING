@@ -525,6 +525,22 @@
   «👷 رئيس العمّال» تُخفى خانات الحمل (`#bkLoadFields`, `#bkLoadKinds`، تلميح `#bkWorkerOnlyHint`) والزر «💾 حفظ رئيس العمّال» (`updPor` في
   `bindBrick`)؛ و`doBrickLoadSave` يحفظ الشخص فقط إن لم يُكتب مبلغ (الحمل **اختياري لأي شخص جديد**، وإلزامي فقط لتسجيل عمل لشخص موجود).
   الاختبار `tests/e2e/brick_worker_add.test.js`.
+- **اختيار الزبون بالبطاقات + دبو زبون/مورّد للمتجر + فواتير دبو بالصورة (2.61.0):** (1) **`enhancePickers()`** (في غلاف `render` بعد `restoreFields`)
+  يحوّل كل `<select>` في `PK_IDS` (`posCust, tradeParty, mdCust, bkCust, bkPurParty, bkLParty, bkOrdParty`) إلى بحث + بطاقات (`.pk`, `.pk-row[data-pkv]`, `.pk-cur` +
+  «تغيير»): الـselect يبقى في الصفحة مخفيًا `.pk-hidden` (opacity 0، فـ`selectOption` في الاختبارات يعمل) والاختيار = `sel.value` + `input/change`، فكل منطق الحفظ
+  القديم كما هو. `pkInfo` (الاسم/الهاتف/الرصيد: دبو من `brickParties`، المتجر `custBalance−custCredit`/`supplierBalance`، و`__brick` = `uxBalance`). خانات `#bkCustFind/
+  #bkPurFind` القديمة مخفية. `input.search-inp` أوضح في كل مكان، وبحث فاتورة `#tradeLogSearch` (`state.tradeLogSearch` في CLOUD_OMIT). (2) **دبو في فواتير المتجر:**
+  الخيار `__brick` «🧱 دبو (حساب داخلي)» في `#posCust` (بيع آجل) و`#tradeParty` (شراء آجل) — مالك/مدير. البيع: `commitStoreSale` عادي (مبيعات/مخزون/ربح المتجر) ثم
+  `uxLinkStoreSale`: `toBrick:true`، `paidAmount=total` (ليس دين زبون متجر)، قيد `unitXfers` تلقائي `s2b` دين فقط بقيمة الفاتورة (`auto:"sale"`, `ref`)، والمدفوع الآن قيد
+  نقدي `b2s` (`auto:"pay"`)، ومصروف على دبو `brickExpenses{noCash:true,storeSaleId}` «مواد من المتجر» (قرار المالك: تكلفة على دبو فلا يتضاعف الربح الموحّد). الشراء:
+  `commitStorePurchase` ثم `uxLinkStorePur`: `fromBrick`، قيد `b2s` (المتجر يدين لدبو)، والمدفوع `s2b` نقدي، ودخل لدبو `brickSales{toStore:true,qty:0,storePurId}` (لا يمسّ
+  مخزون الطوب؛ بطاقة «🏪 بيع للمتجر» بلا تعديل/حذف). `uxSyncDoc(doc,gone)` بعد التعديل (`recEditSave` ssale/spur يبقيها «دبو» ومدفوعة) والإلغاء (`cancelSale` بلا إرجاع
+  نقدي) والحذف: القيد التلقائي والمرآة يتبعان. القيود `auto` تظهر «🧾 فاتورة» ولا تُعدَّل إلا من الفاتورة. (3) **فواتير دبو** على `assets/invoice-brick.jpg` (صورة المالك
+  مقصوصة من لقطة الهاتف إلى 1024×1536): `brickInvDraw` (رقم/تاريخ/اسم/هاتف/العنوان/ملاحظات، 8 أسطر `Y=[744..1052]`، الأعمدة النوع 920 · الكمية 484 · سعر الوحدة 308 ·
+  الإجمالي 126، المجموع 330،1203، ✓ نقدا 964 · بنكيلي 864 · أخرى 664 + اسم، سطر `foot` 746،1213، و`title` يغطّي «فاتورة بيع طوب» للشراء/الكشف/الطلبية). محرّك واحد
+  `winvRender(d,{tpl,per,draw})`/`openWashInvoice("tpl",d,…,BINV_OPT,txtCtx)`. `openBrickReceipt`→`openBrickInvoice`، `openBrickOrderReceipt`→`openBrickOrderInvoice`،
+  `openBrickStatement(type,id)`→`openBrickStatementImg` (يُبقي «💬 كتابةً» عبر `setRcptText`)، و`[data-bk-purrcpt]`→`openBrickPurInvoice`. النسخ النصية الصغيرة: `__small`/
+  `openBrickStatement(t,id,true)`. الاختبار `tests/e2e/brick_store_account.test.js`.
 - **🧾 فاتورة المغاسل = صورة المالك نفسها (2.60.0) — «اجعل صورة الفواتير هكذا ولا تغيّر فيها شيئًا»:** القالب `assets/invoice-wash.jpg`
   (صورة المالك 1024×1536، في كاش الـ SW). `washInvDraw(ctx,img,d)` يرسم القالب ثم يكتب في خاناته فقط (إحداثيات ثابتة على 1024×1536): الرقم (يغطّي «0001» بلون
   الخانة) والتاريخ (يغطّي النقاط)، الاسم/الهاتف/«ملاحظات :» السطري، ✓ نوع الخدمة (سجاد 394،601 · سيارات 246،601 · الخانة الثالثة 74،601 = ملابس)، الجدول 5 أسطر

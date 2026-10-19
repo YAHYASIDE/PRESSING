@@ -107,7 +107,7 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
   r=await page.evaluate(()=>{ const s=state.brickSales[state.brickSales.length-1]; const P=brickParties().find(p=>p.type==='sup'); return { pt:s.partyType, name:s.customerName, bal:P&&P.balance, stock:brickStock(), d:debtors().find(x=>x.name==='بوبكر') }; });
   log('credit sale to a supplier: party=sup, بوبكر now owes 3,000, stock 20, in debtors with kind brick: '+(r.pt==='sup' && r.name==='بوبكر' && r.bal===3000 && r.stock===20 && r.d && r.d.by.brick===3000)+' (expect true)');
   // كشف حساب محمد بالرصيد الجاري وهاتفه
-  await page.evaluate(()=>openBrickStatement('cust','cu1')); await page.waitForTimeout(200);
+  await page.evaluate(()=>openBrickStatement('cust','cu1',true)); // (2.61.0) الكشف النصّي؛ الافتراضي صورة الفاتورة await page.waitForTimeout(200);
   r=await page.evaluate(()=>{ const t=document.getElementById('receiptContent').textContent; const rows=brickPartyRows('cust','cu1'); return { t, n:rows.length, last:rows[rows.length-1].balance }; });
   log('statement: phone, sale, payment, ledger rows with running balance ending at 10,000: '+(/22334455/.test(r.t) && /بيع 15 بريك/.test(r.t) && /دفعة على/.test(r.t) && /أخذ بلا فاتورة/.test(r.t) && r.n===4 && r.last===10000 && /10,000/.test(r.t))+' (expect true)');
   await page.evaluate(()=>{ document.getElementById('receiptModal').style.display='none'; });
@@ -123,7 +123,7 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
   r=await page.evaluate(()=>{ const remote=JSON.parse(JSON.stringify(cloudCopy())); const mine=state.brickBatches.length; remote.brickBatches=[{id:'rb1',no:'K2026-10-099',cementBags:1,sandLoads:1,bricks:150,workerPay:0,workerPaid:true,date:iso(new Date()),by:'أنفع',editedAt:iso(new Date())}]; applyRemote(remote); const cc=cloudCopy(); return { n:state.brickBatches.length, mine, stock:brickStock(), inCloud:['brickBatches','brickPurchases','brickSales','brickExpenses','brickCash','brickLedger'].every(k=>Array.isArray(cc[k])) }; });
   log('merge keeps local batches and adds remote (stock 20+150=170): '+(r.n===r.mine+1 && r.stock===170 && r.inCloud)+' (expect true)');
   // إيصال بيع
-  await page.evaluate(()=>openBrickReceipt(state.brickSales[1])); await page.waitForTimeout(200);
+  await page.evaluate(()=>openBrickReceipt(Object.assign({},state.brickSales[1],{__small:true}))); await page.waitForTimeout(200);
   log('brick receipt shows qty×price and remaining debt: '+(await page.evaluate(()=>{ const t=document.getElementById('receiptContent').textContent; return /100 طوبة × 100/.test(t) && /المتبقي/.test(t) && /6,000/.test(t); }))+' (expect true)');
   await page.evaluate(()=>{ document.getElementById('receiptModal').style.display='none'; });
   await page.click('[data-tab="brick"]'); await page.waitForTimeout(300);

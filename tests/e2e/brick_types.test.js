@@ -81,7 +81,7 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
   r=await page.evaluate(()=>({ n:state.brickSales.length, ph:storeCust('cu2').phone, bal:brickParties().find(x=>x.key==='c:cu2').balance }));
   log('with phone it saves, the phone is stored on the customer, balance 10,000: '+(r.n===2 && r.ph==='36000000' && r.bal===10000)+' (expect true)');
   // الكشف يذكر النوع والنقل
-  await page.evaluate(()=>openBrickReceipt(state.brickSales[0])); await page.waitForTimeout(150);
+  await page.evaluate(()=>openBrickReceipt(Object.assign({},state.brickSales[0],{__small:true}))); await page.waitForTimeout(150);
   log('receipt shows type and transport line: '+(await page.evaluate(()=>{ const t=document.getElementById('receiptContent').textContent; return /56 وردي/.test(t) && /النقل/.test(t) && /17,000/.test(t); }))+' (expect true)');
   await page.evaluate(()=>{ document.getElementById('receiptModal').style.display='none'; });
 
