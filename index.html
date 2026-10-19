@@ -2526,7 +2526,7 @@ function brickFin(F){
   const B=brickLive(state.brickBatches).filter(b=>F(b.date)&&!b.opening), P=brickLive(state.brickPurchases).filter(p=>F(p.date)&&!p.opening), S=brickLive(state.brickSales).filter(s=>F(s.date)), E=brickLive(state.brickExpenses).filter(e=>F(e.date));
   const LG=brickLive(state.brickLedger).filter(x=>F(x.date)&&x.kind!=="cash");
   const ledgerInc=sum(LG.filter(x=>x.dir==="on"),x=>+x.amount||0)-sum(LG.filter(x=>x.dir==="for"&&x.kind==="bricks"),x=>+x.amount||0), ledgerCost=sum(LG.filter(x=>x.dir==="for"&&x.kind==="other"),x=>+x.amount||0);
-  const portersCost=sum(brickLive(state.brickLoads).filter(x=>F(x.date)&&brickIsJob(x)),x=>+x.amount||0);
+  const portersCost=sum(brickLive(state.brickLoads).filter(x=>F(x.date)&&brickIsJob(x)&&!x.opening),x=>+x.amount||0);
   const purchases=sum(P,p=>+p.total||0), wages=sum(B,b=>+b.workerPay||0)+portersCost, expenses=sum(E,e=>+e.amount||0)+ledgerCost, sales=sum(S,s=>+s.total||0)+ledgerInc;
   const produced=sum(B,b=>+b.bricks||0), sold=sum(S,s=>+s.qty||0)+sum(LG.filter(x=>x.kind==="bricks"),x=>(x.dir==="on"?1:-1)*(+x.qty||0)), bags=sum(B,b=>+b.cementBags||0), loads=sum(B,b=>+b.sandLoads||0);
   const matUsed=sum(B,b=>(+b.cementBags||0)*brickAvgCost("cement")+(+b.sandLoads||0)*brickAvgCost("sand"));
@@ -3065,6 +3065,8 @@ function brickScreenExpenses(){
 const BRICK_LOADK={bricks:{t:"حمل طوب",ic:"🧱",u:"طوبة"},cement:{t:"حمل إسمنت",ic:"🪨",u:"خنشة"},other:{t:"أخرى",ic:"📦",u:"مرة"}};
 function brickPorter(id){ return (state.brickPorters||[]).find(x=>x.id===id); }
 function brickPorterLive(){ return (state.brickPorters||[]).filter(x=>!x.deleted); }
+/* (2.57.0) نوع سجل الحمل: عمل حمل، سلفة/عليه (advance)، أو رصيد له يدوي (credit؛ opening = رصيد سابق لا يُحسب تكلفة) */
+function brickLoadT(x){ return x.kind==="advance"?{t:"سلفة / عليه",ic:"💵",u:""}:x.kind==="credit"?{t:x.opening?"رصيد سابق له":"له (أجرة إضافية)",ic:"📒",u:""}:(BRICK_LOADK[x.kind]||BRICK_LOADK.other); }
 function brickLoadOut(x){ return x.cancelled||x.kind==="advance"?0:Math.max(0,(+x.amount||0)-(+x.paidAmount||0)); }
 function brickIsJob(x){ return x.kind!=="advance"; }
 /* السلفة: دفعنا له أكثر مما يستحق → سجل kind:"advance" (خرج من الصندوق)، وتُستهلك تلقائيًا من أجوره القادمة (usedAmount) */
@@ -3081,12 +3083,29 @@ const BRICK_PROLE={worker:{t:"رئيس العمّال",ic:"👷"},porter:{t:"ح�
 function brickPersonRole(pr){ return (pr&&pr.role)||(brickLive(state.brickBatches).some(b=>b.workerId===(pr&&pr.id))?"worker":"porter"); }
 function brickPersonCardHTML(pr){ const R=BRICK_PROLE[brickPersonRole(pr)], bal=brickPersonBalance(pr.id), J=brickPorterJobs(pr.id), paid=sum(J,x=>x.paid);
   return personCardHTML({name:pr.name,phone:pr.phone,country:pr.country,amt:-bal,badge:R.ic+" "+R.t,info:`${J.length} عمل (حمل/خلطات) · قبض ${money(paid)}${bal<0?" · سلفة عليه":""}`,
-    btns:[[`data-bk-porterpay="${pr.id}"`,"💵",bal>0?"دفع له":"سلفة","pay"],[`data-bk-porterstmt="${pr.id}"`,"📄","كشف"]],mini:personBtns("porter",pr.id)}); }
+    btns:[[`data-bk-porterpay="${pr.id}"`,"💵",bal>0?"دفع له":"سلفة","pay"],[`data-bk-porterstmt="${pr.id}"`,"📄","كشف"]],mini:[...(currentRole!=="worker"?[[`data-bk-pq="for|${pr.id}"`,"➕ له","for"],[`data-bk-pq="on|${pr.id}"`,"➖ عليه","on"]]:[]),...personBtns("porter",pr.id)]}); }
+/* (2.57.0) «➕ له» = رصيد/أجرة للعامل (رصيد سابق لا يُحسب تكلفة، أو أجرة إضافية تُحسب)، «➖ عليه» = سلفة عليه (عبر الصندوق أو بلا صندوق) */
+function openBrickPersonQuick(dir,pid){ const pr=brickPorter(pid); if(!pr) return; const on=dir==="on";
+  _editCtx={type:"gen",kind:"pq",id:dir+"|"+pid}; document.querySelector("#editModal h3").textContent=(on?"➖ عليه — ":"➕ له — ")+pr.name;
+  document.getElementById("editBody").innerHTML=`<div class="hint" style="margin-bottom:8px">${on?"مبلغ أخذه أو يدين به لدبو (يُخصم من أجوره القادمة تلقائيًا).":"مبلغ نَدين به له (يظهر «له علينا» ويُدفع بزر «💵 دفع له»)."}</div>`
+    +reF.num("amount","المبلغ",null)
+    +(on?`<label class="sw" style="margin:4px 0 8px"><input type="checkbox" id="re_cash"> 💵 أعطيناه نقدًا الآن من صندوق دبو</label><div id="re_pmWrap" style="display:none">${reF.pm({payMethod:"cash"},"من أي حساب")}</div>`
+        :reF.sel("ltype","النوع",[["opening","📒 رصيد سابق (من قبل التطبيق — لا يُحسب تكلفة)"],["wage","💼 أجرة / عمل إضافي (يُحسب تكلفة على دبو)"]],"opening"))
+    +reF.txt("note","البيان",on?"":"رصيد سابق")+reF.date("date","التاريخ",iso(new Date()));
+  bindPmPickers(document.getElementById("editBody")); const cb=document.getElementById("re_cash"); if(cb) cb.onchange=()=>{ document.getElementById("re_pmWrap").style.display=cb.checked?"":"none"; };
+  document.getElementById("editModal").style.display="flex"; setTimeout(()=>{ const a=document.getElementById("re_amount"); if(a) a.focus(); },50); }
+function brickPersonQuickSave(key){ const [dir,pid]=key.split("|"), pr=brickPorter(pid); if(!pr) return "الشخص غير موجود"; const a=reN("amount"); if(!(a>0)) return "أدخل المبلغ";
+  const note=(reV("note")||"").trim(), dv=reV("date"), dt=dv&&dv!==ymd(new Date())?chosenDateIso(dv):iso(new Date()), now=iso(new Date());
+  if(dir==="on"){ const cash=!!(document.getElementById("re_cash")||{}).checked, pm=cash?pmVal("re_pm"):null;
+    const x={id:uid(),no:brickSeqNo(state.brickLoads,"H",dt),porterId:pid,kind:"advance",qty:0,rate:0,amount:a,usedAmount:0,paidAmount:a,paid:true,payMethod:pm||undefined,note:note||(cash?"سلفة":"عليه"),noCash:!cash,date:dt,by:currentUser,editedAt:now};
+    state.brickLoads.push(x); if(cash) addBrickCash("out",a,"سلفة لـ "+pr.name+(note?" — "+note:""),x.id,pm); }
+  else { const op=reV("ltype")!=="wage"; state.brickLoads.push({id:uid(),no:brickSeqNo(state.brickLoads,"H",dt),porterId:pid,kind:"credit",opening:op,qty:0,rate:0,amount:a,paidAmount:0,paid:false,note:note||(op?"رصيد سابق":""),date:dt,by:currentUser,editedAt:now}); }
+  brickApplyAdvance(pid); logActivity("دبو: "+(dir==="on"?"عليه":"له")+" — "+pr.name,money(a)+(note?" · "+note:"")); return null; }
 function brickScreenPorters(){
   const E=_esc, d=_bkDraft, K=d.lk||"bricks", cfg=brickCfg(), rate=+(cfg.loadRate||{})[K]||0, isNew=d.porter==="__new";
   const porters=brickPorterLive().slice().sort((a,b)=>(a.name||"").localeCompare(b.name||"","ar"));
   const L=brickLive(state.brickLoads).filter(x=>inRange(x.date)).slice().sort((a,b)=>(b.date||"").localeCompare(a.date||""));
-  const rows=L.length?L.map(x=>{ const pr=brickPorter(x.porterId), T=x.kind==="advance"?{t:"سلفة",ic:"💵",u:""}:(BRICK_LOADK[x.kind]||BRICK_LOADK.other), out=brickLoadOut(x); return `<tr><td>${frD(x.date)}<div style="font-size:.7rem;color:var(--muted)">${timeStr(x.date)}</div></td><td><b>${E(pr?pr.name:"?")}</b>${pr&&pr.phone?`<div style="font-size:.72rem;color:var(--muted)">📞 ${E(pr.phone)}</div>`:""}</td><td class="amt" style="font-weight:800">${money(x.amount)}${out>0?`<div style="font-size:.72rem;color:var(--unpaid)">لم يُدفع ${money(out)}</div>`:`<div style="font-size:.72rem;color:var(--ready)">مدفوع</div>`}</td><td>${T.ic} ${T.t}${x.kind==="advance"?"":` ${fmt(x.qty)} ${T.u}`}${x.note?`<div style="font-size:.72rem;color:var(--muted)">${E(x.note)}</div>`:""}</td><td style="text-align:left;white-space:nowrap">${currentRole!=="worker"?`${recEditBtn("bload",x.id)}<button class="icon-btn" data-bk-del="load:${x.id}" title="حذف">${svg(I.trash)}</button>`:""}</td></tr>`; }).join(""):`<tr><td colspan="5"><div class="empty">${svg(I.empty)}لا أعمال حمل في هذه الفترة.</div></td></tr>`;
+  const rows=L.length?L.map(x=>{ const pr=brickPorter(x.porterId), T=brickLoadT(x), out=brickLoadOut(x); return `<tr><td>${frD(x.date)}<div style="font-size:.7rem;color:var(--muted)">${timeStr(x.date)}</div></td><td><b>${E(pr?pr.name:"?")}</b>${pr&&pr.phone?`<div style="font-size:.72rem;color:var(--muted)">📞 ${E(pr.phone)}</div>`:""}</td><td class="amt" style="font-weight:800">${money(x.amount)}${out>0?`<div style="font-size:.72rem;color:var(--unpaid)">لم يُدفع ${money(out)}</div>`:`<div style="font-size:.72rem;color:var(--ready)">مدفوع</div>`}</td><td>${T.ic} ${T.t}${x.kind==="advance"||x.kind==="credit"?"":` ${fmt(x.qty)} ${T.u}`}${x.note?`<div style="font-size:.72rem;color:var(--muted)">${E(x.note)}</div>`:""}</td><td style="text-align:left;white-space:nowrap">${currentRole!=="worker"?`${recEditBtn("bload",x.id)}<button class="icon-btn" data-bk-del="load:${x.id}" title="حذف">${svg(I.trash)}</button>`:""}</td></tr>`; }).join(""):`<tr><td colspan="5"><div class="empty">${svg(I.empty)}لا أعمال حمل في هذه الفترة.</div></td></tr>`;
   const cards=porters.length?porters.map(brickPersonCardHTML).join(""):`<div class="hint">لا حمّالين بعد — أضف أول واحد من النموذج.</div>`;
   return `
     <div class="store-stat">
@@ -3141,11 +3160,11 @@ function brickPorterSettle(id,amount,method){ let left=+amount||0; const pr=bric
   if(left>0){ const a={id:uid(),no:brickSeqNo(state.brickLoads,"H",dt),porterId:id,kind:"advance",qty:0,rate:0,amount:left,usedAmount:0,paidAmount:left,paid:true,payMethod:method,note:"سلفة (دفع أكثر من المستحق)",date:dt,by:currentUser,editedAt:dt};
     state.brickLoads.push(a); addBrickCash("out",left,"سلفة لـ "+(pr?pr.name:""),a.id,method); left=0; }
   return (+amount||0)-left; }
-function brickPorterJobs(id){ return [...brickLive(state.brickLoads).filter(x=>x.porterId===id&&brickIsJob(x)).map(x=>{ const T=BRICK_LOADK[x.kind]||BRICK_LOADK.other; return {date:x.date,label:T.t+" "+fmt(x.qty)+" "+T.u+(x.note?" · "+x.note:""),amount:+x.amount||0,paid:+x.paidAmount||0}; }),
+function brickPorterJobs(id){ return [...brickLive(state.brickLoads).filter(x=>x.porterId===id&&brickIsJob(x)).map(x=>{ const T=brickLoadT(x); return {date:x.date,label:(x.kind==="credit"?T.ic+" "+T.t:T.t+" "+fmt(x.qty)+" "+T.u)+(x.note?" · "+x.note:""),amount:+x.amount||0,paid:+x.paidAmount||0}; }),
   ...brickLive(state.brickBatches).filter(b=>b.workerId===id).map(b=>({date:b.date,label:"🧱 أجرة خلطة "+b.no+" · "+brickTypeName(b)+" "+fmt(b.bricks)+" طوبة · "+fmt(b.cementBags)+" خنشة",amount:+b.workerPay||0,paid:+b.workerPaidAmt||0}))].sort((a,b)=>(b.date||"").localeCompare(a.date||"")); }
 function openPorterStatement(id){ const pr=brickPorter(id); if(!pr) return; const L=brickPorterJobs(id), RL=BRICK_PROLE[brickPersonRole(pr)];
   const R=[]; L.forEach(x=>{ R.push({d:x.date,t:x.label,s:x.paid>=x.amount&&x.amount>0?"مدفوع":x.paid>0?"دُفع "+money(x.paid):"",dr:0,cr:x.amount}); if(x.paid>0) R.push({d:x.date,t:"💵 قبض",s:"",dr:x.paid,cr:0}); });
-  brickLive(state.brickLoads).filter(x=>x.porterId===id&&x.kind==="advance").forEach(a=>{ const left=(+a.amount||0)-(+a.usedAmount||0); R.push({d:a.date,t:"💵 سلفة "+money(a.amount)+(+a.usedAmount?" (خُصم "+money(a.usedAmount)+")":"")+(a.note&&a.note!=="سلفة (دفع أكثر من المستحق)"?" · "+a.note:""),s:left>0?"متبقٍ عليه "+money(left):"خُصمت كلها",dr:left,cr:0}); });
+  brickLive(state.brickLoads).filter(x=>x.porterId===id&&x.kind==="advance").forEach(a=>{ const left=(+a.amount||0)-(+a.usedAmount||0); R.push({d:a.date,t:(a.noCash?"➖ عليه ":"💵 سلفة ")+money(a.amount)+(+a.usedAmount?" (خُصم "+money(a.usedAmount)+")":"")+(a.note&&a.note!=="سلفة (دفع أكثر من المستحق)"?" · "+a.note:""),s:left>0?"متبقٍ عليه "+money(left):"خُصمت كلها",dr:left,cr:0}); });
   const fin=-brickPersonBalance(id);
   document.getElementById("receiptContent").innerHTML=ledgerRcptHTML({head:RL.ic+" كشف حساب — "+_esc(pr.name)+" ("+RL.t+")"+(pr.phone?"<br><small>📞 <bdi dir=\"ltr\">"+_esc(pr.phone)+"</bdi></small>":""),rows:R,final:fin,drLbl:"قبض / سلفة",crLbl:"أعمال (له)"});
   setRcptText({title:"كشف حساب "+RL.t,name:pr.name,phone:pr.phone||"",country:pr.country||"222",final:fin,rows:R.filter(r=>r.dr||r.cr)});
@@ -3564,6 +3583,7 @@ function openRecEdit(kind,id){
       +(x.transport&&x.transportBy==="cust"?reF.num("tr","🚚 النقل على الزبون",x.transport):"")+reF.txt("note","ملاحظة",x.note)+reF.date("date","التاريخ",x.date)+(brickOut(x)<=0?reF.pm(x):""); }
   else if(kind==="bpur"){ h=`<datalist id="reSups">${(state.suppliers||[]).map(su=>`<option value="${E(su.name)}">`).join("")}</datalist>`+`<div class="hint" style="margin-bottom:8px">${E(x.name||"")}${x.opening?" · رصيد افتتاحي":""}</div>`+reF.num("qty","الكمية ("+E(x.unit||"")+")",x.qty)+reF.num("cost","سعر الوحدة",x.unitCost)+(x.opening?"":reF.txt("sup","المورّد",x.supplier,"reSups"))+reF.txt("note","ملاحظة",x.note)+reF.date("date","التاريخ",x.date)+(!x.opening&&brickOut(x)<=0?reF.pm(x):""); }
   else if(kind==="bbatch"){ h=reF.raw("type","نوع الطوب",brickTypeOpts(bType(x)))+(x.opening?"":`<div class="row2">${reF.num("bags","🪨 خنشات الإسمنت",x.cementBags)}${reF.num("loads","⛰️ فياجات التراب",x.sandLoads)}</div>`)+reF.num("bricks","🧱 عدد الطوب",x.bricks)+(x.opening?"":reF.num("wage","👷 أجرة الخلطة",x.workerPay)+reF.txt("workers","العمّال",x.workers))+reF.txt("note","ملاحظة",x.note)+reF.date("date","التاريخ",x.date); }
+  else if(kind==="bload"&&(x.kind==="advance"||x.kind==="credit")){ const T=brickLoadT(x); h=`<div class="hint" style="margin-bottom:8px">${T.ic} ${T.t} · ${E((brickPorter(x.porterId)||{}).name||"")}${x.kind==="advance"&&+x.usedAmount?` · خُصم منها ${money(x.usedAmount)}`:x.kind==="credit"&&+x.paidAmount?` · دُفع منه ${money(x.paidAmount)}`:""}</div>`+reF.num("amount","المبلغ",x.amount)+reF.txt("note","البيان",x.note)+reF.date("date","التاريخ",x.date); }
   else if(kind==="bload"){ const pr=brickPorter(x.porterId); h=reF.raw("porter","الحمّال",(state.brickPorters||[]).map(p=>`<option value="${p.id}" ${p.id===x.porterId?"selected":""}>${E(p.name)}</option>`).join(""))+reF.sel("lk","العمل",Object.keys(BRICK_LOADK).map(k=>[k,BRICK_LOADK[k].ic+" "+BRICK_LOADK[k].t]),x.kind)+reF.num("qty","الكمية",x.qty)+reF.num("amount","المبلغ",x.amount)+reF.txt("note","ملاحظة",x.note)+reF.date("date","التاريخ",x.date)+(brickLoadOut(x)<=0?reF.pm(x):""); }
   else if(kind==="bexp"){ h=reF.sel("cat","النوع",Object.keys(BRICK_EXP).map(k=>[k,BRICK_EXP[k].ic+" "+BRICK_EXP[k].t]),x.category)+reF.num("amount","المبلغ",x.amount)+reF.txt("note","البيان",x.note)+reF.date("date","التاريخ",x.date)+reF.pm(x,"من أي حساب"); }
   else if(kind==="bledger"){ const pt=brickParty(x.partyType,x.partyId), K=BRICK_LKIND[x.kind]||BRICK_LKIND.other;
@@ -3615,11 +3635,13 @@ function personDelete(type,id){
     if(type==="cust"&&_editDirCustId===id) _editDirCustId=null; if(type==="cust"&&_editCustId===id) _editCustId=null; if(type==="sup"&&_editSupId===id) _editSupId=null;
     logActivity("حذف "+(type==="cust"?"زبون":type==="sup"?"مورّد":"عامل/حمّال"),x.name||""); toast("تم الحذف"); render(); }, SECRET_CODE, "كود الحذف", "حذف «"+x.name+"» يتطلب الكود."); }
 function personBtns(type,id,lbl){ if(currentRole==="worker") return []; const k=type+":"+id; return [[`data-pe="${k}"`,"✏️ تعديل"+(lbl||"")],[`data-pdel="${k}"`,"🗑️ حذف"+(lbl||""),"del"]]; }
+document.addEventListener("click",ev=>{ const q=ev.target&&ev.target.closest&&ev.target.closest("[data-bk-pq]"); if(q){ ev.preventDefault(); const [d,id]=q.dataset.bkPq.split("|"); openBrickPersonQuick(d,id); } },true);
 document.addEventListener("click",ev=>{ const t=ev.target&&ev.target.closest&&ev.target.closest("[data-pe],[data-pdel]"); if(!t) return; ev.preventDefault(); ev.stopPropagation();
   const v=t.dataset.pe||t.dataset.pdel, i=v.indexOf(":"), type=v.slice(0,i), id=v.slice(i+1);
   if(t.dataset.pe!==undefined) openRecEdit("p"+type,id); else personDelete(type,id); },true);
 function recEditSave(kind,id){
   if(kind==="lcust") return loyaltyEditSave(id);
+  if(kind==="pq") return brickPersonQuickSave(id);
   const R=REC_EDIT[kind]; const x=(state[R.arr]||[]).find(r=>r.id===id); if(!x) return "السجل غير موجود";
   if(kind==="pcust"||kind==="psup"||kind==="pporter") return personEditSave(kind,x);
   const now=iso(new Date()), before=+(x.total!=null?x.total:x.amount!=null?x.amount:x.workerPay)||0; let err=null;
@@ -3667,6 +3689,10 @@ function recEditSave(kind,id){
     const left=bType(x)===t?brickStock(t)-((+x.bricks||0)-br):brickStock(bType(x))-(+x.bricks||0); if(left<0) return "لا يمكن: بِيع من هذا الطوب أكثر من الكمية الجديدة";
     if(!x.opening){ const sh=brickMatShort(reN("bags"),reN("loads"),x); if(sh.length) return brickMatShortMsg(sh); const w=reN("wage"); err=rePaid(x,+x.workerPay||0,w,"workerPaidAmt","brickCash","out"); if(err) return err; x.workerPay=w; x.workerPaid=(+x.workerPaidAmt||0)>=w; x.cementBags=reN("bags"); x.sandLoads=reN("loads"); x.workers=(reV("workers")||"").trim(); }
     x.btype=t; x.bricks=br; x.note=(reV("note")||"").trim(); reApplyDate(x,reV("date"),["brickCash"]); brickLowCementCheck(); }
+  else if(kind==="bload"&&(x.kind==="advance"||x.kind==="credit")){ const a=reN("amount"); if(!(a>0)) return "أدخل المبلغ";
+    if(x.kind==="advance"){ if(a<(+x.usedAmount||0)) return "خُصم منها "+money(x.usedAmount)+" — لا يقلّ المبلغ عنه"; const m=reFirstMove("brickCash",x.id); if(m){ m.amount=a; m.editedAt=now; } x.amount=a; x.paidAmount=a; }
+    else { if(a<(+x.paidAmount||0)) return "دُفع منه "+money(x.paidAmount)+" — لا يقلّ المبلغ عنه"; x.amount=a; x.paid=(+x.paidAmount||0)>=a; }
+    x.note=(reV("note")||"").trim(); reApplyDate(x,reV("date"),["brickCash"]); }
   else if(kind==="bload"){ const a=reN("amount"); if(!(a>0)) return "أدخل المبلغ"; err=rePaid(x,+x.amount||0,a,"paidAmount","brickCash","out"); if(err) return err;
     x.amount=a; x.paid=(+x.paidAmount||0)>=a; x.qty=reN("qty"); x.kind=reV("lk")||x.kind; x.porterId=reV("porter")||x.porterId; x.note=(reV("note")||"").trim(); if(x.paid) reSetPm(x,"brickCash"); reApplyDate(x,reV("date"),["brickCash"]); }
   else if(kind==="bexp"){ const a=reN("amount"); if(!(a>0)) return "أدخل المبلغ"; x.category=reV("cat")||x.category; x.amount=a; x.note=(reV("note")||"").trim();
@@ -4491,7 +4517,7 @@ function exportCSV(from,to){
   sec("دبو — قيود الحسابات",["التاريخ","الطرف","الاتجاه","النوع","المبلغ","الكمية","البيان","عبر الصندوق","بواسطة"],brickLive(state.brickLedger).filter(x=>F(x.date)).map(x=>{ const pt=brickParty(x.partyType,x.partyId); return [ymd(x.date),pt?pt.name:"",x.dir==="on"?"عليه":"له",(BRICK_LKIND[x.kind]||{}).t||x.kind,x.amount,x.qty||"",x.note,x.cash?pmLabel(x.payMethod):"لا",x.by]; }));
   sec("دبو — الطلبيات",["التاريخ","رقم","الزبون","الهاتف","النوع","الكمية","السعر","الإجمالي","سُلّم","العربون","الحالة","العنوان"],(state.brickOrders||[]).filter(o=>F(o.date)).map(o=>[ymd(o.date),o.no,o.customerName||"",o.phone||"",brickTypeName(o),o.qty,o.unitPrice,o.total,brickOrderDelivered(o),brickOrderDeposit(o),BRICK_OSTAT[o.status]?BRICK_OSTAT[o.status].t:o.status,o.address||""]));
   sec("دبو — الطوب المكسور",["التاريخ","رقم","النوع","العدد","تكلفة الطوبة","القيمة","ملاحظة","بواسطة"],brickLive(state.brickWaste).filter(w=>F(w.date)).map(w=>[ymd(w.date),w.no,brickTypeName(w),w.qty,Math.round(+w.unitCost||0),Math.round((+w.qty||0)*(+w.unitCost||0)),w.note||"",w.by||""]));
-  sec("دبو — الحمّالون",["التاريخ","رقم","الحمّال","الهاتف","العمل","الكمية","المبلغ","المدفوع","بواسطة"],brickLive(state.brickLoads).filter(x=>F(x.date)).map(x=>{ const pr=brickPorter(x.porterId); return [ymd(x.date),x.no,pr?pr.name:"",pr?pr.phone:"",x.kind==="advance"?"سلفة":((BRICK_LOADK[x.kind]||{}).t||x.kind),x.qty,x.amount,x.paidAmount||0,x.by]; }));
+  sec("دبو — الحمّالون",["التاريخ","رقم","الحمّال","الهاتف","العمل","الكمية","المبلغ","المدفوع","بواسطة"],brickLive(state.brickLoads).filter(x=>F(x.date)).map(x=>{ const pr=brickPorter(x.porterId); return [ymd(x.date),x.no,pr?pr.name:"",pr?pr.phone:"",brickLoadT(x).t,x.qty,x.amount,x.paidAmount||0,x.by]; }));
   sec("دبو — الصندوق",["التاريخ","النوع","البيان","المبلغ","طريقة الدفع","بواسطة"],(state.brickCash||[]).filter(m=>F(m.date)).map(m=>[ymd(m.date),m.type==="in"?"وارد":"صادر",m.reason,m.amount,pmLabel(m.payMethod),m.by]));
   sec("حركات الصندوق",["التاريخ","النوع","البيان","المبلغ","طريقة الدفع","بواسطة"],(state.storeCash||[]).filter(m=>F(m.date)).map(m=>[ymd(m.date),m.type==="in"?"وارد":"صادر",m.reason,m.amount,pmLabel(m.payMethod),m.by]));
   sec("المصروفات",["التاريخ","الفئة","البيان","المبلغ","طريقة الدفع","بواسطة"],(state.expenses||[]).filter(e=>F(e.date)).map(e=>[ymd(e.date),e.category,e.reason,e.amount,pmLabel(e.payMethod),e.by]));
@@ -7690,6 +7716,8 @@ function _rand(n){ const a=new Uint8Array(n); crypto.getRandomValues(a); return 
    CHANGELOG: الأحدث أولًا. لكل تعديل: ic, t (العنوان), d (الشرح), go (أين: tab + storeSub/contactsSub/…), sel (العنصر الذي يُشار إليه).
    **قاعدة: كل إصدار جديد يضيف مدخلًا هنا** — يظهر للمستخدم مرة واحدة بعد التحديث مع «تخطي» و«أرني» و«جولة». */
 const CHANGELOG=[
+  {v:"2.57.0",date:"2026-10-19",items:[
+    {ic:"👷",t:"رصيد للعامل: «➕ له» و«➖ عليه»",d:"في دبو ▸ العمّال والحمّالون، كل بطاقة فيها «➕ له» (رصيد سابق لا يُحسب تكلفة، أو أجرة إضافية) و«➖ عليه» (سلفة نقدًا من الصندوق أو دين عليه بلا صندوق). يظهر كل ذلك في كشفه.",go:{tab:"brick",brickSub:"porters"},sel:'[data-bksub="porters"]'}]},
   {v:"2.56.0",date:"2026-10-19",items:[
     {ic:"✏️",t:"تعديل وحذف في كل بطاقة",d:"بطاقات «المتجر ▸ الزبائن والديون» صار فيها «✏️ تعديل» (الاسم والهاتف) و«🗑️ حذف» للزبون وللمورّد. الحذف بالكود، ولا يُسمح إن كان عليه أو له رصيد.",go:{tab:"store",storeSub:"debts"},sel:'.party-card [data-pe]'},
     {ic:"🧱",t:"دبو: تعديل وحذف الأطراف والعمّال",d:"في «الديون والحسابات» و«العمّال والحمّالون» لكل شخص «✏️ تعديل» (الاسم، الهاتف، الصفة) و«🗑️ حذف». العامل الذي له أعمال سابقة يُخفى فقط وتبقى كشوفه.",go:{tab:"brick",brickSub:"porters"},sel:'[data-bksub="porters"]'},
@@ -8757,7 +8785,7 @@ setTimeout(()=>{ if(!window.cloudReady){ const el=document.getElementById("cloud
 <!-- PWA: service-worker registration + update/install wiring -->
 <script>
 (function(){
-  var APP_VERSION = "2.56.0";
+  var APP_VERSION = "2.57.0";
   window.APP_VERSION = APP_VERSION;
   function $(id){ return document.getElementById(id); }
   // سجّل إصدار هذا الجهاز في الحالة المتزامنة (ليُنبَّه الجهاز القديم)

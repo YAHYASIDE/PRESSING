@@ -525,6 +525,12 @@
   «👷 رئيس العمّال» تُخفى خانات الحمل (`#bkLoadFields`, `#bkLoadKinds`، تلميح `#bkWorkerOnlyHint`) والزر «💾 حفظ رئيس العمّال» (`updPor` في
   `bindBrick`)؛ و`doBrickLoadSave` يحفظ الشخص فقط إن لم يُكتب مبلغ (الحمل **اختياري لأي شخص جديد**، وإلزامي فقط لتسجيل عمل لشخص موجود).
   الاختبار `tests/e2e/brick_worker_add.test.js`.
+- **رصيد العامل يدويًا في دبو (2.57.0) — «لا يمكن إضافة رصيد للعمّال»:** بطاقة العامل/الحمّال (`brickPersonCardHTML`) فيها `[data-bk-pq="for|id"]`
+  «➕ له» و`[data-bk-pq="on|id"]` «➖ عليه» (مستمع عام) → `openBrickPersonQuick(dir,id)` في `#editModal` (`_editCtx.kind="pq"` → `brickPersonQuickSave`).
+  «له» = سجل `brickLoads` بـ`kind:"credit"` (`opening:true` «رصيد سابق» افتراضيًا **لا يُحسب تكلفة** — `portersCost` يستثني `opening`؛ أو `opening:false` «أجرة
+  إضافية» تُحسب)، غير مدفوع فيدخل `brickPorterDues` ويُدفع بـ«💵 دفع له». «عليه» = `kind:"advance"` (مثل السلفة؛ `noCash:true` بلا حركة صندوق، أو مع
+  «أعطيناه نقدًا» → حركة صادر). كلاهما يستدعي `brickApplyAdvance`. التسمية الموحّدة `brickLoadT(x)` (الجدول، الكشف، CSV)، وتعديلهما بـ`bload` (المبلغ والبيان
+  والتاريخ فقط؛ لا يقلّ عن المخصوم/المدفوع). الاختبار في `tests/e2e/edit_delete_all.test.js`.
 - **تعديل وحذف في كل بطاقة شخص وعملية (2.56.0) — «أضف زر الحذف والتعديل لكل الأقسام»:** أزرار عامة `[data-pe="cust|sup|porter:id"]`
   (✏️) و`[data-pdel=…]` (🗑️) بمستمع `click` عام (capture)، يولّدها `personBtns(type,id,lbl)` (لا شيء للعامل) — في بطاقة «المتجر ▸ الزبائن والديون»
   (للزبون والمورّد، «الزبون/المورّد» إن كانا معًا)، بطاقات أطراف دبو (بجانب «➕ قيد»)، وبطاقات العمّال والحمّالين (`brickPersonCardHTML`). التعديل عبر

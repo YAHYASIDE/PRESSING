@@ -64,6 +64,27 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
   log('porter edited (name + role → رئيس العمّال): '+(await page.evaluate(()=>brickPorter('po1').name==='دبيته الكبير' && brickPorter('po1').role==='worker'))+' (expect true)');
   await page.click('main [data-pdel="porter:po1"]'); await page.waitForTimeout(200);
   log('porter with money due cannot be deleted: '+(await page.evaluate(()=>!!brickPorter('po1') && !brickPorter('po1').deleted))+' (expect true)');
+  // 2.57.0 — «➕ له» و«➖ عليه» في بطاقة العامل
+  r=await page.evaluate(()=>({ bal:brickPersonBalance('po1'), wages:brickFin(()=>true).wages, box:brickFin(()=>true).box, for_:!!document.querySelector('main [data-bk-pq="for|po1"]'), on_:!!document.querySelector('main [data-bk-pq="on|po1"]') }));
+  const b0=r; log('worker card has «➕ له» and «➖ عليه»: '+(r.for_&&r.on_)+' (expect true)');
+  await page.click('main [data-bk-pq="for|po1"]'); await page.waitForTimeout(250);
+  log('«➕ له» opens a window with amount + type (رصيد سابق by default): '+(await page.evaluate(()=>getComputedStyle(document.getElementById('editModal')).display!=='none' && document.getElementById('re_ltype').value==='opening'))+' (expect true)');
+  await page.fill('#re_amount','5000'); await editSave();
+  r=await page.evaluate(()=>({ bal:brickPersonBalance('po1'), wages:brickFin(()=>true).wages }));
+  log('opening credit 5,000: balance +5,000 (له علينا), not counted as cost: '+(r.bal===b0.bal+5000 && r.wages===b0.wages)+' (expect true) '+JSON.stringify([b0.bal,r.bal,b0.wages,r.wages]));
+  await page.click('main [data-bk-pq="for|po1"]'); await page.waitForTimeout(250);
+  await page.fill('#re_amount','1000'); await page.selectOption('#re_ltype','wage'); await page.fill('#re_note','مكافأة'); await editSave();
+  log('extra wage 1,000 is added and counted as cost: '+(await page.evaluate((b)=>brickPersonBalance('po1')===b.bal+6000 && brickFin(()=>true).wages===b.wages+1000,b0))+' (expect true)');
+  await page.click('main [data-bk-pq="on|po1"]'); await page.waitForTimeout(250);
+  await page.fill('#re_amount','2000'); await page.fill('#re_note','دين قديم'); await editSave();
+  log('«➖ عليه» 2,000 without cash: balance −2,000, box unchanged: '+(await page.evaluate((b)=>brickPersonBalance('po1')===b.bal+4000 && brickFin(()=>true).box===b.box,b0))+' (expect true)');
+  await page.click('main [data-bk-pq="on|po1"]'); await page.waitForTimeout(250);
+  await page.fill('#re_amount','1000'); await page.check('#re_cash'); await editSave();
+  log('«➖ عليه» 1,000 in cash: balance −1,000 and box −1,000: '+(await page.evaluate((b)=>brickPersonBalance('po1')===b.bal+3000 && brickFin(()=>true).box===b.box-1000,b0))+' (expect true)');
+  await page.click('main [data-bk-porterstmt="po1"]'); await page.waitForTimeout(300);
+  r=await page.evaluate(()=>{ const t=document.getElementById('receiptContent').textContent; return { t:/رصيد سابق/.test(t)&&/مكافأة/.test(t)&&/دين قديم/.test(t), fin:t.includes(money(brickPersonBalance('po1'))) }; });
+  log('worker statement shows the new entries and the same balance: '+(r.t&&r.fin)+' (expect true)');
+  await page.evaluate(()=>{ document.getElementById('receiptModal').style.display='none'; });
   await page.click('main [data-pdel="porter:po2"]'); await code();
   r=await page.evaluate(()=>({ kept:!!brickPorter('po2'), del:brickPorter('po2')&&brickPorter('po2').deleted, card:!!document.querySelector('main [data-pe="porter:po2"]'), opt:!![...document.querySelectorAll('#bkPorter option')].find(o=>o.value==='po2') }));
   log('porter with past work: hidden from lists but kept for his old statements: '+(r.kept && r.del && !r.card && !r.opt)+' (expect true) '+JSON.stringify(r));
