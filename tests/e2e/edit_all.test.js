@@ -55,8 +55,8 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
   // ===== حركة صندوق يدوية 700 → 900
   await page.evaluate(()=>{ addCashMove('in',700,'إيداع',null,null,'cash'); state.storeSub='cashbox'; render(); });
   const cmid=await page.evaluate(()=>state.storeCash[state.storeCash.length-1].id);
-  log('linked cash moves have no edit button, manual ones do: '+((await page.isVisible(`[data-rec-edit="scash:${cmid}"]`)) && (await page.evaluate(()=>document.querySelectorAll('[data-rec-edit^="scash:"]').length===1)))+' (expect true)');
-  await open(`[data-rec-edit="scash:${cmid}"]`); await page.fill('#re_amount','900'); await page.fill('#re_reason','إيداع معدّل'); await saveEdit();
+  log('every cash move has ✏️ (2.62.0: linked ones open their operation or edit the payment): '+((await page.isVisible(`[data-cm-edit="storeCash|${cmid}"]`)) && (await page.evaluate(()=>[...document.querySelectorAll('main .cash-row')].every(r=>r.querySelector('[data-cm-edit],[data-rec-edit],[data-ux-del]')||r.textContent.includes('🔒')))))+' (expect true)');
+  await open(`[data-cm-edit="storeCash|${cmid}"]`); await page.fill('#re_amount','900'); await page.fill('#re_reason','إيداع معدّل'); await saveEdit();
   log('manual cash move edited: '+(await page.evaluate(id=>{ const m=state.storeCash.find(x=>x.id===id); return m.amount===900 && m.reason==='إيداع معدّل'; },cmid))+' (expect true)');
 
   // ===== مصروف مغسلة 1,500 → 1,200 وتاريخ أمس

@@ -525,6 +525,18 @@
   «👷 رئيس العمّال» تُخفى خانات الحمل (`#bkLoadFields`, `#bkLoadKinds`، تلميح `#bkWorkerOnlyHint`) والزر «💾 حفظ رئيس العمّال» (`updPor` في
   `bindBrick`)؛ و`doBrickLoadSave` يحفظ الشخص فقط إن لم يُكتب مبلغ (الحمل **اختياري لأي شخص جديد**، وإلزامي فقط لتسجيل عمل لشخص موجود).
   الاختبار `tests/e2e/brick_worker_add.test.js`.
+- **تعديل وحذف كل عملية + كشف الصندوق (2.62.0) — «زر تعديل وحذف لأي عملية… وكشف حساب لأي حساب»:** `cashLink(box,m)` يعرف ما وراء أي حركة
+  في `brickCash`/`storeCash`/`dailyCostPays`: `manual` · `pay` (دفعة على عملية: بيع/شراء/خلطة `workerPaidAmt`/حمل — `pk`,`tot`,`party`) · `dep` (عربون
+  طلبية) · `custPay` («تحصيل من…» بلا `ref`، `allocatePayment`) · `custCred` («تسديد دين له») · `supPay` (`ref`=المورّد، `paySupplier`) · `rec` (مصروف
+  `bexp`/قيد `bledger`/سلفة `bload`/دين يدوي `sdebt` → محرّرها وحذفها) · `ux` · `lock` (تحويل/تسوية المغسلة، فاتورة ملغاة أو داخلية مع دبو). الأزرار
+  `cashRowBtns(box,m)` (مالك/مدير): `[data-cm-edit="box|id"]` → `openCashMoveEdit` (`_editCtx.kind="cmove"` → `cashMoveEditSave`) و`[data-cm-del]` →
+  `cashMoveDelete` (بالكود). `cashLinkApply(L,m,newAmt,dry)` يطبّق الفرق على ما وراء الحركة ويرفض: المدفوع > القيمة، أو أقل من القيمة لعملية نقدية بلا
+  زبون، أو زيادة تحصيل بلا دين كافٍ، أو إرجاع ما لا يمكن إرجاعه (`custPayFree/supPayFree/custCredFree` = المدفوع عبر تحصيل عام لا عبر حركة مرتبطة،
+  الأحدث أولًا `_cmUnalloc`). **عمليات العامل** (`w.payments/credits`): قائمة مطوية تحت البطاقة (`data-debt-toggle="wk:{id}"`, `workerTxListHTML`)
+  بـ`[data-wtx-edit|del|restore="wid|tid"]`؛ الحذف **ناعم** `cancelled` (`wtxLive` في `wPaid/wCredit/openWorkerStatement`)، والتعديل يختم `editedAt`
+  و`_unionById` صار يُبقي **الأحدث تعديلًا** للمعرّف نفسه (فيُزامَن التعديل/الحذف). دفعات المصاريف باليومية: قائمة `dcp:{id}` بنفس `data-cm-*`. **كشف
+  الصندوق** `[data-cash-stmt="brick|store"]` → `openCashStatement` (`ledgerRcptHTML({box:true})`: رصيد سابق + حركات الفترة). الاختبار
+  `tests/e2e/cash_edit_all.test.js`.
 - **اختيار الزبون بالبطاقات + دبو زبون/مورّد للمتجر + فواتير دبو بالصورة (2.61.0):** (1) **`enhancePickers()`** (في غلاف `render` بعد `restoreFields`)
   يحوّل كل `<select>` في `PK_IDS` (`posCust, tradeParty, mdCust, bkCust, bkPurParty, bkLParty, bkOrdParty`) إلى بحث + بطاقات (`.pk`, `.pk-row[data-pkv]`, `.pk-cur` +
   «تغيير»): الـselect يبقى في الصفحة مخفيًا `.pk-hidden` (opacity 0، فـ`selectOption` في الاختبارات يعمل) والاختيار = `sel.value` + `input/change`، فكل منطق الحفظ
