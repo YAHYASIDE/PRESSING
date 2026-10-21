@@ -253,6 +253,12 @@
   #lightbox{display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:100;align-items:center;justify-content:center;padding:20px;cursor:zoom-out}
   #lightbox img{max-width:100%;max-height:100%;border-radius:10px}
   .modal{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:110;display:none;align-items:center;justify-content:center;padding:20px}
+  /* (2.64.0) الشاشة ثابتة: لا تتحرّك الصفحة خلف النافذة، ولا تنزاح يمينًا/يسارًا، ولا «ترتدّ» عند نهاية السحب */
+  html{overflow-x:hidden}
+  html,body{overscroll-behavior:none}
+  html.modal-open,body.modal-open{overflow:hidden!important}
+  .modal{touch-action:none}.modal .modal-box{touch-action:auto}
+  .modal,#lightbox,#lockScreen,.modal-box,.fab-menu{overscroll-behavior:contain}
   #codeModal{z-index:150} /* نافذة الكود تعلو الإعدادات وغيرها */
   #cdModal,#cdcModal,#closeDayModal{z-index:145}
   .modal-box{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:20px;max-width:340px;width:100%;box-shadow:var(--shadow);max-height:88vh;overflow-y:auto}
@@ -8094,6 +8100,8 @@ function _rand(n){ const a=new Uint8Array(n); crypto.getRandomValues(a); return 
    CHANGELOG: الأحدث أولًا. لكل تعديل: ic, t (العنوان), d (الشرح), go (أين: tab + storeSub/contactsSub/…), sel (العنصر الذي يُشار إليه).
    **قاعدة: كل إصدار جديد يضيف مدخلًا هنا** — يظهر للمستخدم مرة واحدة بعد التحديث مع «تخطي» و«أرني» و«جولة». */
 const CHANGELOG=[
+  {v:"2.64.0",date:"2026-10-21",items:[
+    {ic:"📌",t:"الشاشة ثابتة",d:"عند فتح أي نافذة (فاتورة، كشف، تعديل، الإعدادات…) لا تتحرّك الصفحة التي خلفها عند السحب، ولا تنزاح الشاشة يمينًا أو يسارًا، ولا ترتدّ عند آخر السحب.",go:{tab:"dashboard"},sel:'main'}]},
   {v:"2.63.0",date:"2026-10-21",items:[
     {ic:"📤",t:"إرسال الفاتورة وحفظها من تطبيق الـ APK",d:"زر «📤 صورة» و«📄 PDF» يفتحان قائمة المشاركة (واتساب…) داخل تطبيق الهاتف، و«⬇️ تنزيل» يحفظ في «المستندات ▸ Sadaqa». يحتاج تنزيل الـ APK الجديد مرة واحدة. وفي كل الأجهزة زر «💬 كتابةً» يرسل الفاتورة نصًّا على واتساب.",go:{tab:"cars"},sel:'[data-car-receipt], #carPlate'},
     {ic:"📒",t:"الفاتورة تعرض العمليات السابقة",d:"اضغط 🧾 على أي عملية: «هذه فقط» أو «كل غسلات الزبون» أو «كل عمليات الزبون» (سيارات + سجاد + ملابس معًا). الزبون يُعرف بالهاتف أو اللوحة أو الاسم، والفاتورة الواحدة تكتب «عليه من قبل» إن بقي عليه شيء.",go:{tab:"cars"},sel:'[data-car-receipt], #carPlate'}]},
@@ -8613,6 +8621,12 @@ async function shareReceiptPdf(){
 /* سياق «💬 كتابةً»: يُضبط عند فتح كشف حساب، ويُربط بالمحتوى المعروض (tok) فلا يظهر الزر في الإيصالات الأخرى */
 let _rcptText=null;
 function setRcptText(ctx){ ctx.tok=String(Date.now())+Math.random(); _rcptText=ctx; const r=document.querySelector("#receiptContent .rcpt"); if(r) r.dataset.txtTok=ctx.tok; updRcptTextBtn(); }
+/* (2.64.0) قفل تمرير الصفحة الخلفية ما دامت أي نافذة مفتوحة */
+function overlayOpen(){ try{ if([...document.querySelectorAll(".modal")].some(m=>m.style.display&&m.style.display!=="none")) return true;
+  const lb=document.getElementById("lightbox"); if(lb&&lb.style.display&&lb.style.display!=="none") return true;
+  const ls=document.getElementById("lockScreen"); if(ls&&getComputedStyle(ls).display!=="none") return true; }catch(e){} return false; }
+function syncModalLock(){ const o=overlayOpen(), H=document.documentElement; if(H.classList.contains("modal-open")===o) return; H.classList.toggle("modal-open",o); document.body.classList.toggle("modal-open",o); }
+if(typeof MutationObserver!=="undefined"&&typeof document!=="undefined"&&document.body) try{ new MutationObserver(syncModalLock).observe(document.body,{subtree:true,attributes:true,attributeFilter:["style","class","hidden"],childList:true}); }catch(e){}
 function rcptTextCtx(){ const r=document.querySelector("#receiptContent .rcpt, #receiptContent .rcpt-imgview"); return _rcptText&&r&&r.dataset.txtTok===_rcptText.tok?_rcptText:null; }
 function updRcptTextBtn(){ const b=document.getElementById("receiptText"); if(b) b.style.display=rcptTextCtx()?"":"none"; }
 let _stSel=null, _stMode="all";
@@ -9350,7 +9364,7 @@ setTimeout(()=>{ if(!window.cloudReady){ const el=document.getElementById("cloud
 <!-- PWA: service-worker registration + update/install wiring -->
 <script>
 (function(){
-  var APP_VERSION = "2.63.0";
+  var APP_VERSION = "2.64.0";
   window.APP_VERSION = APP_VERSION;
   function $(id){ return document.getElementById(id); }
   // سجّل إصدار هذا الجهاز في الحالة المتزامنة (ليُنبَّه الجهاز القديم)

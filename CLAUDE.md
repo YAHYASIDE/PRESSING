@@ -525,6 +525,12 @@
   «👷 رئيس العمّال» تُخفى خانات الحمل (`#bkLoadFields`, `#bkLoadKinds`، تلميح `#bkWorkerOnlyHint`) والزر «💾 حفظ رئيس العمّال» (`updPor` في
   `bindBrick`)؛ و`doBrickLoadSave` يحفظ الشخص فقط إن لم يُكتب مبلغ (الحمل **اختياري لأي شخص جديد**، وإلزامي فقط لتسجيل عمل لشخص موجود).
   الاختبار `tests/e2e/brick_worker_add.test.js`.
+- **الشاشة ثابتة (2.64.0) — «الشاشة التي خلف النافذة تتحرّك عند السحب»:** الصفحة (`body`) هي التي تتمرّر، فكان السحب داخل نافذة يصل
+  إلى نهايتها ثم يحرّك الصفحة خلفها. الآن `syncModalLock()` (MutationObserver على `style/class/hidden`، محروس لـ`bot/app-vm.js`) يضع `html.modal-open`/
+  `body.modal-open` (`overflow:hidden`) ما دامت أي `.modal` ظاهرة (`style.display` ≠ none) أو `#lightbox` أو `#lockScreen` (`overlayOpen()`)، و`.modal-box`/
+  `.modal`/`.fab-menu` بـ`overscroll-behavior:contain`، والخلفية `.modal{touch-action:none}` (الصندوق `auto`)، و`html{overflow-x:hidden}` +
+  `html,body{overscroll-behavior:none}` (لا انزياح جانبي ولا ارتداد/سحب للتحديث). **قاعدة:** أي نافذة جديدة تستعمل `.modal` + `.modal-box` فتُقفل الصفحة
+  تلقائيًا. الاختبار `tests/e2e/screen_lock.test.js`.
 - **الفاتورة: العمليات السابقة + المشاركة داخل الـ APK (2.63.0) — «لا تعرض العمليات السابقة ولا يمكن تنزيل الصورة أو إرسالها»:** (1) الزبون
   في الفاتورة = `winvKeys/winvMatch`: الهاتف (إن وُجد عند الطرفين)، أو للسيارات اللوحة `normPlate` أو `custId`، أو الاسم نفسه. `winvSame(kind,o)` (نفس الخدمة)
   و`winvAllKinds(kind,o)` (كل الخدمات `{k,x}`). `winvChoose`: «هذه فقط» / «كل غسلات/فواتير الزبون» / **«🗂️ كل عمليات الزبون»** (`data-winv="mix"` →
