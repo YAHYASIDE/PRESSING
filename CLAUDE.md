@@ -525,6 +525,16 @@
   «👷 رئيس العمّال» تُخفى خانات الحمل (`#bkLoadFields`, `#bkLoadKinds`، تلميح `#bkWorkerOnlyHint`) والزر «💾 حفظ رئيس العمّال» (`updPor` في
   `bindBrick`)؛ و`doBrickLoadSave` يحفظ الشخص فقط إن لم يُكتب مبلغ (الحمل **اختياري لأي شخص جديد**، وإلزامي فقط لتسجيل عمل لشخص موجود).
   الاختبار `tests/e2e/brick_worker_add.test.js`.
+- **الفاتورة: العمليات السابقة + المشاركة داخل الـ APK (2.63.0) — «لا تعرض العمليات السابقة ولا يمكن تنزيل الصورة أو إرسالها»:** (1) الزبون
+  في الفاتورة = `winvKeys/winvMatch`: الهاتف (إن وُجد عند الطرفين)، أو للسيارات اللوحة `normPlate` أو `custId`، أو الاسم نفسه. `winvSame(kind,o)` (نفس الخدمة)
+  و`winvAllKinds(kind,o)` (كل الخدمات `{k,x}`). `winvChoose`: «هذه فقط» / «كل غسلات/فواتير الزبون» / **«🗂️ كل عمليات الزبون»** (`data-winv="mix"` →
+  `winvDataMix(items)`: أسطر بأيقونة الخدمة `WINV_KIC`، `kinds` متعددة)؛ بلا عمليات سابقة تفتح مباشرة مع توست «لا توجد عمليات سابقة». الفاتورة المفردة تضيف
+  سطر «📒 عليه من قبل: …» (غير المدفوع في كل الخدمات). كل فاتورة مغسلة تضبط `setRcptText(winvTextCtx(items,title))` فيظهر «💬 كتابةً» (واتساب نصًّا).
+  (2) **الـ APK:** WebView لا يدعم `navigator.share` ولا تنزيل blob → إضافتا `@capacitor/filesystem@6.0.3` و`@capacitor/share@6.0.3` في `mobile/package.json`
+  (+ `WRITE_EXTERNAL_STORAGE maxSdk 29` في `android.yml`). `nativeFS()`/`isNativeApp()`/`blobToB64`/`nativeWrite(N,blob,name,dir)`؛ **`shareFilesAny(files,text)`**
+  (Web Share ← وإلا كتابة في `CACHE` ثم `Share.share({files:[uri]})`) و**`saveFileAny(blob,name)`** (`DOCUMENTS/Sadaqa/…` ← وإلا قائمة المشاركة؛ APK قديم بلا الإضافات
+  → توست «نزّل الـ APK الجديد»؛ المتصفح → تنزيل عادي). `shareReceiptImage`/`shareReceiptPdf` وزر `#rcptImgDl` يستعملانها؛ عرض الصورة `.rcpt-imgview` يحمل
+  `data-txt-tok` فيبقى «💬 كتابةً» (`rcptTextCtx` يقرأ `.rcpt, .rcpt-imgview`). **يتطلب تنزيل APK جديد مرة واحدة.** الاختبار `tests/e2e/invoice_share.test.js` (Capacitor مُحاكى).
 - **تعديل وحذف كل عملية + كشف الصندوق (2.62.0) — «زر تعديل وحذف لأي عملية… وكشف حساب لأي حساب»:** `cashLink(box,m)` يعرف ما وراء أي حركة
   في `brickCash`/`storeCash`/`dailyCostPays`: `manual` · `pay` (دفعة على عملية: بيع/شراء/خلطة `workerPaidAmt`/حمل — `pk`,`tot`,`party`) · `dep` (عربون
   طلبية) · `custPay` («تحصيل من…» بلا `ref`، `allocatePayment`) · `custCred` («تسديد دين له») · `supPay` (`ref`=المورّد، `paySupplier`) · `rec` (مصروف

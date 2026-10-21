@@ -47,11 +47,11 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
   r=await page.evaluate(()=>winvData('car',[state.carOps[2]],false).pm); log('bankily payment is ticked as bankily: '+(r==='bankily')+' (expect true)');
   await page.evaluate(()=>{ document.getElementById('receiptModal').style.display='none'; state.tab='carpets'; render(); }); await page.waitForTimeout(250);
   // السجاد والملابس
-  await page.click('[data-receipt="r1"]'); await page.waitForSelector('#receiptContent .winv-page',{timeout:8000});
+  await page.click('[data-receipt="r1"]'); await page.waitForTimeout(300); if(await page.isVisible('#winvModal [data-winv="mix"]')) await page.click('#winvModal [data-winv="one"]'); await page.waitForSelector('#receiptContent .winv-page',{timeout:8000});
   r=await page.evaluate(()=>{ const d=winvData('rug',[state.carpetOrders[0]],false); return {k:d.kinds[0],rows:d.rows,line:d.lines[0]}; });
   log('carpet invoice uses the same image, ticks «سجاد», qty 2 × 1,500: '+(r.k==='rug'&&r.rows[0].q==='2'&&r.rows[0].u==='1,500'&&r.rows[0].tot==='3,000'&&/غير مدفوع/.test(r.line))+' (expect true) '+JSON.stringify(r.rows));
   await page.evaluate(()=>{ document.getElementById('receiptModal').style.display='none'; state.tab='laundry'; render(); }); await page.waitForTimeout(250);
-  await page.click('[data-lnd-receipt="l1"]'); await page.waitForSelector('#receiptContent .winv-page',{timeout:8000});
+  await page.click('[data-lnd-receipt="l1"]'); await page.waitForTimeout(300); if(await page.isVisible('#winvModal [data-winv="mix"]')) await page.click('#winvModal [data-winv="one"]'); await page.waitForSelector('#receiptContent .winv-page',{timeout:8000});
   r=await page.evaluate(()=>{ const d=winvData('lnd',[state.laundryOrders[0]],false); return {rows:d.rows.length,pm:d.pm,pmName:d.pmName}; });
   log('laundry invoice: one row per item and «أخرى: مصرفي»: '+(r.rows===2&&r.pm==='masrvi'&&r.pmName==='مصرفي')+' (expect true) '+JSON.stringify(r));
   // الإيصال الحراري الصغير ما زال متاحًا

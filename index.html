@@ -8094,6 +8094,9 @@ function _rand(n){ const a=new Uint8Array(n); crypto.getRandomValues(a); return 
    CHANGELOG: الأحدث أولًا. لكل تعديل: ic, t (العنوان), d (الشرح), go (أين: tab + storeSub/contactsSub/…), sel (العنصر الذي يُشار إليه).
    **قاعدة: كل إصدار جديد يضيف مدخلًا هنا** — يظهر للمستخدم مرة واحدة بعد التحديث مع «تخطي» و«أرني» و«جولة». */
 const CHANGELOG=[
+  {v:"2.63.0",date:"2026-10-21",items:[
+    {ic:"📤",t:"إرسال الفاتورة وحفظها من تطبيق الـ APK",d:"زر «📤 صورة» و«📄 PDF» يفتحان قائمة المشاركة (واتساب…) داخل تطبيق الهاتف، و«⬇️ تنزيل» يحفظ في «المستندات ▸ Sadaqa». يحتاج تنزيل الـ APK الجديد مرة واحدة. وفي كل الأجهزة زر «💬 كتابةً» يرسل الفاتورة نصًّا على واتساب.",go:{tab:"cars"},sel:'[data-car-receipt], #carPlate'},
+    {ic:"📒",t:"الفاتورة تعرض العمليات السابقة",d:"اضغط 🧾 على أي عملية: «هذه فقط» أو «كل غسلات الزبون» أو «كل عمليات الزبون» (سيارات + سجاد + ملابس معًا). الزبون يُعرف بالهاتف أو اللوحة أو الاسم، والفاتورة الواحدة تكتب «عليه من قبل» إن بقي عليه شيء.",go:{tab:"cars"},sel:'[data-car-receipt], #carPlate'}]},
   {v:"2.62.0",date:"2026-10-20",items:[
     {ic:"✏️",t:"تعديل وحذف كل حركة في صندوق دبو",d:"كل سطر في «دبو ▸ الصندوق» صار فيه ✏️ و🗑️ حتى «دفعة من…» و«حمل…» و«دفعة لـ…». تعديل دفعة على بيع أو حمل أو خلطة يغيّر المدفوع عليها، وحذفها يُرجعها دَينًا. القيد والمصروف والسلفة يفتح محرّرها هي.",go:{tab:"brick",brickSub:"cash"},sel:'[data-cm-edit], [data-cash-stmt="brick"]'},
     {ic:"🏪",t:"وفي صندوق المتجر أيضًا",d:"«تحصيل من زبون» و«تسديد للمورّد» ودفعات الفواتير تُعدَّل وتُحذف، ويتغيّر دين الزبون أو المورّد معها. حركات تحويل المغسلة تبقى مقفلة 🔒.",go:{tab:"store",storeSub:"cashbox"},sel:'[data-cash-stmt="store"]'},
@@ -8353,8 +8356,29 @@ const _tplP={};
 function tplImg(src){ if(!_tplP[src]) _tplP[src]=new Promise((res,rej)=>{ const im=new Image(); im.onload=()=>res(im); im.onerror=e=>{ delete _tplP[src]; rej(e); }; im.src=src; }); return _tplP[src]; }
 function winvTpl(){ return tplImg(WINV_TPL); }
 function winvPhoneKey(o){ return normPhone(o&&o.phone||""); }
-function winvSame(kind,o){ const arr=kind==="car"?state.carOps:kind==="rug"?state.carpetOrders:state.laundryOrders, ph=winvPhoneKey(o);
-  return (arr||[]).filter(x=>!x.cancelled&&(ph?winvPhoneKey(x)===ph:(kind==="car"?(x.plate&&x.plate===o.plate):((x.customer||"").trim()&&(x.customer||"").trim()===(o.customer||"").trim())))).sort((a,b)=>new Date(a.date)-new Date(b.date)); }
+/* (2.63.0) الزبون نفسه = الهاتف نفسه، أو (للسيارات) اللوحة/الزبون المحفوظ نفسه، أو الاسم نفسه — في أي خدمة */
+function winvKeys(kind,o){ const nm=(winvName(kind,o)||"").trim(); return {ph:winvPhoneKey(o),plate:kind==="car"&&o.plate?normPlate(o.plate):"",cid:o.custId||"",nm}; }
+function winvMatch(K,kind,x){ if(!x||x.cancelled) return false; const ph=winvPhoneKey(x); if(K.ph&&ph) return ph===K.ph;
+  if(kind==="car"&&K.plate&&x.plate&&normPlate(x.plate)===K.plate) return true; if(kind==="car"&&K.cid&&x.custId===K.cid) return true;
+  const nm=(winvName(kind,x)||"").trim(); return !!(K.nm&&nm&&nm===K.nm&&(!K.ph||!ph)); }
+function winvArr(kind){ return kind==="car"?state.carOps:kind==="rug"?state.carpetOrders:state.laundryOrders; }
+function winvSame(kind,o){ const K=winvKeys(kind,o); return (winvArr(kind)||[]).filter(x=>x.id===o.id||winvMatch(K,kind,x)).sort((a,b)=>new Date(a.date)-new Date(b.date)); }
+function winvAllKinds(kind,o){ const K=winvKeys(kind,o), out=[]; ["car","rug","lnd"].forEach(k=>(winvArr(k)||[]).forEach(x=>{ if(x.id===o.id||winvMatch(Object.assign({},K,{plate:k==="car"?K.plate:"",cid:k==="car"?K.cid:""}),k,x)) out.push({k,x}); }));
+  return out.sort((a,b)=>new Date(a.x.date)-new Date(b.x.date)); }
+const WINV_KIC={car:"🚗",rug:"🧺",lnd:"👕"};
+function winvPrice(k,x){ return k==="car"&&x.free?0:(+x.price||0); }
+/* فاتورة واحدة لكل خدمات الزبون (سيارات + سجاد + ملابس) */
+function winvDataMix(items){ const last=items[items.length-1], first=items[0], total=sum(items,i=>winvPrice(i.k,i.x)), paid=sum(items.filter(i=>winvPaid(i.k,i.x)),i=>winvPrice(i.k,i.x)), left=total-paid;
+  const rows=[].concat(...items.map(i=>winvRows(i.k,i.x,true).map(r=>Object.assign(r,{t:WINV_KIC[i.k]+" "+r.t})))), ph=winvPhoneKey(last.x), un=items.filter(i=>!winvPaid(i.k,i.x));
+  const lines=["المدفوع "+money(paid)+" · المتبقي عليه "+money(left)+" "+CUR]; if(un.length) lines.push("غير مدفوع: "+un.map(i=>frDay(ymd(i.x.date)).slice(0,5)+" "+money(i.x.price)).join(" · "));
+  const pms=[...new Set(items.filter(i=>winvPaid(i.k,i.x)).map(i=>normPM(i.x.payMethod)))], pm=left<=0&&pms.length?pms[pms.length-1]:null;
+  return {no:"AS-"+(ph||"0"),date:frD(last.x.date),name:winvName(last.k,last.x)||winvName(first.k,first.x),phone:last.x.phone||first.x.phone||"",note:items.length+" عمليات · "+frDay(ymd(first.x.date)).slice(0,5)+" ← "+frD(last.x.date),kinds:[...new Set(items.map(i=>i.k))],rows,total:money(total),pm,pmName:pm?pmLabel(pm):"",lines}; }
+/* نص الفاتورة لـ«💬 كتابةً» (يعمل في كل الأجهزة حتى إن تعذّرت مشاركة الصورة) */
+function winvTextCtx(items,title){ const f=items[0]||{}, last=items[items.length-1]||{}, R=[];
+  items.forEach(({k,x})=>{ const pr=winvPrice(k,x); R.push({d:x.date,t:WINV_KIC[k]+" "+winvRows(k,x,false).map(r=>r.t+(r.q&&r.q!=="1"?" ×"+r.q:"")).join(" + ")+(x.no?" ("+x.no+")":""),s:x.free?"مجانية":"",dr:pr,cr:0,show:pr});
+    if(pr&&winvPaid(k,x)) R.push({d:x.paidDate||x.date,t:"💵 دفع — "+pmLabel(x.payMethod),s:"",dr:0,cr:pr}); });
+  const left=sum(items.filter(i=>!winvPaid(i.k,i.x)),i=>winvPrice(i.k,i.x));
+  return {title:title||"فاتورة",name:winvName(last.k||f.k,last.x||f.x)||"",phone:(last.x&&last.x.phone)||(f.x&&f.x.phone)||"",country:(last.x&&last.x.country)||"222",final:left,rows:R}; }
 function winvPaid(kind,o){ return kind==="car"?o.paid!==false:!!o.paid; }
 function winvName(kind,o){ return kind==="car"?(carCustName(o)||""):(o.customer||""); }
 function winvRows(kind,o,withDate){ const dd=withDate?frDay(ymd(o.date)).slice(0,5)+" · ":"";
@@ -8367,7 +8391,8 @@ function winvData(kind,list,all){ const o=list[list.length-1], first=list[0], pa
   const note=all?(list.length+(kind==="car"?" غسلات":" فواتير")+" · "+frDay(ymd(first.date)).slice(0,5)+" ← "+frD(o.date)):(kind==="car"?[o.vehicle,o.plate].filter(Boolean).join(" · "):(kind==="rug"?"سجاد وأفرشة":"ملابس")+(o.status?" · "+(kind==="rug"?(STATUS[o.status]?STATUS[o.status].label:o.status):lndStatusLabel(o)):""));
   const lines=[]; if(all){ lines.push("المدفوع "+money(paid)+" · المتبقي عليه "+money(left)+" "+CUR); const un=list.filter(x=>!winvPaid(kind,x)); if(un.length) lines.push("غير مدفوع: "+un.map(x=>frDay(ymd(x.date)).slice(0,5)+" "+money(x.price)).join(" · ")); }
   else { lines.push(o.free?"🎁 غسلة مجانية":winvPaid(kind,o)?"✔ مدفوع — "+pmLabel(o.payMethod):"✖ غير مدفوع — "+money(o.price)+" "+CUR);
-    if(kind==="car"){ const c=o.plate&&state.customers?state.customers[o.plate]:null; if(c&&!o.free) lines.push("بطاقة الولاء: "+"●".repeat(Math.min(5,c.stamps||0))+"○".repeat(Math.max(0,5-(c.stamps||0)))); } }
+    if(kind==="car"){ const c=o.plate&&state.customers?state.customers[o.plate]:null; if(c&&!o.free) lines.push("بطاقة الولاء: "+"●".repeat(Math.min(5,c.stamps||0))+"○".repeat(Math.max(0,5-(c.stamps||0)))); }
+    { const prev=winvAllKinds(kind,o).filter(i=>i.x.id!==o.id&&!winvPaid(i.k,i.x)), pv=sum(prev,i=>winvPrice(i.k,i.x)); if(pv>0) lines.push("📒 عليه من قبل: "+money(pv)+" "+CUR+" ("+prev.length+") · المجموع "+money(pv+(winvPaid(kind,o)?0:winvPrice(kind,o)))); } }
   return {no:all?pre+(ph||"0"):(o.no||"-"),date:frD(o.date),name:winvName(kind,o),phone:o.phone||"",note,kinds:[K],rows,total:money(total),pm,pmName:pm?pmLabel(pm):"",lines}; }
 async function winvRender(d,opt){ opt=opt||{}; const per=opt.per||5, draw=opt.draw||washInvDraw, img=await tplImg(opt.tpl||WINV_TPL); try{ if(document.fonts&&document.fonts.load) await Promise.all([document.fonts.load("800 24px Tajawal"),document.fonts.load("700 24px Tajawal")]); }catch(e){}
   const pages=[], n=Math.max(1,Math.ceil(d.rows.length/per));
@@ -8426,17 +8451,20 @@ function openBrickOrderInvoice(o,last){ const pt=brickParty(o.partyType,o.partyI
   const dep=brickOrderDeposit(o), due=Math.max(0,brickOrderDue(o));
   openWashInvoice("tpl",{title:last?"وصل تسليم":"طلبية طوب",no:last?last.no:o.no,date:frD(last?last.date:o.date),name:(pt&&pt.name)||o.customerName||"",phone:(pt&&pt.phone)||o.phone||"",addr:o.address||"",note:"سُلّم "+fmt(brickOrderDelivered(o))+" · بقي "+fmt(brickOrderLeft(o))+" طوبة"+(o.note?" · "+o.note:""),
     rows,total:money(o.total),pm:null,foot:"💵 العربون "+money(dep)+" · بقي عليه "+money(due)},false,BINV_OPT); }
-function winvChoose(kind,o,small){ const L=winvSame(kind,o), E=_esc, word=kind==="car"?"غسلات":"فواتير";
-  if(L.length<=1) return openWashInvoice(kind,[o],false);
+function winvChoose(kind,o,small){ const L=winvSame(kind,o), A=winvAllKinds(kind,o), E=_esc, word=kind==="car"?"غسلات":"فواتير", one=[{k:kind,x:o}];
+  const open=(k,list,all)=>openWashInvoice(k,list,all,null,winvTextCtx(all?list.map(x=>({k,x})):one,all?"كل "+word+" الزبون":"فاتورة "+(o.no||"")));
+  if(L.length<=1&&A.length<=1){ toast("ℹ️ لا توجد عمليات سابقة لهذا الزبون"+(o.phone?" بالرقم "+o.phone:"")+(kind==="car"&&o.plate?" أو اللوحة "+o.plate:"")); return open(kind,[o],false); }
   let m=document.getElementById("winvModal"); if(!m){ m=document.createElement("div"); m.id="winvModal"; m.className="modal"; m.style.zIndex="140"; document.body.appendChild(m); }
-  const tot=sum(L,x=>kind==="car"&&x.free?0:(+x.price||0)), left=sum(L.filter(x=>!winvPaid(kind,x)),x=>+x.price||0);
+  const st=it=>{ const tot=sum(it,i=>winvPrice(i.k,i.x)), left=sum(it.filter(i=>!winvPaid(i.k,i.x)),i=>winvPrice(i.k,i.x)); return it.length+" · المجموع "+money(tot)+(left?" · المتبقي "+money(left):" · كلها مدفوعة ✓"); };
+  const kinds=[...new Set(A.map(i=>i.k))];
   m.innerHTML=`<div class="modal-box" style="max-width:400px"><h3 style="margin:0 0 4px">🧾 الفاتورة — ${E(winvName(kind,o)||o.phone||"")}</h3><div class="hint" style="margin-bottom:10px">ماذا تريد أن تعرض؟</div>
     <button type="button" class="winv-opt" data-winv="one"><i>🧾</i><span><b>${kind==="car"?"هذه الغسلة فقط":"هذه الفاتورة فقط"}</b><small>${E(o.no||"")} · ${frD(o.date)} · ${money(o.price)}</small></span></button>
-    <button type="button" class="winv-opt" data-winv="all"><i>📒</i><span><b>كل ${word} الزبون</b><small>${L.length} · المجموع ${money(tot)}${left?" · المتبقي "+money(left):" · كلها مدفوعة ✓"}</small></span></button>
+    ${L.length>1?`<button type="button" class="winv-opt" data-winv="all"><i>📒</i><span><b>كل ${word} الزبون</b><small>${st(L.map(x=>({k:kind,x})))}</small></span></button>`:""}
+    ${kinds.length>1?`<button type="button" class="winv-opt" data-winv="mix"><i>🗂️</i><span><b>كل عمليات الزبون (${kinds.map(k=>WINV_KIC[k]).join(" ")})</b><small>${st(A)}</small></span></button>`:""}
     <div class="modal-actions" style="margin-top:6px">${small?`<button type="button" class="mini" data-winv="small">🖨️ إيصال صغير (طابعة حرارية)</button>`:""}<button type="button" class="mini" data-winv="close">إغلاق</button></div></div>`;
   m.style.display="flex";
   m.onclick=ev=>{ const b=ev.target.closest("[data-winv]"); if(!b&&ev.target!==m) return; m.style.display="none"; const a=b?b.dataset.winv:"close";
-    if(a==="one") openWashInvoice(kind,[o],false); else if(a==="all") openWashInvoice(kind,L,true); else if(a==="small"&&small) small(o); }; }
+    if(a==="one") open(kind,[o],false); else if(a==="all") open(kind,L,true); else if(a==="mix") openWashInvoice("tpl",winvDataMix(A),true,null,winvTextCtx(A,"كل عمليات الزبون")); else if(a==="small"&&small) small(o); }; }
 function openReceipt(o){
   document.getElementById("receiptContent").innerHTML=`
     <div class="rcpt">
@@ -8500,11 +8528,28 @@ async function receiptFontCSS(){
 }
 function showReceiptImage(url){
   const box=document.getElementById("receiptContent");
-  const prev=box.innerHTML; window._rcptPrevHTML=prev;
-  box.innerHTML=`<div class="rcpt-imgview"><img id="rcptImgOut" src="${url}" alt="فاتورة"><div class="hint" style="margin-top:8px;text-align:center">اضغط مطوّلًا على الصورة لحفظها أو مشاركتها، أو استخدم زر التنزيل.</div>
+  const prev=box.innerHTML; window._rcptPrevHTML=prev; const tk=(box.querySelector(".rcpt")||{dataset:{}}).dataset.txtTok||"";
+  box.innerHTML=`<div class="rcpt-imgview" data-txt-tok="${tk}"><img id="rcptImgOut" src="${url}" alt="فاتورة"><div class="hint" style="margin-top:8px;text-align:center">اضغط مطوّلًا على الصورة لحفظها أو مشاركتها، أو استخدم زر التنزيل، أو «💬 كتابةً» لإرسالها نصًّا على واتساب.</div>
     <div style="display:flex;gap:8px;margin-top:8px"><a class="btn-primary" id="rcptImgDl" href="${url}" download="فاتورة.png" style="flex:1;text-align:center;text-decoration:none">⬇️ تنزيل الصورة</a><button class="mini" id="rcptImgBack" type="button">رجوع</button></div></div>`;
   document.getElementById("rcptImgBack").onclick=()=>{ box.innerHTML=window._rcptPrevHTML||prev; };
 }
+/* (2.63.0) المشاركة والحفظ داخل تطبيق الـ APK: WebView لا يدعم navigator.share ولا تنزيل blob، فنستعمل
+   إضافتي Capacitor (Filesystem + Share) إن وُجدتا في الـ APK الجديد؛ وإلا Web Share في Chrome؛ وإلا التنزيل العادي */
+function nativeFS(){ try{ const C=window.Capacitor; if(!C||!(C.isNativePlatform?C.isNativePlatform():(C.getPlatform&&C.getPlatform()!=="web"))) return null;
+  const P=C.Plugins||{}, Fs=P.Filesystem||(C.registerPlugin&&C.registerPlugin("Filesystem")), Sh=P.Share||(C.registerPlugin&&C.registerPlugin("Share")); return Fs&&Sh?{Fs,Sh}:null; }catch(e){ return null; } }
+function isNativeApp(){ try{ const C=window.Capacitor; return !!(C&&(C.isNativePlatform?C.isNativePlatform():(C.getPlatform&&C.getPlatform()!=="web"))); }catch(e){ return false; } }
+function blobToB64(b){ return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(String(r.result).split(",")[1]||""); r.onerror=rej; r.readAsDataURL(b); }); }
+async function nativeWrite(N,blob,name,dir){ const r=await N.Fs.writeFile({path:(dir==="DOCUMENTS"?"Sadaqa/":"")+name,data:await blobToB64(blob),directory:dir||"CACHE",recursive:true}); return r&&r.uri; }
+async function shareFilesAny(files,text){
+  try{ if(navigator.canShare&&navigator.canShare({files})){ await navigator.share({files,text}); return true; } }catch(e){ if(e&&e.name==="AbortError") return true; }
+  const N=nativeFS(); if(N){ try{ const uris=[]; for(const f of files) uris.push(await nativeWrite(N,f,f.name,"CACHE")); await N.Sh.share({title:text,text,files:uris,dialogTitle:"إرسال"}); return true; }
+    catch(e){ if(/cancel/i.test(String(e&&(e.message||e)))) return true; console.warn("native share",e); } }
+  return false; }
+async function saveFileAny(blob,name){ const N=nativeFS();
+  if(N){ try{ await nativeWrite(N,blob,name,"DOCUMENTS"); toast("✅ حُفظ في «المستندات ▸ Sadaqa» — "+name); return true; }
+    catch(e){ try{ if(await shareFilesAny([new File([blob],name,{type:blob.type})],name)) return true; }catch(_){} } }
+  if(isNativeApp()){ toast("⚠️ هذا الـ APK قديم لا يحفظ الملفات — نزّل الـ APK الجديد مرة واحدة، أو استعمل «💬 كتابةً»"); return false; }
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=name; document.body.appendChild(a); a.click(); a.remove(); return true; }
 async function shareReceiptImage(){
   const btn=document.getElementById("receiptImg"); const old=btn?btn.textContent:"";
   if(!document.querySelector("#receiptContent .rcpt")) return;
@@ -8517,10 +8562,8 @@ async function shareReceiptImage(){
     const file=isW?new File([blob],name.replace(/\.png$/,".jpg"),{type:"image/jpeg"}):new File([blob],name,{type:"image/png"});
     const files=isW&&_winvPages.length>1?_winvPages.map((p,i)=>new File([p.blob],name.replace(/\.png$/,"-"+(i+1)+".jpg"),{type:"image/jpeg"})):[file];
     const text=shopInfo().name+(noEl?(" — فاتورة "+no):"");
-    let shared=false;
-    try{ if(navigator.canShare && navigator.canShare({files})){ await navigator.share({files,text}); shared=true; } }
-    catch(e){ if(e&&e.name==="AbortError") shared=true; }
-    if(!shared){ const url=URL.createObjectURL(blob); showReceiptImage(url); const dl=document.getElementById("rcptImgDl"); if(dl) dl.download=name; }
+    const shared=await shareFilesAny(files,text);
+    if(!shared){ const url=URL.createObjectURL(blob); showReceiptImage(url); const dl=document.getElementById("rcptImgDl"); if(dl){ dl.download=file.name; dl.onclick=ev=>{ if(isNativeApp()){ ev.preventDefault(); (async()=>{ for(const f of files) await saveFileAny(f,f.name); })(); } }; } }
     logActivity("إرسال فاتورة كصورة", no);
   }catch(e){
     toast("تعذّر تجهيز الصورة — حاول مرة أخرى");
@@ -8561,8 +8604,8 @@ async function shareReceiptPdf(){
   const btn=document.getElementById("receiptPdf"), old=btn?btn.textContent:""; if(!document.querySelector("#receiptContent .rcpt")) return;
   if(btn){ btn.disabled=true; btn.textContent="⏳ PDF…"; }
   try{ const blob=await receiptPdfBlob(); window._lastReceiptPdf=blob; const name=rcptDocName()+".pdf", file=new File([blob],name,{type:"application/pdf"}); let shared=false;
-    try{ if(navigator.canShare&&navigator.canShare({files:[file]})){ await navigator.share({files:[file],text:shopInfo().name}); shared=true; } }catch(e){ if(e&&e.name==="AbortError") shared=true; }
-    if(!shared){ const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=name; document.body.appendChild(a); a.click(); a.remove(); toast("📄 تم تجهيز ملف PDF — "+name); }
+    shared=await shareFilesAny([file],shopInfo().name);
+    if(!shared){ if(await saveFileAny(blob,name)&&!isNativeApp()) toast("📄 تم تجهيز ملف PDF — "+name); }
     logActivity("إرسال PDF",name);
   }catch(e){ toast("تعذّر تجهيز ملف PDF — حاول مرة أخرى"); }
   finally{ if(btn){ btn.disabled=false; btn.textContent=old||"📄 PDF"; } }
@@ -8570,7 +8613,7 @@ async function shareReceiptPdf(){
 /* سياق «💬 كتابةً»: يُضبط عند فتح كشف حساب، ويُربط بالمحتوى المعروض (tok) فلا يظهر الزر في الإيصالات الأخرى */
 let _rcptText=null;
 function setRcptText(ctx){ ctx.tok=String(Date.now())+Math.random(); _rcptText=ctx; const r=document.querySelector("#receiptContent .rcpt"); if(r) r.dataset.txtTok=ctx.tok; updRcptTextBtn(); }
-function rcptTextCtx(){ const r=document.querySelector("#receiptContent .rcpt"); return _rcptText&&r&&r.dataset.txtTok===_rcptText.tok?_rcptText:null; }
+function rcptTextCtx(){ const r=document.querySelector("#receiptContent .rcpt, #receiptContent .rcpt-imgview"); return _rcptText&&r&&r.dataset.txtTok===_rcptText.tok?_rcptText:null; }
 function updRcptTextBtn(){ const b=document.getElementById("receiptText"); if(b) b.style.display=rcptTextCtx()?"":"none"; }
 let _stSel=null, _stMode="all";
 function stRowAmt(r){ return r.dr?"+"+money(r.dr):r.cr?"−"+money(r.cr):money(r.show||0)+" ✓"; }
@@ -9307,7 +9350,7 @@ setTimeout(()=>{ if(!window.cloudReady){ const el=document.getElementById("cloud
 <!-- PWA: service-worker registration + update/install wiring -->
 <script>
 (function(){
-  var APP_VERSION = "2.62.0";
+  var APP_VERSION = "2.63.0";
   window.APP_VERSION = APP_VERSION;
   function $(id){ return document.getElementById(id); }
   // سجّل إصدار هذا الجهاز في الحالة المتزامنة (ليُنبَّه الجهاز القديم)
