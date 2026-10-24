@@ -44,6 +44,17 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
   log('APK: «📄 PDF» is shared as a file too: '+(r.sh===2&&r.pdf)+' (expect true)');
   r=await page.evaluate(async()=>{ const ok=await saveFileAny(new Blob(['x'],{type:'text/plain'}),'a.txt'); return { ok, doc:_fsCalls.some(c=>c.directory==='DOCUMENTS'&&c.path==='Sadaqa/a.txt') }; });
   log('APK: download saves into Documents/Sadaqa: '+(r.ok&&r.doc)+' (expect true)');
+  // (2.65.0) الـ APK الحقيقي: لا Capacitor.Plugins ولا registerPlugin (الصفحة من الموقع) — فقط جسر nativePromise + PluginHeaders
+  await page.evaluate(()=>{ window._np=[]; window.Capacitor={isNativePlatform:()=>true,getPlatform:()=>'android',Plugins:{},PluginHeaders:[{name:'Filesystem'},{name:'Share'},{name:'NativeBiometric'}],
+    nativePromise:(p,m,o)=>{ _np.push(p+'.'+m); return Promise.resolve(p==='Filesystem'?{uri:'file:///cache/'+o.path}:p==='NativeBiometric'?{isAvailable:true}:{}); }}; });
+  await page.click('#receiptImg'); await page.waitForTimeout(800);
+  r=await page.evaluate(()=>_np.slice());
+  log('real APK bridge: «📤 صورة» calls Filesystem.writeFile then Share.share through nativePromise: '+(r.includes('Filesystem.writeFile')&&r.includes('Share.share'))+' (expect true) '+JSON.stringify(r));
+  r=await page.evaluate(async()=>{ const ok=await bioAvailable(); return {ok,np:_np.includes('NativeBiometric.isAvailable')}; });
+  log('real APK bridge: the fingerprint plugin is reached too: '+(r.ok&&r.np)+' (expect true)');
+  await page.evaluate(()=>{ window.Capacitor.PluginHeaders=[{name:'NativeBiometric'}]; _np.length=0; });
+  r=await page.evaluate(()=>!nativeFS());
+  log('an APK without the share plugins is detected as old: '+r+' (expect true)');
   // APK قديم بلا الإضافات: لا انهيار، ويظهر عرض الصورة + رسالة واضحة عند التنزيل
   await page.evaluate(()=>{ window.Capacitor={isNativePlatform:()=>true,Plugins:{}}; }); await page.click('#receiptImg'); await page.waitForTimeout(800);
   log('old APK: falls back to the image view (and «💬 كتابةً» stays available): '+(await page.isVisible('#rcptImgDl')&&await page.evaluate(()=>getComputedStyle(document.getElementById('receiptText')).display!=='none'))+' (expect true)');

@@ -1,6 +1,8 @@
 const { chromium } = require('/opt/node22/lib/node_modules/playwright');
 const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favicon|CONNECT|installations|BloomFilter|Fetch API|Access-Control|CORS|the server responded|400 \(|403 \(|wa\.me|telegram|anon auth/i;
-const PNG='/tmp/claude-0/-home-user-PRESSING/1dfcf506-9062-545f-ac7d-aa216f6c086b/scratchpad/px.png';
+// صورة PNG صغيرة (1×1) تُكتب في مجلد مؤقت — لا تعتمد على ملف خارج المستودع
+const PNG=require('path').join(require('os').tmpdir(),'sadaqa-test-px.png');
+require('fs').writeFileSync(PNG,Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==','base64'));
 (async () => {
   const browser = await chromium.launch();
   const page = await (await browser.newContext({ viewport:{width:400,height:900} })).newPage();

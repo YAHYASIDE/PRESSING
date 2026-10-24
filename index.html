@@ -8100,6 +8100,8 @@ function _rand(n){ const a=new Uint8Array(n); crypto.getRandomValues(a); return 
    CHANGELOG: الأحدث أولًا. لكل تعديل: ic, t (العنوان), d (الشرح), go (أين: tab + storeSub/contactsSub/…), sel (العنصر الذي يُشار إليه).
    **قاعدة: كل إصدار جديد يضيف مدخلًا هنا** — يظهر للمستخدم مرة واحدة بعد التحديث مع «تخطي» و«أرني» و«جولة». */
 const CHANGELOG=[
+  {v:"2.65.0",date:"2026-10-24",items:[
+    {ic:"📤",t:"إرسال صورة الفاتورة وتنزيلها يعمل في تطبيق الـ APK",d:"كان تطبيق الهاتف لا يصل إلى أداة المشاركة. الآن «📤 صورة» و«📄 PDF» يفتحان قائمة المشاركة (واتساب…)، و«⬇️ تنزيل» يحفظ في «المستندات ▸ Sadaqa». والبصمة داخل التطبيق تعمل بالطريقة نفسها.",go:{tab:"cars"},sel:'[data-car-receipt], #carPlate'}]},
   {v:"2.64.0",date:"2026-10-21",items:[
     {ic:"📌",t:"الشاشة ثابتة",d:"عند فتح أي نافذة (فاتورة، كشف، تعديل، الإعدادات…) لا تتحرّك الصفحة التي خلفها عند السحب، ولا تنزاح الشاشة يمينًا أو يسارًا، ولا ترتدّ عند آخر السحب.",go:{tab:"dashboard"},sel:'main'}]},
   {v:"2.63.0",date:"2026-10-21",items:[
@@ -8233,8 +8235,16 @@ document.addEventListener("click",e=>{ const g=e.target&&e.target.closest&&e.tar
   else if(id==="wnNext"){ if(!_wnTour) return wnClear(); if(_wnTour.single){ _wnTour=null; wnClear(); return; } wnShowStep(_wnTour.steps,_wnTour.i+1,false); }
   else if(id==="wnEnd"){ _wnTour=null; wnClear(); wnMark(); }
   else if(id==="btnWhatsNew"){ document.getElementById("settingsModal").style.display="none"; openWhatsNew(CHANGELOG.slice(0,3)); } });
-function nativeBio(){ try{ const C=window.Capacitor; if(!C) return null; const nat=C.isNativePlatform?C.isNativePlatform():(C.getPlatform&&C.getPlatform()!=="web"); if(!nat) return null;
-  return (C.Plugins&&C.Plugins.NativeBiometric)||(C.registerPlugin?C.registerPlugin("NativeBiometric"):null); }catch(e){ return null; } }
+/* (2.65.0) إضافات الـ APK: الصفحة تُحمَّل من الموقع فلا توجد فيها مكتبة @capacitor/core (لا Capacitor.Plugins ولا registerPlugin)،
+   لكن جسر Capacitor الأصلي يوفّر nativePromise(اسم الإضافة، الدالة، الخيارات) — فنبني وكيلًا صغيرًا عليه. */
+function capNative(){ try{ const C=window.Capacitor; return !!(C&&(C.isNativePlatform?C.isNativePlatform():(C.getPlatform&&C.getPlatform()!=="web"))); }catch(e){ return false; } }
+function capHas(name){ try{ const C=window.Capacitor, H=C&&C.PluginHeaders; return !H||!Array.isArray(H)||H.some(h=>h&&h.name===name); }catch(e){ return true; } }
+function capPlugin(name){ try{ const C=window.Capacitor; if(!capNative()) return null;
+  if(C.Plugins&&C.Plugins[name]) return C.Plugins[name];
+  if(C.registerPlugin) return C.registerPlugin(name);
+  if(C.nativePromise&&capHas(name)) return new Proxy({},{get:(_,m)=>(m==="then"||typeof m!=="string")?undefined:(o=>C.nativePromise(name,m,o||{}))});
+  return null; }catch(e){ return null; } }
+function nativeBio(){ return capPlugin("NativeBiometric"); }
 async function nativeBioVerify(reason){ const N=nativeBio(); if(!N) throw new Error("no-native"); await N.verifyIdentity({reason, title:"مغاسيل صداقة", subtitle:reason, description:"ضع إصبعك على مستشعر البصمة", negativeButtonText:"إلغاء", maxAttempts:5, useFallback:true}); return true; }
 async function bioAvailable(){ const N=nativeBio(); if(N){ try{ const r=await N.isAvailable({useFallback:true}); return !!(r&&r.isAvailable); }catch(e){ return false; } }
   try{ return !!(window.PublicKeyCredential && window.isSecureContext && await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable()); }catch(e){ return false; } }
@@ -8543,15 +8553,15 @@ function showReceiptImage(url){
 }
 /* (2.63.0) المشاركة والحفظ داخل تطبيق الـ APK: WebView لا يدعم navigator.share ولا تنزيل blob، فنستعمل
    إضافتي Capacitor (Filesystem + Share) إن وُجدتا في الـ APK الجديد؛ وإلا Web Share في Chrome؛ وإلا التنزيل العادي */
-function nativeFS(){ try{ const C=window.Capacitor; if(!C||!(C.isNativePlatform?C.isNativePlatform():(C.getPlatform&&C.getPlatform()!=="web"))) return null;
-  const P=C.Plugins||{}, Fs=P.Filesystem||(C.registerPlugin&&C.registerPlugin("Filesystem")), Sh=P.Share||(C.registerPlugin&&C.registerPlugin("Share")); return Fs&&Sh?{Fs,Sh}:null; }catch(e){ return null; } }
+function nativeFS(){ const Fs=capPlugin("Filesystem"), Sh=capPlugin("Share"); return Fs&&Sh&&capHas("Filesystem")&&capHas("Share")?{Fs,Sh}:null; }
 function isNativeApp(){ try{ const C=window.Capacitor; return !!(C&&(C.isNativePlatform?C.isNativePlatform():(C.getPlatform&&C.getPlatform()!=="web"))); }catch(e){ return false; } }
 function blobToB64(b){ return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(String(r.result).split(",")[1]||""); r.onerror=rej; r.readAsDataURL(b); }); }
-async function nativeWrite(N,blob,name,dir){ const r=await N.Fs.writeFile({path:(dir==="DOCUMENTS"?"Sadaqa/":"")+name,data:await blobToB64(blob),directory:dir||"CACHE",recursive:true}); return r&&r.uri; }
+async function nativeWrite(N,blob,name,dir){ if(dir!=="DOCUMENTS"){ const ext=(String(name).match(/\.[a-z0-9]+$/i)||[".bin"])[0], base=String(name).replace(/\.[a-z0-9]+$/i,"").replace(/[^A-Za-z0-9_-]+/g,"-").replace(/^-+|-+$/g,""); name="sadaqa-"+(base||"file")+"-"+Date.now().toString(36)+ext; } // اسم لاتيني لقائمة المشاركة
+  const r=await N.Fs.writeFile({path:(dir==="DOCUMENTS"?"Sadaqa/":"")+name,data:await blobToB64(blob),directory:dir||"CACHE",recursive:true}); return r&&r.uri; }
 async function shareFilesAny(files,text){
   try{ if(navigator.canShare&&navigator.canShare({files})){ await navigator.share({files,text}); return true; } }catch(e){ if(e&&e.name==="AbortError") return true; }
   const N=nativeFS(); if(N){ try{ const uris=[]; for(const f of files) uris.push(await nativeWrite(N,f,f.name,"CACHE")); await N.Sh.share({title:text,text,files:uris,dialogTitle:"إرسال"}); return true; }
-    catch(e){ if(/cancel/i.test(String(e&&(e.message||e)))) return true; console.warn("native share",e); } }
+    catch(e){ const m=String(e&&(e.message||e)); if(/cancel/i.test(m)) return true; console.warn("native share",e); toast("⚠️ تعذّرت المشاركة: "+m.slice(0,120)); } }
   return false; }
 async function saveFileAny(blob,name){ const N=nativeFS();
   if(N){ try{ await nativeWrite(N,blob,name,"DOCUMENTS"); toast("✅ حُفظ في «المستندات ▸ Sadaqa» — "+name); return true; }
@@ -9364,7 +9374,7 @@ setTimeout(()=>{ if(!window.cloudReady){ const el=document.getElementById("cloud
 <!-- PWA: service-worker registration + update/install wiring -->
 <script>
 (function(){
-  var APP_VERSION = "2.64.0";
+  var APP_VERSION = "2.65.0";
   window.APP_VERSION = APP_VERSION;
   function $(id){ return document.getElementById(id); }
   // سجّل إصدار هذا الجهاز في الحالة المتزامنة (ليُنبَّه الجهاز القديم)

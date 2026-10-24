@@ -525,6 +525,12 @@
   «👷 رئيس العمّال» تُخفى خانات الحمل (`#bkLoadFields`, `#bkLoadKinds`، تلميح `#bkWorkerOnlyHint`) والزر «💾 حفظ رئيس العمّال» (`updPor` في
   `bindBrick`)؛ و`doBrickLoadSave` يحفظ الشخص فقط إن لم يُكتب مبلغ (الحمل **اختياري لأي شخص جديد**، وإلزامي فقط لتسجيل عمل لشخص موجود).
   الاختبار `tests/e2e/brick_worker_add.test.js`.
+- **إضافات الـ APK تعمل فعلًا (2.65.0) — «صورة الفواتير لا تنزل ولا تُرسل على واتساب»:** فحص الـ APK المنشور: الإضافات (Filesystem/Share/
+  NativeBiometric) **موجودة** فيه، لكن الصفحة تُحمَّل من الموقع فلا توجد فيها مكتبة `@capacitor/core`، فـ`Capacitor.Plugins.X` فارغ و`registerPlugin` غير معرّف
+  → كان `nativeFS()`/`nativeBio()` يُرجعان null دائمًا (المشاركة والبصمة الأصلية لم تعمل قط داخل الـ APK). الآن **`capPlugin(name)`**: `Plugins[name]` ←
+  `registerPlugin` ← وإلا وكيل `Proxy` على جسر Capacitor الأصلي `Capacitor.nativePromise(name, method, options)` (موجود في `native-bridge.js`)، مع `capHas(name)`
+  من `Capacitor.PluginHeaders` (APK قديم بلا الإضافة = null). `capNative()`. ملفات قائمة المشاركة في `CACHE` بأسماء لاتينية (`sadaqa-…-{ts}.jpg`)، وخطأ المشاركة
+  الأصلي يظهر توستًا. **قاعدة:** أي إضافة Capacitor جديدة تُستدعى عبر `capPlugin("Name")` لا `Capacitor.Plugins`. الاختبار في `invoice_share.test.js` (جسر حقيقي مُحاكى).
 - **الشاشة ثابتة (2.64.0) — «الشاشة التي خلف النافذة تتحرّك عند السحب»:** الصفحة (`body`) هي التي تتمرّر، فكان السحب داخل نافذة يصل
   إلى نهايتها ثم يحرّك الصفحة خلفها. الآن `syncModalLock()` (MutationObserver على `style/class/hidden`، محروس لـ`bot/app-vm.js`) يضع `html.modal-open`/
   `body.modal-open` (`overflow:hidden`) ما دامت أي `.modal` ظاهرة (`style.display` ≠ none) أو `#lightbox` أو `#lockScreen` (`overlayOpen()`)، و`.modal-box`/
