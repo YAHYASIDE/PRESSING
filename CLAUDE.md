@@ -525,6 +525,12 @@
   «👷 رئيس العمّال» تُخفى خانات الحمل (`#bkLoadFields`, `#bkLoadKinds`، تلميح `#bkWorkerOnlyHint`) والزر «💾 حفظ رئيس العمّال» (`updPor` في
   `bindBrick`)؛ و`doBrickLoadSave` يحفظ الشخص فقط إن لم يُكتب مبلغ (الحمل **اختياري لأي شخص جديد**، وإلزامي فقط لتسجيل عمل لشخص موجود).
   الاختبار `tests/e2e/brick_worker_add.test.js`.
+- **الإعدادات لا ترجع للقديم (2.66.0) — «أغيّر أسماء السيارات من الإعدادات وأحفظ فترجع»:** `applyRemote` كان يأخذ كل الحقول غير المصفوفات من
+  السحابة (`Object.assign(state, remote)`)، وحتى الرفع يمرّ به (`mergeForPush` في معاملة 2.34) — فأي تعديل إعدادات يُستبدل بنسخة الخادم القديمة. الآن
+  **`CFG_KEYS`** (vehiclePrices/piecePrices/pieceUnit/washTypes/laundryTypes/tariff/alerts/autoClosing/lock/meterPin/msgTpl/notify/shopInfo/tgPin/thanksMsg/adMsg)
+  تُختم: `cfgStamp()` (في `save()` وبداية `applyRemote`) يقارن بصمة كل مفتاح بـ`_cfgSig` ويضع `state.cfgAt[k]=الآن` عند التغيّر المحلي؛ `cfgSnap()` بعد الدمج وبعد
+  التحميل. في `applyRemote`: `Lcfg/LcfgAt` تُلتقط قبل `Object.assign` ويفوز الأحدث لكل مفتاح، و`cfgAt` يُدمج بالأكبر. إعادة تسمية صنف تحفظ مكانه في
+  القائمة (و`pieceUnit` وصورته) وتُسجَّل في النشاط. **قاعدة:** إعداد جديد مُزامن (ليس مصفوفة) يُضاف إلى `CFG_KEYS`. الاختبار `tests/e2e/cfg_merge.test.js`.
 - **إضافات الـ APK تعمل فعلًا (2.65.0) — «صورة الفواتير لا تنزل ولا تُرسل على واتساب»:** فحص الـ APK المنشور: الإضافات (Filesystem/Share/
   NativeBiometric) **موجودة** فيه، لكن الصفحة تُحمَّل من الموقع فلا توجد فيها مكتبة `@capacitor/core`، فـ`Capacitor.Plugins.X` فارغ و`registerPlugin` غير معرّف
   → كان `nativeFS()`/`nativeBio()` يُرجعان null دائمًا (المشاركة والبصمة الأصلية لم تعمل قط داخل الـ APK). الآن **`capPlugin(name)`**: `Plugins[name]` ←

@@ -7237,7 +7237,16 @@ function cloudCopy(){
 }
 function verCmp(a,b){ const A=String(a||"0").split(".").map(x=>+x||0), B=String(b||"0").split(".").map(x=>+x||0); for(let i=0;i<3;i++){ if((A[i]||0)!==(B[i]||0)) return (A[i]||0)>(B[i]||0)?1:-1; } return 0; }
 let _cdEdit=null, _cdConfirmOpen=false;
-function save(){ try{ syncUnitMoves(); }catch(e){} saveLocal(); if(!_unsyncedSince) _unsyncedSince=Date.now(); if(_cdEdit && !_cdConfirmOpen){ setTimeout(cdAfterSave,0); } updateCloudBtn("pending"); L_pending_push=true; if(window.cloudReady && !_applyingRemote){ clearTimeout(_pushT); _pushT=setTimeout(()=>{ try{ window.cloudPush(cloudCopy()); L_pending_push=false; }catch(e){ updateCloudBtn("offline"); } }, 600); } }
+/* (2.66.0) الإعدادات (الأصناف والأسعار، الرسائل، بيانات المحل، التنبيهات…) كانت تُستبدل دائمًا بنسخة السحابة عند الدمج — حتى عند
+   الرفع (المعاملة تدمج نسخة الخادم أولًا) — فيرجع تعديل اسم السيارة إلى القديم. الآن كل مفتاح إعدادات يُختم بوقت تعديله المحلي
+   (state.cfgAt[k]) ويفوز الأحدث عند الدمج. */
+const CFG_KEYS=["vehiclePrices","piecePrices","pieceUnit","washTypes","laundryTypes","tariff","alerts","autoClosing","lock","meterPin","msgTpl","notify","shopInfo","tgPin","thanksMsg","adMsg"];
+let _cfgSig=null;
+function cfgSigOf(k){ try{ return JSON.stringify(state[k]===undefined?null:state[k]); }catch(e){ return ""; } }
+function cfgSnap(){ _cfgSig={}; CFG_KEYS.forEach(k=>_cfgSig[k]=cfgSigOf(k)); }
+function cfgStamp(){ if(_applyingRemote) return false; if(!_cfgSig){ cfgSnap(); return false; } let ch=false; const now=Date.now();
+  CFG_KEYS.forEach(k=>{ const v=cfgSigOf(k); if(_cfgSig[k]!==v){ state.cfgAt=state.cfgAt||{}; state.cfgAt[k]=Math.max(now,(+state.cfgAt[k]||0)+1); _cfgSig[k]=v; ch=true; } }); return ch; }
+function save(){ try{ cfgStamp(); }catch(e){} try{ syncUnitMoves(); }catch(e){} saveLocal(); if(!_unsyncedSince) _unsyncedSince=Date.now(); if(_cdEdit && !_cdConfirmOpen){ setTimeout(cdAfterSave,0); } updateCloudBtn("pending"); L_pending_push=true; if(window.cloudReady && !_applyingRemote){ clearTimeout(_pushT); _pushT=setTimeout(()=>{ try{ window.cloudPush(cloudCopy()); L_pending_push=false; }catch(e){ updateCloudBtn("offline"); } }, 600); } }
 function load(){ try{ const d=localStorage.getItem(LS_KEY); if(d) Object.assign(state, JSON.parse(d)); }catch(e){} }
 const SYNC_ARRAYS=["carOps","carpetOrders","laundryOrders","expenses","meters","workers","users","managers","storeProducts","storeSales","storePurchases","storeCustomers","storeCash","storeDebts","brickBatches","brickPurchases","brickSales","brickExpenses","brickCash","brickLedger","brickPorters","brickLoads","brickOrders","brickWaste","unitXfers","suppliers","closings","recurring","dailyCosts","dailyCostPays","activity","logins","closedDayEdits"];
 function _editedAtOf(id){ for(const k of SYNC_ARRAYS){ const r=(state[k]||[]).find(x=>x&&x.id===id); if(r) return +new Date(r.editedAt||0)||0; } return 0; }
@@ -7326,6 +7335,8 @@ function applyRemote(remote){
   // ⚠️ (2.36.0) كان كل استلام يُعيد الرفع ويُعيد الرسم حتى بلا تغيير: الرفع يولّد استلامًا جديدًا ← حلقة لا تنتهي
   // (الشاشة «ترمش» عند فتح جهازين). الآن: نرفع فقط إن كان الدمج أضاف شيئًا ليس في السحابة، ونرسم فقط إن تغيّر شيء هنا.
   const remoteSig=syncSig(stripPhotos(JSON.parse(JSON.stringify(Object.fromEntries(Object.entries(remote||{}).filter(([k])=>!CLOUD_OMIT.includes(k))))))), localSig=syncSig(cloudCopy());
+  try{ cfgStamp(); }catch(e){} // تعديل إعدادات لم يُختم بعد يُختم قبل الدمج
+  const Lcfg={}; CFG_KEYS.forEach(k=>{ if(state[k]!==undefined) Lcfg[k]=JSON.parse(JSON.stringify(state[k])); }); const LcfgAt=Object.assign({},state.cfgAt||{});
   _applyingRemote=true;
   const unmigrated = (remote.codesV!==3);
   const L={ carOps:state.carOps||[], carpetOrders:state.carpetOrders||[], expenses:state.expenses||[],
@@ -7343,6 +7354,8 @@ function applyRemote(remote){
   const LbrickCfg=JSON.parse(JSON.stringify(state.brickCfg||{}));
   const LtypeImgs=Object.assign({},state.typeImgs||{});
    Object.assign(state, remote);
+   { const RA=remote.cfgAt||{}, at=Object.assign({},RA); Object.keys(LcfgAt).forEach(k=>{ if((+LcfgAt[k]||0)>(+RA[k]||0)) at[k]=LcfgAt[k]; });
+     CFG_KEYS.forEach(k=>{ if((+LcfgAt[k]||0)>(+RA[k]||0)&&Lcfg[k]!==undefined) state[k]=Lcfg[k]; }); state.cfgAt=at; }
    { const R=Object.assign({},remote.typeImgs||{}); Object.keys(LtypeImgs).forEach(k=>{ if(!R[k]||(+LtypeImgs[k].at||0)>(+R[k].at||0)) R[k]=LtypeImgs[k]; }); state.typeImgs=R; }
    // إعدادات دبو تُدمج مفتاحًا مفتاحًا: ما ينقص في النسخة البعيدة (مثل آخر أسعار الشراء بعد التصفير) لا يضيع
    if(remote.brickCfg||LbrickCfg){ const rc=remote.brickCfg||{}; state.brickCfg=Object.assign({},LbrickCfg,rc); if(LbrickCfg.lastCost||rc.lastCost) state.brickCfg.lastCost=Object.assign({},LbrickCfg.lastCost||{},rc.lastCost||{}); if(LbrickCfg.loadRate||rc.loadRate) state.brickCfg.loadRate=Object.assign({},LbrickCfg.loadRate||{},rc.loadRate||{}); }
@@ -7401,7 +7414,7 @@ function applyRemote(remote){
   try{ syncUnitMoves(); }catch(e){}
   const mergedSig=syncSig(cloudCopy()); window._lastMergeSame=(mergedSig===remoteSig);
   if(mergedSig!==localSig || !window._remoteApplied){ saveLocal(); applyTheme(); applyLock(); render(); maybeAlertNewActivity(); } else { _sigSkips++; }
-  _applyingRemote=false;
+  _applyingRemote=false; try{ cfgSnap(); }catch(e){}
   if(!window._remoteApplied){ window._remoteApplied=true; setTimeout(()=>{ try{ takeBackup(false); }catch(e){} }, 8000); }
   try{ if(applyRecurring()) render(); }catch(e){}
   // Always push merged result back so cloud stays current (إلا إن كان الدمج نفسه جزءًا من عملية حفظ)
@@ -7641,7 +7654,7 @@ function renderCatalogAdmin(){
   host.querySelectorAll("[data-cp]").forEach(inp=>inp.onchange=()=>{ const [mk,k]=inp.dataset.cp.split("~"); state[mk][k]=+inp.value||0; save(); toast("حُفظ السعر"); });
   host.querySelectorAll("[data-m2]").forEach(cb=>cb.onchange=()=>{ state.pieceUnit=state.pieceUnit||{}; if(cb.checked) state.pieceUnit[cb.dataset.m2]="m2"; else delete state.pieceUnit[cb.dataset.m2]; save(); toast(cb.checked?"يُحسب بالمتر":"يُحسب بالقطعة"); renderCatalogAdmin(); });
   host.querySelectorAll("[data-cat-add]").forEach(b=>b.onclick=()=>{ const mk=b.dataset.catAdd; const nm=_catClean(host.querySelector(`[data-newnm="${mk}"]`).value); const pr=+(host.querySelector(`[data-newpr="${mk}"]`).value||0); if(nm.length<1) return toast("أدخل اسم الصنف"); if(state[mk][nm]!=null) return toast("الصنف موجود"); state[mk][nm]=pr; save(); renderCatalogAdmin(); toast("أُضيف الصنف"); });
-  host.querySelectorAll("[data-cat-ren]").forEach(b=>b.onclick=()=>{ const [mk,k]=b.dataset.catRen.split("~"); const nn=_catClean(prompt("الاسم الجديد:",k)); if(!nn||nn===k) return; if(state[mk][nn]!=null) return toast("الاسم مستخدم"); state[mk][nn]=state[mk][k]; typeImgMove(mk==="vehiclePrices"?"veh":"pc",k,nn); delete state[mk][k]; save(); renderCatalogAdmin(); toast("تم التعديل"); });
+  host.querySelectorAll("[data-cat-ren]").forEach(b=>b.onclick=()=>{ const [mk,k]=b.dataset.catRen.split("~"); const nn=_catClean(prompt("الاسم الجديد:",k)); if(!nn||nn===k) return; if(state[mk][nn]!=null) return toast("الاسم مستخدم"); { const o={}; Object.keys(state[mk]).forEach(x=>{ o[x===k?nn:x]=state[mk][x]; }); state[mk]=o; } if(mk==="piecePrices"&&state.pieceUnit&&state.pieceUnit[k]){ state.pieceUnit[nn]=state.pieceUnit[k]; delete state.pieceUnit[k]; } typeImgMove(mk==="vehiclePrices"?"veh":"pc",k,nn); logActivity("تعديل اسم صنف",k+" ← "+nn); save(); renderCatalogAdmin(); toast("تم التعديل"); });
   host.querySelectorAll("[data-cat-del]").forEach(b=>b.onclick=()=>{ const [mk,k]=b.dataset.catDel.split("~"); if(Object.keys(state[mk]).length<=1) return toast("أبقِ صنفًا واحدًا على الأقل"); if(confirm("حذف الصنف «"+k+"»؟")){ delete state[mk][k]; save(); renderCatalogAdmin(); toast("تم الحذف"); } });
   host.querySelectorAll("[data-catn-add]").forEach(b=>b.onclick=()=>{ const ak=b.dataset.catnAdd; const nm=_catClean(host.querySelector(`[data-newnm2="${ak}"]`).value); if(nm.length<1) return toast("أدخل الاسم"); if((state[ak]||[]).includes(nm)) return toast("موجود"); state[ak]=state[ak]||[]; state[ak].push(nm); save(); renderCatalogAdmin(); toast("أُضيف"); });
   host.querySelectorAll("[data-catn-ren]").forEach(b=>b.onclick=()=>{ const [ak,i]=b.dataset.catnRen.split("~"); const idx=+i; const cur=state[ak][idx]; const nn=_catClean(prompt("الاسم الجديد:",cur)); if(!nn||nn===cur) return; if(state[ak].includes(nn)) return toast("مستخدم"); state[ak][idx]=nn; if(ak==="laundryTypes") typeImgMove("lnd",cur,nn); save(); renderCatalogAdmin(); toast("تم التعديل"); });
@@ -8100,6 +8113,8 @@ function _rand(n){ const a=new Uint8Array(n); crypto.getRandomValues(a); return 
    CHANGELOG: الأحدث أولًا. لكل تعديل: ic, t (العنوان), d (الشرح), go (أين: tab + storeSub/contactsSub/…), sel (العنصر الذي يُشار إليه).
    **قاعدة: كل إصدار جديد يضيف مدخلًا هنا** — يظهر للمستخدم مرة واحدة بعد التحديث مع «تخطي» و«أرني» و«جولة». */
 const CHANGELOG=[
+  {v:"2.66.0",date:"2026-10-26",items:[
+    {ic:"🚗",t:"تعديل أسماء السيارات والأصناف يبقى محفوظًا",d:"كان تغيير اسم نوع السيارة (أو السجاد/الملابس/الغسيل، أو الأسعار والرسائل وبيانات المحل) يرجع للاسم القديم بعد الحفظ لأن نسخة السحابة كانت تغلبه. الآن التعديل الأحدث هو الذي يبقى على كل الأجهزة.",go:{tab:"cars"},sel:'[data-vpick], #carPlate'}]},
   {v:"2.65.0",date:"2026-10-24",items:[
     {ic:"📤",t:"إرسال صورة الفاتورة وتنزيلها يعمل في تطبيق الـ APK",d:"كان تطبيق الهاتف لا يصل إلى أداة المشاركة. الآن «📤 صورة» و«📄 PDF» يفتحان قائمة المشاركة (واتساب…)، و«⬇️ تنزيل» يحفظ في «المستندات ▸ Sadaqa». والبصمة داخل التطبيق تعمل بالطريقة نفسها.",go:{tab:"cars"},sel:'[data-car-receipt], #carPlate'}]},
   {v:"2.64.0",date:"2026-10-21",items:[
@@ -9277,7 +9292,7 @@ function runMigrations(){
   ensureCarNos();
   return changed;
 }
-runMigrations(); saveLocal();
+runMigrations(); saveLocal(); try{ cfgSnap(); }catch(e){}
 { const t=ymd(new Date()); state.dateFrom=t; state.dateTo=t; }
 state.lock={enabled:true, pin:(state.lock&&state.lock.pin)||"0707"};
 applyPalette();
@@ -9374,7 +9389,7 @@ setTimeout(()=>{ if(!window.cloudReady){ const el=document.getElementById("cloud
 <!-- PWA: service-worker registration + update/install wiring -->
 <script>
 (function(){
-  var APP_VERSION = "2.65.0";
+  var APP_VERSION = "2.66.0";
   window.APP_VERSION = APP_VERSION;
   function $(id){ return document.getElementById(id); }
   // سجّل إصدار هذا الجهاز في الحالة المتزامنة (ليُنبَّه الجهاز القديم)
