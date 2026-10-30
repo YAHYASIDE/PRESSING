@@ -1984,7 +1984,7 @@ function readAndCompress(file,cb){
   r.readAsDataURL(file);
 }
 /* (2.42.0) اللوحة: الأحرف الكبيرة والصغيرة واحد (Aa)، والبحث بأي جزء منها؛ كل اللوحات تُحفظ وتُقترح */
-function normPlate(p){ return String(p||"").trim().replace(/\s+/g," ").toUpperCase(); }
+function normPlate(p){ return toLatinDigits(p||"").trim().replace(/\s+/g," ").toUpperCase(); }
 function plateKey(p){ const n=normPlate(p); if(!n) return ""; if(state.customers&&state.customers[n]) return n; const k=Object.keys(state.customers||{}).find(x=>normPlate(x)===n); return k||n; }
 function plateCust(p){ const k=plateKey(p); return k&&state.customers?state.customers[k]:null; }
 function knownPlates(){ const m={}; const add=(plate,o)=>{ const k=normPlate(plate); if(!k) return; const r=m[k]||(m[k]={plate:k}); if(!r.name&&o.name) r.name=o.name; if(!r.phone&&o.phone){ r.phone=o.phone; r.country=o.country; } if(o.last&&String(o.last)>String(r.last||"")) r.last=o.last; };
@@ -5096,6 +5096,8 @@ function doManualDebtSave(){
 function askReason(title){ try{ const r=prompt(title||"سبب الحذف (اختياري):",""); return r==null?null:String(r).trim(); }catch(e){ return ""; } }
 function deleteManualDebt(id){
   const x=(state.storeDebts||[]).find(y=>y.id===id); if(!x||x.cancelled) return; const c=storeCust(x.customerId);
+  /* دين سُدِّد منه شيء (نقدًا أو بمقاصة) لا يُحذف: حذفه يُبقي الدفعة أو الجهة الأخرى من المقاصة فيختلّ كشف الحساب عن الرصيد */
+  if((+x.paidAmount||0)>0) return toast("⛔ لا يُحذف: سُدِّد منه "+money(x.paidAmount)+" "+CUR+" — احذف الدفعة أولًا من الصندوق (🗑️) ثم احذف الدين، أو عدّل المبلغ ✏️");
   requireCode(()=>{ const reason=askReason("سبب حذف الدين (اختياري) — التفاصيل تبقى محفوظة في السجل:"); if(reason===null) return;
     const now=iso(new Date()); x.cancelled=true; x.cancelledAt=now; x.cancelledBy=currentUser; x.cancelReason=reason; x.editedAt=now;
     logActivity("حذف دين يدوي",(c?c.name:"")+" · "+money(x.amount)+" "+CUR+" · "+(x.note||"")+(reason?" · السبب: "+reason:"")+" (محفوظ في السجل)");
@@ -5845,7 +5847,7 @@ function bindStore(){
 }
 
 /* ================= الزبائن والموردون ================= */
-function _esc(s){ return String(s==null?"":s).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;"); }
+function _esc(s){ return toLatinDigits(s).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;"); }
 function contactBtns(phone,country,text){
   const t=telLink(phone,country), w=waPhoneFull(phone,country);
   return (t?`<a class="wa-btn" href="${t}" title="اتصال" style="display:inline-grid;place-items:center;text-decoration:none;width:28px;height:28px">📞</a>`:"")
@@ -7516,7 +7518,7 @@ function toLatinDigits(v){ return String(v==null?"":v).replace(/[\u0660-\u0669]/
 function latinInputs(root){ (root||document).querySelectorAll('input[type=number],input[type=date],input[type=time],input[type=tel],input[data-num]').forEach(i=>{ if(!i.lang) i.lang="en";
   if(i.type==="number"){ const v=i.value; i.type="text"; if(!i.getAttribute("inputmode")) i.setAttribute("inputmode","decimal"); i.dataset.num="1"; i.setAttribute("autocomplete","off"); i.value=toLatinDigits(v); }
   else if((i.dataset.num||i.type==="tel") && /[\u0660-\u0669\u06F0-\u06F9]/.test(i.value)) i.value=toLatinDigits(i.value); }); }
-document.addEventListener("input",e=>{ const t=e.target; if(!t||t.tagName!=="INPUT"||!(t.dataset.num||t.type==="tel")) return; const v=t.value, n=toLatinDigits(v); if(n!==v){ let pos=null; try{ pos=t.selectionStart; }catch(_){} t.value=n; try{ if(pos!=null) t.setSelectionRange(pos,pos); }catch(_){} } },true);
+document.addEventListener("input",e=>{ const t=e.target; if(!t||!(t.tagName==="INPUT"||t.tagName==="TEXTAREA")||t.type==="password"||t.type==="file"||t.type==="checkbox"||t.type==="radio") return; const v=t.value, n=toLatinDigits(v); if(n!==v){ let pos=null; try{ pos=t.selectionStart; }catch(_){} t.value=n; try{ if(pos!=null) t.setSelectionRange(pos,pos); }catch(_){} } },true);
 latinInputs(document);
 try{ new MutationObserver(()=>latinInputs(document)).observe(document.body,{childList:true,subtree:true}); }catch(e){}
 /* حفظ ما يكتبه المستخدم عند إعادة الرسم: الضغط على زر (نقدي/آجل، النقل، نوع المادة…) أو وصول مزامنة كان يمسح الحقول.
@@ -8117,6 +8119,9 @@ function _rand(n){ const a=new Uint8Array(n); crypto.getRandomValues(a); return 
    CHANGELOG: الأحدث أولًا. لكل تعديل: ic, t (العنوان), d (الشرح), go (أين: tab + storeSub/contactsSub/…), sel (العنصر الذي يُشار إليه).
    **قاعدة: كل إصدار جديد يضيف مدخلًا هنا** — يظهر للمستخدم مرة واحدة بعد التحديث مع «تخطي» و«أرني» و«جولة». */
 const CHANGELOG=[
+  {v:"2.68.0",date:"2026-10-30",items:[
+    {ic:"🔢",t:"الأرقام لاتينية حتى في اللوحة والوصف",d:"إن كُتب رقم بالعربية (١٠ أو ٠٠) في اللوحة أو الاسم أو الوصف يتحوّل فورًا إلى 10/00، والقديم يُعرض لاتينيًا. واللوحة «١٠» هي نفسها «10» في بطاقة الولاء.",go:{tab:"cars"},sel:'#carPlate'},
+    {ic:"⛔",t:"لا يُحذف دين سُدِّد منه شيء",d:"حذف دين يدوي دُفع منه جزء كان يجعل كشف الحساب لا يطابق الرصيد. الآن يظهر تنبيه: احذف الدفعة من الصندوق أولًا أو عدّل المبلغ.",go:{tab:"store",storeSub:"debts"},sel:'.party-card, .debtor-card'}]},
   {v:"2.67.0",date:"2026-10-30",items:[
     {ic:"⚖️",t:"«كان ← صار» تحت كل عملية",d:"في بطاقة كل زبون (المتجر ▸ الزبائن والديون، والزبائن ▸ الديون) وعمليات العمّال وقيود دبو: تحت كل عملية الرصيد قبلها وبعدها، فترى كيف وصل الحساب إلى رقمه الآن.",go:{tab:"store",storeSub:"debts"},sel:'.party-card, .debtor-card'},
     {ic:"📄",t:"كل كشوف الحساب برصيد قبل وبعد",d:"كشف المورّد وكشف الإيجار (المصاريف باليومية) صارا دفترًا مثل كشف الزبون، وكشف دبو بالصورة فيه عمودا «الرصيد قبل / الرصيد بعد»، و«💬 كتابةً» يكتب الرصيد بعد كل سطر.",go:{tab:"store",storeSub:"debts"},sel:'.party-card, .debtor-card'}]},
@@ -9399,7 +9404,7 @@ setTimeout(()=>{ if(!window.cloudReady){ const el=document.getElementById("cloud
 <!-- PWA: service-worker registration + update/install wiring -->
 <script>
 (function(){
-  var APP_VERSION = "2.67.0";
+  var APP_VERSION = "2.68.0";
   window.APP_VERSION = APP_VERSION;
   function $(id){ return document.getElementById(id); }
   // سجّل إصدار هذا الجهاز في الحالة المتزامنة (ليُنبَّه الجهاز القديم)
