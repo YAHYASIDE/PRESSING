@@ -1033,6 +1033,7 @@
 .dc-amt small{font-size:.66rem;color:var(--muted)}
 .dc-credit{font-size:.8rem;color:var(--ready)}
 .cash-list{display:flex;flex-direction:column;gap:6px}.cash-row{display:flex;align-items:center;gap:6px;padding:8px 10px;border:1px solid var(--line);border-inline-start:4px solid var(--ready);border-radius:12px;background:var(--surface)}.cash-row.out{border-inline-start-color:var(--unpaid)}.cash-row.day-row{cursor:pointer}.cr-main{flex:1;min-width:0}.cr-t{display:block;font-size:.86rem;line-height:1.35;word-break:break-word}.cr-main small{display:block;color:var(--muted);font-size:.72rem;margin-top:2px}.cr-a{white-space:nowrap;font-size:.95rem;color:var(--ready)}.cash-row.out .cr-a{color:var(--unpaid)}.cr-btns{display:flex;gap:2px;flex-shrink:0}.cr-btns .icon-btn{width:30px;height:30px}
+.run-line{font-size:.7rem;color:var(--muted);font-weight:600;margin-top:2px}.run-line b{color:var(--ink);font-weight:800}
 .wtx-list{display:flex;flex-direction:column;gap:4px}.wtx-row{display:flex;align-items:center;gap:6px;padding:6px 8px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}.wtx-row.gone{opacity:.55}.wtx-row.gone .wtx-a{text-decoration:line-through}.wtx-t{flex:1;min-width:0;font-size:.82rem;font-weight:700}.wtx-t small{display:block;font-weight:500;color:var(--muted);font-size:.72rem}.wtx-a{white-space:nowrap;font-size:.85rem}
 .dc-toggle{align-self:flex-start;border:0;background:transparent;color:var(--brand);font-family:inherit;font-weight:800;font-size:.8rem;padding:2px 0;cursor:pointer}
 .dc-details{border-top:1px dashed var(--line);padding-top:6px;display:flex;flex-direction:column;gap:4px}
@@ -2619,15 +2620,21 @@ function brickPartyRows(type,id){
   brickLive(state.brickPurchases).forEach(x=>{ if(!((type==="sup"&&x.supplierId===id&&x.partyType!=="cust")||(type==="cust"&&x.partyType==="cust"&&x.partyId===id))) return; rows.push({date:x.date,label:"🛒 شراء "+(x.name||"")+" "+x.no+" ("+fmt(x.qty)+" × "+money(x.unitCost)+")",debit:0,credit:+x.total||0,ref:x.id});
     (state.brickCash||[]).forEach(m=>{ if(m.ref===x.id&&m.type==="out") rows.push({date:m.date,label:"💸 تسديد على "+x.no+" · "+pmLabel(m.payMethod),debit:+m.amount||0,credit:0,ref:m.id}); }); });
   (state.brickOrders||[]).forEach(o=>{ if(o.partyType!==type||o.partyId!==id) return; (state.brickCash||[]).forEach(m=>{ if(m.ref!==o.id) return; rows.push({date:m.date,label:(m.type==="in"?"📦 عربون طلبية ":"↩️ ردّ عربون ")+o.no+" · "+pmLabel(m.payMethod),debit:m.type==="out"?(+m.amount||0):0,credit:m.type==="in"?(+m.amount||0):0,ref:m.id}); }); });
-  brickLive(state.brickLedger).forEach(x=>{ if(x.partyType!==type||x.partyId!==id) return; const K=BRICK_LKIND[x.kind]||BRICK_LKIND.other; rows.push({date:x.date,label:K.ic+" "+(x.dir==="on"?"عليه":"له")+" — "+K.t+(x.qty?" "+fmt(x.qty)+" طوبة":"")+(x.note?" · "+x.note:"")+(x.cash?" · "+pmLabel(x.payMethod):""),debit:x.dir==="on"?(+x.amount||0):0,credit:x.dir==="for"?(+x.amount||0):0,ref:x.id,ledger:true}); });
+  brickLive(state.brickLedger).forEach(x=>{ if(x.partyType!==type||x.partyId!==id) return; const K=BRICK_LKIND[x.kind]||BRICK_LKIND.other; rows.push({lid:x.id,date:x.date,label:K.ic+" "+(x.dir==="on"?"عليه":"له")+" — "+K.t+(x.qty?" "+fmt(x.qty)+" طوبة":"")+(x.note?" · "+x.note:"")+(x.cash?" · "+pmLabel(x.payMethod):""),debit:x.dir==="on"?(+x.amount||0):0,credit:x.dir==="for"?(+x.amount||0):0,ref:x.id,ledger:true}); });
   rows.sort((a,b)=>(a.date||"").localeCompare(b.date||"")); let bal=0; rows.forEach(r=>{ bal+=r.debit-r.credit; r.balance=bal; }); return rows;
 }
 /* (2.55.0) دفتر موحّد لكشوف دبو (مثل كشف الزبون): الرصيد الآن · المجموع · كل حركة مع «كان ← صار» — فيخرج PDF/الصورة مرتّبين.
    rows:[{d,t,s,dr,cr}] بترتيب زمني؛ dr = عليه (+) ، cr = له (−)؛ final موجب = عليه لنا */
+/* (2.67.0) «كان ← صار» في كل كشف وكل قائمة عمليات: الرصيد قبل العملية وبعدها (موجب = عليه لنا، سالب = له علينا) */
+function balTxt(n,who){ n=Math.round(+n||0); if(who==="worker") return n>0?"له "+money(n):n<0?"عليه "+money(-n):"0"; return n>0?"عليه "+money(n):n<0?"له "+money(-n):"0"; }
+function runLineHTML(before,after,who){ return `<div class="run-line">كان <b>${balTxt(before,who)}</b> ← صار <b>${balTxt(after,who)}</b></div>`; }
+/* أسطر بترتيب زمني بمبلغ موقَّع: تُرجع before/after لكل سطر، وتبدأ برصيد سابق يجعل آخر رصيد = final إن أُعطي */
+function withRun(list,sgn,final){ const tot=list.reduce((a,x)=>a+(+sgn(x)||0),0); let run=final!=null?(final-tot):0; return list.map(x=>{ const b=run; run+=(+sgn(x)||0); return {x,before:b,after:run}; }); }
 function ledgerRcptHTML(o){ const E=_esc, R=o.rows.slice().sort((a,b)=>new Date(a.d)-new Date(b.d)), f=o.final, bal=o.box?(n=>(n<0?"−":"")+money(Math.abs(n))):(n=>n>0?"عليه "+money(n):n<0?"له "+money(-n):"0");
-  let run=0; const rows=R.length?R.map(r=>{ const before=run; run+=(+r.dr||0)-(+r.cr||0);
+  const _tot=R.reduce((a,r)=>a+(+r.dr||0)-(+r.cr||0),0), _open=f!=null?Math.round(f-_tot):0; let run=_open;
+  const rows=(_open&&R.length?`<div class="lg-row"><div class="lg-top"><span class="lg-t">↪️ رصيد سابق</span><b class="lg-a nz">${bal(_open)}</b></div></div>`:"")+(R.length?R.map(r=>{ const before=run; run+=(+r.dr||0)-(+r.cr||0);
     return `<div class="lg-row"><div class="lg-top"><span class="lg-t">${E(r.t)}</span>${r.dr?`<b class="lg-a ${o.box?"cr":"dr"}">+${money(r.dr)}</b>`:r.cr?`<b class="lg-a ${o.box?"dr":"cr"}">−${money(r.cr)}</b>`:`<b class="lg-a nz">${money(r.show||0)} ✓</b>`}</div>
-      <div class="lg-sub"><bdi dir="ltr">${frD(r.d)}</bdi>${r.s?` · ${E(r.s)}`:""}${r.dr||r.cr?`<span class="lg-bal">كان ${bal(before)} ← صار <b>${bal(run)}</b></span>`:""}</div></div>`; }).join(""):`<div class="hint">لا تعاملات بعد.</div>`;
+      <div class="lg-sub"><bdi dir="ltr">${frD(r.d)}</bdi>${r.s?` · ${E(r.s)}`:""}${r.dr||r.cr?`<span class="lg-bal">كان ${bal(before)} ← صار <b>${bal(run)}</b></span>`:""}</div></div>`; }).join(""):`<div class="hint">لا تعاملات بعد.</div>`);
   return `<div class="rcpt ledger">${rcptHeader(o.head)}
     <div class="lg-final ${o.box?(f<0?"on":"zero"):f>0?"on":f<0?"for":"zero"}"><small>الرصيد الآن</small><b>${o.box?(f<0?"−":"")+money(Math.abs(f))+" "+CUR:(f>0?"عليه لنا":f<0?"له علينا":"متعادل")+" "+(f?money(Math.abs(f))+" "+CUR:"✓")}</b></div>
     <div class="lg-sum"><div><small>${o.drLbl||"عليه (مدين)"}</small><b>${money(sum(R,r=>+r.dr||0))}</b></div><div><small>${o.crLbl||"له / دفع (دائن)"}</small><b>${money(sum(R,r=>+r.cr||0))}</b></div><div><small>عدد الحركات</small><b>${R.length}</b></div></div>
@@ -3317,7 +3324,8 @@ function brickScreenDebts(){
       <div class="price" style="color:var(--wash)">${money(brickWageOut(b))} ${CUR}</div>
       <div class="order-acts-sub"><button class="mini act-pay" data-bk-wage="${b.id}">💵 دفع الأجرة</button></div>
     </div>`).join(""):`<div class="hint">كل أجور الخلطات مدفوعة 🎉</div>`;
-  const ledgerRecent=(state.brickLedger||[]).slice().sort((a,b)=>(b.date||"").localeCompare(a.date||"")).slice(0,_bkDraft.ledgerAll?100000:12).map(x=>{ const pt=brickParty(x.partyType,x.partyId); const K=BRICK_LKIND[x.kind]||BRICK_LKIND.other; if(x.cancelled) return `<tr style="opacity:.6"><td>${frD(x.date)}</td><td><b>${E(pt?pt.name:"?")}</b></td><td class="amt" style="text-decoration:line-through">${money(x.amount)}</td><td>🗑️ محذوف — ${E(x.note||"")}<div style="font-size:.72rem;color:var(--muted)">حذفه ${E(x.cancelledBy||"?")} ${frD(x.cancelledAt||x.editedAt)}${x.cancelReason?" — "+E(x.cancelReason):""}</div></td><td style="text-align:left">${currentRole!=="worker"?`<button class="mini" data-bk-lrestore="${x.id}">↩️ استعادة</button>`:""}</td></tr>`; return `<tr><td>${frD(x.date)}</td><td><b>${E(pt?pt.name:"?")}</b></td><td class="amt" style="font-weight:800;color:${x.dir==="on"?'var(--unpaid)':'var(--ready)'}">${money(x.amount)}</td><td><span class="badge ${x.dir==="on"?"b-unpaid":"b-paid"}">${x.dir==="on"?"عليه":"له"}</span> ${K.ic} ${K.t}${x.qty?" "+fmt(x.qty):""}${x.note?`<div style="font-size:.72rem;color:var(--muted)">${E(x.note)}</div>`:""}</td><td style="text-align:left">${currentRole!=="worker"?`${recEditBtn("bledger",x.id)}<button class="icon-btn" data-bk-del="ledger:${x.id}" title="حذف">${svg(I.trash)}</button>`:""}</td></tr>`; }).join("");
+  const _lrun={}, _lrunP={}; const lrun=x=>{ const k=x.partyType+":"+x.partyId; if(!_lrunP[k]){ _lrunP[k]=1; brickPartyRows(x.partyType,x.partyId).forEach(r=>{ if(r.lid) _lrun[r.lid]={b:r.balance-(r.debit-r.credit),a:r.balance}; }); } return _lrun[x.id]; };
+  const ledgerRecent=(state.brickLedger||[]).slice().sort((a,b)=>(b.date||"").localeCompare(a.date||"")).slice(0,_bkDraft.ledgerAll?100000:12).map(x=>{ const pt=brickParty(x.partyType,x.partyId); const K=BRICK_LKIND[x.kind]||BRICK_LKIND.other; if(x.cancelled) return `<tr style="opacity:.6"><td>${frD(x.date)}</td><td><b>${E(pt?pt.name:"?")}</b></td><td class="amt" style="text-decoration:line-through">${money(x.amount)}</td><td>🗑️ محذوف — ${E(x.note||"")}<div style="font-size:.72rem;color:var(--muted)">حذفه ${E(x.cancelledBy||"?")} ${frD(x.cancelledAt||x.editedAt)}${x.cancelReason?" — "+E(x.cancelReason):""}</div></td><td style="text-align:left">${currentRole!=="worker"?`<button class="mini" data-bk-lrestore="${x.id}">↩️ استعادة</button>`:""}</td></tr>`; return `<tr><td>${frD(x.date)}</td><td><b>${E(pt?pt.name:"?")}</b></td><td class="amt" style="font-weight:800;color:${x.dir==="on"?'var(--unpaid)':'var(--ready)'}">${money(x.amount)}</td><td><span class="badge ${x.dir==="on"?"b-unpaid":"b-paid"}">${x.dir==="on"?"عليه":"له"}</span> ${K.ic} ${K.t}${x.qty?" "+fmt(x.qty):""}${x.note?`<div style="font-size:.72rem;color:var(--muted)">${E(x.note)}</div>`:""}${(r=>r?runLineHTML(r.b,r.a):"")(lrun(x))}</td><td style="text-align:left">${currentRole!=="worker"?`${recEditBtn("bledger",x.id)}<button class="icon-btn" data-bk-del="ledger:${x.id}" title="حذف">${svg(I.trash)}</button>`:""}</td></tr>`; }).join("");
   return `
     <div class="store-stat">
       <div class="s"><div class="v" style="color:var(--unpaid)">${money(lna)}</div><div class="l">📥 لنا عند الأطراف (${P.filter(x=>x.balance>0).length})</div></div>
@@ -3888,8 +3896,9 @@ function workerTxRestore(v){ const {w,x}=wtxFind(v); if(!x||!x.cancelled) return
 function workerTxListHTML(w){ const E=_esc, ed=currentRole!=="worker";
   const L=[...(w.credits||[]).map(x=>({x,k:"credits"})),...(w.payments||[]).map(x=>({x,k:"payments"}))].filter(o=>o.x&&o.x.id).sort((a,b)=>(b.x.date||"").localeCompare(a.x.date||""));
   if(!L.length) return `<div class="hint">لا عمليات بعد.</div>`;
-  return L.map(({x,k})=>{ const v=w.id+"|"+x.id, cr=k==="credits";
-    return `<div class="wtx-row${x.cancelled?" gone":""}"><span class="wtx-t">${cr?"➕ له":"➖ عليه"}${x.note?" · "+E(x.note):""}<small><bdi dir="ltr">${frD(x.date)}</bdi>${x.cancelled?" · 🗑️ محذوفة"+(x.cancelledBy?" ("+E(x.cancelledBy)+")":"")+(x.cancelReason?" — "+E(x.cancelReason):""):""}</small></span>
+  const RUN={}; withRun(L.filter(o=>!o.x.cancelled).slice().sort((a,b)=>(a.x.date||"").localeCompare(b.x.date||"")),o=>o.k==="credits"?(+o.x.amount||0):-(+o.x.amount||0),Math.round(wBalance(w))).forEach(r=>{ RUN[r.x.x.id]=r; });
+  return L.map(({x,k})=>{ const v=w.id+"|"+x.id, cr=k==="credits", rr=RUN[x.id];
+    return `<div class="wtx-row${x.cancelled?" gone":""}"><span class="wtx-t">${cr?"➕ له":"➖ عليه"}${x.note?" · "+E(x.note):""}<small><bdi dir="ltr">${frD(x.date)}</bdi>${x.cancelled?" · 🗑️ محذوفة"+(x.cancelledBy?" ("+E(x.cancelledBy)+")":"")+(x.cancelReason?" — "+E(x.cancelReason):""):""}</small>${rr?runLineHTML(rr.before,rr.after,"worker"):""}</span>
       <b class="wtx-a" style="color:${cr?"var(--ready)":"var(--unpaid)"}">${cr?"+":"−"}${money(x.amount)}</b>
       ${ed?(x.cancelled?`<button class="icon-btn" data-wtx-restore="${v}" title="استعادة">↩️</button>`:`<button class="icon-btn" data-wtx-edit="${v}" title="تعديل">${svg(I.edit)}</button><button class="icon-btn" data-wtx-del="${v}" title="حذف">${svg(I.trash)}</button>`):""}</div>`; }).join(""); }
 /* ---- (2.62.0) كشف حساب الصندوق: كل الحركات في الفترة برصيد جارٍ ---- */
@@ -3900,7 +3909,7 @@ function openCashStatement(box){ const bk=box==="brick", key=bk?"brickCash":"sto
   inP.forEach(m=>R.push({d:m.date,t:(m.type==="in"?"📥 ":"📤 ")+(m.reason||"—"),s:pmLabel(m.payMethod)+(m.by?" · "+m.by:""),dr:m.type==="in"?+m.amount||0:0,cr:m.type==="out"?+m.amount||0:0}));
   const fin=opening+_cmSum(inP,sg);
   document.getElementById("receiptContent").innerHTML=ledgerRcptHTML({head:"📄 كشف "+name+"<br><small>"+brickPeriodTxt()+"</small>",rows:R,final:fin,drLbl:"وارد",crLbl:"صادر",box:true});
-  setRcptText({title:"كشف "+name.replace(/^\S+\s/,""),name:name.replace(/^\S+\s/,""),phone:"",country:"222",final:fin,rows:R});
+  setRcptText({title:"كشف "+name.replace(/^\S+\s/,""),name:name.replace(/^\S+\s/,""),phone:"",country:"222",final:fin,rows:R,box:true});
   document.getElementById("receiptModal").style.display="flex"; }
 document.addEventListener("click",ev=>{ const q=ev.target&&ev.target.closest&&ev.target.closest("[data-bk-pq]"); if(q){ ev.preventDefault(); const [d,id]=q.dataset.bkPq.split("|"); openBrickPersonQuick(d,id); } },true);
 document.addEventListener("click",ev=>{ const t=ev.target&&ev.target.closest&&ev.target.closest("[data-pe],[data-pdel]"); if(!t) return; ev.preventDefault(); ev.stopPropagation();
@@ -4150,7 +4159,7 @@ function contactsDebts(noStats,fixedKind){
   const rem=state.debtReminded||{};
   const kindSeg=fixedKind?"":contactsTopHTML(kind);
   const cards=list.length?list.map(d=>{ const r=rem[d.key]; const ph=waPhoneFull(d.phone,d.country), tl=telLink(d.phone,d.country);
-    const items=d.items.slice().sort((a,b)=>(a.date||"").localeCompare(b.date||"")).slice(0,6).map(it=>`<div class="meta" style="display:flex;justify-content:space-between;gap:8px;align-items:center"><span>${it.kind}${it.no?(" "+E(it.no)):""} · <bdi dir="ltr">${it.date?frD(it.date):""}</bdi></span><b>${money(it.amt)}${it.mdId&&currentRole!=="worker"?` ${recEditBtn("sdebt",it.mdId)}<button class="icon-btn" data-md-del="${it.mdId}" title="حذف الدين اليدوي" style="margin-inline-start:4px">${svg(I.trash)}</button>`:""}</b></div>`).join("")+(d.items.length>6?`<div class="hint">+ ${d.items.length-6} أخرى</div>`:"");
+    const items=withRun(d.items.slice().sort((a,b)=>(a.date||"").localeCompare(b.date||"")),it=>+it.amt||0).slice(0,6).map(({x:it,before,after})=>`<div class="meta" style="display:flex;justify-content:space-between;gap:8px;align-items:center"><span>${it.kind}${it.no?(" "+E(it.no)):""} · <bdi dir="ltr">${it.date?frD(it.date):""}</bdi>${runLineHTML(before,after)}</span><b>${money(it.amt)}${it.mdId&&currentRole!=="worker"?` ${recEditBtn("sdebt",it.mdId)}<button class="icon-btn" data-md-del="${it.mdId}" title="حذف الدين اليدوي" style="margin-inline-start:4px">${svg(I.trash)}</button>`:""}</b></div>`).join("")+(d.items.length>6?`<div class="hint">+ ${d.items.length-6} أخرى</div>`:"");
     const credit=d.custId?custCredit(d.custId):0, nItems=d.items.length, open=_debtOpen.has(d.key), net=d.total-(kind==="all"||kind==="store"?credit:0);
     const canPay=d.custId&&d.by.store>0&&(kind==="all"||kind==="store");
     const rb=(attr,ic,t,cls)=>`<button type="button" class="r-btn${cls?" "+cls:""}" ${attr} title="${t}"><span class="rb-ic">${ic}</span><small>${t}</small></button>`;
@@ -5025,7 +5034,7 @@ function storeScreenDebts(){
       <button type="button" class="dc-toggle" data-debt-toggle="${E(k)}" data-n="${n}">${open?"▴ إخفاء التفاصيل":"▾ التفاصيل"} (${n})</button>
       <div class="dc-details" data-debt-det="${E(k)}" style="${open?"":"display:none"}">
         ${both?`<div class="meta">📥 عليه <b style="color:var(--unpaid)">${money(p.on)}</b> · 📤 له <b style="color:var(--ready)">${money(p.for)}</b></div>`:""}
-        ${p.items.map(x=>`<div class="meta party-item" style="display:flex;justify-content:space-between;gap:8px;align-items:center"><span>${x.ic} ${E(x.t)} · <bdi dir="ltr">${frD(x.date)}</bdi></span><b style="color:${x.dir==="on"?"var(--unpaid)":"var(--ready)"};white-space:nowrap">${x.dir==="on"?"+":"−"}${money(x.amt)}${x.md&&currentRole!=="worker"?` ${recEditBtn("sdebt",x.md)}<button class="icon-btn" data-md-del="${x.md}" title="حذف" style="margin-inline-start:4px">${svg(I.trash)}</button>`:""}</b></div>`).join("")}
+        ${withRun(p.items,x=>x.dir==="on"?x.amt:-x.amt,p.net).map(({x,before,after})=>`<div class="meta party-item" style="display:flex;justify-content:space-between;gap:8px;align-items:center"><span>${x.ic} ${E(x.t)} · <bdi dir="ltr">${frD(x.date)}</bdi>${runLineHTML(before,after)}</span><b style="color:${x.dir==="on"?"var(--unpaid)":"var(--ready)"};white-space:nowrap">${x.dir==="on"?"+":"−"}${money(x.amt)}${x.md&&currentRole!=="worker"?` ${recEditBtn("sdebt",x.md)}<button class="icon-btn" data-md-del="${x.md}" title="حذف" style="margin-inline-start:4px">${svg(I.trash)}</button>`:""}</b></div>`).join("")}
       </div>
       <div class="r-btns">
         ${ph?(p.on>0&&p.cust?rb(`data-debt-wa="c:${p.cust.id}"`,"💬","واتساب","wa"):`<a class="r-btn wa" href="https://wa.me/${ph}" target="_blank" rel="noopener" title="واتساب"><span class="rb-ic">💬</span><small>واتساب</small></a>`):""}
@@ -6004,22 +6013,16 @@ function openDirStatement(c){
   document.getElementById("receiptModal").style.display="flex";
 }
 function openSupplierStatement(s){
-  const ps=supplierPurchases(s).slice().sort((a,b)=>(b.date||"").localeCompare(a.date||""));
-  const pays=(state.storeCash||[]).filter(m=>m.type==="out"&&m.ref===s.id).slice().reverse();
-  const pRows=ps.length?ps.map(p=>`<div class="rcpt-row"><span>${frD(p.date)} — ${p.no}</span><b>${money(p.total)}${purOutstanding(p)>0?` <span style="color:#d64545">(متبقٍ ${money(purOutstanding(p))})</span>`:''}</b></div>`).join(""):'<div class="hint">لا مشتريات.</div>';
-  const payRows=pays.length?pays.map(m=>`<div class="rcpt-row"><span>${frD(m.date)} — تسديد</span><b style="color:#2e9e6b">${money(m.amount)}</b></div>`).join(""):'<div class="hint">لا تسديدات لاحقة.</div>';
-  document.getElementById("receiptContent").innerHTML=`
-    <div class="rcpt">
-      ${rcptHeader(`كشف حساب مورّد — ${_esc(s.name)}${s.category?`<br><small>${_esc(s.category)}</small>`:""}`)}
-      <div style="font-weight:800;margin:6px 0">المشتريات</div>${pRows}
-      <div style="font-weight:800;margin:8px 0 6px">التسديدات</div>${payRows}
-      <div class="rcpt-total"><span>المستحقّ له</span><b style="color:#d64545">${money(supplierBalance(s))} ${CUR}</b></div>
-      ${rcptFooter()}
-    </div>`;
-  { const R=[]; ps.forEach(p=>R.push({d:p.date,t:"🛒 شراء "+(p.no||""),s:purOutstanding(p)>0?"متبقٍ "+money(purOutstanding(p)):"",dr:0,cr:+p.total||0})); pays.forEach(m=>R.push({d:m.date,t:"💸 تسديد له",s:pmLabel(m.payMethod),dr:+m.amount||0,cr:0}));
-    R.sort((a,b)=>new Date(a.d)-new Date(b.d)); setRcptText({title:"كشف حساب مورّد",name:s.name,phone:s.phone||"",country:s.country||"222",final:-supplierBalance(s),rows:R}); }
+  const ps=supplierPurchases(s), pays=(state.storeCash||[]).filter(m=>m.type==="out"&&m.ref===s.id), R=[];
+  ps.forEach(p=>R.push({d:p.date,t:"🛒 شراء "+(p.no||""),s:purOutstanding(p)>0?"متبقٍ "+money(purOutstanding(p)):"مسدَّد",dr:0,cr:+p.total||0}));
+  ps.forEach(p=>{ const linked=sum((state.storeCash||[]).filter(m=>m.type==="out"&&m.ref===p.id),m=>+m.amount||0); if(linked>0) R.push({d:p.date,t:"💵 دُفع عند الشراء "+(p.no||""),s:"",dr:linked,cr:0}); });
+  pays.forEach(m=>R.push({d:m.date,t:"💸 تسديد له",s:pmLabel(m.payMethod),dr:+m.amount||0,cr:0}));
+  const fin=-supplierBalance(s);
+  document.getElementById("receiptContent").innerHTML=ledgerRcptHTML({head:`🏭 كشف حساب مورّد — ${_esc(s.name)}${s.category?`<br><small>${_esc(s.category)}</small>`:""}${s.phone?`<br><small>📞 <bdi dir="ltr">${_esc(s.phone)}</bdi></small>`:""}`,rows:R,final:fin,drLbl:"دفعنا له",crLbl:"اشترينا منه"});
+  setRcptText({title:"كشف حساب مورّد",name:s.name,phone:s.phone||"",country:s.country||"222",final:fin,rows:R});
   document.getElementById("receiptModal").style.display="flex";
 }
+
 function doDirCustSave(){
   const name=(document.getElementById("dcName").value||"").trim();
   if(!name) return toast("أدخل اسم الزبون");
@@ -6355,11 +6358,12 @@ function saveDcModal(){ if(!_dcm) return; const m=document.getElementById("dcMod
     const oldName=c.name; c.name=name; if(st) c.start=st; c.editedAt=now; logActivity("تعديل مصروف باليومية",(oldName!==name?oldName+" ← ":"")+name+(mon!==old?" · "+money(old)+" ← "+money(mon)+" شهريًا":"")); }
   m.style.display="none"; _dcm=null; toast("✓ تم الحفظ"); render(); }
 function openDcStatement(id){ const c=(state.dailyCosts||[]).find(x=>x.id===id); if(!c) return; const today=ymd(new Date());
-  const months={}; dcDays(c,"0000-00-00",today).forEach(d=>{ const k=ymd(d).slice(0,7); const o=months[k]||(months[k]={n:0,a:0}); o.n++; o.a+=monthlyOn(c,ymd(d))/_dim(d); });
-  const rows=Object.keys(months).sort().map(k=>`<div class="rcpt-row"><span>📅 ${k.slice(5)}/${k.slice(0,4)} · ${months[k].n} يوم</span><b>${money(Math.round(months[k].a))}</b></div>`).join("");
-  const pays=dcPays(c).slice().sort((a,b)=>String(a.date).localeCompare(String(b.date))).map(p=>`<div class="rcpt-row"><span>💵 ${frD(p.date)} · ${pmLabel(p.payMethod)}${p.note?" · "+_esc(p.note):""}</span><b style="color:var(--ready)">−${money(p.amount)}</b></div>`).join("");
-  const due=dcDue(c);
-  document.getElementById("receiptContent").innerHTML=`<div class="rcpt">${rcptHeader("🏠 كشف "+_esc(c.name))}<div class="rcpt-sec">المستحق حسب الأيام (من ${frDay(c.start)})</div>${rows||'<div class="hint">لا أيام بعد</div>'}<div class="rcpt-sec">الدفعات</div>${pays||'<div class="hint">لا دفعات بعد</div>'}<div class="rcpt-total"><span>${due>0?"المستحق الآن":due<0?"مدفوع مقدّمًا":"مسدّد"}</span><b>${money(Math.abs(due))} ${CUR}</b></div>${rcptFooter()}</div>`;
+  const months={}; dcDays(c,"0000-00-00",today).forEach(d=>{ const k=ymd(d).slice(0,7); const o=months[k]||(months[k]={n:0,a:0,last:d}); o.n++; o.a+=monthlyOn(c,ymd(d))/_dim(d); o.last=d; });
+  const R=Object.keys(months).sort().map(k=>({d:months[k].last,t:"📅 "+k.slice(5)+"/"+k.slice(0,4)+" · "+months[k].n+" يوم",s:"مستحق بالأيام",dr:0,cr:Math.round(months[k].a)}))
+    .concat(dcPays(c).map(p=>({d:p.date,t:"💵 دفع"+(p.note?" · "+p.note:""),s:pmLabel(p.payMethod),dr:+p.amount||0,cr:0})));
+  const fin=-Math.round(dcDue(c));
+  document.getElementById("receiptContent").innerHTML=ledgerRcptHTML({head:"🏠 كشف "+_esc(c.name)+"<br><small>من "+frDay(c.start)+"</small>",rows:R,final:fin,drLbl:"دفعنا",crLbl:"المستحق"});
+  setRcptText({title:"كشف "+c.name,name:c.name,phone:"",country:"222",final:fin,rows:R});
   document.getElementById("receiptModal").style.display="flex"; }
 function bindDaily(){ if(state.tab!=="expenses"||state.expSub!=="daily") return;
   const mi=document.getElementById("dcMonthly"), hint=document.getElementById("dcRateHint"); const upd=()=>{ const v=+toLatinDigits((mi||{}).value||"")||0, dim=_dim(new Date()); if(hint) hint.textContent=v>0?("كل يوم ≈ "+money(Math.round(v/dim))+" (هذا الشهر "+dim+" يومًا)"):""; }; if(mi){ mi.addEventListener("input",upd); upd(); }
@@ -8113,6 +8117,9 @@ function _rand(n){ const a=new Uint8Array(n); crypto.getRandomValues(a); return 
    CHANGELOG: الأحدث أولًا. لكل تعديل: ic, t (العنوان), d (الشرح), go (أين: tab + storeSub/contactsSub/…), sel (العنصر الذي يُشار إليه).
    **قاعدة: كل إصدار جديد يضيف مدخلًا هنا** — يظهر للمستخدم مرة واحدة بعد التحديث مع «تخطي» و«أرني» و«جولة». */
 const CHANGELOG=[
+  {v:"2.67.0",date:"2026-10-30",items:[
+    {ic:"⚖️",t:"«كان ← صار» تحت كل عملية",d:"في بطاقة كل زبون (المتجر ▸ الزبائن والديون، والزبائن ▸ الديون) وعمليات العمّال وقيود دبو: تحت كل عملية الرصيد قبلها وبعدها، فترى كيف وصل الحساب إلى رقمه الآن.",go:{tab:"store",storeSub:"debts"},sel:'.party-card, .debtor-card'},
+    {ic:"📄",t:"كل كشوف الحساب برصيد قبل وبعد",d:"كشف المورّد وكشف الإيجار (المصاريف باليومية) صارا دفترًا مثل كشف الزبون، وكشف دبو بالصورة فيه عمودا «الرصيد قبل / الرصيد بعد»، و«💬 كتابةً» يكتب الرصيد بعد كل سطر.",go:{tab:"store",storeSub:"debts"},sel:'.party-card, .debtor-card'}]},
   {v:"2.66.0",date:"2026-10-26",items:[
     {ic:"🚗",t:"تعديل أسماء السيارات والأصناف يبقى محفوظًا",d:"كان تغيير اسم نوع السيارة (أو السجاد/الملابس/الغسيل، أو الأسعار والرسائل وبيانات المحل) يرجع للاسم القديم بعد الحفظ لأن نسخة السحابة كانت تغلبه. الآن التعديل الأحدث هو الذي يبقى على كل الأجهزة.",go:{tab:"cars"},sel:'[data-vpick], #carPlate'}]},
   {v:"2.65.0",date:"2026-10-24",items:[
@@ -8457,8 +8464,9 @@ function brickInvDraw(ctx,img,d){
   erase(84,432,158,32,160,428); txt(d.date,162,458,{s:25,w:800,a:"center",dir:"ltr",fit:150});
   txt(d.name,882,562,{s:24,w:800,max:290}); txt(d.phone,838,611,{s:23,w:800,dir:"ltr",max:250});
   txt(d.addr,340,562,{s:19,w:700,max:285}); txt(d.note,395,611,{s:18,w:700,max:340});
+  if(d.hdr){ [["q",404,566,484],["u",224,396,308],["tot",40,216,126]].forEach(([k,x1,x2,cx])=>{ if(!d.hdr[k]) return; ctx.fillStyle=bg(x1+6,668); ctx.fillRect(x1,666,x2-x1,52); txt(d.hdr[k],cx,700,{s:22,w:800,c:"#ffffff",a:"center",fit:x2-x1-10}); }); }
   const Y=[744,788,832,875,920,964,1008,1052];
-  (d.rows||[]).slice(0,8).forEach((r,i)=>{ const y=Y[i]+8; txt(r.t,920,y,{s:19,w:700,max:345}); txt(r.q,484,y,{s:21,w:800,a:"center",dir:"ltr"}); txt(r.u,308,y,{s:20,w:700,a:"center",dir:"ltr"}); txt(r.tot,126,y,{s:21,w:800,a:"center",dir:"ltr",fit:170}); });
+  (d.rows||[]).slice(0,8).forEach((r,i)=>{ const y=Y[i]+8; txt(r.t,920,y,{s:19,w:700,max:345}); txt(r.q,484,y,d.hdr?{s:17,w:700,a:"center",fit:158}:{s:21,w:800,a:"center",dir:"ltr"}); txt(r.u,308,y,d.hdr?{s:17,w:800,a:"center",fit:166}:{s:20,w:700,a:"center",dir:"ltr"}); txt(r.tot,126,y,{s:21,w:800,a:"center",dir:"ltr",fit:170}); });
   if(d.total!=null) txt(d.total,330,1203,{s:40,w:800,c:"#0b3d91",a:"center",dir:"ltr",fit:300}); else if(d.more) txt(d.more,330,1200,{s:22,w:700,c:"#0b3d91",a:"center"});
   if(d.pm==="cash") tick(964,1178); else if(d.pm==="bankily") tick(864,1178); else if(d.pm){ tick(664,1178); txt(d.pmName||"",588,1184,{s:18,w:800}); }
   if(d.foot) txt(d.foot,746,1213,{s:15,w:800,max:190});
@@ -8477,7 +8485,7 @@ function openBrickStatementImg(type,id){ const pt=brickParty(type,id); if(!pt) r
   const R=rows.map(r=>({d:r.date,t:r.label,s:"",dr:+r.debit||0,cr:+r.credit||0}));
   const first=rows[0], last=rows[rows.length-1];
   openWashInvoice("tpl",{title:"كشف حساب",no:"K-"+(normPhone(pt.phone||"")||id.slice(-6)),date:frD(new Date()),name:pt.name,phone:pt.phone||"",addr:pt.type==="sup"?"🏭 مورّد"+(pt.category?" · "+pt.category:""):"",note:first?"من "+frD(first.date)+" إلى "+frD(last.date):"لا تعاملات",
-    rows:rows.map(r=>({t:frDay(ymd(r.date)).slice(0,5)+" · "+r.label,q:"",u:"",tot:(r.debit?"+":"−")+money(r.debit||r.credit)})),total:bal?(bal>0?"عليه ":"له ")+money(Math.abs(bal)):"متعادل ✓",pm:null,foot:"الرصيد الآن: "+(bal?(bal>0?"عليه ":"له ")+money(Math.abs(bal)):"0")},false,BINV_OPT,
+    hdr:{q:"الرصيد قبل",u:"الرصيد بعد",tot:"المبلغ"},rows:withRun(rows,r=>(+r.debit||0)-(+r.credit||0),bal).map(({x:r,before,after})=>({t:frDay(ymd(r.date)).slice(0,5)+" · "+r.label,q:balTxt(before),u:balTxt(after),tot:(r.debit?"+":"−")+money(r.debit||r.credit)})),total:bal?(bal>0?"عليه ":"له ")+money(Math.abs(bal)):"متعادل ✓",pm:null,foot:"الرصيد الآن: "+(bal?(bal>0?"عليه ":"له ")+money(Math.abs(bal)):"0")},false,BINV_OPT,
     {title:"كشف حساب دبو",name:pt.name,phone:pt.phone||"",country:pt.country||"222",final:bal,rows:R}); }
 function openBrickOrderInvoice(o,last){ const pt=brickParty(o.partyType,o.partyId), S=brickOrderSales(o), rows=[{t:"📦 "+brickTypeName(o)+" — الطلبية",q:fmt(o.qty),u:money(o.unitPrice),tot:money(o.total)}];
   S.forEach(s=>rows.push({t:"🚚 "+frDay(ymd(s.date)).slice(0,5)+" · تسليم"+(s.driver?" — "+s.driver:""),q:fmt(s.qty),u:"",tot:""}));
@@ -8659,7 +8667,9 @@ function stRowAmt(r){ return r.dr?"+"+money(r.dr):r.cr?"−"+money(r.cr):money(r
 function stBuildText(){ const ctx=rcptTextCtx()||_rcptText; if(!ctx) return ""; const R=ctx.rows, part=_stMode==="part", idx=part?R.map((r,i)=>i).filter(i=>_stSel.has(i)):R.map((r,i)=>i), sel=idx.map(i=>R[i]);
   const bal=n=>n>0?"عليه لنا "+money(n)+" "+CUR:n<0?"له عندنا "+money(-n)+" "+CUR:"متعادل ✓", si=shopInfo();
   const L=["📒 "+(ctx.title||"كشف حساب")+" — "+(ctx.name||""), si.name?"🏪 "+si.name+(si.phone?" · 📞 "+si.phone:""):"", sel.length?"📅 "+frD(sel[0].d)+" ← "+frD(sel[sel.length-1].d)+(part?" (جزء: "+sel.length+" من "+R.length+" حركة)":" ("+R.length+" حركة)"):"", "━━━━━━━━━━"];
-  sel.forEach(r=>L.push("▫️ "+frD(r.d)+" · "+r.t+(r.s?" ("+r.s+")":"")+": "+stRowAmt(r)));
+  { const all=R.slice().sort((a,b)=>new Date(a.d)-new Date(b.d)), tot=sum(all,r=>(+r.dr||0)-(+r.cr||0)); let run=ctx.final!=null?ctx.final-tot:0; const after=new Map(); all.forEach(r=>{ run+=(+r.dr||0)-(+r.cr||0); after.set(r,run); });
+    const bt=n=>ctx.box?(n<0?"−":"")+money(Math.abs(Math.round(n))):balTxt(n);
+    sel.forEach(r=>L.push("▫️ "+frD(r.d)+" · "+r.t+(r.s?" ("+r.s+")":"")+": "+stRowAmt(r)+((r.dr||r.cr)&&after.has(r)?" ← صار "+bt(after.get(r)):""))); }
   if(!sel.length) L.push("— لا حركات مختارة —");
   L.push("━━━━━━━━━━"); const dr=sum(sel,r=>+r.dr||0), cr=sum(sel,r=>+r.cr||0); if(sel.length) L.push("➕ عليه: "+money(dr)+" · ➖ دفع/له: "+money(cr));
   L.push("💰 الرصيد الآن: "+bal(ctx.final)); return L.filter(x=>x!=="").join("\n"); }
@@ -9389,7 +9399,7 @@ setTimeout(()=>{ if(!window.cloudReady){ const el=document.getElementById("cloud
 <!-- PWA: service-worker registration + update/install wiring -->
 <script>
 (function(){
-  var APP_VERSION = "2.66.0";
+  var APP_VERSION = "2.67.0";
   window.APP_VERSION = APP_VERSION;
   function $(id){ return document.getElementById(id); }
   // سجّل إصدار هذا الجهاز في الحالة المتزامنة (ليُنبَّه الجهاز القديم)

@@ -525,6 +525,12 @@
   «👷 رئيس العمّال» تُخفى خانات الحمل (`#bkLoadFields`, `#bkLoadKinds`، تلميح `#bkWorkerOnlyHint`) والزر «💾 حفظ رئيس العمّال» (`updPor` في
   `bindBrick`)؛ و`doBrickLoadSave` يحفظ الشخص فقط إن لم يُكتب مبلغ (الحمل **اختياري لأي شخص جديد**، وإلزامي فقط لتسجيل عمل لشخص موجود).
   الاختبار `tests/e2e/brick_worker_add.test.js`.
+- **«كان ← صار» في كل كشف وقائمة (2.67.0) — «أضف مقابل كل رصيد الرصيد قبل والرصيد بعد… في كل كشوفات الحساب»:** `balTxt(n,who)` (عليه/له؛
+  `who="worker"` يعكس: موجب = له)، `runLineHTML(before,after,who)` (`.run-line`)، و`withRun(list,sgn,final)` (ترتيب زمني؛ يبدأ برصيد سابق يجعل آخر رصيد = `final`).
+  في: عمليات بطاقة `storeParties` (`.party-item`)، عناصر بطاقة المدين في الزبائن ▸ الديون، عمليات العامل (`workerTxListHTML`، من `wBalance`)، وآخر قيود دبو
+  (`lrun` من `brickPartyRows` — صفوف القيد تحمل `lid`). `ledgerRcptHTML` صار يبدأ بـ«↪️ رصيد سابق» إن لم تبلغ الحركات `final`. `openSupplierStatement` و`openDcStatement`
+  صارا دفترًا `ledgerRcptHTML`. كشف دبو بالصورة: `d.hdr` يغطّي رؤوس أعمدة القالب («الرصيد قبل/الرصيد بعد/المبلغ») و`q/u` = قبل/بعد. `stBuildText` يضيف «← صار …» لكل
+  سطر (و`ctx.box` للصندوق). الاختبار `tests/e2e/run_balance.test.js`.
 - **الإعدادات لا ترجع للقديم (2.66.0) — «أغيّر أسماء السيارات من الإعدادات وأحفظ فترجع»:** `applyRemote` كان يأخذ كل الحقول غير المصفوفات من
   السحابة (`Object.assign(state, remote)`)، وحتى الرفع يمرّ به (`mergeForPush` في معاملة 2.34) — فأي تعديل إعدادات يُستبدل بنسخة الخادم القديمة. الآن
   **`CFG_KEYS`** (vehiclePrices/piecePrices/pieceUnit/washTypes/laundryTypes/tariff/alerts/autoClosing/lock/meterPin/msgTpl/notify/shopInfo/tgPin/thanksMsg/adMsg)
