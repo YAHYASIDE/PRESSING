@@ -61,7 +61,7 @@ const IGNORE = /gstatic|firebase|firestore|cloud|net::|Failed to load|ERR_|favic
   await page.click('[data-wedit="wa"]'); await page.waitForTimeout(150); await page.fill('#weName','حمد ولد أحمد'); await page.fill('#weMonthly','62000'); await page.click('#weSave'); await page.waitForTimeout(250);
   r=await page.evaluate(()=>{ const w=state.workers[0]; const today=ymd(new Date()); const dim=new Date(new Date().getFullYear(),new Date().getMonth()+1,0).getDate(); return { name:w.name, m:w.monthly, h:(w.salaryHist||[]).length, acc:accruedDue(w), dim, act:state.activity.some(a=>/تعديل عامل/.test(a.action)&&/31,000 ← 62,000/.test(a.detail||"")) }; });
   log('editing changes the name and salary, logged «31,000 ← 62,000»: '+(r.name==='حمد ولد أحمد' && r.m===62000 && r.h===1 && r.act)+' (expect true)');
-  log('the new salary counts from today only (earlier days keep the old rate): '+(Math.abs(r.acc-(acc0+31000/r.dim))<1)+' (expect true)');
+  log('the new salary counts from today only (earlier days keep the old rate): '+(Math.abs(r.acc-(acc0+31000/r.dim))<=1)+' (expect true)');
   // ===== ما الجديد
   await page.evaluate(()=>{ localStorage.setItem('sadaqa_seen_ver','2.40.0'); window._forceWhatsNew=true; _wnShown=false; maybeShowWhatsNew(); }); await page.waitForTimeout(200);
   r=await page.evaluate(()=>{ const m=document.getElementById('whatsNewModal'); return { open:m.style.display==='flex', title:m.querySelector('#wnTitle').textContent, body:m.textContent, n:m.querySelectorAll('.wn-item').length, go:m.querySelectorAll('[data-wn-go]').length, v:window.APP_VERSION }; });

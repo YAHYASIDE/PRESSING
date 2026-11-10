@@ -1636,6 +1636,7 @@ const state = {
   pieceUnit:{"موكيت":"m2","سجاد فاتح":"m2","سجاد داكن":"m2"},  /* الأصناف التي تُحسب بالمتر المربع (السعر = سعر المتر²) */
   washTypes:[...WASH_TYPES],
   laundryTypes:[...LAUNDRY_TYPES],
+  prodImgAt:{},             /* (2.69.0) وقت آخر تغيير لصورة كل مادة {id: ms، سالب = حُذفت} — مُزامن؛ الصورة نفسها في backups/pimg_{id} */
   typeImgs:{},              /* صور الأنواع التي يرفعها المالك: {"veh:هايلوكس":{img,at}} — مُزامنة، صغيرة */
   tariff:{elec:0, water:0},   /* سعر الكيلو / سعر وحدة الماء (0 = تسجيل الاستهلاك فقط) */
   customers:{},
@@ -1773,17 +1774,22 @@ function absentToday(w){return w.absent.some(isToday);}
 function netSalary(w){return w.monthly - monthAbsences(w)*dayRate(w);}
 /* (2.40.0) تغيير الراتب يسري من يوم التغيير فقط: w.salaryHist=[{from:"YYYY-MM-DD",monthly,prev}] */
 function monthlyOn(w,ds){ const H=(w.salaryHist||[]).slice().sort((a,b)=>(a.from||"").localeCompare(b.from||"")); if(!H.length) return +w.monthly||0; let m=H[0].prev!=null?+H[0].prev:(+w.monthly||0); H.forEach(h=>{ if((h.from||"")<=ds) m=+h.monthly||0; }); return m; }
-function accruedDue(w){
-  const today=new Date(); today.setHours(0,0,0,0);
-  const mStart=new Date(today.getFullYear(),today.getMonth(),1);
-  let start = w.start ? new Date(w.start) : mStart; start.setHours(0,0,0,0);
-  if(start<mStart) start=mStart;
-  if(start>today) return 0;
-  let cnt=0;
-  let amt=0;
-  for(let d=new Date(start); d<=today; d.setDate(d.getDate()+1)){ const ds=ymd(d); if(!w.absent.some(a=>ymd(a)===ds)){ cnt++; amt+=monthlyOn(w,ds)/daysInMonth; } }
-  return (w.salaryHist&&w.salaryHist.length)?amt:cnt*dayRate(w);
+/* (2.69.0) الراتب يتراكم لكل شهر منذ المباشرة (لا الشهر الحالي فقط): كان راتب أكتوبر يختفي يوم 1 نوفمبر بينما دفعاته تبقى
+   فيصير العامل «عليه». كل يوم = راتب ذلك اليوم ÷ أيام شهره (مثل wagesBetween)، والغياب لا يُحسب. شهر لكل سطر في الكشف. */
+const _MONTHS_AR=["يناير","فبراير","مارس","أبريل","مايو","يونيو","يوليو","أغسطس","سبتمبر","أكتوبر","نوفمبر","ديسمبر"];
+function wSalaryMonths(w){
+  const today=ymd(new Date()), ws=w.start?ymd(w.start):today; if(ws>today) return [];
+  const abs=new Set((w.absent||[]).map(a=>ymd(a))), M=[]; let cur=null;
+  for(let d=new Date(ws+"T12:00:00"); ymd(d)<=today; d.setDate(d.getDate()+1)){ const ds=ymd(d), ym=ds.slice(0,7);
+    if(!cur||cur.ym!==ym){ cur={ym,from:ds,to:ds,days:0,absent:0,raw:0,monthly:monthlyOn(w,ds),rates:[],dim:_dim(d)}; M.push(cur); }
+    cur.to=ds; if(abs.has(ds)){ cur.absent++; continue; } cur.days++; const mo=monthlyOn(w,ds); cur.raw+=mo/_dim(d); cur.monthly=mo; if(cur.rates[cur.rates.length-1]!==mo) cur.rates.push(mo); }
+  M.forEach(m=>{ m.amount=Math.round(m.raw); m.cur=m.to===today&&+m.to.slice(8)<m.dim; m.name=_MONTHS_AR[+m.ym.slice(5)-1]+" "+m.ym.slice(0,4); });
+  return M;
 }
+function accruedDue(w){ return sum(wSalaryMonths(w),m=>m.amount); }
+function accruedMonth(w){ const ym=ymd(new Date()).slice(0,7), m=wSalaryMonths(w).find(x=>x.ym===ym); return m?m.amount:0; }
+function wSalaryRowText(m){ return "💼 راتب "+m.name+(m.cur?" حتى اليوم":""); }
+function wSalarySub(m){ return "من "+frDay(m.from)+" إلى "+frDay(m.to)+" · "+m.days+" يوم عمل"+(m.absent?" · غياب "+m.absent:"")+" · الراتب "+(m.rates.length>1?m.rates.map(money).join(" ثم "):money(m.monthly)); }
 function wPaid(w){return sum(wtxLive(w.payments),p=>p.amount);}
 function wCredit(w){return sum(wtxLive(w.credits),c=>c.amount);}   /* له إضافي (مكافآت/مستحقات) */
 function wBalance(w){return accruedDue(w)+wCredit(w)-wPaid(w);}   /* +له  /  -عليه (حتى اليوم) */
@@ -3895,9 +3901,10 @@ function workerTxRestore(v){ const {w,x}=wtxFind(v); if(!x||!x.cancelled) return
     logActivity("استعادة عملية عامل",w.name+" · "+money(x.amount)); toast("↩️ استُعيدت ✓"); render(); }, SECRET_CODE, "استعادة عملية عامل", w.name+" · "+money(x.amount)+" "+CUR); }
 function workerTxListHTML(w){ const E=_esc, ed=currentRole!=="worker";
   const L=[...(w.credits||[]).map(x=>({x,k:"credits"})),...(w.payments||[]).map(x=>({x,k:"payments"}))].filter(o=>o.x&&o.x.id).sort((a,b)=>(b.x.date||"").localeCompare(a.x.date||""));
+  wSalaryMonths(w).filter(m=>m.amount).forEach(m=>L.push({x:{id:"sal-"+m.ym,amount:m.amount,date:m.from+"T00:00:00",m},k:"salary"})); L.sort((a,b)=>(b.x.date||"").localeCompare(a.x.date||""));
   if(!L.length) return `<div class="hint">لا عمليات بعد.</div>`;
-  const RUN={}; withRun(L.filter(o=>!o.x.cancelled).slice().sort((a,b)=>(a.x.date||"").localeCompare(b.x.date||"")),o=>o.k==="credits"?(+o.x.amount||0):-(+o.x.amount||0),Math.round(wBalance(w))).forEach(r=>{ RUN[r.x.x.id]=r; });
-  return L.map(({x,k})=>{ const v=w.id+"|"+x.id, cr=k==="credits", rr=RUN[x.id];
+  const RUN={}; withRun(L.filter(o=>!o.x.cancelled).slice().sort((a,b)=>(a.x.date||"").localeCompare(b.x.date||"")),o=>o.k==="payments"?-(+o.x.amount||0):(+o.x.amount||0),Math.round(wBalance(w))).forEach(r=>{ RUN[r.x.x.id]=r; });
+  return L.map(({x,k})=>{ if(k==="salary"){ const rr=RUN[x.id]; return `<div class="wtx-row wtx-sal"><span class="wtx-t">${wSalaryRowText(x.m)}<small>${wSalarySub(x.m)}</small>${rr?runLineHTML(rr.before,rr.after,"worker"):""}</span><b class="wtx-a" style="color:var(--ready)">+${money(x.amount)}</b></div>`; } const v=w.id+"|"+x.id, cr=k==="credits", rr=RUN[x.id];
     return `<div class="wtx-row${x.cancelled?" gone":""}"><span class="wtx-t">${cr?"➕ له":"➖ عليه"}${x.note?" · "+E(x.note):""}<small><bdi dir="ltr">${frD(x.date)}</bdi>${x.cancelled?" · 🗑️ محذوفة"+(x.cancelledBy?" ("+E(x.cancelledBy)+")":"")+(x.cancelReason?" — "+E(x.cancelReason):""):""}</small>${rr?runLineHTML(rr.before,rr.after,"worker"):""}</span>
       <b class="wtx-a" style="color:${cr?"var(--ready)":"var(--unpaid)"}">${cr?"+":"−"}${money(x.amount)}</b>
       ${ed?(x.cancelled?`<button class="icon-btn" data-wtx-restore="${v}" title="استعادة">↩️</button>`:`<button class="icon-btn" data-wtx-edit="${v}" title="تعديل">${svg(I.edit)}</button><button class="icon-btn" data-wtx-del="${v}" title="حذف">${svg(I.trash)}</button>`):""}</div>`; }).join(""); }
@@ -5669,8 +5676,8 @@ function doProdSave(){
   const image=pendingProdImg||(_editProdId?((storeProd(_editProdId)||{}).image||""):"");
   const barcode=((document.getElementById("prodBarcode")||{}).value||"").trim();
   if(barcode){ const dup=findByBarcode(barcode); if(dup && dup.id!==_editProdId) return toast("هذا الباركود مسجّل للمادة: "+dup.name); }
-  if(_editProdId){ const p=storeProd(_editProdId); if(p){ p.barcode=barcode; p.name=name;p.category=cat;p.buyPrice=buy;p.sellPrice=sell;p.stock=stock;p.minStock=minStock;p.unit=unit;p.image=image;p.editedAt=iso(new Date()); logActivity("تعديل مادة",name); toast("تم حفظ التعديل"); } _editProdId=null; pendingProdImg=""; }
-  else { state.storeProducts.push({id:uid(),name,category:cat,buyPrice:buy,sellPrice:sell,stock,minStock,unit,image,barcode,by:currentUser,editedAt:iso(new Date())}); logActivity("مادة جديدة",name+" · بيع "+money(sell)); toast("تمت إضافة المادة"); pendingProdImg=""; }
+  if(_editProdId){ const p=storeProd(_editProdId); if(p){ p.barcode=barcode; p.name=name;p.category=cat;p.buyPrice=buy;p.sellPrice=sell;p.stock=stock;p.minStock=minStock;p.unit=unit;p.image=image;p.editedAt=iso(new Date()); if(pendingProdImg) prodImgSaved(p.id,image); logActivity("تعديل مادة",name); toast("تم حفظ التعديل"); } _editProdId=null; pendingProdImg=""; }
+  else { const np={id:uid(),name,category:cat,buyPrice:buy,sellPrice:sell,stock,minStock,unit,image,barcode,by:currentUser,editedAt:iso(new Date())}; state.storeProducts.push(np); if(image) prodImgSaved(np.id,image); logActivity("مادة جديدة",name+" · بيع "+money(sell)); toast("تمت إضافة المادة"); pendingProdImg=""; }
   _pendingBarcode="";
   render();
 }
@@ -5812,7 +5819,7 @@ function bindStore(){
   const sellCredit=document.getElementById("posSellCredit"); if(sellCredit) sellCredit.onclick=()=>doSell(false);
   // Products
   document.querySelectorAll(".prodImgInp").forEach(pimgInp=>{ pimgInp.onchange=(e)=>{ const f=e.target.files[0]; if(f) readAndCompress(f,(url)=>{ pendingProdImg=url; render(); }); }; });
-  const pimgRm=document.getElementById("prodImgRm"); if(pimgRm) pimgRm.onclick=()=>{ pendingProdImg=""; if(_editProdId){ const p=storeProd(_editProdId); if(p) p.image=""; } render(); };
+  const pimgRm=document.getElementById("prodImgRm"); if(pimgRm) pimgRm.onclick=()=>{ pendingProdImg=""; if(_editProdId){ const p=storeProd(_editProdId); if(p){ p.image=""; prodImgRemoved(p.id); } } render(); };
   const prodSave=document.getElementById("prodSave"); if(prodSave) prodSave.onclick=doProdSave;
   const prodCancel=document.getElementById("prodCancelEdit"); if(prodCancel) prodCancel.onclick=()=>{ _editProdId=null; pendingProdImg=""; render(); };
   document.querySelectorAll("[data-prod-edit]").forEach(b=>b.onclick=()=>{ _editProdId=b.dataset.prodEdit; pendingProdImg=""; render(); });
@@ -6423,7 +6430,7 @@ function expWorkers(){
         <button class="btn-primary" id="wAdd">إضافة الموظف</button>
         <div class="sum-row"><span>إجمالي الرصيد (${totLabel})</span><span class="big">${money(Math.abs(totBal))}</span></div>
         <div style="display:flex;justify-content:space-between;margin-top:9px;font-size:.84rem;color:var(--muted);font-weight:700">
-          <span>صافي الرواتب: ${fmt(totNet)}</span><span>المدفوع: ${fmt(totPaid)}</span></div>
+          <span>صافي الرواتب: ${fmt(Math.round(totNet))}</span><span>المدفوع: ${fmt(totPaid)}</span></div>
       </div>
       <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(258px,1fr))">${cards}</div>
     </div>`;
@@ -7202,10 +7209,32 @@ async function _photoFlushNow(){
     _photoStoreErr=null;
   }catch(e){ _photoStoreErr=e; }
 }
+/* (2.69.0) «صور المواد تُمحى»: كانت صورة المادة تُحفظ في ذاكرة الجهاز الذي أضافها فقط (IndexedDB)، فلا تظهر على الأجهزة الأخرى
+   وتضيع إن مسح الهاتف ذاكرة التطبيق. الآن نسخة مصغّرة (≤ 360px) لكل صورة في مستند مستقل backups/pimg_{id} (خارج appState/main فلا يكبر)،
+   و state.prodImgAt[id] (مُزامن) = وقت آخر تغيير (سالب = حُذفت). كل جهاز يجلب ما ينقصه أو الأحدث، ويرفع صوره القديمة التي لم تُرفع بعد. */
+function _pimgVer(){ try{ return JSON.parse(localStorage.getItem("sadaqa_pimg_v")||"{}")||{}; }catch(e){ return {}; } }
+function _pimgVerSet(id,v){ const m=_pimgVer(); if(v==null) delete m[id]; else m[id]=v; try{ localStorage.setItem("sadaqa_pimg_v",JSON.stringify(m)); }catch(e){} }
+function pimgThumb(src){ return new Promise(res=>{ try{ const im=new Image(); im.onload=()=>{ const max=360; let w=im.width,h=im.height; if(w>max||h>max){ const k=Math.min(max/w,max/h); w=Math.round(w*k); h=Math.round(h*k); }
+  const c=document.createElement("canvas"); c.width=w; c.height=h; const g=c.getContext("2d"); g.fillStyle="#fff"; g.fillRect(0,0,w,h); g.drawImage(im,0,0,w,h); try{ res(c.toDataURL("image/jpeg",0.6)); }catch(e){ res(src); } }; im.onerror=()=>res(src); im.src=src; }catch(e){ res(src); } }); }
+let _pimgQ=Promise.resolve(), _pimgErr=null;
+function _pimgRun(fn){ _pimgQ=_pimgQ.then(fn).catch(e=>{ _pimgErr=e; }); return _pimgQ; }
+function prodImgSaved(id,img){ if(!id||!img) return; const at=Date.now(); state.prodImgAt=state.prodImgAt||{}; state.prodImgAt[id]=at; _pimgVerSet(id,at); _pimgRun(()=>prodImgUpload(id,img,at)); }
+function prodImgRemoved(id){ if(!id) return; const at=Date.now(); state.prodImgAt=state.prodImgAt||{}; state.prodImgAt[id]=-at; _pimgVerSet(id,-at); _pimgRun(async()=>{ if(window.cloudImgDel) await window.cloudImgDel(id); }); }
+async function prodImgUpload(id,img,at){ if(!window.cloudImgPut) throw new Error("السحابة غير متصلة"); const t=await pimgThumb(img); await window.cloudImgPut(id,{img:t,at}); }
+let _pimgSyncT=null; function prodImgSyncSoon(){ clearTimeout(_pimgSyncT); _pimgSyncT=setTimeout(()=>_pimgRun(prodImgSync),1500); }
+async function prodImgSync(){
+  if(!window.cloudImgGet||!window.cloudReady) return; const A=state.prodImgAt=state.prodImgAt||{}, V=_pimgVer(); let changed=0, up=0;
+  for(const p of (state.storeProducts||[])){ if(!p||!p.id) continue; const a=+A[p.id]||0, v=+V[p.id]||0;
+    if(a>0 && v!==a){ try{ const d=await window.cloudImgGet(p.id); if(d&&d.img){ p.image=d.img; _pimgVerSet(p.id,+d.at||a); changed++; } }catch(e){ _pimgErr=e; } }
+    else if(a<0 && v!==a){ if(p.image){ p.image=""; changed++; } _pimgVerSet(p.id,a); }
+    else if(!a && p.image){ const at=Date.now(); try{ await prodImgUpload(p.id,p.image,at); A[p.id]=at; _pimgVerSet(p.id,at); up++; }catch(e){ _pimgErr=e; } } }
+  if(up) save(); if(changed){ photoFlush(); if(typeof render==="function") render(); }
+  return {changed,up};
+}
 async function loadPhotos(){
   try{ const db=await _idb(); const rows=await new Promise((res,rej)=>{ const rq=db.transaction("photos","readonly").objectStore("photos").getAll(); rq.onsuccess=()=>res(rq.result||[]); rq.onerror=()=>rej(rq.error); });
     rows.forEach(r=>{ if(r&&r.k){ _photoCache[r.k]=r.v; _photoSig[r.k]=_psig(r.v); } });
-    const n=attachPhotos(_photoCache); if(n && typeof render==="function") render(); return n; }
+    const n=attachPhotos(_photoCache); if(n && typeof render==="function") render(); prodImgSyncSoon(); return n; }
   catch(e){ _photoStoreErr=e; return 0; }
 }
 // ===== الحفظ المحلي يكشف الفشل (2.13.0) — كان يبتلع امتلاء الذاكرة بصمت =====
@@ -7358,11 +7387,12 @@ function applyRemote(remote){
   const localAppVer=state.appVer||"0";
   const localRem=Object.assign({}, state.debtReminded||{});
   const LbrickCfg=JSON.parse(JSON.stringify(state.brickCfg||{}));
-  const LtypeImgs=Object.assign({},state.typeImgs||{});
+  const LtypeImgs=Object.assign({},state.typeImgs||{}), LprodImgAt=Object.assign({},state.prodImgAt||{});
    Object.assign(state, remote);
    { const RA=remote.cfgAt||{}, at=Object.assign({},RA); Object.keys(LcfgAt).forEach(k=>{ if((+LcfgAt[k]||0)>(+RA[k]||0)) at[k]=LcfgAt[k]; });
      CFG_KEYS.forEach(k=>{ if((+LcfgAt[k]||0)>(+RA[k]||0)&&Lcfg[k]!==undefined) state[k]=Lcfg[k]; }); state.cfgAt=at; }
    { const R=Object.assign({},remote.typeImgs||{}); Object.keys(LtypeImgs).forEach(k=>{ if(!R[k]||(+LtypeImgs[k].at||0)>(+R[k].at||0)) R[k]=LtypeImgs[k]; }); state.typeImgs=R; }
+   { const R=Object.assign({},remote.prodImgAt||{}); Object.keys(LprodImgAt).forEach(k=>{ if(R[k]==null||Math.abs(+LprodImgAt[k]||0)>Math.abs(+R[k]||0)) R[k]=LprodImgAt[k]; }); state.prodImgAt=R; }
    // إعدادات دبو تُدمج مفتاحًا مفتاحًا: ما ينقص في النسخة البعيدة (مثل آخر أسعار الشراء بعد التصفير) لا يضيع
    if(remote.brickCfg||LbrickCfg){ const rc=remote.brickCfg||{}; state.brickCfg=Object.assign({},LbrickCfg,rc); if(LbrickCfg.lastCost||rc.lastCost) state.brickCfg.lastCost=Object.assign({},LbrickCfg.lastCost||{},rc.lastCost||{}); if(LbrickCfg.loadRate||rc.loadRate) state.brickCfg.loadRate=Object.assign({},LbrickCfg.loadRate||{},rc.loadRate||{}); }
   { const rr=Object.assign({}, remote.debtReminded||{}); Object.keys(localRem).forEach(k=>{ if(!rr[k]||localRem[k]>rr[k]) rr[k]=localRem[k]; }); state.debtReminded=rr; }
@@ -7420,7 +7450,7 @@ function applyRemote(remote){
   try{ syncUnitMoves(); }catch(e){}
   const mergedSig=syncSig(cloudCopy()); window._lastMergeSame=(mergedSig===remoteSig);
   if(mergedSig!==localSig || !window._remoteApplied){ saveLocal(); applyTheme(); applyLock(); render(); maybeAlertNewActivity(); } else { _sigSkips++; }
-  _applyingRemote=false; try{ cfgSnap(); }catch(e){}
+  _applyingRemote=false; try{ cfgSnap(); }catch(e){} if(!_mergingForPush&&typeof prodImgSyncSoon==="function") prodImgSyncSoon();
   if(!window._remoteApplied){ window._remoteApplied=true; setTimeout(()=>{ try{ takeBackup(false); }catch(e){} }, 8000); }
   try{ if(applyRecurring()) render(); }catch(e){}
   // Always push merged result back so cloud stays current (إلا إن كان الدمج نفسه جزءًا من عملية حفظ)
@@ -7434,23 +7464,25 @@ window.mergeForPush=function(remote){ _mergingForPush=true; try{ applyRemote(rem
 function openWorkerStatement(id){
   const w=state.workers.find(x=>x.id===id); if(!w) return; const E=_esc;
   const due=accruedDue(w), bal=wBalance(w);
-  const tx=[].concat(wtxLive(w.credits).map(c=>({t:"credit",amount:+c.amount||0,note:c.note||"",date:c.date})))
+  const SM=wSalaryMonths(w);
+  const tx=[].concat(SM.filter(m=>m.amount).map(m=>({t:"salary",amount:m.amount,note:"",date:m.from+"T00:00:00",m})))
+    .concat(wtxLive(w.credits).map(c=>({t:"credit",amount:+c.amount||0,note:c.note||"",date:c.date})))
     .concat(wtxLive(w.payments).map(pp=>({t:"pay",amount:+pp.amount||0,note:pp.note||"",date:pp.date}))).sort((a,b)=>new Date(a.date)-new Date(b.date));
   const balTxt=n=>n>0?"له "+money(n):n<0?"عليه "+money(-n):"0";
-  let run=Math.round(due);
-  const rows=[`<div class="lg-row"><div class="lg-top"><span class="lg-t">💼 مستحق راتب هذا الشهر حتى اليوم</span><b class="lg-a cr">+${money(Math.round(due))}</b></div><div class="lg-sub">الراتب ${money(w.monthly)} · اليومية ${money(Math.round(dayRate(w)))}${w.start?` · المباشرة <bdi dir="ltr">${frD(w.start)}</bdi>`:""}</div></div>`]
-    .concat(tx.map(x=>{ const before=run; run+=x.t==="credit"?x.amount:-x.amount;
-      return `<div class="lg-row"><div class="lg-top"><span class="lg-t">${x.t==="credit"?"➕ له":"➖ أخذ"}${x.note?": "+E(x.note):""}</span>${x.t==="credit"?`<b class="lg-a cr">+${money(x.amount)}</b>`:`<b class="lg-a dr">−${money(x.amount)}</b>`}</div>
-        <div class="lg-sub"><bdi dir="ltr">${frD(x.date)}</bdi><span class="lg-bal">كان ${balTxt(before)} ← صار <b>${balTxt(run)}</b></span></div></div>`; })).join("");
+  let run=0;
+  const rows=tx.map(x=>{ const before=run; run+=x.t==="pay"?-x.amount:x.amount;
+      const lbl=x.t==="salary"?wSalaryRowText(x.m):(x.t==="credit"?"➕ له":"➖ أخذ")+(x.note?": "+E(x.note):"");
+      return `<div class="lg-row"><div class="lg-top"><span class="lg-t">${lbl}</span>${x.t!=="pay"?`<b class="lg-a cr">+${money(x.amount)}</b>`:`<b class="lg-a dr">−${money(x.amount)}</b>`}</div>
+        <div class="lg-sub">${x.t==="salary"?`<span>${wSalarySub(x.m)}</span>`:`<bdi dir="ltr">${frD(x.date)}</bdi>`}<span class="lg-bal">كان ${balTxt(before)} ← صار <b>${balTxt(run)}</b></span></div></div>`; }).join("")||`<div class="hint">لا عمليات بعد.</div>`;
   document.getElementById("receiptContent").innerHTML=`<div class="rcpt ledger">
     ${rcptHeader(`👷 كشف حساب عامل — ${E(w.name)}${w.role?`<br><small>${E(w.role)}</small>`:""}${w.phone?`<br><small>📞 <bdi dir="ltr">${E(w.phone)}</bdi></small>`:""}`)}
     <div class="lg-final ${bal>0?"for":bal<0?"on":"zero"}"><small>الرصيد الآن</small><b>${bal>0?"له علينا":bal<0?"عليه لنا":"مسدَّد"} ${bal?money(Math.abs(Math.round(bal)))+" "+CUR:"✓"}</b></div>
-    <div class="lg-sum"><div><small>مستحق الراتب</small><b>${money(Math.round(due))}</b></div><div><small>إضافات (له)</small><b>${money(wCredit(w))}</b></div><div><small>المأخوذ</small><b>${money(wPaid(w))}</b></div></div>
+    <div class="lg-sum"><div><small>الراتب المستحق (${SM.length} ${SM.length===1?"شهر":"أشهر"})</small><b>${money(Math.round(due))}</b></div><div><small>إضافات (له)</small><b>${money(wCredit(w))}</b></div><div><small>المأخوذ</small><b>${money(wPaid(w))}</b></div></div>
     ${rows}
     <div class="rcpt-total"><span>${bal>0?"المستحقّ له":bal<0?"عليه لنا":"الرصيد"}</span><b style="color:${bal>0?"#2e9e6b":bal<0?"#d64545":"inherit"}">${bal?money(Math.abs(Math.round(bal)))+" "+CUR:"مسدَّد ✓"}</b></div>
     ${rcptFooter()}</div>`;
   setRcptText({title:"كشف حساب عامل",name:w.name,phone:w.phone||"",country:w.country||"222",final:-Math.round(bal),
-    rows:[{d:new Date().toISOString(),t:"💼 مستحق راتب هذا الشهر حتى اليوم",s:"الراتب "+money(w.monthly),dr:0,cr:Math.round(due)}].concat(tx.map(x=>({d:x.date,t:x.t==="credit"?"➕ له"+(x.note?": "+x.note:""):"➖ أخذ"+(x.note?": "+x.note:""),s:"",dr:x.t==="pay"?x.amount:0,cr:x.t==="credit"?x.amount:0})))});
+    rows:tx.map(x=>({d:x.date,t:x.t==="salary"?wSalaryRowText(x.m):x.t==="credit"?"➕ له"+(x.note?": "+x.note:""):"➖ أخذ"+(x.note?": "+x.note:""),s:x.t==="salary"?wSalarySub(x.m):"",dr:x.t==="pay"?x.amount:0,cr:x.t!=="pay"?x.amount:0}))});
   document.getElementById("receiptModal").style.display="flex";
 }
 document.getElementById("wsClose").onclick=()=>{ document.getElementById("wsModal").style.display="none"; };
@@ -8119,6 +8151,9 @@ function _rand(n){ const a=new Uint8Array(n); crypto.getRandomValues(a); return 
    CHANGELOG: الأحدث أولًا. لكل تعديل: ic, t (العنوان), d (الشرح), go (أين: tab + storeSub/contactsSub/…), sel (العنصر الذي يُشار إليه).
    **قاعدة: كل إصدار جديد يضيف مدخلًا هنا** — يظهر للمستخدم مرة واحدة بعد التحديث مع «تخطي» و«أرني» و«جولة». */
 const CHANGELOG=[
+  {v:"2.69.0",date:"2026-11-09",items:[
+    {ic:"💼",t:"راتب كل شهر يبقى في حساب العامل",d:"كان حساب العامل يعدّ راتب الشهر الحالي فقط، فيختفي راتب أكتوبر يوم 1 نوفمبر وتبقى دفعاته فيظهر «عليه». الآن الراتب يُحسب لكل شهر منذ المباشرة، والكشف فيه سطر لكل شهر (الأيام والغياب والراتب).",go:{tab:"expenses",expSub:"workers"},sel:'.wcard'},
+    {ic:"🖼️",t:"صور المواد محفوظة في السحابة",d:"كانت صورة المادة تُحفظ في الهاتف الذي أضافها فقط فتختفي من الأجهزة الأخرى أو إن مُسحت ذاكرة الهاتف. الآن تُحفظ نسخة منها في السحابة وتظهر على كل الأجهزة، والصور الموجودة في هاتفك تُرفع تلقائيًا.",go:{tab:"store",storeSub:"products"},sel:'.pos-prod'}]},
   {v:"2.68.0",date:"2026-10-30",items:[
     {ic:"🔢",t:"الأرقام لاتينية حتى في اللوحة والوصف",d:"إن كُتب رقم بالعربية (١٠ أو ٠٠) في اللوحة أو الاسم أو الوصف يتحوّل فورًا إلى 10/00، والقديم يُعرض لاتينيًا. واللوحة «١٠» هي نفسها «10» في بطاقة الولاء.",go:{tab:"cars"},sel:'#carPlate'},
     {ic:"⛔",t:"لا يُحذف دين سُدِّد منه شيء",d:"حذف دين يدوي دُفع منه جزء كان يجعل كشف الحساب لا يطابق الرصيد. الآن يظهر تنبيه: احذف الدفعة من الصندوق أولًا أو عدّل المبلغ.",go:{tab:"store",storeSub:"debts"},sel:'.party-card, .debtor-card'}]},
@@ -9285,6 +9320,7 @@ function runMigrations(){
   if(!state.storeCash) state.storeCash=[];
   if(!state.storeDebts) state.storeDebts=[];
   if(!state.typeImgs||typeof state.typeImgs!=="object") state.typeImgs={};
+  if(!state.prodImgAt||typeof state.prodImgAt!=="object") state.prodImgAt={};
   // أسعار بلا كسور (مرة واحدة): تقريب أسعار الطلبات القديمة التي فيها كسور
   if(!state.priceRoundV){ state.priceRoundV=1; const dRound=iso(new Date());
     ["carpetOrders","laundryOrders","carOps"].forEach(k=>(state[k]||[]).forEach(o=>{ let ch=false;
@@ -9377,6 +9413,10 @@ setTimeout(()=>{ if(!window.cloudReady){ const el=document.getElementById("cloud
     // مرآة تقدّم بوت GitHub (bot/state) حتى لا يتكرر الرد/التقفيل بين البوت والأجهزة
     try{ FS.onSnapshot(FS.doc(db,"bot","state"),(snap)=>{ try{ if(snap.exists()&&window.onBotState) window.onBotState(snap.data()); }catch(e){} },()=>{}); }catch(e){}
     window.cloudReady = true;
+    window.cloudImgPut = (id, o) => FS.setDoc(FS.doc(db, "backups", "pimg_" + id), o);
+    window.cloudImgGet = async (id) => { const s = await FS.getDoc(FS.doc(db, "backups", "pimg_" + id)); return s.exists() ? s.data() : null; };
+    window.cloudImgDel = (id) => FS.deleteDoc(FS.doc(db, "backups", "pimg_" + id));
+    if (window.prodImgSyncSoon) window.prodImgSyncSoon();
     if (window.onCloudReady) window.onCloudReady();
     FS.onSnapshot(ref, (snap) => {
       if (!snap.exists()) { if (window.onCloudEmpty) window.onCloudEmpty(); return; }
@@ -9404,7 +9444,7 @@ setTimeout(()=>{ if(!window.cloudReady){ const el=document.getElementById("cloud
 <!-- PWA: service-worker registration + update/install wiring -->
 <script>
 (function(){
-  var APP_VERSION = "2.68.0";
+  var APP_VERSION = "2.69.0";
   window.APP_VERSION = APP_VERSION;
   function $(id){ return document.getElementById(id); }
   // سجّل إصدار هذا الجهاز في الحالة المتزامنة (ليُنبَّه الجهاز القديم)

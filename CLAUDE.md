@@ -525,6 +525,17 @@
   «👷 رئيس العمّال» تُخفى خانات الحمل (`#bkLoadFields`, `#bkLoadKinds`، تلميح `#bkWorkerOnlyHint`) والزر «💾 حفظ رئيس العمّال» (`updPor` في
   `bindBrick`)؛ و`doBrickLoadSave` يحفظ الشخص فقط إن لم يُكتب مبلغ (الحمل **اختياري لأي شخص جديد**، وإلزامي فقط لتسجيل عمل لشخص موجود).
   الاختبار `tests/e2e/brick_worker_add.test.js`.
+- **راتب العامل يتراكم لكل شهر (2.69.0) — «له 50,000 من شهر 10، لماذا مستحق راتبه 13,333 فقط؟»:** `accruedDue` كان يبدأ من أول الشهر الحالي
+  فقط، بينما `wPaid` يجمع كل الدفعات منذ البداية — فيختفي راتب الشهر الماضي يوم 1 ويصير العامل «عليه». الآن `wSalaryMonths(w)` = شهر لكل سطر منذ
+  `w.start` حتى اليوم `{ym,from,to,days,absent,monthly,rates,amount(مقرّب),name,cur}` (كل يوم = `monthlyOn(w,ds)/_dim(d)` مثل `wagesBetween`، الغياب لا يُحسب)،
+  و`accruedDue` = مجموعها، `accruedMonth` = الشهر الحالي فقط. كشف العامل (`openWorkerStatement`) وتفاصيل البطاقة (`workerTxListHTML`) فيهما سطر
+  «💼 راتب {الشهر}» مؤرَّخ بأول الشهر (`wSalaryRowText`/`wSalarySub`: الأيام/الغياب/الراتب «45,000 ثم 50,000» إن تغيّر) مع «كان ← صار». الاختبار
+  `tests/e2e/worker_months.test.js`.
+  **صور المواد في السحابة (2.69.0) — «صور المواد تُمحى»:** كانت `storeProducts[].image` في IndexedDB الجهاز الذي أضافها فقط (لا تُرفع)، فلا تظهر على
+  الأجهزة الأخرى وتضيع بمسح ذاكرة الهاتف. الآن نسخة مصغّرة (`pimgThumb` ≤ 360px JPEG) في مستند مستقل **`backups/pimg_{id}`** (يسمح به `firestore.rules`،
+  خارج `appState/main` فلا يكبر) عبر `window.cloudImgPut/Get/Del`، و`state.prodImgAt[id]` (مُزامن، يُدمج بالأحدث بالقيمة المطلقة؛ سالب = حُذفت).
+  `prodImgSaved(id,img)` عند حفظ مادة بصورة، `prodImgRemoved(id)` عند إزالتها، و`prodImgSync()` (بعد `loadPhotos`، بعد كل `applyRemote`، وعند `cloudReady`؛
+  طابور `_pimgRun`) يجلب الناقص/الأحدث (`localStorage sadaqa_pimg_v` = النسخة المحلية) ويرفع الصور المحلية القديمة بلا ختم. الاختبار `tests/e2e/prod_img_cloud.test.js`.
 - **فاحص الأخطاء على البيانات الحقيقية (2.68.0):** (1) **أرقام عربية مكتوبة في نص حرّ** (لوحة «١٠»، وصف «٠٠») كانت تظهر في
   السيارات والملابس: `_esc` صار يمرّر `toLatinDigits` (فكل نص مستخدم يُعرض لاتينيًا)، `normPlate` كذلك (فـ«١٠» = «10» في `plateKey`/الولاء)،
   ومستمع `input` العام يحوّل الأرقام في **كل** `input`/`textarea` (عدا كلمة المرور/الملف/الاختيار) لا الرقمية فقط. (2) **حذف دين يدوي سُدِّد منه شيء
