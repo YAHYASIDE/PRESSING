@@ -525,6 +525,10 @@
   «👷 رئيس العمّال» تُخفى خانات الحمل (`#bkLoadFields`, `#bkLoadKinds`، تلميح `#bkWorkerOnlyHint`) والزر «💾 حفظ رئيس العمّال» (`updPor` في
   `bindBrick`)؛ و`doBrickLoadSave` يحفظ الشخص فقط إن لم يُكتب مبلغ (الحمل **اختياري لأي شخص جديد**، وإلزامي فقط لتسجيل عمل لشخص موجود).
   الاختبار `tests/e2e/brick_worker_add.test.js`.
+- **✏️ تعديل المادة يفتح النموذج أمامك (2.70.0) — «اجعل زر تعديل مادة يفتحها تلقائي»:** النموذج `#prodFormPanel` في أعلى «المتجر ▸ المواد»
+  و✏️ `[data-prod-edit]` في أسفل قائمة طويلة، فكان التعديل يبدأ خارج الشاشة. الآن `prodFormFocus()` بعد الرسم: `scrollIntoView` فوري (لا smooth — بطيء على
+  القوائم الطويلة) + وميض `.flash` + المؤشر في `#prodName`، والعنوان «✏️ تعديل مادة: الاسم» (`.prod-editing`)؛ بعد الحفظ (`doProdSave`) أو الإلغاء
+  (`#prodCancelEdit`) يعود `prodBackToRow()` إلى صف المادة `_prodBackTo`. الاختبار `tests/e2e/prod_edit_open.test.js`.
 - **راتب العامل يتراكم لكل شهر (2.69.0) — «له 50,000 من شهر 10، لماذا مستحق راتبه 13,333 فقط؟»:** `accruedDue` كان يبدأ من أول الشهر الحالي
   فقط، بينما `wPaid` يجمع كل الدفعات منذ البداية — فيختفي راتب الشهر الماضي يوم 1 ويصير العامل «عليه». الآن `wSalaryMonths(w)` = شهر لكل سطر منذ
   `w.start` حتى اليوم `{ym,from,to,days,absent,monthly,rates,amount(مقرّب),name,cur}` (كل يوم = `monthlyOn(w,ds)/_dim(d)` مثل `wagesBetween`، الغياب لا يُحسب)،

@@ -161,6 +161,9 @@
   .plate-chip{border:1.5px solid var(--line);background:var(--input);color:var(--ink);border-radius:999px;padding:3px 10px;font:inherit;font-size:.76rem;font-weight:800;cursor:pointer}
   .plate-chip.on{border-color:var(--brand);color:var(--brand);background:var(--brand-soft)}
   .cc-cust{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:center;margin:-4px 0 8px;font-size:.86rem}
+  #prodFormPanel{scroll-margin-top:10px} #prodFormPanel.prod-editing{box-shadow:0 0 0 2px var(--brand)} .prod-row{scroll-margin:80px}
+  .flash{animation:flashRing 1.4s ease-out} @keyframes flashRing{0%{box-shadow:0 0 0 4px var(--brand)}100%{box-shadow:0 0 0 0 transparent}}
+  @media (prefers-reduced-motion:reduce){.flash{animation:none}}
   .cc-cust b{color:var(--ink)} .cc-plate{font-weight:800;color:var(--brand);background:var(--chip);border-radius:6px;padding:1px 8px;font-size:.8rem;letter-spacing:.4px} .cc-ph{font-size:.76rem;color:var(--muted)}
   /* الصور: قبل | بعد في صف واحد، أزرار دائرية صغيرة ملوّنة والكتابة بجانبها */
   .ph-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px}
@@ -5457,8 +5460,8 @@ function storeScreenProducts(){
   }).join(""):`<div class="panel empty" style="grid-column:1/-1">${svg(I.empty)}لا توجد مواد بعد.</div>`;
   return `
     <div class="cols">
-      <div class="panel">
-        <h3>${editing?'تعديل مادة':'مادة جديدة'}</h3>
+      <div class="panel${editing?' prod-editing':''}" id="prodFormPanel">
+        <h3>${editing?'✏️ تعديل مادة: '+_esc(editing.name||''):'مادة جديدة'}</h3>
         <div class="field"><label>صورة المادة</label><div id="prodImgBox" class="prod-img-box">${img?`<img src="${img}"><button type="button" class="thumb-x" id="prodImgRm">×</button>`:`<label class="photo-add" style="margin:0"><input type="file" class="prodImgInp" accept="image/*" capture="environment" style="display:none">${svg(I.camera)}<span>كاميرا</span></label><label class="photo-add" style="margin:0"><input type="file" class="prodImgInp" accept="image/*" style="display:none">🖼️<span>المعرض</span></label>`}</div></div>
         <div class="field"><label>اسم المادة <span style="color:var(--unpaid)">*</span></label><input id="prodName" type="text" value="${editing?(editing.name||'').replace(/"/g,'&quot;'):''}" placeholder="مثال: شامبو سجاد"></div>
         <div class="field"><label>الفئة</label><input id="prodCat" list="prodCatList" type="text" value="${editing?(editing.category||'').replace(/"/g,'&quot;'):''}" placeholder="مثال: منظفات"><datalist id="prodCatList">${catList}</datalist></div>
@@ -5667,6 +5670,10 @@ function doStoreMatSale(){
   commitStoreSale(cust.id, cust, [{productId:pid,name:p.name,qty,price}], paid, pmVal("smPm")); delete _pmDraft.smPm;
   toast("تم تسجيل سحب المواد ✓"); render();
 }
+let _prodBackTo=null;
+function prodFormFocus(){ const f=document.getElementById("prodFormPanel"); if(!f) return; try{ f.scrollIntoView({block:"start"}); }catch(e){ f.scrollIntoView(); }
+  f.classList.remove("flash"); void f.offsetWidth; f.classList.add("flash"); const n=document.getElementById("prodName"); if(n) try{ n.focus({preventScroll:true}); }catch(e){} }
+function prodBackToRow(){ const id=_prodBackTo; _prodBackTo=null; if(!id) return; setTimeout(()=>{ const r=document.querySelector('.prod-row[data-pid="'+id+'"]'); if(!r) return; try{ r.scrollIntoView({block:"center"}); }catch(e){ r.scrollIntoView(); } r.classList.remove("flash"); void r.offsetWidth; r.classList.add("flash"); },60); }
 function doProdSave(){
   const name=(document.getElementById("prodName").value||"").trim();
   if(!name) return toast("أدخل اسم المادة");
@@ -5679,7 +5686,7 @@ function doProdSave(){
   if(_editProdId){ const p=storeProd(_editProdId); if(p){ p.barcode=barcode; p.name=name;p.category=cat;p.buyPrice=buy;p.sellPrice=sell;p.stock=stock;p.minStock=minStock;p.unit=unit;p.image=image;p.editedAt=iso(new Date()); if(pendingProdImg) prodImgSaved(p.id,image); logActivity("تعديل مادة",name); toast("تم حفظ التعديل"); } _editProdId=null; pendingProdImg=""; }
   else { const np={id:uid(),name,category:cat,buyPrice:buy,sellPrice:sell,stock,minStock,unit,image,barcode,by:currentUser,editedAt:iso(new Date())}; state.storeProducts.push(np); if(image) prodImgSaved(np.id,image); logActivity("مادة جديدة",name+" · بيع "+money(sell)); toast("تمت إضافة المادة"); pendingProdImg=""; }
   _pendingBarcode="";
-  render();
+  render(); prodBackToRow();
 }
 function doPurSave(){
   if(!purCart.length) return toast("أضِف موادًا للفاتورة");
@@ -5821,8 +5828,9 @@ function bindStore(){
   document.querySelectorAll(".prodImgInp").forEach(pimgInp=>{ pimgInp.onchange=(e)=>{ const f=e.target.files[0]; if(f) readAndCompress(f,(url)=>{ pendingProdImg=url; render(); }); }; });
   const pimgRm=document.getElementById("prodImgRm"); if(pimgRm) pimgRm.onclick=()=>{ pendingProdImg=""; if(_editProdId){ const p=storeProd(_editProdId); if(p){ p.image=""; prodImgRemoved(p.id); } } render(); };
   const prodSave=document.getElementById("prodSave"); if(prodSave) prodSave.onclick=doProdSave;
-  const prodCancel=document.getElementById("prodCancelEdit"); if(prodCancel) prodCancel.onclick=()=>{ _editProdId=null; pendingProdImg=""; render(); };
-  document.querySelectorAll("[data-prod-edit]").forEach(b=>b.onclick=()=>{ _editProdId=b.dataset.prodEdit; pendingProdImg=""; render(); });
+  const prodCancel=document.getElementById("prodCancelEdit"); if(prodCancel) prodCancel.onclick=()=>{ _editProdId=null; pendingProdImg=""; render(); prodBackToRow(); };
+  /* (2.70.0) ✏️ يفتح نموذج التعديل أمامك مباشرة: ينقل الشاشة إلى النموذج ويضع المؤشر في الاسم (كان النموذج أعلى الصفحة فلا يُرى) */
+  document.querySelectorAll("[data-prod-edit]").forEach(b=>b.onclick=()=>{ _editProdId=b.dataset.prodEdit; _prodBackTo=_editProdId; pendingProdImg=""; render(); prodFormFocus(); });
   document.querySelectorAll("[data-prod-del]").forEach(b=>b.onclick=()=>{ const p=storeProd(b.dataset.prodDel); requireCode(()=>{ logActivity("حذف مادة",(p&&p.name)||""); tomb(b.dataset.prodDel); state.storeProducts=state.storeProducts.filter(x=>x.id!==b.dataset.prodDel); toast("تم الحذف"); render(); }, SECRET_CODE, "كود الحذف", "حذف المادة يتطلب الكود."); });
   // Sales
   document.querySelectorAll("[data-sale-pay]").forEach(b=>b.onclick=()=>{ const s=storeSale(b.dataset.salePay); if(s){ _storePayCtx={kind:"sale",id:s.id}; openStorePay(saleOutstanding(s),"تحصيل فاتورة "+s.no); } });
@@ -8151,6 +8159,8 @@ function _rand(n){ const a=new Uint8Array(n); crypto.getRandomValues(a); return 
    CHANGELOG: الأحدث أولًا. لكل تعديل: ic, t (العنوان), d (الشرح), go (أين: tab + storeSub/contactsSub/…), sel (العنصر الذي يُشار إليه).
    **قاعدة: كل إصدار جديد يضيف مدخلًا هنا** — يظهر للمستخدم مرة واحدة بعد التحديث مع «تخطي» و«أرني» و«جولة». */
 const CHANGELOG=[
+  {v:"2.70.0",date:"2026-11-10",items:[
+    {ic:"✏️",t:"زر تعديل المادة يفتحها أمامك",d:"الضغط على ✏️ بجانب أي مادة ينقلك مباشرة إلى نموذج تعديلها (اسمها في العنوان والمؤشر في الاسم)، وبعد الحفظ أو الإلغاء ترجع إلى المادة نفسها في القائمة.",go:{tab:"store",storeSub:"products"},sel:'.prod-row'}]},
   {v:"2.69.0",date:"2026-11-09",items:[
     {ic:"💼",t:"راتب كل شهر يبقى في حساب العامل",d:"كان حساب العامل يعدّ راتب الشهر الحالي فقط، فيختفي راتب أكتوبر يوم 1 نوفمبر وتبقى دفعاته فيظهر «عليه». الآن الراتب يُحسب لكل شهر منذ المباشرة، والكشف فيه سطر لكل شهر (الأيام والغياب والراتب).",go:{tab:"expenses",expSub:"workers"},sel:'.wcard'},
     {ic:"🖼️",t:"صور المواد محفوظة في السحابة",d:"كانت صورة المادة تُحفظ في الهاتف الذي أضافها فقط فتختفي من الأجهزة الأخرى أو إن مُسحت ذاكرة الهاتف. الآن تُحفظ نسخة منها في السحابة وتظهر على كل الأجهزة، والصور الموجودة في هاتفك تُرفع تلقائيًا.",go:{tab:"store",storeSub:"products"},sel:'.pos-prod'}]},
@@ -9444,7 +9454,7 @@ setTimeout(()=>{ if(!window.cloudReady){ const el=document.getElementById("cloud
 <!-- PWA: service-worker registration + update/install wiring -->
 <script>
 (function(){
-  var APP_VERSION = "2.69.0";
+  var APP_VERSION = "2.70.0";
   window.APP_VERSION = APP_VERSION;
   function $(id){ return document.getElementById(id); }
   // سجّل إصدار هذا الجهاز في الحالة المتزامنة (ليُنبَّه الجهاز القديم)
